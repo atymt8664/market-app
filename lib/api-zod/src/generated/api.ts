@@ -101,6 +101,7 @@ export const ListAdsResponseItem = zod.object({
   sellerName: zod.string(),
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
+  userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListAdsResponse = zod.array(ListAdsResponseItem);
@@ -147,6 +148,7 @@ export const ListFeaturedAdsResponseItem = zod.object({
   sellerName: zod.string(),
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
+  userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListFeaturedAdsResponse = zod.array(ListFeaturedAdsResponseItem);
@@ -170,6 +172,7 @@ export const ListRecommendedAdsResponseItem = zod.object({
   sellerName: zod.string(),
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
+  userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListRecommendedAdsResponse = zod.array(
@@ -197,6 +200,30 @@ export const GetAdsStatsResponse = zod.object({
   ),
 });
 
+/**
+ * @summary List ads belonging to the authenticated user
+ */
+export const ListMyAdsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string(),
+  price: zod.number().nullable(),
+  priceType: zod.enum(["fixed", "negotiable", "free", "swap"]),
+  type: zod.enum(["offer", "request"]),
+  city: zod.string(),
+  images: zod.array(zod.string()),
+  categoryId: zod.number(),
+  subcategoryId: zod.number().nullish(),
+  categoryName: zod.string(),
+  subcategoryName: zod.string().nullish(),
+  sellerName: zod.string(),
+  sellerPhone: zod.string(),
+  featured: zod.boolean().optional(),
+  userId: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListMyAdsResponse = zod.array(ListMyAdsResponseItem);
+
 export const GetAdParams = zod.object({
   adId: zod.coerce.number(),
 });
@@ -217,7 +244,104 @@ export const GetAdResponse = zod.object({
   sellerName: zod.string(),
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
+  userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
+});
+
+export const UpdateAdParams = zod.object({
+  adId: zod.coerce.number(),
+});
+
+export const updateAdBodyTitleMin = 3;
+export const updateAdBodyTitleMax = 65;
+
+export const updateAdBodyDescriptionMin = 10;
+export const updateAdBodyDescriptionMax = 4000;
+
+export const UpdateAdBody = zod.object({
+  title: zod.string().min(updateAdBodyTitleMin).max(updateAdBodyTitleMax),
+  description: zod
+    .string()
+    .min(updateAdBodyDescriptionMin)
+    .max(updateAdBodyDescriptionMax),
+  price: zod.number().nullish(),
+  priceType: zod.enum(["fixed", "negotiable", "free", "swap"]),
+  type: zod.enum(["offer", "request"]),
+  categoryId: zod.number(),
+  subcategoryId: zod.number().nullish(),
+  city: zod.string(),
+  sellerName: zod.string(),
+  sellerPhone: zod.string(),
+  images: zod.array(zod.string()).optional(),
+});
+
+export const UpdateAdResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string(),
+  price: zod.number().nullable(),
+  priceType: zod.enum(["fixed", "negotiable", "free", "swap"]),
+  type: zod.enum(["offer", "request"]),
+  city: zod.string(),
+  images: zod.array(zod.string()),
+  categoryId: zod.number(),
+  subcategoryId: zod.number().nullish(),
+  categoryName: zod.string(),
+  subcategoryName: zod.string().nullish(),
+  sellerName: zod.string(),
+  sellerPhone: zod.string(),
+  featured: zod.boolean().optional(),
+  userId: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+export const DeleteAdParams = zod.object({
+  adId: zod.coerce.number(),
+});
+
+export const authSignupBodyPasswordMin = 6;
+
+export const authSignupBodyNameMin = 2;
+
+export const authSignupBodyPhoneMin = 5;
+
+export const AuthSignupBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string().min(authSignupBodyPasswordMin),
+  name: zod.string().min(authSignupBodyNameMin),
+  phone: zod.string().min(authSignupBodyPhoneMin),
+  city: zod.string().optional(),
+});
+
+export const AuthSignupResponse = zod.object({
+  id: zod.number(),
+  email: zod.string(),
+  name: zod.string(),
+  phone: zod.string(),
+  city: zod.string(),
+});
+
+export const authLoginBodyPasswordMin = 6;
+
+export const AuthLoginBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string().min(authLoginBodyPasswordMin),
+});
+
+export const AuthLoginResponse = zod.object({
+  id: zod.number(),
+  email: zod.string(),
+  name: zod.string(),
+  phone: zod.string(),
+  city: zod.string(),
+});
+
+export const AuthMeResponse = zod.object({
+  id: zod.number(),
+  email: zod.string(),
+  name: zod.string(),
+  phone: zod.string(),
+  city: zod.string(),
 });
 
 /**

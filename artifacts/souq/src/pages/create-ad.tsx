@@ -1,4 +1,16 @@
-import { useListCategories, useListSubcategories, useCreateAd, useImproveDescription, useSuggestPrice, getListSubcategoriesQueryKey } from "@workspace/api-client-react";
+import {
+  useListCategories,
+  useListSubcategories,
+  useCreateAd,
+  useUpdateAd,
+  useGetAd,
+  useImproveDescription,
+  useSuggestPrice,
+  getListSubcategoriesQueryKey,
+  getGetAdQueryKey,
+  getListMyAdsQueryKey,
+  getListRecommendedAdsQueryKey,
+} from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { ArrowRight, Camera, Sparkles, Wand2, Loader2, Check, X, Plus } from "lucide-react";
 import { useUpload } from "@workspace/object-storage-web";
@@ -6,16 +18,17 @@ import { useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 const createAdSchema = z.object({
   title: z.string().min(3, "العنوان قصير جداً").max(65, "العنوان طويل جداً"),
@@ -33,14 +46,30 @@ const createAdSchema = z.object({
 
 type CreateAdFormValues = z.infer<typeof createAdSchema>;
 
-export default function CreateAd() {
+interface CreateAdProps {
+  editId?: number;
+}
+
+export default function CreateAd({ editId }: CreateAdProps = {}) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  
-  const [profile, setProfile] = useLocalStorage("seller_profile", { name: "", phone: "", city: "" });
-  
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  const isEdit = typeof editId === "number";
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      const target = isEdit ? `/edit/${editId}` : "/new";
+      navigate(`/login?redirect=${encodeURIComponent(target)}`);
+    }
+  }, [authLoading, isAuthenticated, isEdit, editId, navigate]);
+
   const { data: categories } = useListCategories();
+  const { data: existingAd } = useGetAd(editId ?? 0, {
+    query: { enabled: isEdit, queryKey: getGetAdQueryKey(editId ?? 0) },
+  });
   const createAdMutation = useCreateAd();
+  const updateAdMutation = useUpdateAd();
   const improveDescMutation = useImproveDescription();
   const suggestPriceMutation = useSuggestPrice();
 
@@ -67,12 +96,40 @@ export default function CreateAd() {
       type: "offer",
       categoryId: 0,
       subcategoryId: null,
-      city: profile.city || "",
-      sellerName: profile.name || "",
-      sellerPhone: profile.phone || "",
+      city: user?.city || "",
+      sellerName: user?.name || "",
+      sellerPhone: user?.phone || "",
       images: []
     }
   });
+
+  useEffect(() => {
+    if (existingAd && isEdit) {
+      form.reset({
+        title: existingAd.title,
+        description: existingAd.description,
+        price: existingAd.price,
+        priceType: existingAd.priceType as "fixed" | "negotiable" | "free" | "swap",
+        type: existingAd.type as "offer" | "request",
+        categoryId: existingAd.categoryId,
+        subcategoryId: existingAd.subcategoryId ?? null,
+        city: existingAd.city,
+        sellerName: existingAd.sellerName,
+        sellerPhone: existingAd.sellerPhone,
+        images: existingAd.images,
+      });
+      setSelectedCatId(existingAd.categoryId);
+      setUploadedImages(existingAd.images);
+    }
+  }, [existingAd, isEdit, form]);
+
+  useEffect(() => {
+    if (!isEdit && user) {
+      if (!form.getValues("sellerName")) form.setValue("sellerName", user.name);
+      if (!form.getValues("sellerPhone")) form.setValue("sellerPhone", user.phone);
+      if (!form.getValues("city") && user.city) form.setValue("city", user.city);
+    }
+  }, [user, isEdit, form]);
 
   const watchTitle = form.watch("title");
   const watchDesc = form.watch("description");
@@ -88,22 +145,52 @@ export default function CreateAd() {
       toast({ title: "أضف صورة واحدة على الأقل", variant: "destructive" });
       return;
     }
-    setProfile({ name: data.sellerName, phone: data.sellerPhone, city: data.city });
     data.images = uploadedImages;
 
-    createAdMutation.mutate({ data }, {
-      onSuccess: () => {
-        toast({
-          title: "تم نشر الإعلان بنجاح",
-          description: "إعلانك أصبح مرئياً في السوق الآن",
-          className: "bg-primary text-primary-foreground border-primary",
-        });
-        navigate("/");
-      },
-      onError: () => {
-        toast({ title: "حدث خطأ أثناء النشر", variant: "destructive" });
+    const invalidate = async () => {
+      await queryClient.invalidateQueries({ queryKey: getListMyAdsQueryKey() });
+      await queryClient.invalidateQueries({ queryKey: getListRecommendedAdsQueryKey() });
+      if (isEdit) {
+        await queryClient.invalidateQueries({ queryKey: getGetAdQueryKey(editId!) });
       }
-    });
+    };
+
+    if (isEdit) {
+      updateAdMutation.mutate(
+        { adId: editId!, data },
+        {
+          onSuccess: async () => {
+            await invalidate();
+            toast({
+              title: "تم تحديث الإعلان",
+              className: "bg-primary text-primary-foreground border-primary",
+            });
+            navigate("/profile");
+          },
+          onError: () => {
+            toast({ title: "حدث خطأ أثناء التحديث", variant: "destructive" });
+          },
+        },
+      );
+    } else {
+      createAdMutation.mutate(
+        { data },
+        {
+          onSuccess: async () => {
+            await invalidate();
+            toast({
+              title: "تم نشر الإعلان بنجاح",
+              description: "إعلانك أصبح مرئياً في السوق الآن",
+              className: "bg-primary text-primary-foreground border-primary",
+            });
+            navigate("/");
+          },
+          onError: () => {
+            toast({ title: "حدث خطأ أثناء النشر", variant: "destructive" });
+          },
+        },
+      );
+    }
   };
 
   const handleFilesSelected = async (files: FileList | null) => {
@@ -181,7 +268,7 @@ export default function CreateAd() {
               <ArrowRight className="w-5 h-5" />
             </button>
           </Link>
-          <h1 className="font-bold text-lg">إنشاء إعلان</h1>
+          <h1 className="font-bold text-lg">{isEdit ? "تعديل الإعلان" : "إنشاء إعلان"}</h1>
         </div>
       </header>
 
@@ -535,9 +622,15 @@ export default function CreateAd() {
             <Button 
               type="submit" 
               className="flex-1 py-6 text-lg font-bold shadow-lg"
-              disabled={createAdMutation.isPending}
+              disabled={createAdMutation.isPending || updateAdMutation.isPending}
             >
-              {createAdMutation.isPending ? <Loader2 className="w-6 h-6 animate-spin" /> : "نشر الإعلان"}
+              {createAdMutation.isPending || updateAdMutation.isPending ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : isEdit ? (
+                "حفظ التعديلات"
+              ) : (
+                "نشر الإعلان"
+              )}
             </Button>
             <Button type="button" variant="outline" className="py-6 px-6 font-medium">
               معاينة

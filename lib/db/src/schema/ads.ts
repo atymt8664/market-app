@@ -9,9 +9,13 @@ import {
   jsonb,
 } from "drizzle-orm/pg-core";
 import { categoriesTable, subcategoriesTable } from "./categories";
+import { usersTable } from "./users";
 
 export const adsTable = pgTable("ads", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => usersTable.id, {
+    onDelete: "cascade",
+  }),
   title: text("title").notNull(),
   description: text("description").notNull(),
   price: numeric("price", { precision: 12, scale: 2 }),

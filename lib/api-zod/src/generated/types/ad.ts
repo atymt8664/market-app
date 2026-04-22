@@ -24,5 +24,6 @@ export interface Ad {
   sellerName: string;
   sellerPhone: string;
   featured?: boolean;
+  userId?: number | null;
   createdAt: Date;
 }

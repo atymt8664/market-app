@@ -13,6 +13,9 @@ import CreateAd from "@/pages/create-ad";
 import Profile from "@/pages/profile";
 import Favorites from "@/pages/favorites";
 import Stats from "@/pages/stats";
+import Login from "@/pages/login";
+import Signup from "@/pages/signup";
+import EditAd from "@/pages/edit-ad";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,7 +35,10 @@ function Router() {
         <Route path="/category/:id" component={Category} />
         <Route path="/search" component={Search} />
         <Route path="/ad/:id" component={AdDetail} />
-        <Route path="/new" component={CreateAd} />
+        <Route path="/new">{() => <CreateAd />}</Route>
+        <Route path="/edit/:id" component={EditAd} />
+        <Route path="/login" component={Login} />
+        <Route path="/signup" component={Signup} />
         <Route path="/profile" component={Profile} />
         <Route path="/favorites" component={Favorites} />
         <Route path="/stats" component={Stats} />

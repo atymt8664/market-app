@@ -1,13 +1,22 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db, adsTable, categoriesTable, subcategoriesTable } from "@workspace/db";
 import { and, desc, eq, gte, ilike, lte, sql, or } from "drizzle-orm";
 import {
   ListAdsQueryParams,
   CreateAdBody,
+  UpdateAdBody,
   GetAdParams,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  if (!req.session.userId) {
+    res.status(401).json({ error: "يرجى تسجيل الدخول" });
+    return;
+  }
+  next();
+}
 
 function serializeAd(row: {
   ads: typeof adsTable.$inferSelect;
@@ -31,6 +40,7 @@ function serializeAd(row: {
     sellerName: ad.sellerName,
     sellerPhone: ad.sellerPhone,
     featured: ad.featured,
+    userId: ad.userId,
     createdAt: ad.createdAt.toISOString(),
   };
 }
@@ -106,6 +116,13 @@ router.get("/ads/stats", async (_req, res) => {
   });
 });
 
+router.get("/ads/mine", requireAuth, async (req, res) => {
+  const rows = await baseSelect()
+    .where(eq(adsTable.userId, req.session.userId!))
+    .orderBy(desc(adsTable.createdAt));
+  res.json(rows.map(serializeAd));
+});
+
 router.get("/ads/:adId", async (req, res) => {
   const params = GetAdParams.parse({ adId: Number(req.params["adId"]) });
   const rows = await baseSelect().where(eq(adsTable.id, params.adId)).limit(1);
@@ -146,11 +163,12 @@ router.get("/ads", async (req, res) => {
   res.json(rows.map(serializeAd));
 });
 
-router.post("/ads", async (req, res) => {
+router.post("/ads", requireAuth, async (req, res) => {
   const body = CreateAdBody.parse(req.body);
   const inserted = await db
     .insert(adsTable)
     .values({
+      userId: req.session.userId!,
       title: body.title,
       description: body.description,
       price: body.price !== undefined && body.price !== null ? body.price.toString() : null,
@@ -167,6 +185,61 @@ router.post("/ads", async (req, res) => {
   const id = inserted[0]!.id;
   const rows = await baseSelect().where(eq(adsTable.id, id)).limit(1);
   res.status(201).json(serializeAd(rows[0]!));
+});
+
+router.patch("/ads/:adId", requireAuth, async (req, res) => {
+  const adId = Number(req.params["adId"]);
+  const existing = await db
+    .select({ userId: adsTable.userId })
+    .from(adsTable)
+    .where(eq(adsTable.id, adId))
+    .limit(1);
+  if (!existing[0]) {
+    res.status(404).json({ error: "Ad not found" });
+    return;
+  }
+  if (existing[0].userId !== req.session.userId) {
+    res.status(403).json({ error: "غير مصرح" });
+    return;
+  }
+  const body = UpdateAdBody.parse(req.body);
+  await db
+    .update(adsTable)
+    .set({
+      title: body.title,
+      description: body.description,
+      price: body.price !== undefined && body.price !== null ? body.price.toString() : null,
+      priceType: body.priceType,
+      type: body.type,
+      city: body.city,
+      images: body.images ?? [],
+      categoryId: body.categoryId,
+      subcategoryId: body.subcategoryId ?? null,
+      sellerName: body.sellerName,
+      sellerPhone: body.sellerPhone,
+    })
+    .where(eq(adsTable.id, adId));
+  const rows = await baseSelect().where(eq(adsTable.id, adId)).limit(1);
+  res.json(serializeAd(rows[0]!));
+});
+
+router.delete("/ads/:adId", requireAuth, async (req, res) => {
+  const adId = Number(req.params["adId"]);
+  const existing = await db
+    .select({ userId: adsTable.userId })
+    .from(adsTable)
+    .where(eq(adsTable.id, adId))
+    .limit(1);
+  if (!existing[0]) {
+    res.status(404).end();
+    return;
+  }
+  if (existing[0].userId !== req.session.userId) {
+    res.status(403).json({ error: "غير مصرح" });
+    return;
+  }
+  await db.delete(adsTable).where(eq(adsTable.id, adId));
+  res.status(204).end();
 });
 
 export default router;

@@ -12,6 +12,7 @@ tags:
   - name: categories
   - name: ads
   - name: ai
+  - name: auth
   - name: Storage
     description: Object storage upload and serving endpoints.
 paths:
@@ -241,6 +242,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/AdsStats"
 
+  /ads/mine:
+    get:
+      operationId: listMyAds
+      tags: [ads]
+      summary: List ads belonging to the authenticated user
+      responses:
+        "200":
+          description: My ads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ad"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /ads/{adId}:
     get:
       operationId: getAd
@@ -257,6 +279,139 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Ad"
+    patch:
+      operationId: updateAd
+      tags: [ads]
+      parameters:
+        - name: adId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAdInput"
+      responses:
+        "200":
+          description: Updated ad
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ad"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: deleteAd
+      tags: [ads]
+      parameters:
+        - name: adId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /auth/signup:
+    post:
+      operationId: authSignup
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupInput"
+      responses:
+        "200":
+          description: Signed up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /auth/login:
+    post:
+      operationId: authLogin
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /auth/logout:
+    post:
+      operationId: authLogout
+      tags: [auth]
+      responses:
+        "204":
+          description: Logged out
+  /auth/me:
+    get:
+      operationId: authMe
+      tags: [auth]
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /ai/improve-description:
     post:
@@ -340,6 +495,31 @@ components:
         name: { type: string }
         categoryId: { type: integer }
 
+    AuthUser:
+      type: object
+      required: [id, email, name, phone, city]
+      properties:
+        id: { type: integer }
+        email: { type: string }
+        name: { type: string }
+        phone: { type: string }
+        city: { type: string }
+    SignupInput:
+      type: object
+      required: [email, password, name, phone]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+        name: { type: string, minLength: 2 }
+        phone: { type: string, minLength: 5 }
+        city: { type: string }
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+
     Ad:
       type: object
       required: [id, title, description, price, priceType, type, city, images, categoryId, categoryName, sellerName, sellerPhone, createdAt]
@@ -361,6 +541,7 @@ components:
         sellerName: { type: string }
         sellerPhone: { type: string }
         featured: { type: boolean }
+        userId: { type: integer, nullable: true }
         createdAt: { type: string, format: date-time }
 
     CreateAdInput:

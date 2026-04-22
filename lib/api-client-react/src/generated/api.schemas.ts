@@ -24,6 +24,31 @@ export interface Subcategory {
   categoryId: number;
 }
 
+export interface AuthUser {
+  id: number;
+  email: string;
+  name: string;
+  phone: string;
+  city: string;
+}
+
+export interface SignupInput {
+  email: string;
+  /** @minLength 6 */
+  password: string;
+  /** @minLength 2 */
+  name: string;
+  /** @minLength 5 */
+  phone: string;
+  city?: string;
+}
+
+export interface LoginInput {
+  email: string;
+  /** @minLength 6 */
+  password: string;
+}
+
 export type AdPriceType = (typeof AdPriceType)[keyof typeof AdPriceType];
 
 export const AdPriceType = {
@@ -56,6 +81,7 @@ export interface Ad {
   sellerName: string;
   sellerPhone: string;
   featured?: boolean;
+  userId?: number | null;
   createdAt: string;
 }
 

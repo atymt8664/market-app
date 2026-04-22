@@ -1,6 +1,8 @@
 import { useListCategories, useListSubcategories, useCreateAd, useImproveDescription, useSuggestPrice, getListSubcategoriesQueryKey } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
-import { ArrowRight, Camera, Sparkles, Wand2, Loader2, Check } from "lucide-react";
+import { ArrowRight, Camera, Sparkles, Wand2, Loader2, Check, X, Plus } from "lucide-react";
+import { useUpload } from "@workspace/object-storage-web";
+import { useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -44,6 +46,9 @@ export default function CreateAd() {
 
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [selectedCatId, setSelectedCatId] = useState<number | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFile, isUploading, progress } = useUpload();
   
   const { data: subcategories } = useListSubcategories(selectedCatId || 0, {
     query: {
@@ -79,21 +84,46 @@ export default function CreateAd() {
   const selectedSubcategory = subcategories?.find(s => s.id === watchSubcategoryId);
 
   const onSubmit = (data: CreateAdFormValues) => {
-    // Save profile for future
+    if (uploadedImages.length === 0) {
+      toast({ title: "أضف صورة واحدة على الأقل", variant: "destructive" });
+      return;
+    }
     setProfile({ name: data.sellerName, phone: data.sellerPhone, city: data.city });
-    
-    // Placeholder image since we don't have real upload
-    data.images = ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80"];
+    data.images = uploadedImages;
 
     createAdMutation.mutate({ data }, {
-      onSuccess: (ad) => {
-        toast({ title: "تم نشر الإعلان بنجاح", className: "bg-primary text-primary-foreground" });
-        navigate(`/ad/${ad.id}`);
+      onSuccess: () => {
+        toast({
+          title: "تم نشر الإعلان بنجاح",
+          description: "إعلانك أصبح مرئياً في السوق الآن",
+          className: "bg-primary text-primary-foreground border-primary",
+        });
+        navigate("/");
       },
       onError: () => {
         toast({ title: "حدث خطأ أثناء النشر", variant: "destructive" });
       }
     });
+  };
+
+  const handleFilesSelected = async (files: FileList | null) => {
+    if (!files) return;
+    const list = Array.from(files).slice(0, 10 - uploadedImages.length);
+    for (const file of list) {
+      if (!file.type.startsWith("image/")) {
+        toast({ title: "الصور فقط مسموح بها", variant: "destructive" });
+        continue;
+      }
+      const result = await uploadFile(file);
+      if (result?.objectPath) {
+        setUploadedImages(prev => [...prev, `/api/storage${result.objectPath}`]);
+      }
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeImage = (index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleImproveDescription = () => {
@@ -158,13 +188,62 @@ export default function CreateAd() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="p-4 flex flex-col gap-6">
           
-          {/* Photo Upload area (mock) */}
-          <div className="w-full aspect-video border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-3 bg-muted/20 active:bg-muted/50 transition-colors">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <Camera className="w-8 h-8" />
-            </div>
-            <span className="font-medium">إضافة الصور</span>
-            <span className="text-xs text-muted-foreground">صورة واحدة على الأقل</span>
+          {/* Photo Upload */}
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => handleFilesSelected(e.target.files)}
+            />
+            {uploadedImages.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="w-full aspect-video border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-3 bg-muted/20 active:bg-muted/50 hover:border-primary/50 transition-colors disabled:opacity-50"
+              >
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  {isUploading ? <Loader2 className="w-8 h-8 animate-spin" /> : <Camera className="w-8 h-8" />}
+                </div>
+                <span className="font-medium">{isUploading ? `جارٍ الرفع... ${progress}%` : "إضافة الصور"}</span>
+                <span className="text-xs text-muted-foreground">صورة واحدة على الأقل · حتى 10 صور</span>
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2">
+                  {uploadedImages.map((img, i) => (
+                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted">
+                      <img src={img} alt="" className="w-full h-full object-cover" />
+                      {i === 0 && (
+                        <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded">الرئيسية</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeImage(i)}
+                        className="absolute top-1 left-1 w-6 h-6 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  {uploadedImages.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors disabled:opacity-50"
+                    >
+                      {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-6 h-6" />}
+                      <span className="text-[10px]">{isUploading ? `${progress}%` : "إضافة"}</span>
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground text-center">{uploadedImages.length} من 10 صور</p>
+              </div>
+            )}
           </div>
 
           <FormField
@@ -219,7 +298,7 @@ export default function CreateAd() {
           />
 
           <div className="flex flex-col gap-2">
-            <FormLabel>التصنيف</FormLabel>
+            <label className="text-sm font-medium">التصنيف</label>
             <Sheet open={categorySheetOpen} onOpenChange={setCategorySheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" className="w-full justify-between py-6 h-auto text-right font-normal">

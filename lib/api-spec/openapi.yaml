@@ -3,20 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Souq Al Arab Germany API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: categories
+  - name: ads
+  - name: ai
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +25,300 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: List all main categories
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /categories/{categoryId}/subcategories:
+    get:
+      operationId: listSubcategories
+      tags: [categories]
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Subcategories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Subcategory"
+
+  /ads:
+    get:
+      operationId: listAds
+      tags: [ads]
+      summary: List ads with optional filters
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: categoryId
+          in: query
+          schema: { type: integer }
+        - name: subcategoryId
+          in: query
+          schema: { type: integer }
+        - name: city
+          in: query
+          schema: { type: string }
+        - name: minPrice
+          in: query
+          schema: { type: number }
+        - name: maxPrice
+          in: query
+          schema: { type: number }
+        - name: type
+          in: query
+          schema: { type: string, enum: [offer, request] }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+      responses:
+        "200":
+          description: Ads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ad"
+    post:
+      operationId: createAd
+      tags: [ads]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAdInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ad"
+
+  /ads/featured:
+    get:
+      operationId: listFeaturedAds
+      tags: [ads]
+      summary: Featured ads (horizontal carousel on homepage)
+      responses:
+        "200":
+          description: Featured ads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ad"
+
+  /ads/recommended:
+    get:
+      operationId: listRecommendedAds
+      tags: [ads]
+      summary: Recommended ads grid for homepage
+      responses:
+        "200":
+          description: Recommended ads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ad"
+
+  /ads/stats:
+    get:
+      operationId: getAdsStats
+      tags: [ads]
+      summary: Marketplace stats (totals by category and city)
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdsStats"
+
+  /ads/{adId}:
+    get:
+      operationId: getAd
+      tags: [ads]
+      parameters:
+        - name: adId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Ad
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ad"
+
+  /ai/improve-description:
+    post:
+      operationId: improveDescription
+      tags: [ai]
+      summary: Improve an ad description using AI (Arabic)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, description]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                category: { type: string }
+      responses:
+        "200":
+          description: Improved description
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [description]
+                properties:
+                  description: { type: string }
+
+  /ai/suggest-price:
+    post:
+      operationId: suggestPrice
+      tags: [ai]
+      summary: Suggest a price for an ad
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                category: { type: string }
+      responses:
+        "200":
+          description: Suggested price
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [price, reasoning]
+                properties:
+                  price: { type: number }
+                  reasoning: { type: string }
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
 
+    Category:
+      type: object
+      required: [id, name, slug, icon, subtitle, adCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        icon: { type: string }
+        subtitle: { type: string }
+        adCount: { type: integer }
+
+    Subcategory:
+      type: object
+      required: [id, name, categoryId]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        categoryId: { type: integer }
+
+    Ad:
+      type: object
+      required: [id, title, description, price, priceType, type, city, images, categoryId, categoryName, sellerName, sellerPhone, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        price: { type: number, nullable: true }
+        priceType: { type: string, enum: [fixed, negotiable, free, swap] }
+        type: { type: string, enum: [offer, request] }
+        city: { type: string }
+        images:
+          type: array
+          items: { type: string }
+        categoryId: { type: integer }
+        subcategoryId: { type: integer, nullable: true }
+        categoryName: { type: string }
+        subcategoryName: { type: string, nullable: true }
+        sellerName: { type: string }
+        sellerPhone: { type: string }
+        featured: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    CreateAdInput:
+      type: object
+      required: [title, description, categoryId, city, sellerName, sellerPhone, type, priceType]
+      properties:
+        title: { type: string, minLength: 3, maxLength: 65 }
+        description: { type: string, minLength: 10, maxLength: 4000 }
+        price: { type: number, nullable: true }
+        priceType: { type: string, enum: [fixed, negotiable, free, swap] }
+        type: { type: string, enum: [offer, request] }
+        categoryId: { type: integer }
+        subcategoryId: { type: integer, nullable: true }
+        city: { type: string }
+        sellerName: { type: string }
+        sellerPhone: { type: string }
+        images:
+          type: array
+          items: { type: string }
+
+    AdsStats:
+      type: object
+      required: [totalAds, totalCategories, totalCities, byCategory, byCity]
+      properties:
+        totalAds: { type: integer }
+        totalCategories: { type: integer }
+        totalCities: { type: integer }
+        byCategory:
+          type: array
+          items:
+            type: object
+            required: [categoryName, count]
+            properties:
+              categoryName: { type: string }
+              count: { type: integer }
+        byCity:
+          type: array
+          items:
+            type: object
+            required: [city, count]
+            properties:
+              city: { type: string }
+              count: { type: integer }

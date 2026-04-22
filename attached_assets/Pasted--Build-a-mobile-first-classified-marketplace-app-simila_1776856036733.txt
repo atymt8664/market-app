@@ -1,0 +1,101 @@
+.Build a mobile-first classified marketplace app similar to Kleinanzeigen, but fully in Arabic.
+
+Project: "Souq Al Arab Germany"
+
+Concept:
+A marketplace for Arabs in Germany to buy and sell used items بسهولة، مع واجهة عربية كاملة وتجربة بسيطة وسريعة.
+
+Core Requirements:
+- Full Arabic language (RTL layout)
+- Clean, simple, modern UI
+- Mobile-first design (like a real app)
+- Dark theme similar to Kleinanzeigen screenshots
+- Green primary color: #22c55e
+
+UI / UX (VERY IMPORTANT):
+- Match the provided screenshots exactly in layout, spacing, and structure
+- DO NOT use dashboard style
+- Make it look like a real mobile marketplace app
+
+Main Features:
+
+Homepage:
+- Top search bar with location
+- Horizontal categories icons
+- Sections:
+  - Featured ads (horizontal scroll)
+  - Recommended ads (grid)
+- Ad cards: image, title, price, city
+
+Categories:
+- Main + subcategories (like Kleinanzeigen)
+- List style with icon, title, subtitle, arrow
+
+Ad Details Page:
+- Image slider
+- Title, description, price
+- City, date
+- Seller info
+- WhatsApp contact button
+- Copy phone button
+
+Create Ad Page:
+- Image upload
+- Type: Sell / Buy
+- Title
+- Category + Subcategory
+- Description
+- Price + price type
+- City
+- Phone number
+- Buttons:
+  - Publish
+  - Preview
+  - AI improve description
+
+User Profile:
+- Name, image, city, phone
+- User ads list
+- Edit / delete ads
+
+Search & Filters:
+- Keyword search
+- Filter by price, city, category
+
+Admin Panel:
+- Manage users
+- Manage ads
+- Basic stats
+
+AI Features:
+- Improve ad description automatically
+- Suggest price (optional)
+
+Database:
+Users (id, name, email, phone, city, image)
+Categories (id, name)
+Subcategories (id, name, category_id)
+Ads (id, user_id, title, description, price, category_id, subcategory_id, city, images, created_at)
+
+Tech:
+- Frontend: Next.js + Tailwind
+- Backend: Supabase
+- Storage: Supabase Storage
+- Auth: Email + Password
+
+App Type:
+- PWA (installable on mobile)
+
+Important Notes:
+- Very simple UI
+- Fast performance
+- No payment system for now
+- Direct contact between users
+- Scalable later
+
+Final Requirement:
+Replicate the UI and UX of Kleinanzeigen as close as possible, but fully in Arabic (RTL).
+
+
+
+Match the UI exactly like the screenshots I provided.

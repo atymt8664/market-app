@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "hY9Zh3-xFAUKWrJd8az71"
+uri = "file://artifacts/souq/public/logo.png"
+type = "image"
+title = "Clean Arabic calligraphy logo Souq Al Arab"
+
+[[generated]]
+id = "noW01uHlJJWmsmYVxVVqC"
+uri = "file://artifacts/souq/public/empty-state.png"
+type = "image"
+title = "Friendly Arabic empty state illustration"

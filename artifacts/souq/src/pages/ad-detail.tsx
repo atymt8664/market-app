@@ -9,10 +9,8 @@ import {
   useUnfavoriteAd,
 } from "@workspace/api-client-react";
 import { Link, useLocation, useParams } from "wouter";
-import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2, MessageCircle, Eye, MessageSquare, ThumbsUp, Star, ChevronLeft, ShieldCheck } from "lucide-react";
+import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2, MessageCircle, Phone, Eye, MessageSquare, ThumbsUp, Star } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { AvatarCircle } from "@/components/avatar-circle";
-import { useGetUserProfile, getGetUserProfileQueryKey } from "@workspace/api-client-react";
 import { formatRelativeTime, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -321,117 +319,72 @@ export default function AdDetail() {
 
         <Separator />
 
-        {/* Seller info section */}
+        {/* Seller Info */}
         <div>
           <h3 className="font-semibold mb-2">معلومات البائع</h3>
-          <SellerCard ad={ad} />
-        </div>
-
-        {/* Spacer for fixed bottom action bar */}
-        <div className="h-24" />
-      </div>
-
-      {/* Fixed Bottom Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none z-40">
-        <div className="w-full max-w-[480px] bg-background border-t border-border p-4 flex gap-3 pointer-events-auto">
-          <Button
-            className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6 text-base shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
-            onClick={handleMessage}
-            disabled={startConversation.isPending}
-          >
-            <MessageSquare className="w-5 h-5" />
-            راسل البائع
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-none py-6 px-4 border-2 text-[#25D366] border-[#25D366]/40"
-            onClick={() => {
-              const text = encodeURIComponent(`مرحباً، أنا مهتم بإعلانك: ${ad.title}`);
-              window.open(`https://wa.me/${ad.sellerPhone.replace(/[^0-9+]/g, '')}?text=${text}`, '_blank');
-            }}
-            aria-label="WhatsApp"
-          >
-            <MessageCircle className="w-5 h-5" />
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-none py-6 px-4 border-2"
-            onClick={handleCopyPhone}
-            aria-label="Copy phone"
-          >
-            {copied ? <CheckCircle2 className="w-5 h-5 text-primary" /> : <Copy className="w-5 h-5" />}
-          </Button>
+          <div className="flex flex-col gap-3 p-3 rounded-xl border border-border bg-muted/20">
+            {ad.userId ? (
+              <Link href={`/users/${ad.userId}`} className="flex items-center gap-3 hover:opacity-90 active:scale-[0.99] transition-all">
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+                  {ad.sellerName.charAt(0)}
+                </div>
+                <div className="flex-1 flex flex-col min-w-0">
+                  <span className="font-semibold truncate">{ad.sellerName}</span>
+                  <span className="text-xs text-muted-foreground">عرض الملف الشخصي وإعلانات أخرى</span>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+                  {ad.sellerName.charAt(0)}
+                </div>
+                <div className="flex-1 flex flex-col min-w-0">
+                  <span className="font-semibold truncate">{ad.sellerName}</span>
+                  <span className="text-xs text-muted-foreground">عضو في سوق العرب</span>
+                </div>
+              </div>
+            )}
+            <Button
+              type="button"
+              onClick={handleMessage}
+              disabled={startConversation.isPending}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-5 text-base shadow-md shadow-primary/20 flex items-center justify-center gap-2"
+            >
+              <MessageSquare className="w-5 h-5" />
+              راسل البائع داخل التطبيق
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                const text = encodeURIComponent(`مرحباً، أنا مهتم بإعلانك: ${ad.title}`);
+                window.open(
+                  `https://wa.me/${ad.sellerPhone.replace(/[^0-9+]/g, "")}?text=${text}`,
+                  "_blank",
+                );
+              }}
+              variant="outline"
+              className="w-full border-2 border-[#25D366]/40 hover:bg-[#25D366]/10 text-[#25D366] hover:text-[#25D366] font-bold py-5 text-base flex items-center justify-center gap-2"
+            >
+              <MessageCircle className="w-5 h-5" />
+              تواصل عبر واتساب
+            </Button>
+            <button
+              type="button"
+              onClick={handleCopyPhone}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-md border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors"
+            >
+              <Phone className="w-4 h-4" />
+              <span dir="ltr" className="font-mono">{ad.sellerPhone}</span>
+              {copied ? (
+                <CheckCircle2 className="w-4 h-4 text-primary" />
+              ) : (
+                <Copy className="w-4 h-4 opacity-60" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>
   );
 }
 
-function SellerCard({
-  ad,
-}: {
-  ad: {
-    userId?: number | null;
-    sellerName: string;
-    city: string;
-  };
-}) {
-  const enabled = !!ad.userId;
-  const profileKey = enabled ? getGetUserProfileQueryKey(ad.userId!) : ["seller", "none"] as const;
-  const { data: profile } = useGetUserProfile(ad.userId ?? 0, {
-    query: { queryKey: profileKey, enabled },
-  });
-
-  const memberSince =
-    profile?.createdAt &&
-    new Date(profile.createdAt).toLocaleDateString("ar", {
-      year: "numeric",
-      month: "long",
-    });
-  const followerCount = profile?.followerCount ?? 0;
-
-  const inner = (
-    <div className="flex items-center gap-3 p-4 rounded-2xl border border-border bg-muted/20">
-      <AvatarCircle
-        name={ad.sellerName}
-        src={profile?.avatarUrl ?? null}
-        size={56}
-        className="!shadow-none !border-2 !border-primary/30"
-      />
-      <div className="flex-1 min-w-0">
-        <div className="font-semibold truncate flex items-center gap-1">
-          {ad.sellerName}
-          <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
-        </div>
-        {ad.city && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-            <MapPin className="w-3 h-3" />
-            <span className="truncate">{ad.city}</span>
-          </div>
-        )}
-        {memberSince ? (
-          <div className="text-[11px] text-muted-foreground mt-0.5">
-            عضو منذ {memberSince} · {followerCount.toLocaleString("ar")} متابع
-          </div>
-        ) : (
-          <div className="text-[11px] text-muted-foreground mt-0.5">
-            عضو في سوق العرب
-          </div>
-        )}
-      </div>
-      {enabled && (
-        <ChevronLeft className="w-5 h-5 text-muted-foreground shrink-0" />
-      )}
-    </div>
-  );
-
-  if (!enabled) return inner;
-  return (
-    <Link
-      href={`/users/${ad.userId}`}
-      className="block hover:opacity-90 active:scale-[0.99] transition-all"
-    >
-      {inner}
-    </Link>
-  );
-}

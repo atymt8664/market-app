@@ -470,6 +470,156 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /auth/forgot-password:
+    post:
+      operationId: authForgotPassword
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "200":
+          description: Reset link queued (always returns ok to avoid leaking accounts)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForgotPasswordResponse"
+        "400":
+          description: Invalid email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /auth/reset-password:
+    post:
+      operationId: authResetPassword
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordInput"
+      responses:
+        "200":
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /users/{userId}:
+    get:
+      operationId: getUserProfile
+      tags: [auth]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Public profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicUserProfile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /users/{userId}/view:
+    post:
+      operationId: recordProfileView
+      tags: [auth]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: View recorded (idempotent per viewer)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileViewResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /users/{userId}/follow:
+    post:
+      operationId: followUser
+      tags: [auth]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Following
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowResponse"
+        "400":
+          description: Cannot follow self
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: unfollowUser
+      tags: [auth]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Unfollowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /auth/resend-verification:
     post:
       operationId: authResendVerification
@@ -893,9 +1043,70 @@ components:
         phone: { type: string }
         city: { type: string }
         emailVerified: { type: boolean }
+        followerCount: { type: integer }
+        followingCount: { type: integer }
+        profileViews: { type: integer }
+        adCount: { type: integer }
         devVerificationCode:
           type: string
           description: Returned only outside production while no email provider is connected.
+
+    PublicUserProfile:
+      type: object
+      required: [id, name, city, createdAt, isSelf, isFollowing, followerCount, followingCount, profileViews, adCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        city: { type: string }
+        createdAt: { type: string, format: date-time }
+        isSelf: { type: boolean }
+        isFollowing: { type: boolean }
+        followerCount: { type: integer }
+        followingCount: { type: integer }
+        profileViews: { type: integer }
+        adCount: { type: integer }
+
+    FollowResponse:
+      type: object
+      required: [isFollowing, followerCount, followingCount]
+      properties:
+        isFollowing: { type: boolean }
+        followerCount: { type: integer }
+        followingCount: { type: integer }
+
+    ProfileViewResponse:
+      type: object
+      required: [profileViews, counted]
+      properties:
+        profileViews: { type: integer }
+        counted: { type: boolean }
+
+    ForgotPasswordInput:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+
+    ForgotPasswordResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        devResetUrl: { type: string }
+        devResetToken: { type: string }
+
+    ResetPasswordInput:
+      type: object
+      required: [token, password]
+      properties:
+        token: { type: string, minLength: 8 }
+        password: { type: string, minLength: 6 }
+
+    OkResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
     SignupInput:
       type: object
       required: [email, password, name, phone]

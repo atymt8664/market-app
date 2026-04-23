@@ -350,6 +350,10 @@ export const AuthSignupResponse = zod.object({
   phone: zod.string(),
   city: zod.string(),
   emailVerified: zod.boolean(),
+  followerCount: zod.number().optional(),
+  followingCount: zod.number().optional(),
+  profileViews: zod.number().optional(),
+  adCount: zod.number().optional(),
   devVerificationCode: zod
     .string()
     .optional()
@@ -372,6 +376,10 @@ export const AuthLoginResponse = zod.object({
   phone: zod.string(),
   city: zod.string(),
   emailVerified: zod.boolean(),
+  followerCount: zod.number().optional(),
+  followingCount: zod.number().optional(),
+  profileViews: zod.number().optional(),
+  adCount: zod.number().optional(),
   devVerificationCode: zod
     .string()
     .optional()
@@ -387,6 +395,10 @@ export const AuthMeResponse = zod.object({
   phone: zod.string(),
   city: zod.string(),
   emailVerified: zod.boolean(),
+  followerCount: zod.number().optional(),
+  followingCount: zod.number().optional(),
+  profileViews: zod.number().optional(),
+  adCount: zod.number().optional(),
   devVerificationCode: zod
     .string()
     .optional()
@@ -412,6 +424,10 @@ export const AuthUpdateProfileResponse = zod.object({
   phone: zod.string(),
   city: zod.string(),
   emailVerified: zod.boolean(),
+  followerCount: zod.number().optional(),
+  followingCount: zod.number().optional(),
+  profileViews: zod.number().optional(),
+  adCount: zod.number().optional(),
   devVerificationCode: zod
     .string()
     .optional()
@@ -438,12 +454,85 @@ export const AuthVerifyEmailResponse = zod.object({
   phone: zod.string(),
   city: zod.string(),
   emailVerified: zod.boolean(),
+  followerCount: zod.number().optional(),
+  followingCount: zod.number().optional(),
+  profileViews: zod.number().optional(),
+  adCount: zod.number().optional(),
   devVerificationCode: zod
     .string()
     .optional()
     .describe(
       "Returned only outside production while no email provider is connected.",
     ),
+});
+
+export const AuthForgotPasswordBody = zod.object({
+  email: zod.string().email(),
+});
+
+export const AuthForgotPasswordResponse = zod.object({
+  ok: zod.boolean(),
+  devResetUrl: zod.string().optional(),
+  devResetToken: zod.string().optional(),
+});
+
+export const authResetPasswordBodyTokenMin = 8;
+
+export const authResetPasswordBodyPasswordMin = 6;
+
+export const AuthResetPasswordBody = zod.object({
+  token: zod.string().min(authResetPasswordBodyTokenMin),
+  password: zod.string().min(authResetPasswordBodyPasswordMin),
+});
+
+export const AuthResetPasswordResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+export const GetUserProfileParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const GetUserProfileResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  city: zod.string(),
+  createdAt: zod.coerce.date(),
+  isSelf: zod.boolean(),
+  isFollowing: zod.boolean(),
+  followerCount: zod.number(),
+  followingCount: zod.number(),
+  profileViews: zod.number(),
+  adCount: zod.number(),
+});
+
+export const RecordProfileViewParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const RecordProfileViewResponse = zod.object({
+  profileViews: zod.number(),
+  counted: zod.boolean(),
+});
+
+export const FollowUserParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const FollowUserResponse = zod.object({
+  isFollowing: zod.boolean(),
+  followerCount: zod.number(),
+  followingCount: zod.number(),
+});
+
+export const UnfollowUserParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const UnfollowUserResponse = zod.object({
+  isFollowing: zod.boolean(),
+  followerCount: zod.number(),
+  followingCount: zod.number(),
 });
 
 export const AuthResendVerificationBody = zod.object({

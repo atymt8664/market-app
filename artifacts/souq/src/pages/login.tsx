@@ -124,6 +124,13 @@ export default function Login() {
             <Button type="submit" className="py-6 text-base font-bold mt-2" disabled={loginMutation.isPending}>
               {loginMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "تسجيل الدخول"}
             </Button>
+
+            <Link
+              href="/forgot-password"
+              className="text-center text-sm text-primary hover:underline -mt-1"
+            >
+              نسيت كلمة المرور؟
+            </Link>
           </form>
         </Form>
 

@@ -1,0 +1,75 @@
+Hi, I need some updates and fixes in my app:
+
+1) Profile Section Redesign (My Account Page):
+
+I want to redesign the profile section to match a more professional layout similar to marketplace apps.
+
+I am NOT asking to copy colors, only the structure and content layout.
+
+Required changes:
+
+- Top Section:
+  • Display user avatar (circle with first letter or image)
+  • Allow the user to upload/change their profile picture
+  • Show username clearly
+  • Add user badges/tags (e.g. Trusted user, Friendly, etc.)
+
+- User Info Section:
+  • Show account type (e.g. Private seller)
+  • Show "Member since" date
+  • Show average response time (e.g. replies within X hours)
+  • Show number of followers
+
+- Stats Section:
+  • Show number of ads
+  • Show number of active ads
+  • Show total ads or activity summary
+
+- Add a Card/Box:
+  • A section like "Sales Overview" (can be placeholder for now)
+
+- Empty State:
+  • If the user has no ads, show a clean message with a button like:
+  "Create your first ad"
+
+- Layout:
+  • Clean spacing
+  • Organized sections (top profile → info → stats → content)
+  • Modern marketplace-style UI
+
+Important: Focus on structure and arrangement, not colors.
+
+---
+
+2) Fix Wrong Removal in Ad Page:
+
+There is a mistake in the last update:
+
+The wrong section was removed.
+
+You removed the seller info section (the one showing the user name and profile), but this section should NOT be removed.
+
+What I actually wanted:
+
+- Remove the duplicated contact section (Message / WhatsApp / Phone) at the bottom of the ad page
+- Keep ONLY one contact bar (preferably fixed at the bottom)
+
+Important:
+
+- Restore the seller info section (profile preview with name and avatar)
+- Remove ONLY the duplicated contact buttons
+
+The seller info section is important and must stay visible.
+
+---
+
+3) Profile Picture Upload:
+
+- Users should be able to upload and change their profile picture
+- The image should be displayed in the profile (avatar circle)
+- It should update instantly after upload
+- Store the image properly (e.g. Firebase Storage or backend)
+
+---
+
+Please implement everything in a clean and professional way similar to modern marketplace apps.

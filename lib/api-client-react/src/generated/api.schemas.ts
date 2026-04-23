@@ -31,8 +31,57 @@ export interface AuthUser {
   phone: string;
   city: string;
   emailVerified: boolean;
+  followerCount?: number;
+  followingCount?: number;
+  profileViews?: number;
+  adCount?: number;
   /** Returned only outside production while no email provider is connected. */
   devVerificationCode?: string;
+}
+
+export interface PublicUserProfile {
+  id: number;
+  name: string;
+  city: string;
+  createdAt: string;
+  isSelf: boolean;
+  isFollowing: boolean;
+  followerCount: number;
+  followingCount: number;
+  profileViews: number;
+  adCount: number;
+}
+
+export interface FollowResponse {
+  isFollowing: boolean;
+  followerCount: number;
+  followingCount: number;
+}
+
+export interface ProfileViewResponse {
+  profileViews: number;
+  counted: boolean;
+}
+
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  ok: boolean;
+  devResetUrl?: string;
+  devResetToken?: string;
+}
+
+export interface ResetPasswordInput {
+  /** @minLength 8 */
+  token: string;
+  /** @minLength 6 */
+  password: string;
+}
+
+export interface OkResponse {
+  ok: boolean;
 }
 
 export interface SignupInput {

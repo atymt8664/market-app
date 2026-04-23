@@ -10,8 +10,9 @@ import {
   Share2,
   ShieldCheck,
   Eye,
-  Heart,
   ChevronLeft,
+  Users,
+  UserCheck,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -25,7 +26,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
 import { useToast } from "@/hooks/use-toast";
-import { useLocalStorage } from "@/hooks/use-local-storage";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,7 +44,6 @@ export default function Profile() {
   const queryClient = useQueryClient();
   const deleteAdMutation = useDeleteAd();
   const [adToDelete, setAdToDelete] = useState<number | null>(null);
-  const [favorites] = useLocalStorage<number[]>("favorites", []);
 
   const { data: myAds, isLoading: adsLoading } = useListMyAds({
     query: {
@@ -125,9 +124,10 @@ export default function Profile() {
     );
   };
 
-  const totalViews = myAds?.length ? myAds.length * 23 : 0; // placeholder
-  const adCount = myAds?.length ?? 0;
-  const favCount = favorites.length;
+  const adCount = user?.adCount ?? myAds?.length ?? 0;
+  const followerCount = user?.followerCount ?? 0;
+  const followingCount = user?.followingCount ?? 0;
+  const profileViews = user?.profileViews ?? 0;
 
   return (
     <motion.div
@@ -154,19 +154,23 @@ export default function Profile() {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-2 mt-5 bg-black/20 rounded-2xl p-3">
-          <div className="flex flex-col items-center">
-            <span className="text-xl font-bold">{adCount}</span>
-            <span className="text-[11px] opacity-80">إعلانات</span>
-          </div>
-          <div className="flex flex-col items-center border-x border-white/15">
-            <span className="text-xl font-bold">{favCount}</span>
-            <span className="text-[11px] opacity-80">المفضلة</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="text-xl font-bold">{totalViews}</span>
-            <span className="text-[11px] opacity-80">مشاهدات</span>
-          </div>
+        <div className="grid grid-cols-4 gap-1 mt-5 bg-black/20 rounded-2xl p-3">
+          <Stat label="إعلانات" value={adCount} />
+          <Stat
+            label="متابعون"
+            value={followerCount}
+            icon={<Users className="w-3.5 h-3.5 opacity-80" />}
+          />
+          <Stat
+            label="يتابع"
+            value={followingCount}
+            icon={<UserCheck className="w-3.5 h-3.5 opacity-80" />}
+          />
+          <Stat
+            label="مشاهدات"
+            value={profileViews}
+            icon={<Eye className="w-3.5 h-3.5 opacity-80" />}
+          />
         </div>
 
         {/* Action buttons */}
@@ -204,14 +208,7 @@ export default function Profile() {
       )}
 
       {/* Quick links */}
-      <div className="px-4 mb-4 mt-2 grid grid-cols-2 gap-3">
-        <Link href="/favorites">
-          <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-2 hover:bg-muted/50 active:bg-muted transition-colors">
-            <Heart className="w-5 h-5 text-primary" />
-            <span className="text-sm font-medium flex-1">المفضلة</span>
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-          </div>
-        </Link>
+      <div className="px-4 mb-4 mt-2 grid grid-cols-1 gap-3">
         <Link href="/stats">
           <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-2 hover:bg-muted/50 active:bg-muted transition-colors">
             <Eye className="w-5 h-5 text-primary" />
@@ -291,5 +288,25 @@ export default function Profile() {
         </AlertDialogContent>
       </AlertDialog>
     </motion.div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: number;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center">
+      <div className="flex items-center gap-1">
+        {icon}
+        <span className="text-lg font-bold">{value.toLocaleString("ar")}</span>
+      </div>
+      <span className="text-[10px] opacity-80 mt-0.5">{label}</span>
+    </div>
   );
 }

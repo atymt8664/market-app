@@ -29,15 +29,22 @@ import type {
   ConversationRef,
   CreateAdInput,
   ErrorEnvelope,
+  FollowResponse,
+  ForgotPasswordInput,
+  ForgotPasswordResponse,
   HealthStatus,
   ImproveDescription200,
   ImproveDescriptionBody,
   ListAdsParams,
   LoginInput,
   Message,
+  OkResponse,
+  ProfileViewResponse,
+  PublicUserProfile,
   ReactionResponse,
   ResendVerificationInput,
   ResendVerificationResponse,
+  ResetPasswordInput,
   SendMessageBody,
   SignupInput,
   StartConversationBody,
@@ -1680,6 +1687,480 @@ export const useAuthVerifyEmail = <
   TContext
 > => {
   return useMutation(getAuthVerifyEmailMutationOptions(options));
+};
+
+export const getAuthForgotPasswordUrl = () => {
+  return `/api/auth/forgot-password`;
+};
+
+export const authForgotPassword = async (
+  forgotPasswordInput: ForgotPasswordInput,
+  options?: RequestInit,
+): Promise<ForgotPasswordResponse> => {
+  return customFetch<ForgotPasswordResponse>(getAuthForgotPasswordUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(forgotPasswordInput),
+  });
+};
+
+export const getAuthForgotPasswordMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authForgotPassword>>,
+    TError,
+    { data: BodyType<ForgotPasswordInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof authForgotPassword>>,
+  TError,
+  { data: BodyType<ForgotPasswordInput> },
+  TContext
+> => {
+  const mutationKey = ["authForgotPassword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof authForgotPassword>>,
+    { data: BodyType<ForgotPasswordInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return authForgotPassword(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AuthForgotPasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof authForgotPassword>>
+>;
+export type AuthForgotPasswordMutationBody = BodyType<ForgotPasswordInput>;
+export type AuthForgotPasswordMutationError = ErrorType<ErrorEnvelope>;
+
+export const useAuthForgotPassword = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authForgotPassword>>,
+    TError,
+    { data: BodyType<ForgotPasswordInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof authForgotPassword>>,
+  TError,
+  { data: BodyType<ForgotPasswordInput> },
+  TContext
+> => {
+  return useMutation(getAuthForgotPasswordMutationOptions(options));
+};
+
+export const getAuthResetPasswordUrl = () => {
+  return `/api/auth/reset-password`;
+};
+
+export const authResetPassword = async (
+  resetPasswordInput: ResetPasswordInput,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getAuthResetPasswordUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(resetPasswordInput),
+  });
+};
+
+export const getAuthResetPasswordMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authResetPassword>>,
+    TError,
+    { data: BodyType<ResetPasswordInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof authResetPassword>>,
+  TError,
+  { data: BodyType<ResetPasswordInput> },
+  TContext
+> => {
+  const mutationKey = ["authResetPassword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof authResetPassword>>,
+    { data: BodyType<ResetPasswordInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return authResetPassword(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AuthResetPasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof authResetPassword>>
+>;
+export type AuthResetPasswordMutationBody = BodyType<ResetPasswordInput>;
+export type AuthResetPasswordMutationError = ErrorType<ErrorEnvelope>;
+
+export const useAuthResetPassword = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authResetPassword>>,
+    TError,
+    { data: BodyType<ResetPasswordInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof authResetPassword>>,
+  TError,
+  { data: BodyType<ResetPasswordInput> },
+  TContext
+> => {
+  return useMutation(getAuthResetPasswordMutationOptions(options));
+};
+
+export const getGetUserProfileUrl = (userId: number) => {
+  return `/api/users/${userId}`;
+};
+
+export const getUserProfile = async (
+  userId: number,
+  options?: RequestInit,
+): Promise<PublicUserProfile> => {
+  return customFetch<PublicUserProfile>(getGetUserProfileUrl(userId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUserProfileQueryKey = (userId: number) => {
+  return [`/api/users/${userId}`] as const;
+};
+
+export const getGetUserProfileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUserProfile>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  userId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserProfile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetUserProfileQueryKey(userId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getUserProfile>>> = ({
+    signal,
+  }) => getUserProfile(userId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!userId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUserProfile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUserProfileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUserProfile>>
+>;
+export type GetUserProfileQueryError = ErrorType<ErrorEnvelope>;
+
+export function useGetUserProfile<
+  TData = Awaited<ReturnType<typeof getUserProfile>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  userId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserProfile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUserProfileQueryOptions(userId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getRecordProfileViewUrl = (userId: number) => {
+  return `/api/users/${userId}/view`;
+};
+
+export const recordProfileView = async (
+  userId: number,
+  options?: RequestInit,
+): Promise<ProfileViewResponse> => {
+  return customFetch<ProfileViewResponse>(getRecordProfileViewUrl(userId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRecordProfileViewMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordProfileView>>,
+    TError,
+    { userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof recordProfileView>>,
+  TError,
+  { userId: number },
+  TContext
+> => {
+  const mutationKey = ["recordProfileView"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof recordProfileView>>,
+    { userId: number }
+  > = (props) => {
+    const { userId } = props ?? {};
+
+    return recordProfileView(userId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RecordProfileViewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof recordProfileView>>
+>;
+
+export type RecordProfileViewMutationError = ErrorType<ErrorEnvelope>;
+
+export const useRecordProfileView = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordProfileView>>,
+    TError,
+    { userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof recordProfileView>>,
+  TError,
+  { userId: number },
+  TContext
+> => {
+  return useMutation(getRecordProfileViewMutationOptions(options));
+};
+
+export const getFollowUserUrl = (userId: number) => {
+  return `/api/users/${userId}/follow`;
+};
+
+export const followUser = async (
+  userId: number,
+  options?: RequestInit,
+): Promise<FollowResponse> => {
+  return customFetch<FollowResponse>(getFollowUserUrl(userId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getFollowUserMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof followUser>>,
+    TError,
+    { userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof followUser>>,
+  TError,
+  { userId: number },
+  TContext
+> => {
+  const mutationKey = ["followUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof followUser>>,
+    { userId: number }
+  > = (props) => {
+    const { userId } = props ?? {};
+
+    return followUser(userId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type FollowUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof followUser>>
+>;
+
+export type FollowUserMutationError = ErrorType<ErrorEnvelope>;
+
+export const useFollowUser = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof followUser>>,
+    TError,
+    { userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof followUser>>,
+  TError,
+  { userId: number },
+  TContext
+> => {
+  return useMutation(getFollowUserMutationOptions(options));
+};
+
+export const getUnfollowUserUrl = (userId: number) => {
+  return `/api/users/${userId}/follow`;
+};
+
+export const unfollowUser = async (
+  userId: number,
+  options?: RequestInit,
+): Promise<FollowResponse> => {
+  return customFetch<FollowResponse>(getUnfollowUserUrl(userId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getUnfollowUserMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unfollowUser>>,
+    TError,
+    { userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unfollowUser>>,
+  TError,
+  { userId: number },
+  TContext
+> => {
+  const mutationKey = ["unfollowUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unfollowUser>>,
+    { userId: number }
+  > = (props) => {
+    const { userId } = props ?? {};
+
+    return unfollowUser(userId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnfollowUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unfollowUser>>
+>;
+
+export type UnfollowUserMutationError = ErrorType<ErrorEnvelope>;
+
+export const useUnfollowUser = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unfollowUser>>,
+    TError,
+    { userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unfollowUser>>,
+  TError,
+  { userId: number },
+  TContext
+> => {
+  return useMutation(getUnfollowUserMutationOptions(options));
 };
 
 export const getAuthResendVerificationUrl = () => {

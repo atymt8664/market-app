@@ -15,6 +15,9 @@ import Favorites from "@/pages/favorites";
 import Stats from "@/pages/stats";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
+import UserProfile from "@/pages/user-profile";
 import EditAd from "@/pages/edit-ad";
 import Settings from "@/pages/settings";
 import VerifyEmail from "@/pages/verify-email";
@@ -48,6 +51,9 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/signup" component={Signup} />
         <Route path="/verify-email" component={VerifyEmail} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/users/:id" component={UserProfile} />
         <Route path="/settings" component={Settings} />
         <Route path="/account/profile" component={AccountProfile} />
         <Route path="/account/email" component={AccountEmail} />

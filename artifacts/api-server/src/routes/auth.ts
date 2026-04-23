@@ -1,8 +1,15 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import rateLimit from "express-rate-limit";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import {
+  db,
+  usersTable,
+  userFollowsTable,
+  userViewsTable,
+  adsTable,
+} from "@workspace/db";
+import { and, eq, sql } from "drizzle-orm";
 import {
   AuthSignupBody,
   AuthLoginBody,
@@ -38,7 +45,40 @@ const verifyLimiter = rateLimit({
   message: { error: "محاولات كثيرة، انتظر قليلاً وحاول مجدداً" },
 });
 
-function serializeUser(u: typeof usersTable.$inferSelect) {
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "محاولات كثيرة، حاول لاحقاً" },
+});
+
+async function statsForUser(userId: number) {
+  const [followerRow] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(userFollowsTable)
+    .where(eq(userFollowsTable.followingId, userId));
+  const [followingRow] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(userFollowsTable)
+    .where(eq(userFollowsTable.followerId, userId));
+  const [viewsRow] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(userViewsTable)
+    .where(eq(userViewsTable.profileId, userId));
+  const [adsRow] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(adsTable)
+    .where(eq(adsTable.userId, userId));
+  return {
+    followerCount: Number(followerRow?.c ?? 0),
+    followingCount: Number(followingRow?.c ?? 0),
+    profileViews: Number(viewsRow?.c ?? 0),
+    adCount: Number(adsRow?.c ?? 0),
+  };
+}
+
+function serializeUserBasic(u: typeof usersTable.$inferSelect) {
   return {
     id: u.id,
     email: u.email,
@@ -49,18 +89,40 @@ function serializeUser(u: typeof usersTable.$inferSelect) {
   };
 }
 
+async function serializeUserMe(u: typeof usersTable.$inferSelect) {
+  const stats = await statsForUser(u.id);
+  return { ...serializeUserBasic(u), ...stats };
+}
+
 function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function generateToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+function hashToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
 }
 
 function expiryDate() {
   return new Date(Date.now() + 30 * 60 * 1000); // 30 min
 }
 
-// Replace this stub with real email delivery (e.g. SendGrid) once configured.
+function resetExpiry() {
+  return new Date(Date.now() + 60 * 60 * 1000); // 60 min
+}
+
+// Replace these stubs with real email delivery (e.g. SendGrid) once configured.
 async function deliverVerificationCode(email: string, code: string) {
   // eslint-disable-next-line no-console
   console.log(`[email-verification] code for ${email}: ${code}`);
+}
+
+async function deliverPasswordResetLink(email: string, url: string) {
+  // eslint-disable-next-line no-console
+  console.log(`[password-reset] link for ${email}: ${url}`);
 }
 
 router.post("/auth/signup", signupLimiter, async (req, res) => {
@@ -97,7 +159,7 @@ router.post("/auth/signup", signupLimiter, async (req, res) => {
   await deliverVerificationCode(user!.email, code);
   // Don't sign user in until verified.
   res.json({
-    ...serializeUser(user!),
+    ...serializeUserBasic(user!),
     // Only included outside production so users can complete the flow without
     // a configured email provider. Remove once SMTP is connected.
     ...(isProd ? {} : { devVerificationCode: code }),
@@ -135,7 +197,7 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
     return;
   }
   req.session.userId = user.id;
-  res.json(serializeUser(user));
+  res.json(await serializeUserMe(user));
 });
 
 router.patch("/auth/me", async (req, res) => {
@@ -170,7 +232,7 @@ router.patch("/auth/me", async (req, res) => {
     .set(patch)
     .where(eq(usersTable.id, userId))
     .returning();
-  res.json(serializeUser(updated!));
+  res.json(await serializeUserMe(updated!));
 });
 
 router.post("/auth/change-password", async (req, res) => {
@@ -224,7 +286,7 @@ router.get("/auth/me", async (req, res) => {
     res.status(401).json({ error: "غير مسجل الدخول" });
     return;
   }
-  res.json(serializeUser(rows[0]));
+  res.json(await serializeUserMe(rows[0]));
 });
 
 router.post("/auth/verify-email", verifyLimiter, async (req, res) => {
@@ -246,7 +308,7 @@ router.post("/auth/verify-email", verifyLimiter, async (req, res) => {
   }
   if (user.emailVerified) {
     req.session.userId = user.id;
-    res.json(serializeUser(user));
+    res.json(await serializeUserMe(user));
     return;
   }
   if (
@@ -268,7 +330,7 @@ router.post("/auth/verify-email", verifyLimiter, async (req, res) => {
     .where(eq(usersTable.id, user.id))
     .returning();
   req.session.userId = updated!.id;
-  res.json(serializeUser(updated!));
+  res.json(await serializeUserMe(updated!));
 });
 
 router.post("/auth/resend-verification", verifyLimiter, async (req, res) => {
@@ -300,5 +362,82 @@ router.post("/auth/resend-verification", verifyLimiter, async (req, res) => {
     ...(isProd ? {} : { devVerificationCode: code }),
   });
 });
+
+router.post("/auth/forgot-password", passwordResetLimiter, async (req, res) => {
+  const body = req.body as { email?: unknown };
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  if (!email || !email.includes("@")) {
+    res.status(400).json({ error: "بريد إلكتروني غير صحيح" });
+    return;
+  }
+  const rows = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email))
+    .limit(1);
+  const user = rows[0];
+  // Always respond OK to avoid leaking which emails are registered.
+  if (!user) {
+    res.json({ ok: true });
+    return;
+  }
+  const token = generateToken();
+  await db
+    .update(usersTable)
+    .set({
+      passwordResetToken: hashToken(token),
+      passwordResetExpiresAt: resetExpiry(),
+    })
+    .where(eq(usersTable.id, user.id));
+  const origin = (req.get("origin") || `${req.protocol}://${req.get("host")}`).replace(/\/$/, "");
+  const url = `${origin}/reset-password?token=${token}`;
+  await deliverPasswordResetLink(user.email, url);
+  res.json({
+    ok: true,
+    ...(isProd ? {} : { devResetUrl: url, devResetToken: token }),
+  });
+});
+
+router.post("/auth/reset-password", passwordResetLimiter, async (req, res) => {
+  const body = req.body as { token?: unknown; password?: unknown };
+  const token = typeof body.token === "string" ? body.token : "";
+  const password = typeof body.password === "string" ? body.password : "";
+  if (!token || password.length < 6) {
+    res.status(400).json({ error: "بيانات غير صحيحة" });
+    return;
+  }
+  const rows = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.passwordResetToken, hashToken(token)))
+    .limit(1);
+  const user = rows[0];
+  if (
+    !user ||
+    !user.passwordResetExpiresAt ||
+    user.passwordResetExpiresAt.getTime() < Date.now()
+  ) {
+    res.status(400).json({ error: "الرابط غير صالح أو منتهي الصلاحية" });
+    return;
+  }
+  const passwordHash = await bcrypt.hash(password, 10);
+  await db
+    .update(usersTable)
+    .set({
+      passwordHash,
+      passwordResetToken: null,
+      passwordResetExpiresAt: null,
+      // If the user is resetting their password they have proven email control,
+      // so verify the email if it wasn't already.
+      emailVerified: true,
+      verificationCode: null,
+      verificationExpiresAt: null,
+    })
+    .where(eq(usersTable.id, user.id));
+  res.json({ ok: true });
+});
+
+// Suppress unused import warning when only referenced via select chains.
+void and;
 
 export default router;

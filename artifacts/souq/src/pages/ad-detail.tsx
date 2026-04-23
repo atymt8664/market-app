@@ -9,7 +9,7 @@ import {
   useUnfavoriteAd,
 } from "@workspace/api-client-react";
 import { Link, useLocation, useParams } from "wouter";
-import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2, MessageCircle, Phone, Eye, MessageSquare, ThumbsUp, Star } from "lucide-react";
+import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2, MessageCircle, Eye, MessageSquare, ThumbsUp, Star, ChevronLeft } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { formatRelativeTime, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -319,55 +319,38 @@ export default function AdDetail() {
 
         <Separator />
 
-        {/* Seller Info */}
-        <div className="flex flex-col gap-3 p-3 rounded-xl border border-border bg-muted/20">
-          <div className="flex items-center gap-3">
+        {/* Seller link */}
+        {ad.userId ? (
+          <Link href={`/users/${ad.userId}`}>
+            <div className="flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 active:scale-[0.99] transition-all cursor-pointer">
+              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+                {ad.sellerName.charAt(0)}
+              </div>
+              <div className="flex-1 flex flex-col min-w-0">
+                <span className="font-semibold truncate">{ad.sellerName}</span>
+                <span className="text-xs text-muted-foreground">
+                  عرض الملف الشخصي وإعلانات أخرى
+                </span>
+              </div>
+              <ChevronLeft className="w-5 h-5 text-muted-foreground" />
+            </div>
+          </Link>
+        ) : (
+          <div className="flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/20">
             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
               {ad.sellerName.charAt(0)}
             </div>
             <div className="flex-1 flex flex-col min-w-0">
               <span className="font-semibold truncate">{ad.sellerName}</span>
-              <span className="text-xs text-muted-foreground">عضو في سوق العرب</span>
+              <span className="text-xs text-muted-foreground">
+                عضو في سوق العرب
+              </span>
             </div>
           </div>
-          <Button
-            type="button"
-            onClick={handleMessage}
-            disabled={startConversation.isPending}
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-5 text-base shadow-md shadow-primary/20 flex items-center justify-center gap-2"
-          >
-            <MessageSquare className="w-5 h-5" />
-            راسل البائع داخل التطبيق
-          </Button>
-          <Button
-            type="button"
-            onClick={() => {
-              const text = encodeURIComponent(`مرحباً، أنا مهتم بإعلانك: ${ad.title}`);
-              window.open(
-                `https://wa.me/${ad.sellerPhone.replace(/[^0-9+]/g, "")}?text=${text}`,
-                "_blank",
-              );
-            }}
-            variant="outline"
-            className="w-full border-2 border-[#25D366]/40 hover:bg-[#25D366]/10 text-[#25D366] hover:text-[#25D366] font-bold py-5 text-base flex items-center justify-center gap-2"
-          >
-            <MessageCircle className="w-5 h-5" />
-            تواصل عبر واتساب
-          </Button>
-          <button
-            type="button"
-            onClick={handleCopyPhone}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-md border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors"
-          >
-            <Phone className="w-4 h-4" />
-            <span dir="ltr" className="font-mono">{ad.sellerPhone}</span>
-            {copied ? (
-              <CheckCircle2 className="w-4 h-4 text-primary" />
-            ) : (
-              <Copy className="w-4 h-4 opacity-60" />
-            )}
-          </button>
-        </div>
+        )}
+
+        {/* Spacer for fixed bottom action bar */}
+        <div className="h-24" />
       </div>
 
       {/* Fixed Bottom Action Bar */}

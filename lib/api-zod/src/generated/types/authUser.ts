@@ -13,6 +13,10 @@ export interface AuthUser {
   phone: string;
   city: string;
   emailVerified: boolean;
+  followerCount?: number;
+  followingCount?: number;
+  profileViews?: number;
+  adCount?: number;
   /** Returned only outside production while no email provider is connected. */
   devVerificationCode?: string;
 }

@@ -107,12 +107,12 @@ export default function Profile() {
         animate={{ opacity: 1 }}
         className="flex flex-col w-full min-h-[100dvh] bg-background"
       >
-        <header className="bg-primary pt-12 pb-10 px-4 text-primary-foreground flex flex-col items-center">
-          <div className="w-24 h-24 rounded-full bg-white/20 border-4 border-white/40 flex items-center justify-center mb-3 shadow-lg">
-            <UserIcon className="w-12 h-12 opacity-80" />
+        <header className="pt-12 pb-10 px-4 text-foreground flex flex-col items-center">
+          <div className="w-24 h-24 rounded-full bg-muted border border-border flex items-center justify-center mb-3">
+            <UserIcon className="w-12 h-12 text-muted-foreground" />
           </div>
           <h1 className="text-xl font-bold">مرحباً بك</h1>
-          <p className="opacity-80 text-sm mt-1">سجّل الدخول لإدارة إعلاناتك</p>
+          <p className="text-muted-foreground text-sm mt-1">سجّل الدخول لإدارة إعلاناتك</p>
         </header>
 
         <div className="p-6 flex flex-col gap-3">
@@ -196,22 +196,49 @@ export default function Profile() {
       animate={{ opacity: 1 }}
       className="flex flex-col w-full min-h-[100dvh] bg-background pb-6"
     >
-      {/* Top profile section */}
-      <div className="bg-gradient-to-b from-primary to-primary/80 px-4 pt-5 pb-5 text-primary-foreground">
-        <div className="flex items-center gap-3">
+      {/* Top header — dark, with title + icon actions */}
+      <div className="px-4 pt-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-foreground truncate">حسابي</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {adCount.toLocaleString("ar")} إعلانات · {followerCount.toLocaleString("ar")} متابع
+            </p>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={handleShare}
+              aria-label="مشاركة"
+              className="w-9 h-9 flex items-center justify-center text-primary hover:bg-muted/50 active:bg-muted rounded-full transition-colors"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
+            <Link href="/settings">
+              <button
+                aria-label="الإعدادات"
+                className="w-9 h-9 flex items-center justify-center text-foreground hover:bg-muted/50 active:bg-muted rounded-full transition-colors"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Avatar row */}
+        <div className="flex items-center gap-3 mt-4">
           <div className="relative shrink-0">
-            <AvatarCircle name={user.name} src={user.avatarUrl} size={64} />
+            <AvatarCircle name={user.name} src={user.avatarUrl} size={56} />
             <button
               type="button"
               onClick={handleAvatarPick}
               disabled={avatarBusy}
               aria-label="تغيير الصورة"
-              className="absolute -bottom-1 -left-1 w-7 h-7 rounded-full bg-white text-primary border-2 border-primary flex items-center justify-center shadow-md active:scale-95 transition-transform disabled:opacity-60"
+              className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full bg-muted text-foreground border border-border flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
             >
               {avatarBusy ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
-                <Camera className="w-3.5 h-3.5" />
+                <Camera className="w-3 h-3" />
               )}
             </button>
             <input
@@ -222,34 +249,18 @@ export default function Profile() {
               onChange={onFileChange}
             />
           </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold truncate">{user.name}</h1>
-            <div className="text-[11px] opacity-80 truncate mt-0.5" dir="ltr">
-              {user.email}
-            </div>
-          </div>
         </div>
 
+        {/* Name */}
+        <h2 className="text-lg font-bold text-foreground truncate mt-3">
+          {user.name}
+        </h2>
+
         {/* Badges */}
-        <div className="flex flex-wrap gap-1.5 mt-3">
+        <div className="flex flex-wrap gap-1.5 mt-2">
           <Badge icon={<ShieldCheck className="w-3 h-3" />} text="موثوق" />
           <Badge icon={<Smile className="w-3 h-3" />} text="ودود" />
           <Badge icon={<Leaf className="w-3 h-3" />} text="نشط" />
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex gap-2 mt-3">
-          <Link href="/settings" className="flex-1">
-            <button className="w-full bg-white/15 hover:bg-white/25 active:bg-white/30 transition-colors text-white text-sm font-medium py-2 rounded-lg flex items-center justify-center gap-1.5">
-              <Settings className="w-4 h-4" /> الإعدادات
-            </button>
-          </Link>
-          <button
-            onClick={handleShare}
-            className="flex-1 bg-white/15 hover:bg-white/25 active:bg-white/30 transition-colors text-white text-sm font-medium py-2 rounded-lg flex items-center justify-center gap-1.5"
-          >
-            <Share2 className="w-4 h-4" /> مشاركة
-          </button>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { db, adsTable, categoriesTable, subcategoriesTable } from "@workspace/db";
+import { db, adsTable, adViewsTable, categoriesTable, subcategoriesTable } from "@workspace/db";
 import { and, desc, eq, gte, ilike, lte, sql, or } from "drizzle-orm";
+import crypto from "crypto";
 import {
   ListAdsQueryParams,
   CreateAdBody,
@@ -40,9 +41,17 @@ function serializeAd(row: {
     sellerName: ad.sellerName,
     sellerPhone: ad.sellerPhone,
     featured: ad.featured,
+    views: ad.views ?? 0,
     userId: ad.userId,
     createdAt: ad.createdAt.toISOString(),
   };
+}
+
+function viewerKeyFor(req: Parameters<typeof requireAuth>[0]): string {
+  if (req.session.userId) return `u:${req.session.userId}`;
+  const ip = (req.ip || req.socket.remoteAddress || "0.0.0.0").split(",")[0]!.trim();
+  const ua = req.get("user-agent") || "";
+  return "ip:" + crypto.createHash("sha256").update(ip + "|" + ua).digest("hex").slice(0, 32);
 }
 
 const baseSelect = () =>
@@ -221,6 +230,33 @@ router.patch("/ads/:adId", requireAuth, async (req, res) => {
     .where(eq(adsTable.id, adId));
   const rows = await baseSelect().where(eq(adsTable.id, adId)).limit(1);
   res.json(serializeAd(rows[0]!));
+});
+
+router.post("/ads/:adId/view", async (req, res) => {
+  const adId = Number(req.params["adId"]);
+  if (!Number.isInteger(adId) || adId <= 0) {
+    res.status(400).json({ error: "معرّف غير صالح" });
+    return;
+  }
+  const adRows = await db.select({ id: adsTable.id }).from(adsTable).where(eq(adsTable.id, adId)).limit(1);
+  if (!adRows[0]) {
+    res.status(404).json({ error: "Ad not found" });
+    return;
+  }
+  const key = viewerKeyFor(req);
+  const inserted = await db
+    .insert(adViewsTable)
+    .values({ adId, viewerKey: key })
+    .onConflictDoNothing()
+    .returning({ id: adViewsTable.id });
+  if (inserted.length > 0) {
+    await db
+      .update(adsTable)
+      .set({ views: sql`${adsTable.views} + 1` })
+      .where(eq(adsTable.id, adId));
+  }
+  const fresh = await db.select({ views: adsTable.views }).from(adsTable).where(eq(adsTable.id, adId)).limit(1);
+  res.json({ views: fresh[0]?.views ?? 0, counted: inserted.length > 0 });
 });
 
 router.delete("/ads/:adId", requireAuth, async (req, res) => {

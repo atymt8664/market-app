@@ -138,6 +138,70 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
   res.json(serializeUser(user));
 });
 
+router.patch("/auth/me", async (req, res) => {
+  const userId = req.session.userId;
+  if (!userId) {
+    res.status(401).json({ error: "غير مسجل الدخول" });
+    return;
+  }
+  const body = req.body as { name?: unknown; phone?: unknown; city?: unknown };
+  const name = typeof body.name === "string" ? body.name.trim() : undefined;
+  const phone = typeof body.phone === "string" ? body.phone.trim() : undefined;
+  const city = typeof body.city === "string" ? body.city.trim() : undefined;
+
+  if (name !== undefined && name.length < 2) {
+    res.status(400).json({ error: "الاسم قصير جداً" });
+    return;
+  }
+  if (phone !== undefined && phone.length < 5) {
+    res.status(400).json({ error: "رقم الهاتف غير صحيح" });
+    return;
+  }
+  const patch: Record<string, string> = {};
+  if (name !== undefined) patch["name"] = name;
+  if (phone !== undefined) patch["phone"] = phone;
+  if (city !== undefined) patch["city"] = city;
+  if (Object.keys(patch).length === 0) {
+    res.status(400).json({ error: "لا تغييرات" });
+    return;
+  }
+  const [updated] = await db
+    .update(usersTable)
+    .set(patch)
+    .where(eq(usersTable.id, userId))
+    .returning();
+  res.json(serializeUser(updated!));
+});
+
+router.post("/auth/change-password", async (req, res) => {
+  const userId = req.session.userId;
+  if (!userId) {
+    res.status(401).json({ error: "غير مسجل الدخول" });
+    return;
+  }
+  const body = req.body as { currentPassword?: unknown; newPassword?: unknown };
+  const current = typeof body.currentPassword === "string" ? body.currentPassword : "";
+  const next = typeof body.newPassword === "string" ? body.newPassword : "";
+  if (next.length < 6) {
+    res.status(400).json({ error: "كلمة المرور الجديدة قصيرة جداً" });
+    return;
+  }
+  const rows = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  const user = rows[0];
+  if (!user) {
+    res.status(401).json({ error: "غير مسجل الدخول" });
+    return;
+  }
+  const ok = await bcrypt.compare(current, user.passwordHash);
+  if (!ok) {
+    res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة" });
+    return;
+  }
+  const passwordHash = await bcrypt.hash(next, 10);
+  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, userId));
+  res.json({ ok: true });
+});
+
 router.post("/auth/logout", (req, res) => {
   req.session.destroy(() => {
     res.clearCookie("souq.sid");

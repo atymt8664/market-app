@@ -13,6 +13,7 @@ tags:
   - name: ads
   - name: ai
   - name: auth
+  - name: conversations
   - name: Storage
     description: Object storage upload and serving endpoints.
 paths:
@@ -412,6 +413,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      operationId: authUpdateProfile
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "400":
+          description: Invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /auth/verify-email:
     post:
       operationId: authVerifyEmail
@@ -458,6 +487,215 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ResendVerificationResponse"
+
+  /ads/{adId}/view:
+    post:
+      operationId: recordAdView
+      tags: [ads]
+      summary: Record a unique view for an ad
+      parameters:
+        - name: adId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: View recorded (or already counted)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdViewResponse"
+        "404":
+          description: Ad not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /auth/me-update:
+    x-removed: true
+  /conversations:
+    get:
+      operationId: listConversations
+      tags: [conversations]
+      summary: List my conversations (as buyer or seller)
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConversationListItem"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: startConversation
+      tags: [conversations]
+      summary: Start (or fetch existing) conversation for an ad
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [adId]
+              properties:
+                adId: { type: integer }
+      responses:
+        "200":
+          description: Existing conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationRef"
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationRef"
+        "400":
+          description: Invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Ad not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /conversations/{convId}:
+    get:
+      operationId: getConversation
+      tags: [conversations]
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /conversations/{convId}/messages:
+    get:
+      operationId: listMessages
+      tags: [conversations]
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendMessage
+      tags: [conversations]
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 2000 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /conversations/{convId}/read:
+    post:
+      operationId: markConversationRead
+      tags: [conversations]
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Marked as read
+
+  /auth/change-password:
+    post:
+      operationId: authChangePassword
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "200":
+          description: Changed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        "400":
+          description: Invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /ai/improve-description:
     post:
@@ -589,7 +827,7 @@ components:
 
     Ad:
       type: object
-      required: [id, title, description, price, priceType, type, city, images, categoryId, categoryName, sellerName, sellerPhone, createdAt]
+      required: [id, title, description, price, priceType, type, city, images, categoryId, categoryName, sellerName, sellerPhone, views, createdAt]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -608,7 +846,75 @@ components:
         sellerName: { type: string }
         sellerPhone: { type: string }
         featured: { type: boolean }
+        views: { type: integer }
         userId: { type: integer, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    AdViewResponse:
+      type: object
+      required: [views, counted]
+      properties:
+        views: { type: integer }
+        counted: { type: boolean }
+
+    UpdateProfileInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2 }
+        phone: { type: string, minLength: 5 }
+        city: { type: string }
+
+    ChangePasswordInput:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string, minLength: 1 }
+        newPassword: { type: string, minLength: 6 }
+
+    ConversationRef:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer }
+
+    ConversationListItem:
+      type: object
+      required: [id, adId, adTitle, otherId, otherName, lastMessageAt, unreadCount]
+      properties:
+        id: { type: integer }
+        adId: { type: integer }
+        adTitle: { type: string }
+        adImage: { type: string, nullable: true }
+        otherId: { type: integer }
+        otherName: { type: string }
+        lastMessageAt: { type: string, format: date-time }
+        lastMessagePreview: { type: string, nullable: true }
+        lastMessageSenderId: { type: integer, nullable: true }
+        unreadCount: { type: integer }
+
+    ConversationDetail:
+      type: object
+      required: [id, adId, adTitle, otherId, otherName, isSeller]
+      properties:
+        id: { type: integer }
+        adId: { type: integer }
+        adTitle: { type: string }
+        adImage: { type: string, nullable: true }
+        adPrice: { type: number, nullable: true }
+        adPriceType: { type: string, nullable: true }
+        otherId: { type: integer }
+        otherName: { type: string }
+        isSeller: { type: boolean }
+
+    Message:
+      type: object
+      required: [id, conversationId, senderId, body, createdAt]
+      properties:
+        id: { type: integer }
+        conversationId: { type: integer }
+        senderId: { type: integer }
+        body: { type: string }
+        readAt: { type: string, format: date-time, nullable: true }
         createdAt: { type: string, format: date-time }
 
     CreateAdInput:

@@ -1,13 +1,19 @@
-import { useGetAd, getGetAdQueryKey } from "@workspace/api-client-react";
-import { Link, useParams } from "wouter";
-import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2, MessageCircle, Phone } from "lucide-react";
+import {
+  useGetAd,
+  getGetAdQueryKey,
+  useRecordAdView,
+  useStartConversation,
+} from "@workspace/api-client-react";
+import { Link, useLocation, useParams } from "wouter";
+import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2, MessageCircle, Phone, Eye, MessageSquare } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { formatRelativeTime, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
 
@@ -15,12 +21,59 @@ export default function AdDetail() {
   const params = useParams();
   const id = Number(params.id);
   const { toast } = useToast();
-  
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+
   const { data: ad, isLoading } = useGetAd(id, { query: { enabled: !!id, queryKey: getGetAdQueryKey(id) } });
-  
+
   const [favorites, setFavorites] = useLocalStorage<number[]>("favorites", []);
   const isFavorite = ad ? favorites.includes(ad.id) : false;
   const [copied, setCopied] = useState(false);
+  const [viewCount, setViewCount] = useState<number | null>(null);
+
+  const recordView = useRecordAdView();
+  const viewedRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!id || viewedRef.current === id) return;
+    viewedRef.current = id;
+    recordView.mutate(
+      { adId: id },
+      {
+        onSuccess: (data) => setViewCount(data.views),
+        onError: () => { /* ignore */ },
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const startConversation = useStartConversation();
+  const handleMessage = () => {
+    if (!ad) return;
+    if (!user) {
+      navigate(`/login?redirect=/ad/${ad.id}`);
+      return;
+    }
+    if (ad.userId && ad.userId === user.id) {
+      toast({ title: "هذا إعلانك", description: "لا يمكنك مراسلة نفسك" });
+      return;
+    }
+    startConversation.mutate(
+      { data: { adId: ad.id } },
+      {
+        onSuccess: (data) => {
+          navigate(`/messages/${data.id}`);
+        },
+        onError: (err: unknown) => {
+          const e = err as { data?: { error?: string } };
+          toast({
+            title: "تعذّر فتح المحادثة",
+            description: e?.data?.error || "حاول مرة أخرى",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
 
   const toggleFavorite = () => {
     if (!ad) return;
@@ -148,11 +201,14 @@ export default function AdDetail() {
               )}
             </div>
           )}
-          <div className="flex items-center text-sm text-muted-foreground gap-1 mt-2">
+          <div className="flex items-center flex-wrap text-sm text-muted-foreground gap-x-1 gap-y-1 mt-2">
             <MapPin className="w-4 h-4 shrink-0" />
             <span>{ad.city}</span>
             <span className="mx-2 opacity-50">•</span>
             <span>{formatRelativeTime(ad.createdAt)}</span>
+            <span className="mx-2 opacity-50">•</span>
+            <Eye className="w-4 h-4 shrink-0" />
+            <span>{(viewCount ?? ad.views ?? 0).toLocaleString("ar")} مشاهدة</span>
           </div>
         </div>
 
@@ -201,6 +257,15 @@ export default function AdDetail() {
           </div>
           <Button
             type="button"
+            onClick={handleMessage}
+            disabled={startConversation.isPending}
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-5 text-base shadow-md shadow-primary/20 flex items-center justify-center gap-2"
+          >
+            <MessageSquare className="w-5 h-5" />
+            راسل البائع داخل التطبيق
+          </Button>
+          <Button
+            type="button"
             onClick={() => {
               const text = encodeURIComponent(`مرحباً، أنا مهتم بإعلانك: ${ad.title}`);
               window.open(
@@ -208,7 +273,8 @@ export default function AdDetail() {
                 "_blank",
               );
             }}
-            className="w-full bg-[#25D366] hover:bg-[#1ebe5d] text-white font-bold py-5 text-base shadow-md shadow-[#25D366]/20 flex items-center justify-center gap-2"
+            variant="outline"
+            className="w-full border-2 border-[#25D366]/40 hover:bg-[#25D366]/10 text-[#25D366] hover:text-[#25D366] font-bold py-5 text-base flex items-center justify-center gap-2"
           >
             <MessageCircle className="w-5 h-5" />
             تواصل عبر واتساب
@@ -232,19 +298,30 @@ export default function AdDetail() {
       {/* Fixed Bottom Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none z-40">
         <div className="w-full max-w-[480px] bg-background border-t border-border p-4 flex gap-3 pointer-events-auto">
-          <Button 
-            className="flex-1 bg-[#25D366] hover:bg-[#25D366]/90 text-white font-bold py-6 text-base shadow-lg shadow-[#25D366]/20"
+          <Button
+            className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6 text-base shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+            onClick={handleMessage}
+            disabled={startConversation.isPending}
+          >
+            <MessageSquare className="w-5 h-5" />
+            راسل البائع
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-none py-6 px-4 border-2 text-[#25D366] border-[#25D366]/40"
             onClick={() => {
               const text = encodeURIComponent(`مرحباً، أنا مهتم بإعلانك: ${ad.title}`);
               window.open(`https://wa.me/${ad.sellerPhone.replace(/[^0-9+]/g, '')}?text=${text}`, '_blank');
             }}
+            aria-label="WhatsApp"
           >
-            تواصل عبر واتساب
+            <MessageCircle className="w-5 h-5" />
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="flex-none py-6 px-4 border-2"
             onClick={handleCopyPhone}
+            aria-label="Copy phone"
           >
             {copied ? <CheckCircle2 className="w-5 h-5 text-primary" /> : <Copy className="w-5 h-5" />}
           </Button>

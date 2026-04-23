@@ -117,8 +117,8 @@ export default function Settings() {
     });
   };
 
-  const stub = (label: string) => () =>
-    toast({ title: label, description: "قريباً" });
+  const go = (path: string) => () => navigate(path);
+  void toast;
 
   return (
     <motion.div
@@ -156,24 +156,24 @@ export default function Settings() {
           icon={<UserIcon className="w-4 h-4" />}
           label="الملف الشخصي"
           hint="الاسم، الهاتف، المدينة"
-          onClick={stub("الملف الشخصي")}
+          onClick={go("/account/profile")}
         />
         <Row
           icon={<Mail className="w-4 h-4" />}
           label="البريد الإلكتروني"
           hint={user?.emailVerified ? "مُفعّل" : "غير مُفعّل"}
-          onClick={stub("البريد الإلكتروني")}
+          onClick={go("/account/email")}
         />
         <Row
           icon={<Lock className="w-4 h-4" />}
           label="تغيير كلمة المرور"
-          onClick={stub("تغيير كلمة المرور")}
+          onClick={go("/account/password")}
         />
         <Row
           icon={<CreditCard className="w-4 h-4" />}
           label="المدفوعات"
           hint="قريباً"
-          onClick={stub("المدفوعات")}
+          onClick={go("/account/payments")}
         />
       </Section>
 
@@ -192,7 +192,7 @@ export default function Settings() {
           icon={<Globe className="w-4 h-4" />}
           label="اللغة"
           hint="العربية"
-          onClick={stub("اللغة")}
+          onClick={go("/account/language")}
         />
       </Section>
 
@@ -200,12 +200,12 @@ export default function Settings() {
         <Row
           icon={<Shield className="w-4 h-4" />}
           label="الخصوصية"
-          onClick={stub("الخصوصية")}
+          onClick={go("/account/privacy")}
         />
         <Row
           icon={<Lock className="w-4 h-4" />}
           label="الأمان"
-          onClick={stub("الأمان")}
+          onClick={go("/account/security")}
         />
       </Section>
 
@@ -213,18 +213,18 @@ export default function Settings() {
         <Row
           icon={<Star className="w-4 h-4" />}
           label="قيّم التطبيق"
-          onClick={stub("التقييم")}
+          onClick={go("/account/rate")}
         />
         <Row
           icon={<HelpCircle className="w-4 h-4" />}
           label="المساعدة والدعم"
-          onClick={stub("المساعدة")}
+          onClick={go("/account/help")}
         />
         <Row
           icon={<Info className="w-4 h-4" />}
           label="عن سوق العرب"
           hint="الإصدار 1.0.0"
-          onClick={stub("عن التطبيق")}
+          onClick={go("/account/about")}
         />
       </Section>
 

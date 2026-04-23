@@ -102,7 +102,66 @@ export interface Ad {
   sellerName: string;
   sellerPhone: string;
   featured?: boolean;
+  views: number;
   userId?: number | null;
+  createdAt: string;
+}
+
+export interface AdViewResponse {
+  views: number;
+  counted: boolean;
+}
+
+export interface UpdateProfileInput {
+  /** @minLength 2 */
+  name?: string;
+  /** @minLength 5 */
+  phone?: string;
+  city?: string;
+}
+
+export interface ChangePasswordInput {
+  /** @minLength 1 */
+  currentPassword: string;
+  /** @minLength 6 */
+  newPassword: string;
+}
+
+export interface ConversationRef {
+  id: number;
+}
+
+export interface ConversationListItem {
+  id: number;
+  adId: number;
+  adTitle: string;
+  adImage?: string | null;
+  otherId: number;
+  otherName: string;
+  lastMessageAt: string;
+  lastMessagePreview?: string | null;
+  lastMessageSenderId?: number | null;
+  unreadCount: number;
+}
+
+export interface ConversationDetail {
+  id: number;
+  adId: number;
+  adTitle: string;
+  adImage?: string | null;
+  adPrice?: number | null;
+  adPriceType?: string | null;
+  otherId: number;
+  otherName: string;
+  isSeller: boolean;
+}
+
+export interface Message {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  body: string;
+  readAt?: string | null;
   createdAt: string;
 }
 
@@ -199,6 +258,22 @@ export const ListAdsType = {
   offer: "offer",
   request: "request",
 } as const;
+
+export type StartConversationBody = {
+  adId: number;
+};
+
+export type SendMessageBody = {
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  body: string;
+};
+
+export type AuthChangePassword200 = {
+  ok: boolean;
+};
 
 export type ImproveDescriptionBody = {
   title: string;

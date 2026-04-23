@@ -5,6 +5,7 @@ import adsRouter from "./ads";
 import aiRouter from "./ai";
 import storageRouter from "./storage";
 import authRouter from "./auth";
+import conversationsRouter from "./conversations";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(adsRouter);
 router.use(aiRouter);
 router.use(storageRouter);
 router.use(authRouter);
+router.use(conversationsRouter);
 
 export default router;

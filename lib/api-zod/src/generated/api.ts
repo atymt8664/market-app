@@ -101,6 +101,7 @@ export const ListAdsResponseItem = zod.object({
   sellerName: zod.string(),
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
+  views: zod.number(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -148,6 +149,7 @@ export const ListFeaturedAdsResponseItem = zod.object({
   sellerName: zod.string(),
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
+  views: zod.number(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -172,6 +174,7 @@ export const ListRecommendedAdsResponseItem = zod.object({
   sellerName: zod.string(),
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
+  views: zod.number(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -219,6 +222,7 @@ export const ListMyAdsResponseItem = zod.object({
   sellerName: zod.string(),
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
+  views: zod.number(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -244,6 +248,7 @@ export const GetAdResponse = zod.object({
   sellerName: zod.string(),
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
+  views: zod.number(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -291,6 +296,7 @@ export const UpdateAdResponse = zod.object({
   sellerName: zod.string(),
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
+  views: zod.number(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -365,6 +371,31 @@ export const AuthMeResponse = zod.object({
     ),
 });
 
+export const authUpdateProfileBodyNameMin = 2;
+
+export const authUpdateProfileBodyPhoneMin = 5;
+
+export const AuthUpdateProfileBody = zod.object({
+  name: zod.string().min(authUpdateProfileBodyNameMin).optional(),
+  phone: zod.string().min(authUpdateProfileBodyPhoneMin).optional(),
+  city: zod.string().optional(),
+});
+
+export const AuthUpdateProfileResponse = zod.object({
+  id: zod.number(),
+  email: zod.string(),
+  name: zod.string(),
+  phone: zod.string(),
+  city: zod.string(),
+  emailVerified: zod.boolean(),
+  devVerificationCode: zod
+    .string()
+    .optional()
+    .describe(
+      "Returned only outside production while no email provider is connected.",
+    ),
+});
+
 export const authVerifyEmailBodyCodeMin = 4;
 export const authVerifyEmailBodyCodeMax = 10;
 
@@ -398,6 +429,103 @@ export const AuthResendVerificationBody = zod.object({
 export const AuthResendVerificationResponse = zod.object({
   ok: zod.boolean(),
   devVerificationCode: zod.string().optional(),
+});
+
+/**
+ * @summary Record a unique view for an ad
+ */
+export const RecordAdViewParams = zod.object({
+  adId: zod.coerce.number(),
+});
+
+export const RecordAdViewResponse = zod.object({
+  views: zod.number(),
+  counted: zod.boolean(),
+});
+
+/**
+ * @summary List my conversations (as buyer or seller)
+ */
+export const ListConversationsResponseItem = zod.object({
+  id: zod.number(),
+  adId: zod.number(),
+  adTitle: zod.string(),
+  adImage: zod.string().nullish(),
+  otherId: zod.number(),
+  otherName: zod.string(),
+  lastMessageAt: zod.coerce.date(),
+  lastMessagePreview: zod.string().nullish(),
+  lastMessageSenderId: zod.number().nullish(),
+  unreadCount: zod.number(),
+});
+export const ListConversationsResponse = zod.array(
+  ListConversationsResponseItem,
+);
+
+/**
+ * @summary Start (or fetch existing) conversation for an ad
+ */
+export const StartConversationBody = zod.object({
+  adId: zod.number(),
+});
+
+export const StartConversationResponse = zod.object({
+  id: zod.number(),
+});
+
+export const GetConversationParams = zod.object({
+  convId: zod.coerce.number(),
+});
+
+export const GetConversationResponse = zod.object({
+  id: zod.number(),
+  adId: zod.number(),
+  adTitle: zod.string(),
+  adImage: zod.string().nullish(),
+  adPrice: zod.number().nullish(),
+  adPriceType: zod.string().nullish(),
+  otherId: zod.number(),
+  otherName: zod.string(),
+  isSeller: zod.boolean(),
+});
+
+export const ListMessagesParams = zod.object({
+  convId: zod.coerce.number(),
+});
+
+export const ListMessagesResponseItem = zod.object({
+  id: zod.number(),
+  conversationId: zod.number(),
+  senderId: zod.number(),
+  body: zod.string(),
+  readAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListMessagesResponse = zod.array(ListMessagesResponseItem);
+
+export const SendMessageParams = zod.object({
+  convId: zod.coerce.number(),
+});
+
+export const sendMessageBodyBodyMax = 2000;
+
+export const SendMessageBody = zod.object({
+  body: zod.string().min(1).max(sendMessageBodyBodyMax),
+});
+
+export const MarkConversationReadParams = zod.object({
+  convId: zod.coerce.number(),
+});
+
+export const authChangePasswordBodyNewPasswordMin = 6;
+
+export const AuthChangePasswordBody = zod.object({
+  currentPassword: zod.string().min(1),
+  newPassword: zod.string().min(authChangePasswordBodyNewPasswordMin),
+});
+
+export const AuthChangePasswordResponse = zod.object({
+  ok: zod.boolean(),
 });
 
 /**

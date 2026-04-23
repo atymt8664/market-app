@@ -18,6 +18,12 @@ import Signup from "@/pages/signup";
 import EditAd from "@/pages/edit-ad";
 import Settings from "@/pages/settings";
 import VerifyEmail from "@/pages/verify-email";
+import AccountProfile from "@/pages/account-profile";
+import AccountEmail from "@/pages/account-email";
+import AccountPassword from "@/pages/account-password";
+import AccountInfo from "@/pages/account-info";
+import Messages from "@/pages/messages";
+import MessageThread from "@/pages/message-thread";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,16 +49,15 @@ function Router() {
         <Route path="/signup" component={Signup} />
         <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/settings" component={Settings} />
+        <Route path="/account/profile" component={AccountProfile} />
+        <Route path="/account/email" component={AccountEmail} />
+        <Route path="/account/password" component={AccountPassword} />
+        <Route path="/account/:slug" component={AccountInfo} />
         <Route path="/profile" component={Profile} />
         <Route path="/favorites" component={Favorites} />
         <Route path="/stats" component={Stats} />
-        <Route path="/messages">
-          <div className="flex flex-col items-center justify-center h-[70vh] p-4 text-center">
-            <img src="/empty-state.png" alt="No messages" className="w-48 h-48 opacity-80 mb-4" />
-            <h2 className="text-xl font-bold mb-2">لا توجد رسائل</h2>
-            <p className="text-muted-foreground">ستظهر محادثاتك هنا قريباً.</p>
-          </div>
-        </Route>
+        <Route path="/messages" component={Messages} />
+        <Route path="/messages/:id" component={MessageThread} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

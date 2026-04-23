@@ -32,9 +32,17 @@ export const adsTable = pgTable("ads", {
   sellerName: text("seller_name").notNull(),
   sellerPhone: text("seller_phone").notNull(),
   featured: boolean("featured").notNull().default(false),
+  views: integer("views").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+});
+
+export const adViewsTable = pgTable("ad_views", {
+  id: serial("id").primaryKey(),
+  adId: integer("ad_id").notNull().references(() => adsTable.id, { onDelete: "cascade" }),
+  viewerKey: text("viewer_key").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type AdRow = typeof adsTable.$inferSelect;

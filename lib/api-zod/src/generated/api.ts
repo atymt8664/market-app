@@ -319,6 +319,13 @@ export const AuthSignupResponse = zod.object({
   name: zod.string(),
   phone: zod.string(),
   city: zod.string(),
+  emailVerified: zod.boolean(),
+  devVerificationCode: zod
+    .string()
+    .optional()
+    .describe(
+      "Returned only outside production while no email provider is connected.",
+    ),
 });
 
 export const authLoginBodyPasswordMin = 6;
@@ -334,6 +341,13 @@ export const AuthLoginResponse = zod.object({
   name: zod.string(),
   phone: zod.string(),
   city: zod.string(),
+  emailVerified: zod.boolean(),
+  devVerificationCode: zod
+    .string()
+    .optional()
+    .describe(
+      "Returned only outside production while no email provider is connected.",
+    ),
 });
 
 export const AuthMeResponse = zod.object({
@@ -342,6 +356,48 @@ export const AuthMeResponse = zod.object({
   name: zod.string(),
   phone: zod.string(),
   city: zod.string(),
+  emailVerified: zod.boolean(),
+  devVerificationCode: zod
+    .string()
+    .optional()
+    .describe(
+      "Returned only outside production while no email provider is connected.",
+    ),
+});
+
+export const authVerifyEmailBodyCodeMin = 4;
+export const authVerifyEmailBodyCodeMax = 10;
+
+export const AuthVerifyEmailBody = zod.object({
+  email: zod.string().email(),
+  code: zod
+    .string()
+    .min(authVerifyEmailBodyCodeMin)
+    .max(authVerifyEmailBodyCodeMax),
+});
+
+export const AuthVerifyEmailResponse = zod.object({
+  id: zod.number(),
+  email: zod.string(),
+  name: zod.string(),
+  phone: zod.string(),
+  city: zod.string(),
+  emailVerified: zod.boolean(),
+  devVerificationCode: zod
+    .string()
+    .optional()
+    .describe(
+      "Returned only outside production while no email provider is connected.",
+    ),
+});
+
+export const AuthResendVerificationBody = zod.object({
+  email: zod.string().email(),
+});
+
+export const AuthResendVerificationResponse = zod.object({
+  ok: zod.boolean(),
+  devVerificationCode: zod.string().optional(),
 });
 
 /**

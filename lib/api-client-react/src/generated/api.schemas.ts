@@ -30,6 +30,9 @@ export interface AuthUser {
   name: string;
   phone: string;
   city: string;
+  emailVerified: boolean;
+  /** Returned only outside production while no email provider is connected. */
+  devVerificationCode?: string;
 }
 
 export interface SignupInput {
@@ -47,6 +50,24 @@ export interface LoginInput {
   email: string;
   /** @minLength 6 */
   password: string;
+}
+
+export interface VerifyEmailInput {
+  email: string;
+  /**
+   * @minLength 4
+   * @maxLength 10
+   */
+  code: string;
+}
+
+export interface ResendVerificationInput {
+  email: string;
+}
+
+export interface ResendVerificationResponse {
+  ok: boolean;
+  devVerificationCode?: string;
 }
 
 export type AdPriceType = (typeof AdPriceType)[keyof typeof AdPriceType];

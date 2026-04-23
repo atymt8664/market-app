@@ -16,6 +16,8 @@ import Stats from "@/pages/stats";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
 import EditAd from "@/pages/edit-ad";
+import Settings from "@/pages/settings";
+import VerifyEmail from "@/pages/verify-email";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,6 +41,8 @@ function Router() {
         <Route path="/edit/:id" component={EditAd} />
         <Route path="/login" component={Login} />
         <Route path="/signup" component={Signup} />
+        <Route path="/verify-email" component={VerifyEmail} />
+        <Route path="/settings" component={Settings} />
         <Route path="/profile" component={Profile} />
         <Route path="/favorites" component={Favorites} />
         <Route path="/stats" component={Stats} />

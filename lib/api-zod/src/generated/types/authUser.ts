@@ -12,4 +12,7 @@ export interface AuthUser {
   name: string;
   phone: string;
   city: string;
+  emailVerified: boolean;
+  /** Returned only outside production while no email provider is connected. */
+  devVerificationCode?: string;
 }

@@ -1,0 +1,75 @@
+Fix all remaining UX and security issues to match a real marketplace app like Kleinanzeigen:
+
+1. WhatsApp Button (Ad Details):
+- Add a visible green WhatsApp button with icon
+- Place under seller info
+- Open link: https://wa.me/{phone}
+- Must always be visible on mobile
+
+2. Ad Card Icons:
+- Fix missing icons (favorite/heart, location, user)
+- Ensure icons are visible and styled properly
+- Add fallback if icons fail to load
+
+3. Publish Button (CRITICAL):
+- Fix "Publish Ad" button not visible
+- Make it fixed at bottom (sticky)
+- Full width, green (#22c55e)
+- Add padding-bottom so it doesn’t hide behind navbar
+- Always visible on mobile
+
+4. City Autocomplete (Create Ad + Top Bar):
+- Replace city input with autocomplete dropdown
+- Show suggestions while typing
+- Use German cities list (Berlin, Hamburg, Munich, etc.)
+- Allow selecting city
+- Save selected city
+- Filter ads by selected city
+
+5. Location Selector (Top Bar):
+- Clicking "All Germany" opens bottom sheet/modal
+- Show list of cities + search
+- Update selected city in UI
+- Add dropdown arrow icon
+
+6. Profile Page (LIKE IMAGE):
+- Redesign profile exactly like Kleinanzeigen:
+  - Avatar circle
+  - Username
+  - Stats (ads count)
+  - Badges (optional)
+  - Buttons (settings, share)
+- Add section:
+  “Post your first ad” with big green button
+
+7. Settings Page:
+- Create full settings page like screenshot:
+  - Profile info
+  - Account settings
+  - Payments (optional placeholder)
+  - Privacy
+  - Notifications
+  - Dark mode toggle
+  - About section
+  - Logout
+
+8. Authentication Security (VERY IMPORTANT):
+- Enable email verification (confirm email before login)
+- Block login if email not verified
+- Add optional phone verification (OTP)
+- Prevent fake accounts
+- Validate email format
+- Rate limit signup
+
+9. UI Polish:
+- Fix spacing and alignment
+- Ensure all buttons clickable
+- Improve contrast for dark mode
+- Smooth animations (mobile feel)
+
+10. Mobile First:
+- Everything must be optimized for mobile
+- No hidden buttons
+- No overlapping UI
+
+This must feel like a real production app, not a prototype.

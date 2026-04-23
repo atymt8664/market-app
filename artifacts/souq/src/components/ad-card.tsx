@@ -52,13 +52,15 @@ export function AdCard({ ad, featured }: AdCardProps) {
           )}
           <button
             onClick={toggleFavorite}
-            className="absolute top-2 left-2 p-1.5 rounded-full bg-black/20 backdrop-blur-sm hover:bg-black/40 transition-colors"
+            aria-label={isFavorite ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+            className="absolute top-2 left-2 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70 transition-colors shadow-md"
           >
             <motion.div
-              animate={{ scale: isFavorite ? [1, 1.2, 1] : 1 }}
+              animate={{ scale: isFavorite ? [1, 1.25, 1] : 1 }}
               transition={{ duration: 0.2 }}
             >
               <Heart
+                strokeWidth={2.5}
                 className={cn("w-4 h-4", isFavorite ? "fill-primary text-primary" : "text-white")}
               />
             </motion.div>
@@ -83,7 +85,7 @@ export function AdCard({ ad, featured }: AdCardProps) {
           )}
           
           <div className="flex items-center text-xs text-muted-foreground gap-1 mt-1">
-            <MapPin className="w-3 h-3 shrink-0" />
+            <MapPin className="w-3.5 h-3.5 shrink-0 text-primary/80" strokeWidth={2.25} />
             <span className="truncate">{ad.city}</span>
             <span className="mx-1 opacity-50">•</span>
             <span className="truncate shrink-0">{formatRelativeTime(ad.createdAt)}</span>

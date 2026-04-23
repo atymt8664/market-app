@@ -42,7 +42,18 @@ export default function Login() {
           const params = new URLSearchParams(window.location.search);
           navigate(params.get("redirect") || "/");
         },
-        onError: () => {
+        onError: async (err: unknown) => {
+          const e = err as { status?: number; data?: { code?: string; email?: string } };
+          if (e?.status === 403 && e?.data?.code === "EMAIL_NOT_VERIFIED") {
+            const targetEmail = e.data.email || data.email;
+            const params = new URLSearchParams({ email: targetEmail });
+            toast({
+              title: "البريد غير مُفعّل",
+              description: "أدخل رمز التفعيل لإكمال الدخول",
+            });
+            navigate(`/verify-email?${params.toString()}`);
+            return;
+          }
           setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
         },
       },

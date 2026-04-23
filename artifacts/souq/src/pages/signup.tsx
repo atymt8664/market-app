@@ -39,11 +39,18 @@ export default function Signup() {
     signupMutation.mutate(
       { data: { ...data, city: data.city ?? "" } },
       {
-        onSuccess: async () => {
+        onSuccess: async (resp: { email: string; devVerificationCode?: string }) => {
           await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
-          toast({ title: "تم إنشاء الحساب بنجاح", description: "أهلاً بك في سوق العرب" });
-          const params = new URLSearchParams(window.location.search);
-          navigate(params.get("redirect") || "/");
+          toast({
+            title: "تم إنشاء الحساب",
+            description: resp?.devVerificationCode
+              ? `رمز التفعيل (وضع التطوير): ${resp.devVerificationCode}`
+              : "أرسلنا رمز التفعيل إلى بريدك الإلكتروني",
+          });
+          const params = new URLSearchParams();
+          params.set("email", resp.email);
+          if (resp?.devVerificationCode) params.set("code", resp.devVerificationCode);
+          navigate(`/verify-email?${params.toString()}`);
         },
         onError: (err: unknown) => {
           const e = err as { status?: number };

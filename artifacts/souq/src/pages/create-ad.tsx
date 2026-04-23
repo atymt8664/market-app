@@ -29,6 +29,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { CitySelect } from "@/components/city-select";
 
 const createAdSchema = z.object({
   title: z.string().min(3, "العنوان قصير جداً").max(65, "العنوان طويل جداً"),
@@ -607,37 +608,44 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               name="city"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>المدينة / الرمز البريدي</FormLabel>
+                  <FormLabel>المدينة</FormLabel>
                   <FormControl>
-                    <Input placeholder="مثال: Berlin 10115" {...field} />
+                    <CitySelect
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      placeholder="اختر مدينة في ألمانيا"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
-
-          {/* Sticky Bottom Actions */}
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border z-40 flex gap-3 max-w-[480px] mx-auto">
-            <Button 
-              type="submit" 
-              className="flex-1 py-6 text-lg font-bold shadow-lg"
-              disabled={createAdMutation.isPending || updateAdMutation.isPending}
-            >
-              {createAdMutation.isPending || updateAdMutation.isPending ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : isEdit ? (
-                "حفظ التعديلات"
-              ) : (
-                "نشر الإعلان"
-              )}
-            </Button>
-            <Button type="button" variant="outline" className="py-6 px-6 font-medium">
-              معاينة
-            </Button>
-          </div>
         </form>
       </Form>
+
+      {/* Sticky Bottom Action — sits above the bottom nav (64px) */}
+      <div
+        className="fixed left-0 right-0 z-40 pointer-events-none flex justify-center"
+        style={{ bottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <div className="w-full max-w-[480px] bg-background border-t border-border p-4 pointer-events-auto">
+          <Button
+            type="button"
+            onClick={form.handleSubmit(onSubmit)}
+            className="w-full py-6 text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+            disabled={createAdMutation.isPending || updateAdMutation.isPending}
+          >
+            {createAdMutation.isPending || updateAdMutation.isPending ? (
+              <Loader2 className="w-6 h-6 animate-spin" />
+            ) : isEdit ? (
+              "حفظ التعديلات"
+            ) : (
+              "نشر الإعلان"
+            )}
+          </Button>
+        </div>
+      </div>
     </motion.div>
   );
 }

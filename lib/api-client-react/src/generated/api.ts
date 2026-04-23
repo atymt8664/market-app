@@ -28,12 +28,15 @@ import type {
   ImproveDescriptionBody,
   ListAdsParams,
   LoginInput,
+  ResendVerificationInput,
+  ResendVerificationResponse,
   SignupInput,
   Subcategory,
   SuggestPrice200,
   SuggestPriceBody,
   UploadUrlRequest,
   UploadUrlResponse,
+  VerifyEmailInput,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -1507,6 +1510,170 @@ export function useAuthMe<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+export const getAuthVerifyEmailUrl = () => {
+  return `/api/auth/verify-email`;
+};
+
+export const authVerifyEmail = async (
+  verifyEmailInput: VerifyEmailInput,
+  options?: RequestInit,
+): Promise<AuthUser> => {
+  return customFetch<AuthUser>(getAuthVerifyEmailUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(verifyEmailInput),
+  });
+};
+
+export const getAuthVerifyEmailMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authVerifyEmail>>,
+    TError,
+    { data: BodyType<VerifyEmailInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof authVerifyEmail>>,
+  TError,
+  { data: BodyType<VerifyEmailInput> },
+  TContext
+> => {
+  const mutationKey = ["authVerifyEmail"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof authVerifyEmail>>,
+    { data: BodyType<VerifyEmailInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return authVerifyEmail(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AuthVerifyEmailMutationResult = NonNullable<
+  Awaited<ReturnType<typeof authVerifyEmail>>
+>;
+export type AuthVerifyEmailMutationBody = BodyType<VerifyEmailInput>;
+export type AuthVerifyEmailMutationError = ErrorType<ErrorEnvelope>;
+
+export const useAuthVerifyEmail = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authVerifyEmail>>,
+    TError,
+    { data: BodyType<VerifyEmailInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof authVerifyEmail>>,
+  TError,
+  { data: BodyType<VerifyEmailInput> },
+  TContext
+> => {
+  return useMutation(getAuthVerifyEmailMutationOptions(options));
+};
+
+export const getAuthResendVerificationUrl = () => {
+  return `/api/auth/resend-verification`;
+};
+
+export const authResendVerification = async (
+  resendVerificationInput: ResendVerificationInput,
+  options?: RequestInit,
+): Promise<ResendVerificationResponse> => {
+  return customFetch<ResendVerificationResponse>(
+    getAuthResendVerificationUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(resendVerificationInput),
+    },
+  );
+};
+
+export const getAuthResendVerificationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authResendVerification>>,
+    TError,
+    { data: BodyType<ResendVerificationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof authResendVerification>>,
+  TError,
+  { data: BodyType<ResendVerificationInput> },
+  TContext
+> => {
+  const mutationKey = ["authResendVerification"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof authResendVerification>>,
+    { data: BodyType<ResendVerificationInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return authResendVerification(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AuthResendVerificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof authResendVerification>>
+>;
+export type AuthResendVerificationMutationBody =
+  BodyType<ResendVerificationInput>;
+export type AuthResendVerificationMutationError = ErrorType<unknown>;
+
+export const useAuthResendVerification = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof authResendVerification>>,
+    TError,
+    { data: BodyType<ResendVerificationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof authResendVerification>>,
+  TError,
+  { data: BodyType<ResendVerificationInput> },
+  TContext
+> => {
+  return useMutation(getAuthResendVerificationMutationOptions(options));
+};
 
 /**
  * @summary Improve an ad description using AI (Arabic)

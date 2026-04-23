@@ -1,6 +1,6 @@
 import { useGetAd, getGetAdQueryKey } from "@workspace/api-client-react";
 import { Link, useParams } from "wouter";
-import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2 } from "lucide-react";
+import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2, MessageCircle, Phone } from "lucide-react";
 import { formatRelativeTime, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -189,14 +189,43 @@ export default function AdDetail() {
         <Separator />
 
         {/* Seller Info */}
-        <div className="flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/20">
-          <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg">
-            {ad.sellerName.charAt(0)}
+        <div className="flex flex-col gap-3 p-3 rounded-xl border border-border bg-muted/20">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+              {ad.sellerName.charAt(0)}
+            </div>
+            <div className="flex-1 flex flex-col min-w-0">
+              <span className="font-semibold truncate">{ad.sellerName}</span>
+              <span className="text-xs text-muted-foreground">عضو في سوق العرب</span>
+            </div>
           </div>
-          <div className="flex-1 flex flex-col">
-            <span className="font-semibold">{ad.sellerName}</span>
-            <span className="text-xs text-muted-foreground">عضو في سوق العرب</span>
-          </div>
+          <Button
+            type="button"
+            onClick={() => {
+              const text = encodeURIComponent(`مرحباً، أنا مهتم بإعلانك: ${ad.title}`);
+              window.open(
+                `https://wa.me/${ad.sellerPhone.replace(/[^0-9+]/g, "")}?text=${text}`,
+                "_blank",
+              );
+            }}
+            className="w-full bg-[#25D366] hover:bg-[#1ebe5d] text-white font-bold py-5 text-base shadow-md shadow-[#25D366]/20 flex items-center justify-center gap-2"
+          >
+            <MessageCircle className="w-5 h-5" />
+            تواصل عبر واتساب
+          </Button>
+          <button
+            type="button"
+            onClick={handleCopyPhone}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-md border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors"
+          >
+            <Phone className="w-4 h-4" />
+            <span dir="ltr" className="font-mono">{ad.sellerPhone}</span>
+            {copied ? (
+              <CheckCircle2 className="w-4 h-4 text-primary" />
+            ) : (
+              <Copy className="w-4 h-4 opacity-60" />
+            )}
+          </button>
         </div>
       </div>
 

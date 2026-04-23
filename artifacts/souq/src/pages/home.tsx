@@ -1,25 +1,42 @@
-import { useListCategories, useListFeaturedAds, useListRecommendedAds } from "@workspace/api-client-react";
+import { useListCategories, useListFeaturedAds, useListRecommendedAds, useListAds, getListAdsQueryKey } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
-import { Search, MapPin, ChevronLeft } from "lucide-react";
+import { Search, ChevronLeft } from "lucide-react";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
 import { CategoryIcon } from "@/components/category-icon";
+import { LocationPicker } from "@/components/location-picker";
 import { Input } from "@/components/ui/input";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useSelectedCity } from "@/hooks/use-selected-city";
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  
+  const { city } = useSelectedCity();
+
   const { data: categories, isLoading: isLoadingCategories } = useListCategories();
   const { data: featuredAds, isLoading: isLoadingFeatured } = useListFeaturedAds();
-  const { data: recommendedAds, isLoading: isLoadingRecommended } = useListRecommendedAds();
+  const { data: defaultRecommended, isLoading: isLoadingDefaultRec } = useListRecommendedAds({
+    query: { enabled: !city },
+  });
+  const { data: cityAds, isLoading: isLoadingCityAds } = useListAds(
+    { city, limit: 20 },
+    {
+      query: {
+        queryKey: getListAdsQueryKey({ city, limit: 20 }),
+        enabled: !!city,
+      },
+    },
+  );
+  const recommendedAds = city ? cityAds : defaultRecommended;
+  const isLoadingRecommended = city ? isLoadingCityAds : isLoadingDefaultRec;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      setLocation(`/search?q=${encodeURIComponent(searchQuery)}`);
+      const cityParam = city ? `&city=${encodeURIComponent(city)}` : "";
+      setLocation(`/search?q=${encodeURIComponent(searchQuery)}${cityParam}`);
     }
   };
 
@@ -34,10 +51,7 @@ export default function Home() {
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border p-4 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <img src="/logo.png" alt="سوق العرب" className="h-8 object-contain" />
-          <div className="flex items-center gap-1 text-sm text-primary font-medium bg-primary/10 px-3 py-1.5 rounded-full">
-            <MapPin className="w-4 h-4" />
-            <span>كل ألمانيا</span>
-          </div>
+          <LocationPicker />
         </div>
 
         <form onSubmit={handleSearch} className="relative">

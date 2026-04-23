@@ -85,8 +85,8 @@
   --popover: 0 0% 100%;
   --popover-foreground: 0 0% 3.9%;
   --popover-border: 0 0% 89.8%;
-  --primary: 142 71% 45%; /* #22c55e lime green */
-  --primary-foreground: 0 0% 100%;
+  --primary: 80 76% 67%; /* #c2eb6c kleinanzeigen lime */
+  --primary-foreground: 210 6% 8%;
   --secondary: 0 0% 96.1%;
   --secondary-foreground: 0 0% 9%;
   --muted: 0 0% 96.1%;
@@ -96,8 +96,8 @@
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
   --input: 0 0% 89.8%;
-  --ring: 142 71% 45%;
-  --chart-1: 142 71% 45%;
+  --ring: 80 76% 67%;
+  --chart-1: 80 76% 67%;
   --chart-2: 0 0% 3.9%;
   --chart-3: 0 0% 45.1%;
   --chart-4: 0 0% 89.8%;
@@ -106,11 +106,11 @@
   --sidebar: 0 0% 98%;
   --sidebar-foreground: 0 0% 3.9%;
   --sidebar-border: 0 0% 89.8%;
-  --sidebar-primary: 142 71% 45%;
-  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-primary: 80 76% 67%;
+  --sidebar-primary-foreground: 210 6% 8%;
   --sidebar-accent: 0 0% 89.8%;
   --sidebar-accent-foreground: 0 0% 9%;
-  --sidebar-ring: 142 71% 45%;
+  --sidebar-ring: 80 76% 67%;
 
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
@@ -154,8 +154,8 @@
   --popover: 210 6% 10%;
   --popover-foreground: 0 0% 98%;
   --popover-border: 215 10% 15%;
-  --primary: 142 71% 45%; /* #22c55e lime green */
-  --primary-foreground: 0 0% 100%;
+  --primary: 80 76% 67%; /* #c2eb6c kleinanzeigen lime */
+  --primary-foreground: 210 6% 8%;
   --secondary: 215 10% 15%;
   --secondary-foreground: 0 0% 98%;
   --muted: 215 10% 15%;
@@ -165,8 +165,8 @@
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
   --input: 215 10% 15%;
-  --ring: 142 71% 45%;
-  --chart-1: 142 71% 45%;
+  --ring: 80 76% 67%;
+  --chart-1: 80 76% 67%;
   --chart-2: 0 0% 98%;
   --chart-3: 215 10% 65%;
   --chart-4: 215 10% 15%;
@@ -175,11 +175,11 @@
   --sidebar: 210 6% 10%;
   --sidebar-foreground: 0 0% 98%;
   --sidebar-border: 215 10% 15%;
-  --sidebar-primary: 142 71% 45%;
-  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-primary: 80 76% 67%;
+  --sidebar-primary-foreground: 210 6% 8%;
   --sidebar-accent: 215 10% 15%;
   --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-ring: 142 71% 45%;
+  --sidebar-ring: 80 76% 67%;
 
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);

@@ -9,8 +9,10 @@ import {
   useUnfavoriteAd,
 } from "@workspace/api-client-react";
 import { Link, useLocation, useParams } from "wouter";
-import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2, MessageCircle, Eye, MessageSquare, ThumbsUp, Star, ChevronLeft } from "lucide-react";
+import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2, MessageCircle, Eye, MessageSquare, ThumbsUp, Star, ChevronLeft, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { AvatarCircle } from "@/components/avatar-circle";
+import { useGetUserProfile, getGetUserProfileQueryKey } from "@workspace/api-client-react";
 import { formatRelativeTime, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -319,35 +321,11 @@ export default function AdDetail() {
 
         <Separator />
 
-        {/* Seller link */}
-        {ad.userId ? (
-          <Link href={`/users/${ad.userId}`}>
-            <div className="flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 active:scale-[0.99] transition-all cursor-pointer">
-              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-                {ad.sellerName.charAt(0)}
-              </div>
-              <div className="flex-1 flex flex-col min-w-0">
-                <span className="font-semibold truncate">{ad.sellerName}</span>
-                <span className="text-xs text-muted-foreground">
-                  عرض الملف الشخصي وإعلانات أخرى
-                </span>
-              </div>
-              <ChevronLeft className="w-5 h-5 text-muted-foreground" />
-            </div>
-          </Link>
-        ) : (
-          <div className="flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/20">
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-              {ad.sellerName.charAt(0)}
-            </div>
-            <div className="flex-1 flex flex-col min-w-0">
-              <span className="font-semibold truncate">{ad.sellerName}</span>
-              <span className="text-xs text-muted-foreground">
-                عضو في سوق العرب
-              </span>
-            </div>
-          </div>
-        )}
+        {/* Seller info section */}
+        <div>
+          <h3 className="font-semibold mb-2">معلومات البائع</h3>
+          <SellerCard ad={ad} />
+        </div>
 
         {/* Spacer for fixed bottom action bar */}
         <div className="h-24" />
@@ -386,5 +364,74 @@ export default function AdDetail() {
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function SellerCard({
+  ad,
+}: {
+  ad: {
+    userId?: number | null;
+    sellerName: string;
+    city: string;
+  };
+}) {
+  const enabled = !!ad.userId;
+  const profileKey = enabled ? getGetUserProfileQueryKey(ad.userId!) : ["seller", "none"] as const;
+  const { data: profile } = useGetUserProfile(ad.userId ?? 0, {
+    query: { queryKey: profileKey, enabled },
+  });
+
+  const memberSince =
+    profile?.createdAt &&
+    new Date(profile.createdAt).toLocaleDateString("ar", {
+      year: "numeric",
+      month: "long",
+    });
+  const followerCount = profile?.followerCount ?? 0;
+
+  const inner = (
+    <div className="flex items-center gap-3 p-4 rounded-2xl border border-border bg-muted/20">
+      <AvatarCircle
+        name={ad.sellerName}
+        src={profile?.avatarUrl ?? null}
+        size={56}
+        className="!shadow-none !border-2 !border-primary/30"
+      />
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold truncate flex items-center gap-1">
+          {ad.sellerName}
+          <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
+        </div>
+        {ad.city && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+            <MapPin className="w-3 h-3" />
+            <span className="truncate">{ad.city}</span>
+          </div>
+        )}
+        {memberSince ? (
+          <div className="text-[11px] text-muted-foreground mt-0.5">
+            عضو منذ {memberSince} · {followerCount.toLocaleString("ar")} متابع
+          </div>
+        ) : (
+          <div className="text-[11px] text-muted-foreground mt-0.5">
+            عضو في سوق العرب
+          </div>
+        )}
+      </div>
+      {enabled && (
+        <ChevronLeft className="w-5 h-5 text-muted-foreground shrink-0" />
+      )}
+    </div>
+  );
+
+  if (!enabled) return inner;
+  return (
+    <Link
+      href={`/users/${ad.userId}`}
+      className="block hover:opacity-90 active:scale-[0.99] transition-all"
+    >
+      {inner}
+    </Link>
   );
 }

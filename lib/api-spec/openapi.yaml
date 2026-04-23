@@ -1042,6 +1042,8 @@ components:
         name: { type: string }
         phone: { type: string }
         city: { type: string }
+        avatarUrl: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
         emailVerified: { type: boolean }
         followerCount: { type: integer }
         followingCount: { type: integer }
@@ -1058,6 +1060,7 @@ components:
         id: { type: integer }
         name: { type: string }
         city: { type: string }
+        avatarUrl: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
         isSelf: { type: boolean }
         isFollowing: { type: boolean }
@@ -1189,6 +1192,7 @@ components:
         name: { type: string, minLength: 2 }
         phone: { type: string, minLength: 5 }
         city: { type: string }
+        avatarUrl: { type: string, nullable: true }
 
     ChangePasswordInput:
       type: object

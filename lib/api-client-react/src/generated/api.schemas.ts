@@ -30,6 +30,8 @@ export interface AuthUser {
   name: string;
   phone: string;
   city: string;
+  avatarUrl?: string | null;
+  createdAt?: string;
   emailVerified: boolean;
   followerCount?: number;
   followingCount?: number;
@@ -43,6 +45,7 @@ export interface PublicUserProfile {
   id: number;
   name: string;
   city: string;
+  avatarUrl?: string | null;
   createdAt: string;
   isSelf: boolean;
   isFollowing: boolean;
@@ -176,6 +179,7 @@ export interface UpdateProfileInput {
   /** @minLength 5 */
   phone?: string;
   city?: string;
+  avatarUrl?: string | null;
 }
 
 export interface ChangePasswordInput {

@@ -1,6 +1,5 @@
 import { Link, useLocation } from "wouter";
 import {
-  User,
   LogIn,
   UserPlus,
   Trash2,
@@ -13,18 +12,30 @@ import {
   ChevronLeft,
   Users,
   UserCheck,
+  Heart,
+  Smile,
+  Leaf,
+  Camera,
+  Loader2,
+  Receipt,
+  Clock,
+  User as UserIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   useListMyAds,
   useDeleteAd,
   getListMyAdsQueryKey,
+  useAuthUpdateProfile,
+  getAuthMeQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useUpload } from "@workspace/object-storage-web";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
+import { AvatarCircle } from "@/components/avatar-circle";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -43,6 +54,8 @@ export default function Profile() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const deleteAdMutation = useDeleteAd();
+  const updateProfile = useAuthUpdateProfile();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [adToDelete, setAdToDelete] = useState<number | null>(null);
 
   const { data: myAds, isLoading: adsLoading } = useListMyAds({
@@ -50,6 +63,32 @@ export default function Profile() {
       queryKey: getListMyAdsQueryKey(),
       enabled: !!user,
       retry: false,
+    },
+  });
+
+  const { uploadFile, isUploading } = useUpload({
+    onSuccess: (response) => {
+      const url = `/api/storage${response.objectPath}`;
+      updateProfile.mutate(
+        { data: { avatarUrl: url } },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({
+              queryKey: getAuthMeQueryKey(),
+            });
+            toast({ title: "تم تحديث الصورة الشخصية" });
+          },
+          onError: () => {
+            toast({
+              title: "فشل تحديث الصورة",
+              variant: "destructive",
+            });
+          },
+        },
+      );
+    },
+    onError: () => {
+      toast({ title: "فشل رفع الصورة", variant: "destructive" });
     },
   });
 
@@ -70,7 +109,7 @@ export default function Profile() {
       >
         <header className="bg-primary pt-12 pb-10 px-4 text-primary-foreground flex flex-col items-center">
           <div className="w-24 h-24 rounded-full bg-white/20 border-4 border-white/40 flex items-center justify-center mb-3 shadow-lg">
-            <User className="w-12 h-12 opacity-80" />
+            <UserIcon className="w-12 h-12 opacity-80" />
           </div>
           <h1 className="text-xl font-bold">مرحباً بك</h1>
           <p className="opacity-80 text-sm mt-1">سجّل الدخول لإدارة إعلاناتك</p>
@@ -124,53 +163,79 @@ export default function Profile() {
     );
   };
 
+  const handleAvatarPick = () => fileInputRef.current?.click();
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "الملف ليس صورة", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "الصورة كبيرة جداً (الحد 5MB)", variant: "destructive" });
+      return;
+    }
+    uploadFile(file);
+    e.target.value = "";
+  };
+
   const adCount = user?.adCount ?? myAds?.length ?? 0;
   const followerCount = user?.followerCount ?? 0;
   const followingCount = user?.followingCount ?? 0;
   const profileViews = user?.profileViews ?? 0;
+  const memberSince = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString("ar", {
+        year: "numeric",
+        month: "long",
+      })
+    : null;
+  const avatarBusy = isUploading || updateProfile.isPending;
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-background"
+      className="flex flex-col w-full min-h-[100dvh] bg-background pb-6"
     >
-      {/* Header card */}
+      {/* Top profile section */}
       <div className="bg-gradient-to-b from-primary to-primary/80 px-4 pt-8 pb-6 text-primary-foreground">
-        <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-white/20 border-4 border-white/40 flex items-center justify-center text-3xl font-bold shrink-0 shadow-lg">
-            {user.name.charAt(0).toUpperCase()}
+        <div className="flex items-start gap-4">
+          <div className="relative">
+            <AvatarCircle name={user.name} src={user.avatarUrl} size={88} />
+            <button
+              type="button"
+              onClick={handleAvatarPick}
+              disabled={avatarBusy}
+              aria-label="تغيير الصورة"
+              className="absolute -bottom-1 -left-1 w-9 h-9 rounded-full bg-white text-primary border-2 border-primary flex items-center justify-center shadow-md active:scale-95 transition-transform disabled:opacity-60"
+            >
+              {avatarBusy ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Camera className="w-4 h-4" />
+              )}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onFileChange}
+            />
           </div>
+
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold truncate">{user.name}</h1>
-            <div className="flex items-center gap-1 text-xs opacity-90 mt-1">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>عضو موثوق</span>
-            </div>
             <div className="text-xs opacity-80 mt-0.5 truncate" dir="ltr">
               {user.email}
             </div>
+            {/* Badges */}
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
+              <Badge icon={<ShieldCheck className="w-3 h-3" />} text="موثوق" />
+              <Badge icon={<Smile className="w-3 h-3" />} text="ودود" />
+              <Badge icon={<Leaf className="w-3 h-3" />} text="نشط" />
+            </div>
           </div>
-        </div>
-
-        {/* Stats row */}
-        <div className="grid grid-cols-4 gap-1 mt-5 bg-black/20 rounded-2xl p-3">
-          <Stat label="إعلانات" value={adCount} />
-          <Stat
-            label="متابعون"
-            value={followerCount}
-            icon={<Users className="w-3.5 h-3.5 opacity-80" />}
-          />
-          <Stat
-            label="يتابع"
-            value={followingCount}
-            icon={<UserCheck className="w-3.5 h-3.5 opacity-80" />}
-          />
-          <Stat
-            label="مشاهدات"
-            value={profileViews}
-            icon={<Eye className="w-3.5 h-3.5 opacity-80" />}
-          />
         </div>
 
         {/* Action buttons */}
@@ -189,9 +254,87 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Quick CTA when no ads */}
+      {/* User info rows */}
+      <div className="mx-4 -mt-4 bg-card border border-border rounded-2xl shadow-sm p-4 flex flex-col gap-2.5 text-sm">
+        <InfoRow
+          icon={<UserIcon className="w-4 h-4 text-primary" />}
+          label="نوع الحساب"
+          value="بائع شخصي"
+        />
+        {memberSince && (
+          <InfoRow
+            icon={<ShieldCheck className="w-4 h-4 text-primary" />}
+            label="عضو منذ"
+            value={memberSince}
+          />
+        )}
+        <InfoRow
+          icon={<Clock className="w-4 h-4 text-primary" />}
+          label="متوسط الرد"
+          value="عادةً خلال ساعات قليلة"
+        />
+        <InfoRow
+          icon={<Users className="w-4 h-4 text-primary" />}
+          label="المتابعون"
+          value={`${followerCount.toLocaleString("ar")} متابع`}
+        />
+      </div>
+
+      {/* Stats grid */}
+      <div className="px-4 mt-4">
+        <div className="grid grid-cols-4 gap-2">
+          <StatCard label="إعلانات" value={adCount} />
+          <StatCard label="نشطة" value={adCount} accent />
+          <StatCard
+            label="متابعون"
+            value={followerCount}
+            icon={<Users className="w-3.5 h-3.5" />}
+          />
+          <StatCard
+            label="مشاهدات"
+            value={profileViews}
+            icon={<Eye className="w-3.5 h-3.5" />}
+          />
+        </div>
+      </div>
+
+      {/* Sales overview placeholder */}
+      <div className="mx-4 mt-4">
+        <Link href="/stats">
+          <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3 hover:bg-muted/40 active:scale-[0.99] transition-all cursor-pointer">
+            <div className="w-12 h-12 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
+              <Receipt className="w-6 h-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-sm">نظرة عامة على المبيعات</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                تابع أداء إعلاناتك ومشاهداتك
+              </p>
+            </div>
+            <ChevronLeft className="w-5 h-5 text-muted-foreground shrink-0" />
+          </div>
+        </Link>
+      </div>
+
+      {/* Quick links */}
+      <div className="mx-4 mt-3 grid grid-cols-2 gap-2">
+        <Link href="/favorites">
+          <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-2 hover:bg-muted/50 active:bg-muted transition-colors h-full">
+            <Heart className="w-4 h-4 text-primary" />
+            <span className="text-xs font-medium flex-1">المفضلة</span>
+          </div>
+        </Link>
+        <Link href={`/users/${user.id}`}>
+          <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-2 hover:bg-muted/50 active:bg-muted transition-colors h-full">
+            <UserCheck className="w-4 h-4 text-primary" />
+            <span className="text-xs font-medium flex-1">ملفي العام</span>
+          </div>
+        </Link>
+      </div>
+
+      {/* Empty state CTA */}
       {!adsLoading && adCount === 0 && (
-        <div className="m-4 p-5 rounded-2xl bg-primary/10 border border-primary/30 flex flex-col items-center text-center">
+        <div className="mx-4 mt-4 p-5 rounded-2xl bg-primary/10 border border-primary/30 flex flex-col items-center text-center">
           <div className="w-14 h-14 rounded-full bg-primary/20 text-primary flex items-center justify-center mb-3">
             <Plus className="w-7 h-7" />
           </div>
@@ -207,20 +350,9 @@ export default function Profile() {
         </div>
       )}
 
-      {/* Quick links */}
-      <div className="px-4 mb-4 mt-2 grid grid-cols-1 gap-3">
-        <Link href="/stats">
-          <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-2 hover:bg-muted/50 active:bg-muted transition-colors">
-            <Eye className="w-5 h-5 text-primary" />
-            <span className="text-sm font-medium flex-1">الإحصاءات</span>
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-          </div>
-        </Link>
-      </div>
-
       {/* My ads grid */}
       {(adsLoading || adCount > 0) && (
-        <div className="px-4 flex-1">
+        <div className="px-4 mt-5 flex-1">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-bold text-base">إعلاناتي</h2>
             <span className="text-muted-foreground text-xs">{adCount} إعلان</span>
@@ -287,26 +419,67 @@ export default function Profile() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <div className="h-16" />
     </motion.div>
   );
 }
 
-function Stat({
+function Badge({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 bg-white/15 text-white text-[11px] font-medium px-2 py-1 rounded-full">
+      {icon}
+      {text}
+    </span>
+  );
+}
+
+function InfoRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+        {icon}
+      </div>
+      <span className="text-muted-foreground flex-1 text-xs">{label}</span>
+      <span className="font-semibold text-sm">{value}</span>
+    </div>
+  );
+}
+
+function StatCard({
   label,
   value,
   icon,
+  accent,
 }: {
   label: string;
   value: number;
   icon?: React.ReactNode;
+  accent?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center text-center">
+    <div
+      className={`rounded-xl border p-2.5 flex flex-col items-center justify-center text-center ${
+        accent
+          ? "bg-primary/10 border-primary/30"
+          : "bg-card border-border"
+      }`}
+    >
       <div className="flex items-center gap-1">
         {icon}
-        <span className="text-lg font-bold">{value.toLocaleString("ar")}</span>
+        <span className="text-base font-bold tabular-nums">
+          {value.toLocaleString("ar")}
+        </span>
       </div>
-      <span className="text-[10px] opacity-80 mt-0.5">{label}</span>
+      <span className="text-[10px] text-muted-foreground mt-0.5">{label}</span>
     </div>
   );
 }

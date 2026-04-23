@@ -94,6 +94,7 @@ router.get("/users/:userId", async (req, res) => {
       id: usersTable.id,
       name: usersTable.name,
       city: usersTable.city,
+      avatarUrl: usersTable.avatarUrl,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
@@ -109,6 +110,7 @@ router.get("/users/:userId", async (req, res) => {
     id: u.id,
     name: u.name,
     city: u.city,
+    avatarUrl: u.avatarUrl ?? null,
     createdAt: u.createdAt.toISOString(),
     isSelf: req.session.userId === u.id,
     ...stats,

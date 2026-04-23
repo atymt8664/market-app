@@ -85,6 +85,8 @@ function serializeUserBasic(u: typeof usersTable.$inferSelect) {
     name: u.name,
     phone: u.phone,
     city: u.city,
+    avatarUrl: u.avatarUrl ?? null,
+    createdAt: u.createdAt.toISOString(),
     emailVerified: u.emailVerified,
   };
 }
@@ -206,10 +208,21 @@ router.patch("/auth/me", async (req, res) => {
     res.status(401).json({ error: "غير مسجل الدخول" });
     return;
   }
-  const body = req.body as { name?: unknown; phone?: unknown; city?: unknown };
+  const body = req.body as {
+    name?: unknown;
+    phone?: unknown;
+    city?: unknown;
+    avatarUrl?: unknown;
+  };
   const name = typeof body.name === "string" ? body.name.trim() : undefined;
   const phone = typeof body.phone === "string" ? body.phone.trim() : undefined;
   const city = typeof body.city === "string" ? body.city.trim() : undefined;
+  const avatarUrl =
+    body.avatarUrl === null
+      ? null
+      : typeof body.avatarUrl === "string"
+        ? body.avatarUrl.trim()
+        : undefined;
 
   if (name !== undefined && name.length < 2) {
     res.status(400).json({ error: "الاسم قصير جداً" });
@@ -219,10 +232,21 @@ router.patch("/auth/me", async (req, res) => {
     res.status(400).json({ error: "رقم الهاتف غير صحيح" });
     return;
   }
-  const patch: Record<string, string> = {};
+  if (
+    typeof avatarUrl === "string" &&
+    !(
+      avatarUrl.startsWith("/api/storage/objects/") ||
+      avatarUrl.startsWith("/objects/")
+    )
+  ) {
+    res.status(400).json({ error: "مسار الصورة غير صالح" });
+    return;
+  }
+  const patch: Record<string, string | null> = {};
   if (name !== undefined) patch["name"] = name;
   if (phone !== undefined) patch["phone"] = phone;
   if (city !== undefined) patch["city"] = city;
+  if (avatarUrl !== undefined) patch["avatarUrl"] = avatarUrl;
   if (Object.keys(patch).length === 0) {
     res.status(400).json({ error: "لا تغييرات" });
     return;

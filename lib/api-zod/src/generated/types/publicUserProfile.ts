@@ -10,6 +10,7 @@ export interface PublicUserProfile {
   id: number;
   name: string;
   city: string;
+  avatarUrl?: string | null;
   createdAt: Date;
   isSelf: boolean;
   isFollowing: boolean;

@@ -18,6 +18,7 @@ export const usersTable = pgTable("users", {
   name: text("name").notNull(),
   phone: text("phone").notNull(),
   city: text("city").notNull().default(""),
+  avatarUrl: text("avatar_url"),
   emailVerified: boolean("email_verified").notNull().default(false),
   verificationCode: text("verification_code"),
   verificationExpiresAt: timestamp("verification_expires_at", {

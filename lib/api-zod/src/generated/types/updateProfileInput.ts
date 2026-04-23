@@ -12,4 +12,5 @@ export interface UpdateProfileInput {
   /** @minLength 5 */
   phone?: string;
   city?: string;
+  avatarUrl?: string | null;
 }

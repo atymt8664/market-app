@@ -3,13 +3,13 @@ import { Link, useParams, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
-  User,
   MapPin,
   Eye,
   UserPlus,
   UserCheck,
   Loader2,
 } from "lucide-react";
+import { AvatarCircle } from "@/components/avatar-circle";
 import {
   useGetUserProfile,
   getGetUserProfileQueryKey,
@@ -130,11 +130,7 @@ export default function UserProfile() {
 
       <div className="bg-gradient-to-b from-primary to-primary/80 px-4 pt-6 pb-5 text-primary-foreground">
         <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-white/20 border-4 border-white/40 flex items-center justify-center text-3xl font-bold shrink-0 shadow-lg">
-            {profile.name.charAt(0).toUpperCase() || (
-              <User className="w-9 h-9" />
-            )}
-          </div>
+          <AvatarCircle name={profile.name} src={profile.avatarUrl} size={80} />
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold truncate">{profile.name}</h2>
             {profile.city && (
@@ -207,9 +203,7 @@ export default function UserProfile() {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {userAds.map((ad) => (
-              <Link key={ad.id} href={`/ad/${ad.id}`}>
-                <AdCard ad={ad} />
-              </Link>
+              <AdCard key={ad.id} ad={ad} />
             ))}
           </div>
         )}

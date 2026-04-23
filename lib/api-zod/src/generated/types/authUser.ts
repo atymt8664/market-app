@@ -12,6 +12,8 @@ export interface AuthUser {
   name: string;
   phone: string;
   city: string;
+  avatarUrl?: string | null;
+  createdAt?: Date;
   emailVerified: boolean;
   followerCount?: number;
   followingCount?: number;

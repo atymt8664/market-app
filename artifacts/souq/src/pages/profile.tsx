@@ -181,7 +181,6 @@ export default function Profile() {
 
   const adCount = user?.adCount ?? myAds?.length ?? 0;
   const followerCount = user?.followerCount ?? 0;
-  const followingCount = user?.followingCount ?? 0;
   const profileViews = user?.profileViews ?? 0;
   const memberSince = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString("ar", {
@@ -198,21 +197,21 @@ export default function Profile() {
       className="flex flex-col w-full min-h-[100dvh] bg-background pb-6"
     >
       {/* Top profile section */}
-      <div className="bg-gradient-to-b from-primary to-primary/80 px-4 pt-8 pb-6 text-primary-foreground">
-        <div className="flex items-start gap-4">
-          <div className="relative">
-            <AvatarCircle name={user.name} src={user.avatarUrl} size={88} />
+      <div className="bg-gradient-to-b from-primary to-primary/80 px-4 pt-5 pb-5 text-primary-foreground">
+        <div className="flex items-center gap-3">
+          <div className="relative shrink-0">
+            <AvatarCircle name={user.name} src={user.avatarUrl} size={64} />
             <button
               type="button"
               onClick={handleAvatarPick}
               disabled={avatarBusy}
               aria-label="تغيير الصورة"
-              className="absolute -bottom-1 -left-1 w-9 h-9 rounded-full bg-white text-primary border-2 border-primary flex items-center justify-center shadow-md active:scale-95 transition-transform disabled:opacity-60"
+              className="absolute -bottom-1 -left-1 w-7 h-7 rounded-full bg-white text-primary border-2 border-primary flex items-center justify-center shadow-md active:scale-95 transition-transform disabled:opacity-60"
             >
               {avatarBusy ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <Camera className="w-4 h-4" />
+                <Camera className="w-3.5 h-3.5" />
               )}
             </button>
             <input
@@ -223,60 +222,53 @@ export default function Profile() {
               onChange={onFileChange}
             />
           </div>
-
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold truncate">{user.name}</h1>
-            <div className="text-xs opacity-80 mt-0.5 truncate" dir="ltr">
+            <h1 className="text-lg font-bold truncate">{user.name}</h1>
+            <div className="text-[11px] opacity-80 truncate mt-0.5" dir="ltr">
               {user.email}
-            </div>
-            {/* Badges */}
-            <div className="flex flex-wrap gap-1.5 mt-2.5">
-              <Badge icon={<ShieldCheck className="w-3 h-3" />} text="موثوق" />
-              <Badge icon={<Smile className="w-3 h-3" />} text="ودود" />
-              <Badge icon={<Leaf className="w-3 h-3" />} text="نشط" />
             </div>
           </div>
         </div>
 
+        {/* Badges */}
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          <Badge icon={<ShieldCheck className="w-3 h-3" />} text="موثوق" />
+          <Badge icon={<Smile className="w-3 h-3" />} text="ودود" />
+          <Badge icon={<Leaf className="w-3 h-3" />} text="نشط" />
+        </div>
+
         {/* Action buttons */}
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-3">
           <Link href="/settings" className="flex-1">
-            <button className="w-full bg-white/15 hover:bg-white/25 active:bg-white/30 transition-colors text-white text-sm font-medium py-2.5 rounded-lg flex items-center justify-center gap-1.5">
+            <button className="w-full bg-white/15 hover:bg-white/25 active:bg-white/30 transition-colors text-white text-sm font-medium py-2 rounded-lg flex items-center justify-center gap-1.5">
               <Settings className="w-4 h-4" /> الإعدادات
             </button>
           </Link>
           <button
             onClick={handleShare}
-            className="flex-1 bg-white/15 hover:bg-white/25 active:bg-white/30 transition-colors text-white text-sm font-medium py-2.5 rounded-lg flex items-center justify-center gap-1.5"
+            className="flex-1 bg-white/15 hover:bg-white/25 active:bg-white/30 transition-colors text-white text-sm font-medium py-2 rounded-lg flex items-center justify-center gap-1.5"
           >
             <Share2 className="w-4 h-4" /> مشاركة
           </button>
         </div>
       </div>
 
-      {/* User info rows */}
-      <div className="mx-4 -mt-4 bg-card border border-border rounded-2xl shadow-sm p-4 flex flex-col gap-2.5 text-sm">
-        <InfoRow
-          icon={<UserIcon className="w-4 h-4 text-primary" />}
-          label="نوع الحساب"
-          value="بائع شخصي"
-        />
+      {/* Compact info list (Kleinanzeigen-style stacked rows) */}
+      <div className="px-4 mt-3 flex flex-col gap-2 text-[13px]">
+        <CompactInfo icon={<UserIcon className="w-4 h-4 text-primary" />} text="بائع شخصي" />
         {memberSince && (
-          <InfoRow
+          <CompactInfo
             icon={<ShieldCheck className="w-4 h-4 text-primary" />}
-            label="عضو منذ"
-            value={memberSince}
+            text={`عضو منذ ${memberSince}`}
           />
         )}
-        <InfoRow
+        <CompactInfo
           icon={<Clock className="w-4 h-4 text-primary" />}
-          label="متوسط الرد"
-          value="عادةً خلال ساعات قليلة"
+          text="يرد عادةً خلال ساعات قليلة"
         />
-        <InfoRow
+        <CompactInfo
           icon={<Users className="w-4 h-4 text-primary" />}
-          label="المتابعون"
-          value={`${followerCount.toLocaleString("ar")} متابع`}
+          text={`${followerCount.toLocaleString("ar")} متابع`}
         />
       </div>
 
@@ -434,22 +426,11 @@ function Badge({ icon, text }: { icon: React.ReactNode; text: string }) {
   );
 }
 
-function InfoRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
+function CompactInfo({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-        {icon}
-      </div>
-      <span className="text-muted-foreground flex-1 text-xs">{label}</span>
-      <span className="font-semibold text-sm">{value}</span>
+    <div className="flex items-center gap-2 text-foreground/90">
+      <span className="shrink-0">{icon}</span>
+      <span className="truncate">{text}</span>
     </div>
   );
 }

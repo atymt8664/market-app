@@ -1,5 +1,13 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { db, adsTable, adViewsTable, categoriesTable, subcategoriesTable } from "@workspace/db";
+import {
+  db,
+  adsTable,
+  adViewsTable,
+  adLikesTable,
+  adFavoritesTable,
+  categoriesTable,
+  subcategoriesTable,
+} from "@workspace/db";
 import { and, desc, eq, gte, ilike, lte, sql, or } from "drizzle-orm";
 import crypto from "crypto";
 import {
@@ -23,6 +31,10 @@ function serializeAd(row: {
   ads: typeof adsTable.$inferSelect;
   categoryName: string | null;
   subcategoryName: string | null;
+  likeCount?: number | string | null;
+  favoriteCount?: number | string | null;
+  isLiked?: boolean | null;
+  isFavorited?: boolean | null;
 }) {
   const ad = row.ads;
   return {
@@ -42,6 +54,10 @@ function serializeAd(row: {
     sellerPhone: ad.sellerPhone,
     featured: ad.featured,
     views: ad.views ?? 0,
+    likeCount: Number(row.likeCount ?? 0),
+    favoriteCount: Number(row.favoriteCount ?? 0),
+    isLiked: !!row.isLiked,
+    isFavorited: !!row.isFavorited,
     userId: ad.userId,
     createdAt: ad.createdAt.toISOString(),
   };
@@ -54,12 +70,20 @@ function viewerKeyFor(req: Parameters<typeof requireAuth>[0]): string {
   return "ip:" + crypto.createHash("sha256").update(ip + "|" + ua).digest("hex").slice(0, 32);
 }
 
-const baseSelect = () =>
+const baseSelect = (currentUserId?: number | null) =>
   db
     .select({
       ads: adsTable,
       categoryName: categoriesTable.name,
       subcategoryName: subcategoriesTable.name,
+      likeCount: sql<number>`(select count(*) from ad_likes where ad_likes.ad_id = ${adsTable.id})`.as("like_count"),
+      favoriteCount: sql<number>`(select count(*) from ad_favorites where ad_favorites.ad_id = ${adsTable.id})`.as("favorite_count"),
+      isLiked: currentUserId
+        ? sql<boolean>`exists(select 1 from ad_likes where ad_likes.ad_id = ${adsTable.id} and ad_likes.user_id = ${currentUserId})`.as("is_liked")
+        : sql<boolean>`false`.as("is_liked"),
+      isFavorited: currentUserId
+        ? sql<boolean>`exists(select 1 from ad_favorites where ad_favorites.ad_id = ${adsTable.id} and ad_favorites.user_id = ${currentUserId})`.as("is_favorited")
+        : sql<boolean>`false`.as("is_favorited"),
     })
     .from(adsTable)
     .leftJoin(categoriesTable, eq(categoriesTable.id, adsTable.categoryId))
@@ -68,16 +92,16 @@ const baseSelect = () =>
       eq(subcategoriesTable.id, adsTable.subcategoryId),
     );
 
-router.get("/ads/featured", async (_req, res) => {
-  const rows = await baseSelect()
+router.get("/ads/featured", async (req, res) => {
+  const rows = await baseSelect(req.session.userId ?? null)
     .where(eq(adsTable.featured, true))
     .orderBy(desc(adsTable.createdAt))
     .limit(10);
   res.json(rows.map(serializeAd));
 });
 
-router.get("/ads/recommended", async (_req, res) => {
-  const rows = await baseSelect()
+router.get("/ads/recommended", async (req, res) => {
+  const rows = await baseSelect(req.session.userId ?? null)
     .orderBy(desc(adsTable.createdAt))
     .limit(20);
   res.json(rows.map(serializeAd));
@@ -126,7 +150,7 @@ router.get("/ads/stats", async (_req, res) => {
 });
 
 router.get("/ads/mine", requireAuth, async (req, res) => {
-  const rows = await baseSelect()
+  const rows = await baseSelect(req.session.userId)
     .where(eq(adsTable.userId, req.session.userId!))
     .orderBy(desc(adsTable.createdAt));
   res.json(rows.map(serializeAd));
@@ -134,7 +158,9 @@ router.get("/ads/mine", requireAuth, async (req, res) => {
 
 router.get("/ads/:adId", async (req, res) => {
   const params = GetAdParams.parse({ adId: Number(req.params["adId"]) });
-  const rows = await baseSelect().where(eq(adsTable.id, params.adId)).limit(1);
+  const rows = await baseSelect(req.session.userId ?? null)
+    .where(eq(adsTable.id, params.adId))
+    .limit(1);
   const row = rows[0];
   if (!row) {
     res.status(404).json({ error: "Ad not found" });
@@ -164,12 +190,71 @@ router.get("/ads", async (req, res) => {
   const where = conds.length ? and(...conds) : undefined;
   const limit = q.limit ?? 50;
 
-  const rows = await baseSelect()
+  const rows = await baseSelect(req.session.userId ?? null)
     .where(where as never)
     .orderBy(desc(adsTable.createdAt))
     .limit(limit);
 
   res.json(rows.map(serializeAd));
+});
+
+async function reactionResponse(table: typeof adLikesTable | typeof adFavoritesTable, adId: number, userId: number) {
+  const [{ count }] = (await db.execute<{ count: number }>(
+    sql`select count(*)::int as count from ${table} where ad_id = ${adId}`,
+  )).rows as Array<{ count: number }>;
+  const [{ active }] = (await db.execute<{ active: boolean }>(
+    sql`select exists(select 1 from ${table} where ad_id = ${adId} and user_id = ${userId}) as active`,
+  )).rows as Array<{ active: boolean }>;
+  return { count: Number(count ?? 0), active: !!active };
+}
+
+function parseAdId(req: Request, res: Response): number | null {
+  const parsed = GetAdParams.safeParse({ adId: Number(req.params["adId"]) });
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid ad id" });
+    return null;
+  }
+  return parsed.data.adId;
+}
+
+router.post("/ads/:adId/like", requireAuth, async (req, res) => {
+  const adId = parseAdId(req, res);
+  if (adId === null) return;
+  const userId = req.session.userId!;
+  const exists = await db.select({ id: adsTable.id }).from(adsTable).where(eq(adsTable.id, adId)).limit(1);
+  if (!exists[0]) { res.status(404).json({ error: "Ad not found" }); return; }
+  await db.insert(adLikesTable)
+    .values({ adId, userId })
+    .onConflictDoNothing({ target: [adLikesTable.adId, adLikesTable.userId] });
+  res.json(await reactionResponse(adLikesTable, adId, userId));
+});
+
+router.delete("/ads/:adId/like", requireAuth, async (req, res) => {
+  const adId = parseAdId(req, res);
+  if (adId === null) return;
+  const userId = req.session.userId!;
+  await db.delete(adLikesTable).where(and(eq(adLikesTable.adId, adId), eq(adLikesTable.userId, userId)));
+  res.json(await reactionResponse(adLikesTable, adId, userId));
+});
+
+router.post("/ads/:adId/favorite", requireAuth, async (req, res) => {
+  const adId = parseAdId(req, res);
+  if (adId === null) return;
+  const userId = req.session.userId!;
+  const exists = await db.select({ id: adsTable.id }).from(adsTable).where(eq(adsTable.id, adId)).limit(1);
+  if (!exists[0]) { res.status(404).json({ error: "Ad not found" }); return; }
+  await db.insert(adFavoritesTable)
+    .values({ adId, userId })
+    .onConflictDoNothing({ target: [adFavoritesTable.adId, adFavoritesTable.userId] });
+  res.json(await reactionResponse(adFavoritesTable, adId, userId));
+});
+
+router.delete("/ads/:adId/favorite", requireAuth, async (req, res) => {
+  const adId = parseAdId(req, res);
+  if (adId === null) return;
+  const userId = req.session.userId!;
+  await db.delete(adFavoritesTable).where(and(eq(adFavoritesTable.adId, adId), eq(adFavoritesTable.userId, userId)));
+  res.json(await reactionResponse(adFavoritesTable, adId, userId));
 });
 
 router.post("/ads", requireAuth, async (req, res) => {

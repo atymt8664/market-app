@@ -488,6 +488,110 @@ paths:
               schema:
                 $ref: "#/components/schemas/ResendVerificationResponse"
 
+  /ads/{adId}/like:
+    post:
+      operationId: likeAd
+      tags: [ads]
+      summary: Like an ad (idempotent)
+      parameters:
+        - name: adId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Liked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReactionResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Ad not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: unlikeAd
+      tags: [ads]
+      summary: Remove like from an ad
+      parameters:
+        - name: adId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Unliked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReactionResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /ads/{adId}/favorite:
+    post:
+      operationId: favoriteAd
+      tags: [ads]
+      summary: Add an ad to favorites (idempotent)
+      parameters:
+        - name: adId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Favorited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReactionResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Ad not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: unfavoriteAd
+      tags: [ads]
+      summary: Remove an ad from favorites
+      parameters:
+        - name: adId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReactionResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /ads/{adId}/view:
     post:
       operationId: recordAdView
@@ -827,7 +931,7 @@ components:
 
     Ad:
       type: object
-      required: [id, title, description, price, priceType, type, city, images, categoryId, categoryName, sellerName, sellerPhone, views, createdAt]
+      required: [id, title, description, price, priceType, type, city, images, categoryId, categoryName, sellerName, sellerPhone, views, likeCount, favoriteCount, isLiked, isFavorited, createdAt]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -847,8 +951,19 @@ components:
         sellerPhone: { type: string }
         featured: { type: boolean }
         views: { type: integer }
+        likeCount: { type: integer }
+        favoriteCount: { type: integer }
+        isLiked: { type: boolean }
+        isFavorited: { type: boolean }
         userId: { type: integer, nullable: true }
         createdAt: { type: string, format: date-time }
+
+    ReactionResponse:
+      type: object
+      required: [count, active]
+      properties:
+        count: { type: integer }
+        active: { type: boolean }
 
     AdViewResponse:
       type: object

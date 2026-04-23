@@ -7,6 +7,8 @@ import {
   boolean,
   timestamp,
   jsonb,
+  uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
 import { categoriesTable, subcategoriesTable } from "./categories";
 import { usersTable } from "./users";
@@ -44,6 +46,34 @@ export const adViewsTable = pgTable("ad_views", {
   viewerKey: text("viewer_key").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const adLikesTable = pgTable(
+  "ad_likes",
+  {
+    id: serial("id").primaryKey(),
+    adId: integer("ad_id").notNull().references(() => adsTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    adUserUnique: uniqueIndex("ad_likes_ad_user_unique").on(t.adId, t.userId),
+    adIdx: index("ad_likes_ad_idx").on(t.adId),
+  }),
+);
+
+export const adFavoritesTable = pgTable(
+  "ad_favorites",
+  {
+    id: serial("id").primaryKey(),
+    adId: integer("ad_id").notNull().references(() => adsTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    adUserUnique: uniqueIndex("ad_favorites_ad_user_unique").on(t.adId, t.userId),
+    adIdx: index("ad_favorites_ad_idx").on(t.adId),
+  }),
+);
 
 export type AdRow = typeof adsTable.$inferSelect;
 export type InsertAd = typeof adsTable.$inferInsert;

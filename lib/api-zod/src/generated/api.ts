@@ -102,6 +102,10 @@ export const ListAdsResponseItem = zod.object({
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
   views: zod.number(),
+  likeCount: zod.number(),
+  favoriteCount: zod.number(),
+  isLiked: zod.boolean(),
+  isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -150,6 +154,10 @@ export const ListFeaturedAdsResponseItem = zod.object({
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
   views: zod.number(),
+  likeCount: zod.number(),
+  favoriteCount: zod.number(),
+  isLiked: zod.boolean(),
+  isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -175,6 +183,10 @@ export const ListRecommendedAdsResponseItem = zod.object({
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
   views: zod.number(),
+  likeCount: zod.number(),
+  favoriteCount: zod.number(),
+  isLiked: zod.boolean(),
+  isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -223,6 +235,10 @@ export const ListMyAdsResponseItem = zod.object({
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
   views: zod.number(),
+  likeCount: zod.number(),
+  favoriteCount: zod.number(),
+  isLiked: zod.boolean(),
+  isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -249,6 +265,10 @@ export const GetAdResponse = zod.object({
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
   views: zod.number(),
+  likeCount: zod.number(),
+  favoriteCount: zod.number(),
+  isLiked: zod.boolean(),
+  isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -297,6 +317,10 @@ export const UpdateAdResponse = zod.object({
   sellerPhone: zod.string(),
   featured: zod.boolean().optional(),
   views: zod.number(),
+  likeCount: zod.number(),
+  favoriteCount: zod.number(),
+  isLiked: zod.boolean(),
+  isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -429,6 +453,54 @@ export const AuthResendVerificationBody = zod.object({
 export const AuthResendVerificationResponse = zod.object({
   ok: zod.boolean(),
   devVerificationCode: zod.string().optional(),
+});
+
+/**
+ * @summary Like an ad (idempotent)
+ */
+export const LikeAdParams = zod.object({
+  adId: zod.coerce.number(),
+});
+
+export const LikeAdResponse = zod.object({
+  count: zod.number(),
+  active: zod.boolean(),
+});
+
+/**
+ * @summary Remove like from an ad
+ */
+export const UnlikeAdParams = zod.object({
+  adId: zod.coerce.number(),
+});
+
+export const UnlikeAdResponse = zod.object({
+  count: zod.number(),
+  active: zod.boolean(),
+});
+
+/**
+ * @summary Add an ad to favorites (idempotent)
+ */
+export const FavoriteAdParams = zod.object({
+  adId: zod.coerce.number(),
+});
+
+export const FavoriteAdResponse = zod.object({
+  count: zod.number(),
+  active: zod.boolean(),
+});
+
+/**
+ * @summary Remove an ad from favorites
+ */
+export const UnfavoriteAdParams = zod.object({
+  adId: zod.coerce.number(),
+});
+
+export const UnfavoriteAdResponse = zod.object({
+  count: zod.number(),
+  active: zod.boolean(),
 });
 
 /**

@@ -35,6 +35,7 @@ import type {
   ListAdsParams,
   LoginInput,
   Message,
+  ReactionResponse,
   ResendVerificationInput,
   ResendVerificationResponse,
   SendMessageBody,
@@ -1763,6 +1764,342 @@ export const useAuthResendVerification = <
   TContext
 > => {
   return useMutation(getAuthResendVerificationMutationOptions(options));
+};
+
+/**
+ * @summary Like an ad (idempotent)
+ */
+export const getLikeAdUrl = (adId: number) => {
+  return `/api/ads/${adId}/like`;
+};
+
+export const likeAd = async (
+  adId: number,
+  options?: RequestInit,
+): Promise<ReactionResponse> => {
+  return customFetch<ReactionResponse>(getLikeAdUrl(adId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getLikeAdMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof likeAd>>,
+    TError,
+    { adId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof likeAd>>,
+  TError,
+  { adId: number },
+  TContext
+> => {
+  const mutationKey = ["likeAd"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof likeAd>>,
+    { adId: number }
+  > = (props) => {
+    const { adId } = props ?? {};
+
+    return likeAd(adId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LikeAdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof likeAd>>
+>;
+
+export type LikeAdMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Like an ad (idempotent)
+ */
+export const useLikeAd = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof likeAd>>,
+    TError,
+    { adId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof likeAd>>,
+  TError,
+  { adId: number },
+  TContext
+> => {
+  return useMutation(getLikeAdMutationOptions(options));
+};
+
+/**
+ * @summary Remove like from an ad
+ */
+export const getUnlikeAdUrl = (adId: number) => {
+  return `/api/ads/${adId}/like`;
+};
+
+export const unlikeAd = async (
+  adId: number,
+  options?: RequestInit,
+): Promise<ReactionResponse> => {
+  return customFetch<ReactionResponse>(getUnlikeAdUrl(adId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getUnlikeAdMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unlikeAd>>,
+    TError,
+    { adId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unlikeAd>>,
+  TError,
+  { adId: number },
+  TContext
+> => {
+  const mutationKey = ["unlikeAd"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unlikeAd>>,
+    { adId: number }
+  > = (props) => {
+    const { adId } = props ?? {};
+
+    return unlikeAd(adId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnlikeAdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unlikeAd>>
+>;
+
+export type UnlikeAdMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Remove like from an ad
+ */
+export const useUnlikeAd = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unlikeAd>>,
+    TError,
+    { adId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unlikeAd>>,
+  TError,
+  { adId: number },
+  TContext
+> => {
+  return useMutation(getUnlikeAdMutationOptions(options));
+};
+
+/**
+ * @summary Add an ad to favorites (idempotent)
+ */
+export const getFavoriteAdUrl = (adId: number) => {
+  return `/api/ads/${adId}/favorite`;
+};
+
+export const favoriteAd = async (
+  adId: number,
+  options?: RequestInit,
+): Promise<ReactionResponse> => {
+  return customFetch<ReactionResponse>(getFavoriteAdUrl(adId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getFavoriteAdMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof favoriteAd>>,
+    TError,
+    { adId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof favoriteAd>>,
+  TError,
+  { adId: number },
+  TContext
+> => {
+  const mutationKey = ["favoriteAd"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof favoriteAd>>,
+    { adId: number }
+  > = (props) => {
+    const { adId } = props ?? {};
+
+    return favoriteAd(adId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type FavoriteAdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof favoriteAd>>
+>;
+
+export type FavoriteAdMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Add an ad to favorites (idempotent)
+ */
+export const useFavoriteAd = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof favoriteAd>>,
+    TError,
+    { adId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof favoriteAd>>,
+  TError,
+  { adId: number },
+  TContext
+> => {
+  return useMutation(getFavoriteAdMutationOptions(options));
+};
+
+/**
+ * @summary Remove an ad from favorites
+ */
+export const getUnfavoriteAdUrl = (adId: number) => {
+  return `/api/ads/${adId}/favorite`;
+};
+
+export const unfavoriteAd = async (
+  adId: number,
+  options?: RequestInit,
+): Promise<ReactionResponse> => {
+  return customFetch<ReactionResponse>(getUnfavoriteAdUrl(adId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getUnfavoriteAdMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unfavoriteAd>>,
+    TError,
+    { adId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unfavoriteAd>>,
+  TError,
+  { adId: number },
+  TContext
+> => {
+  const mutationKey = ["unfavoriteAd"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unfavoriteAd>>,
+    { adId: number }
+  > = (props) => {
+    const { adId } = props ?? {};
+
+    return unfavoriteAd(adId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnfavoriteAdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unfavoriteAd>>
+>;
+
+export type UnfavoriteAdMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Remove an ad from favorites
+ */
+export const useUnfavoriteAd = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unfavoriteAd>>,
+    TError,
+    { adId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unfavoriteAd>>,
+  TError,
+  { adId: number },
+  TContext
+> => {
+  return useMutation(getUnfavoriteAdMutationOptions(options));
 };
 
 /**

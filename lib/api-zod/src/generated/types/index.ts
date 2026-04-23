@@ -31,6 +31,7 @@ export * from "./listAdsParams";
 export * from "./listAdsType";
 export * from "./loginInput";
 export * from "./message";
+export * from "./reactionResponse";
 export * from "./resendVerificationInput";
 export * from "./resendVerificationResponse";
 export * from "./sendMessageBody";

@@ -103,8 +103,17 @@ export interface Ad {
   sellerPhone: string;
   featured?: boolean;
   views: number;
+  likeCount: number;
+  favoriteCount: number;
+  isLiked: boolean;
+  isFavorited: boolean;
   userId?: number | null;
   createdAt: string;
+}
+
+export interface ReactionResponse {
+  count: number;
+  active: boolean;
 }
 
 export interface AdViewResponse {

@@ -3,17 +3,21 @@ import {
   getGetAdQueryKey,
   useRecordAdView,
   useStartConversation,
+  useLikeAd,
+  useUnlikeAd,
+  useFavoriteAd,
+  useUnfavoriteAd,
 } from "@workspace/api-client-react";
 import { Link, useLocation, useParams } from "wouter";
-import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2, MessageCircle, Phone, Eye, MessageSquare } from "lucide-react";
+import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2, MessageCircle, Phone, Eye, MessageSquare, ThumbsUp, Star } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { formatRelativeTime, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
 
@@ -24,10 +28,10 @@ export default function AdDetail() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
 
-  const { data: ad, isLoading } = useGetAd(id, { query: { enabled: !!id, queryKey: getGetAdQueryKey(id) } });
+  const queryClient = useQueryClient();
+  const adKey = getGetAdQueryKey(id);
+  const { data: ad, isLoading } = useGetAd(id, { query: { enabled: !!id, queryKey: adKey } });
 
-  const [favorites, setFavorites] = useLocalStorage<number[]>("favorites", []);
-  const isFavorite = ad ? favorites.includes(ad.id) : false;
   const [copied, setCopied] = useState(false);
   const [viewCount, setViewCount] = useState<number | null>(null);
 
@@ -39,12 +43,57 @@ export default function AdDetail() {
     recordView.mutate(
       { adId: id },
       {
-        onSuccess: (data) => setViewCount(data.views),
+        onSuccess: (data) => {
+          setViewCount(data.views);
+          queryClient.invalidateQueries({ queryKey: adKey });
+        },
         onError: () => { /* ignore */ },
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const likeMut = useLikeAd();
+  const unlikeMut = useUnlikeAd();
+  const favMut = useFavoriteAd();
+  const unfavMut = useUnfavoriteAd();
+
+  type AdData = NonNullable<typeof ad>;
+  const patchAd = (patch: Partial<AdData>) => {
+    queryClient.setQueryData<AdData>(adKey, (old) => (old ? { ...old, ...patch } : old));
+  };
+
+  const requireLogin = () => {
+    if (!user) {
+      navigate(`/login?redirect=/ad/${id}`);
+      return false;
+    }
+    return true;
+  };
+
+  const handleToggleLike = () => {
+    if (!ad || !requireLogin()) return;
+    const prev = { isLiked: ad.isLiked, likeCount: ad.likeCount };
+    const willLike = !ad.isLiked;
+    patchAd({ isLiked: willLike, likeCount: ad.likeCount + (willLike ? 1 : -1) });
+    const onSuccess = (data: { count: number; active: boolean }) =>
+      patchAd({ isLiked: data.active, likeCount: data.count });
+    const onError = () => patchAd(prev);
+    if (willLike) likeMut.mutate({ adId: ad.id }, { onSuccess, onError });
+    else unlikeMut.mutate({ adId: ad.id }, { onSuccess, onError });
+  };
+
+  const handleToggleFavorite = () => {
+    if (!ad || !requireLogin()) return;
+    const prev = { isFavorited: ad.isFavorited, favoriteCount: ad.favoriteCount };
+    const willFav = !ad.isFavorited;
+    patchAd({ isFavorited: willFav, favoriteCount: ad.favoriteCount + (willFav ? 1 : -1) });
+    const onSuccess = (data: { count: number; active: boolean }) =>
+      patchAd({ isFavorited: data.active, favoriteCount: data.count });
+    const onError = () => patchAd(prev);
+    if (willFav) favMut.mutate({ adId: ad.id }, { onSuccess, onError });
+    else unfavMut.mutate({ adId: ad.id }, { onSuccess, onError });
+  };
 
   const startConversation = useStartConversation();
   const handleMessage = () => {
@@ -73,15 +122,6 @@ export default function AdDetail() {
         },
       },
     );
-  };
-
-  const toggleFavorite = () => {
-    if (!ad) return;
-    if (isFavorite) {
-      setFavorites(favorites.filter(fId => fId !== ad.id));
-    } else {
-      setFavorites([...favorites, ad.id]);
-    }
   };
 
   const handleCopyPhone = () => {
@@ -152,8 +192,13 @@ export default function AdDetail() {
             <button onClick={handleShare} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform">
               <Share2 className="w-5 h-5" />
             </button>
-            <button onClick={toggleFavorite} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform">
-              <Heart className={`w-5 h-5 ${isFavorite ? "fill-primary text-primary" : "text-white"}`} />
+            <button
+              onClick={handleToggleFavorite}
+              aria-label="favorite"
+              disabled={favMut.isPending || unfavMut.isPending}
+              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
+            >
+              <Heart className={`w-5 h-5 ${ad?.isFavorited ? "fill-primary text-primary" : "text-white"}`} />
             </button>
           </div>
         </div>
@@ -206,10 +251,40 @@ export default function AdDetail() {
             <span>{ad.city}</span>
             <span className="mx-2 opacity-50">•</span>
             <span>{formatRelativeTime(ad.createdAt)}</span>
-            <span className="mx-2 opacity-50">•</span>
-            <Eye className="w-4 h-4 shrink-0" />
-            <span>{(viewCount ?? ad.views ?? 0).toLocaleString("ar")} مشاهدة</span>
           </div>
+        </div>
+
+        {/* Engagement counter strip + reaction buttons */}
+        <div className="bg-card border border-border rounded-2xl px-3 py-2.5 flex items-stretch divide-x divide-border/60 [direction:rtl] [&>*]:px-2">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground flex-1 justify-center">
+            <Eye className="w-4 h-4" />
+            <span className="font-semibold text-foreground tabular-nums">
+              {(viewCount ?? ad.views ?? 0).toLocaleString("ar")}
+            </span>
+            <span className="text-xs">مشاهدة</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleLike}
+            aria-label="like"
+            disabled={likeMut.isPending || unlikeMut.isPending}
+            className={`flex items-center gap-1.5 text-sm flex-1 justify-center active:scale-95 transition-all rounded-lg ${ad.isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <ThumbsUp className={`w-4 h-4 ${ad.isLiked ? "fill-primary" : ""}`} />
+            <span className="font-semibold tabular-nums">{ad.likeCount.toLocaleString("ar")}</span>
+            <span className="text-xs">إعجاب</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleFavorite}
+            aria-label="favorite-counter"
+            disabled={favMut.isPending || unfavMut.isPending}
+            className={`flex items-center gap-1.5 text-sm flex-1 justify-center active:scale-95 transition-all rounded-lg ${ad.isFavorited ? "text-amber-500" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Star className={`w-4 h-4 ${ad.isFavorited ? "fill-amber-500" : ""}`} />
+            <span className="font-semibold tabular-nums">{ad.favoriteCount.toLocaleString("ar")}</span>
+            <span className="text-xs">مفضّلة</span>
+          </button>
         </div>
 
         <Separator />

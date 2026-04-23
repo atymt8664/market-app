@@ -145,39 +145,39 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 210 6% 6%; /* #0e0f10 */
-  --foreground: 0 0% 98%;
-  --border: 215 10% 15%;
-  --card: 210 6% 10%;
-  --card-foreground: 0 0% 98%;
-  --card-border: 215 10% 15%;
-  --popover: 210 6% 10%;
-  --popover-foreground: 0 0% 98%;
-  --popover-border: 215 10% 15%;
-  --primary: 80 76% 67%; /* #c2eb6c kleinanzeigen lime */
-  --primary-foreground: 210 6% 8%;
-  --secondary: 215 10% 15%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 215 10% 15%;
-  --muted-foreground: 215 10% 65%;
-  --accent: 215 10% 15%;
-  --accent-foreground: 0 0% 98%;
+  --background: 220 9% 7%; /* #10131a kleinanzeigen dark */
+  --foreground: 0 0% 100%;
+  --border: 220 9% 18%;
+  --card: 220 9% 10%;
+  --card-foreground: 0 0% 100%;
+  --card-border: 220 9% 22%;
+  --popover: 220 9% 10%;
+  --popover-foreground: 0 0% 100%;
+  --popover-border: 220 9% 22%;
+  --primary: 79 76% 67%; /* #c2eb6c kleinanzeigen lime */
+  --primary-foreground: 220 10% 7%;
+  --secondary: 220 9% 14%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 220 9% 14%;
+  --muted-foreground: 220 6% 65%;
+  --accent: 220 9% 14%;
+  --accent-foreground: 0 0% 100%;
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
-  --input: 215 10% 15%;
-  --ring: 80 76% 67%;
-  --chart-1: 80 76% 67%;
-  --chart-2: 0 0% 98%;
-  --chart-3: 215 10% 65%;
-  --chart-4: 215 10% 15%;
-  --chart-5: 210 6% 10%;
+  --input: 220 9% 14%;
+  --ring: 79 76% 67%;
+  --chart-1: 79 76% 67%;
+  --chart-2: 0 0% 100%;
+  --chart-3: 220 6% 65%;
+  --chart-4: 220 9% 18%;
+  --chart-5: 220 9% 10%;
 
-  --sidebar: 210 6% 10%;
-  --sidebar-foreground: 0 0% 98%;
-  --sidebar-border: 215 10% 15%;
-  --sidebar-primary: 80 76% 67%;
-  --sidebar-primary-foreground: 210 6% 8%;
-  --sidebar-accent: 215 10% 15%;
+  --sidebar: 220 9% 10%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-border: 220 9% 18%;
+  --sidebar-primary: 79 76% 67%;
+  --sidebar-primary-foreground: 220 10% 7%;
+  --sidebar-accent: 220 9% 14%;
   --sidebar-accent-foreground: 0 0% 98%;
   --sidebar-ring: 80 76% 67%;
 

@@ -7,7 +7,14 @@ import { ArrowRight, Loader2, UserPlus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthSignup, getAuthMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -39,8 +46,14 @@ export default function Signup() {
     signupMutation.mutate(
       { data: { ...data, city: data.city ?? "" } },
       {
-        onSuccess: async (resp: { email: string; devVerificationCode?: string }) => {
-          await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
+        onSuccess: async (resp: {
+          email: string;
+          devVerificationCode?: string;
+        }) => {
+          await queryClient.invalidateQueries({
+            queryKey: getAuthMeQueryKey(),
+          });
+          localStorage.setItem("email", resp.email || data.email);
           toast({
             title: "تم إنشاء الحساب",
             description: resp?.devVerificationCode
@@ -49,12 +62,13 @@ export default function Signup() {
           });
           const params = new URLSearchParams();
           params.set("email", resp.email);
-          if (resp?.devVerificationCode) params.set("code", resp.devVerificationCode);
+          if (resp?.devVerificationCode)
+            params.set("code", resp.devVerificationCode);
           navigate(`/verify-email?${params.toString()}`);
         },
         onError: (err: unknown) => {
           const e = err as { status?: number };
-          if (e?.status === 409) {
+          if (e?.status === 409 || e?.status === 200) {
             setError("هذا البريد الإلكتروني مسجّل مسبقاً");
           } else {
             setError("تعذّر إنشاء الحساب، حاول مرة أخرى");
@@ -91,7 +105,10 @@ export default function Signup() {
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-4"
+          >
             <FormField
               control={form.control}
               name="name"
@@ -112,7 +129,13 @@ export default function Signup() {
                 <FormItem>
                   <FormLabel>البريد الإلكتروني</FormLabel>
                   <FormControl>
-                    <Input type="email" dir="ltr" className="text-right" placeholder="name@email.com" {...field} />
+                    <Input
+                      type="email"
+                      dir="ltr"
+                      className="text-right"
+                      placeholder="name@email.com"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -125,7 +148,13 @@ export default function Signup() {
                 <FormItem>
                   <FormLabel>رقم الهاتف (واتساب)</FormLabel>
                   <FormControl>
-                    <Input type="tel" dir="ltr" className="text-right" placeholder="+491761234567" {...field} />
+                    <Input
+                      type="tel"
+                      dir="ltr"
+                      className="text-right"
+                      placeholder="+491761234567"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -164,15 +193,26 @@ export default function Signup() {
               </p>
             )}
 
-            <Button type="submit" className="py-6 text-base font-bold mt-2" disabled={signupMutation.isPending}>
-              {signupMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "إنشاء الحساب"}
+            <Button
+              type="submit"
+              disabled={signupMutation.isPending}
+              className="w-[55%] mx-auto py-3 rounded-2xl bg-primary text-black font-bold text-sm shadow-md hover:scale-[1.02] active:scale-[0.97] transition-all mt-3"
+            >
+              {signupMutation.isPending ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                "إنشاء الحساب"
+              )}
             </Button>
           </form>
         </Form>
 
         <p className="text-center text-sm text-muted-foreground">
           لديك حساب بالفعل؟{" "}
-          <Link href="/login" className="text-primary font-bold hover:underline">
+          <Link
+            href="/login"
+            className="text-primary font-bold hover:underline"
+          >
             تسجيل الدخول
           </Link>
         </p>

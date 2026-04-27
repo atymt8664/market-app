@@ -11,12 +11,13 @@ export function useAuth() {
     },
   });
 
-  const user = isError ? null : data ?? null;
+  const user = isError || !data?.id ? null : data;
 
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
-    refresh: () => queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() }),
+    refresh: () =>
+      queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() }),
   };
 }

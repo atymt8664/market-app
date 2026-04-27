@@ -9,12 +9,31 @@ import {
   useUnfavoriteAd,
 } from "@workspace/api-client-react";
 import { Link, useLocation, useParams } from "wouter";
-import { ArrowRight, MapPin, Share2, Heart, Copy, CheckCircle2, MessageCircle, Phone, Eye, MessageSquare, ThumbsUp, Star } from "lucide-react";
+import {
+  ArrowRight,
+  MapPin,
+  Share2,
+  Heart,
+  Copy,
+  CheckCircle2,
+  MessageCircle,
+  Phone,
+  Eye,
+  MessageSquare,
+  ThumbsUp,
+  Star,
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { formatRelativeTime, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -30,10 +49,15 @@ export default function AdDetail() {
 
   const queryClient = useQueryClient();
   const adKey = getGetAdQueryKey(id);
-  const { data: ad, isLoading } = useGetAd(id, { query: { enabled: !!id, queryKey: adKey } });
+  const { data: ad, isLoading } = useGetAd(id, {
+    query: { enabled: !!id, queryKey: adKey },
+  });
 
   const [copied, setCopied] = useState(false);
   const [viewCount, setViewCount] = useState<number | null>(null);
+  const [reporting, setReporting] = useState(false);
+  const [reason, setReason] = useState("");
+  const [details, setDetails] = useState("");
 
   const recordView = useRecordAdView();
   const viewedRef = useRef<number | null>(null);
@@ -47,7 +71,9 @@ export default function AdDetail() {
           setViewCount(data.views);
           queryClient.invalidateQueries({ queryKey: adKey });
         },
-        onError: () => { /* ignore */ },
+        onError: () => {
+          /* ignore */
+        },
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,9 +84,46 @@ export default function AdDetail() {
   const favMut = useFavoriteAd();
   const unfavMut = useUnfavoriteAd();
 
+  const handleReport = async () => {
+    if (!reason) {
+      toast({ title: "خطأ", description: "اختر سبب الإبلاغ" });
+      return;
+    }
+
+    if (!requireLogin()) return;
+
+    try {
+      setReporting(true);
+
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          targetAdId: id,
+          reason,
+        }),
+      });
+
+      console.log("REPORT STATUS:", res.status);
+
+      toast({ title: "تم", description: "تم إرسال البلاغ" });
+      setReason("");
+    } catch (err) {
+      toast({ title: "خطأ", description: "فشل إرسال البلاغ" });
+    } finally {
+      setReporting(false);
+    }
+  };
+
   type AdData = NonNullable<typeof ad>;
+
   const patchAd = (patch: Partial<AdData>) => {
-    queryClient.setQueryData<AdData>(adKey, (old) => (old ? { ...old, ...patch } : old));
+    queryClient.setQueryData<AdData>(adKey, (old) =>
+      old ? { ...old, ...patch } : old,
+    );
   };
 
   const requireLogin = () => {
@@ -73,21 +136,35 @@ export default function AdDetail() {
 
   const handleToggleLike = () => {
     if (!ad || !requireLogin()) return;
+
     const prev = { isLiked: ad.isLiked, likeCount: ad.likeCount };
     const willLike = !ad.isLiked;
-    patchAd({ isLiked: willLike, likeCount: ad.likeCount + (willLike ? 1 : -1) });
+
+    patchAd({
+      isLiked: willLike,
+      likeCount: ad.likeCount + (willLike ? 1 : -1),
+    });
+
     const onSuccess = (data: { count: number; active: boolean }) =>
       patchAd({ isLiked: data.active, likeCount: data.count });
+
     const onError = () => patchAd(prev);
+
     if (willLike) likeMut.mutate({ adId: ad.id }, { onSuccess, onError });
     else unlikeMut.mutate({ adId: ad.id }, { onSuccess, onError });
   };
 
   const handleToggleFavorite = () => {
     if (!ad || !requireLogin()) return;
-    const prev = { isFavorited: ad.isFavorited, favoriteCount: ad.favoriteCount };
+    const prev = {
+      isFavorited: ad.isFavorited,
+      favoriteCount: ad.favoriteCount,
+    };
     const willFav = !ad.isFavorited;
-    patchAd({ isFavorited: willFav, favoriteCount: ad.favoriteCount + (willFav ? 1 : -1) });
+    patchAd({
+      isFavorited: willFav,
+      favoriteCount: ad.favoriteCount + (willFav ? 1 : -1),
+    });
     const onSuccess = (data: { count: number; active: boolean }) =>
       patchAd({ isFavorited: data.active, favoriteCount: data.count });
     const onError = () => patchAd(prev);
@@ -137,10 +214,12 @@ export default function AdDetail() {
 
   const handleShare = () => {
     if (navigator.share) {
-      navigator.share({
-        title: ad?.title,
-        url: window.location.href
-      }).catch(console.error);
+      navigator
+        .share({
+          title: ad?.title,
+          url: window.location.href,
+        })
+        .catch(console.error);
     } else {
       navigator.clipboard.writeText(window.location.href);
       toast({ title: "تم نسخ الرابط" });
@@ -164,7 +243,9 @@ export default function AdDetail() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[100dvh] bg-background p-4 text-center">
         <h2 className="text-2xl font-bold mb-2">الإعلان غير موجود</h2>
-        <p className="text-muted-foreground mb-6">ربما تم حذف هذا الإعلان أو أن الرابط غير صحيح.</p>
+        <p className="text-muted-foreground mb-6">
+          ربما تم حذف هذا الإعلان أو أن الرابط غير صحيح.
+        </p>
         <Link href="/">
           <Button>العودة للصفحة الرئيسية</Button>
         </Link>
@@ -175,7 +256,7 @@ export default function AdDetail() {
   const isFree = ad.priceType === "free";
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -189,7 +270,10 @@ export default function AdDetail() {
             </button>
           </Link>
           <div className="flex gap-2">
-            <button onClick={handleShare} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform">
+            <button
+              onClick={handleShare}
+              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform"
+            >
               <Share2 className="w-5 h-5" />
             </button>
             <button
@@ -198,7 +282,9 @@ export default function AdDetail() {
               disabled={favMut.isPending || unfavMut.isPending}
               className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
             >
-              <Heart className={`w-5 h-5 ${ad?.isFavorited ? "fill-primary text-primary" : "text-white"}`} />
+              <Heart
+                className={`w-5 h-5 ${ad?.isFavorited ? "fill-primary text-primary" : "text-white"}`}
+              />
             </button>
           </div>
         </div>
@@ -211,7 +297,11 @@ export default function AdDetail() {
             <CarouselContent className="h-full">
               {ad.images.map((img, i) => (
                 <CarouselItem key={i} className="h-full">
-                  <img src={img} alt={`${ad.title} - صورة ${i + 1}`} className="w-full h-full object-cover" />
+                  <img
+                    src={img}
+                    alt={`${ad.title} - صورة ${i + 1}`}
+                    className="w-full h-full object-cover"
+                  />
                 </CarouselItem>
               ))}
             </CarouselContent>
@@ -219,7 +309,10 @@ export default function AdDetail() {
               <>
                 <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1 z-10">
                   {ad.images.map((_, i) => (
-                    <div key={i} className="w-2 h-2 rounded-full bg-white/50 backdrop-blur-sm" />
+                    <div
+                      key={i}
+                      className="w-2 h-2 rounded-full bg-white/50 backdrop-blur-sm"
+                    />
                   ))}
                 </div>
               </>
@@ -242,7 +335,9 @@ export default function AdDetail() {
             <div className="text-primary font-bold text-2xl flex items-center gap-2">
               {formatPrice(ad.price, ad.priceType)}
               {ad.priceType === "negotiable" && (
-                <span className="text-sm font-medium bg-primary/10 px-2 py-0.5 rounded-md text-primary">قابل للتفاوض</span>
+                <span className="text-sm font-medium bg-primary/10 px-2 py-0.5 rounded-md text-primary">
+                  قابل للتفاوض
+                </span>
               )}
             </div>
           )}
@@ -270,8 +365,12 @@ export default function AdDetail() {
             disabled={likeMut.isPending || unlikeMut.isPending}
             className={`flex items-center gap-1.5 text-sm flex-1 justify-center active:scale-95 transition-all rounded-lg ${ad.isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <ThumbsUp className={`w-4 h-4 ${ad.isLiked ? "fill-primary" : ""}`} />
-            <span className="font-semibold tabular-nums">{ad.likeCount.toLocaleString("ar")}</span>
+            <ThumbsUp
+              className={`w-4 h-4 ${ad.isLiked ? "fill-primary" : ""}`}
+            />
+            <span className="font-semibold tabular-nums">
+              {(ad.likeCount ?? 0).toLocaleString("ar")}
+            </span>
             <span className="text-xs">إعجاب</span>
           </button>
           <button
@@ -281,8 +380,12 @@ export default function AdDetail() {
             disabled={favMut.isPending || unfavMut.isPending}
             className={`flex items-center gap-1.5 text-sm flex-1 justify-center active:scale-95 transition-all rounded-lg ${ad.isFavorited ? "text-amber-500" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <Star className={`w-4 h-4 ${ad.isFavorited ? "fill-amber-500" : ""}`} />
-            <span className="font-semibold tabular-nums">{ad.favoriteCount.toLocaleString("ar")}</span>
+            <Star
+              className={`w-4 h-4 ${ad.isFavorited ? "fill-amber-500" : ""}`}
+            />
+            <span className="font-semibold tabular-nums">
+              {(ad.favoriteCount ?? 0).toLocaleString("ar")}
+            </span>
             <span className="text-xs">مفضّلة</span>
           </button>
         </div>
@@ -313,7 +416,9 @@ export default function AdDetail() {
           )}
           <div className="flex justify-between py-1 border-b border-border/50">
             <span className="text-muted-foreground">نوع الإعلان</span>
-            <span className="font-medium">{ad.type === "offer" ? "عرض" : "طلب"}</span>
+            <span className="font-medium">
+              {ad.type === "offer" ? "عرض" : "طلب"}
+            </span>
           </div>
         </div>
 
@@ -324,67 +429,113 @@ export default function AdDetail() {
           <h3 className="font-semibold mb-2">معلومات البائع</h3>
           <div className="flex flex-col gap-3 p-3 rounded-xl border border-border bg-muted/20">
             {ad.userId ? (
-              <Link href={`/users/${ad.userId}`} className="flex items-center gap-3 hover:opacity-90 active:scale-[0.99] transition-all">
+              <Link
+                href={`/users/${ad.userId}`}
+                className="flex items-center gap-3 hover:opacity-90 active:scale-[0.99] transition-all"
+              >
                 <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
                   {ad.sellerName.charAt(0)}
                 </div>
                 <div className="flex-1 flex flex-col min-w-0">
-                  <span className="font-semibold truncate">{ad.sellerName}</span>
-                  <span className="text-xs text-muted-foreground">عرض الملف الشخصي وإعلانات أخرى</span>
+                  <span className="font-semibold truncate">
+                    {ad.sellerName}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    عرض الملف الشخصي وإعلانات أخرى
+                  </span>
                 </div>
               </Link>
             ) : (
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-                  {ad.sellerName.charAt(0)}
+                  {ad.sellerName ? ad.sellerName.charAt(0) : "؟"}
                 </div>
                 <div className="flex-1 flex flex-col min-w-0">
-                  <span className="font-semibold truncate">{ad.sellerName}</span>
-                  <span className="text-xs text-muted-foreground">عضو في سوق العرب</span>
+                  <span className="font-semibold truncate">
+                    {ad.sellerName}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    عضو في سوق العرب
+                  </span>
                 </div>
               </div>
             )}
             <Button
               type="button"
               onClick={handleMessage}
-              disabled={startConversation.isPending}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-5 text-base shadow-md shadow-primary/20 flex items-center justify-center gap-2"
+              disabled={startConversation?.isPending}
+              className="w-full bg-[#b6e356] hover:bg-[#a8d94c] text-black rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-2 transition-all"
             >
-              <MessageSquare className="w-5 h-5" />
+              <MessageSquare className="w-4 h-4" />
               راسل البائع داخل التطبيق
             </Button>
             <Button
               type="button"
               onClick={() => {
-                const text = encodeURIComponent(`مرحباً، أنا مهتم بإعلانك: ${ad.title}`);
+                const text = encodeURIComponent(
+                  `مرحباً، أنا مهتم بإعلانك: ${ad.title}`,
+                );
                 window.open(
                   `https://wa.me/${ad.sellerPhone.replace(/[^0-9+]/g, "")}?text=${text}`,
                   "_blank",
                 );
               }}
-              variant="outline"
-              className="w-full border-2 border-[#25D366]/40 hover:bg-[#25D366]/10 text-[#25D366] hover:text-[#25D366] font-bold py-5 text-base flex items-center justify-center gap-2"
+              className="w-full bg-transparent border border-green-500 text-green-400 hover:bg-green-500/10 rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-2 transition-all"
             >
               <MessageCircle className="w-5 h-5" />
               تواصل عبر واتساب
             </Button>
-            <button
-              type="button"
-              onClick={handleCopyPhone}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-md border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors"
+            <select
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full border p-3 rounded bg-background text-right"
+              required
             >
-              <Phone className="w-4 h-4" />
-              <span dir="ltr" className="font-mono">{ad.sellerPhone}</span>
-              {copied ? (
-                <CheckCircle2 className="w-4 h-4 text-primary" />
-              ) : (
-                <Copy className="w-4 h-4 opacity-60" />
-              )}
-            </button>
+              <option value="" disabled>
+                سبب الإبلاغ
+              </option>
+              <option value="احتيال أو نصب">احتيال أو نصب</option>
+              <option value="إعلان مكرر">إعلان مكرر</option>
+              <option value="معلومات غير صحيحة">معلومات غير صحيحة</option>
+              <option value="منتج مخالف">منتج مخالف</option>
+              <option value="محتوى غير لائق">محتوى غير لائق</option>
+              <option value="أخرى">أخرى</option>
+            </select>
+            {reason === "أخرى" && (
+              <textarea
+                placeholder="اكتب تفاصيل إضافية..."
+                className="w-full border p-3 rounded bg-background text-right"
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+              />
+            )}
+
+            <Button
+              onClick={handleReport}
+              disabled={
+                reporting || !reason || (reason === "أخرى" && !details.trim())
+              }
+            >
+              {reporting ? "جاري الإرسال..." : "🚩 إبلاغ عن الإعلان"}
+            </Button>
           </div>
+          <button
+            type="button"
+            onClick={handleCopyPhone}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-md border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors"
+          >
+            <Phone className="w-4 h-4" />
+            <span dir="ltr" className="font-mono">
+              {ad.sellerPhone}
+            </span>
+            {copied ? (
+              <CheckCircle2 className="w-4 h-4 text-primary" />
+            ) : (
+              <Copy className="w-4 h-4 opacity-60" />
+            )}
+          </button>
         </div>
       </div>
     </motion.div>
   );
 }
-

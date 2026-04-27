@@ -1,5 +1,8 @@
 import { Link, Redirect } from "wouter";
-import { useListConversations, getListConversationsQueryKey } from "@workspace/api-client-react";
+import {
+  useListConversations,
+  getListConversationsQueryKey,
+} from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageCircle } from "lucide-react";
@@ -19,7 +22,9 @@ export default function Messages() {
 
   useChatSocket((ev) => {
     if (ev.type === "message") {
-      queryClient.invalidateQueries({ queryKey: getListConversationsQueryKey() });
+      queryClient.invalidateQueries({
+        queryKey: getListConversationsQueryKey(),
+      });
     }
   });
 
@@ -45,34 +50,44 @@ export default function Messages() {
                 href={`/messages/${c.id}`}
                 className="flex items-center gap-3 p-4 border-b border-border/40 hover:bg-muted/40 active:bg-muted transition-colors"
               >
-                  <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden shrink-0">
-                    {c.adImage ? (
-                      <img src={c.adImage} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                        <MessageCircle className="w-5 h-5" />
-                      </div>
+                <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden shrink-0">
+                  {c.adImage ? (
+                    <img
+                      src={c.adImage}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      <MessageCircle className="w-5 h-5" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-semibold truncate">
+                      {c.otherName || "مستخدم"}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground shrink-0">
+                      {formatRelativeTime(c.lastMessageAt)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {c.adTitle}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span
+                      className={`text-sm truncate ${c.unreadCount > 0 ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+                    >
+                      {c.lastMessagePreview || "ابدأ المحادثة"}
+                    </span>
+                    {c.unreadCount > 0 && (
+                      <span className="ml-auto bg-primary text-primary-foreground rounded-full text-[10px] px-2 py-0.5 font-bold shrink-0">
+                        {c.unreadCount}
+                      </span>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="font-semibold truncate">{c.otherName || "مستخدم"}</span>
-                      <span className="text-[11px] text-muted-foreground shrink-0">
-                        {formatRelativeTime(c.lastMessageAt)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground truncate">{c.adTitle}</div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`text-sm truncate ${c.unreadCount > 0 ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
-                        {c.lastMessagePreview || "ابدأ المحادثة"}
-                      </span>
-                      {c.unreadCount > 0 && (
-                        <span className="ml-auto bg-primary text-primary-foreground rounded-full text-[10px] px-2 py-0.5 font-bold shrink-0">
-                          {c.unreadCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                </div>
               </Link>
             </li>
           ))}

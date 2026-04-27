@@ -34,6 +34,7 @@ export const adsTable = pgTable("ads", {
   sellerName: text("seller_name").notNull(),
   sellerPhone: text("seller_phone").notNull(),
   featured: boolean("featured").notNull().default(false),
+  status: text("status").notNull().default("pending"),
   views: integer("views").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -42,18 +43,28 @@ export const adsTable = pgTable("ads", {
 
 export const adViewsTable = pgTable("ad_views", {
   id: serial("id").primaryKey(),
-  adId: integer("ad_id").notNull().references(() => adsTable.id, { onDelete: "cascade" }),
+  adId: integer("ad_id")
+    .notNull()
+    .references(() => adsTable.id, { onDelete: "cascade" }),
   viewerKey: text("viewer_key").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const adLikesTable = pgTable(
   "ad_likes",
   {
     id: serial("id").primaryKey(),
-    adId: integer("ad_id").notNull().references(() => adsTable.id, { onDelete: "cascade" }),
-    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    adId: integer("ad_id")
+      .notNull()
+      .references(() => adsTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => ({
     adUserUnique: uniqueIndex("ad_likes_ad_user_unique").on(t.adId, t.userId),
@@ -65,12 +76,21 @@ export const adFavoritesTable = pgTable(
   "ad_favorites",
   {
     id: serial("id").primaryKey(),
-    adId: integer("ad_id").notNull().references(() => adsTable.id, { onDelete: "cascade" }),
-    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    adId: integer("ad_id")
+      .notNull()
+      .references(() => adsTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => ({
-    adUserUnique: uniqueIndex("ad_favorites_ad_user_unique").on(t.adId, t.userId),
+    adUserUnique: uniqueIndex("ad_favorites_ad_user_unique").on(
+      t.adId,
+      t.userId,
+    ),
     adIdx: index("ad_favorites_ad_idx").on(t.adId),
   }),
 );

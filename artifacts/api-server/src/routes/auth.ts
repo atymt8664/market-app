@@ -2,6 +2,8 @@ import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
+import nodemailer from "nodemailer";
+
 import {
   db,
   usersTable,
@@ -9,7 +11,9 @@ import {
   userViewsTable,
   adsTable,
 } from "@workspace/db";
+
 import { and, eq, sql } from "drizzle-orm";
+
 import {
   AuthSignupBody,
   AuthLoginBody,
@@ -17,9 +21,36 @@ import {
   AuthResendVerificationBody,
 } from "@workspace/api-zod";
 
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "souq.arab.app@gmail.com",
+    pass: "gqixldqloqcrxoci",
+  },
+});
+
 const router: IRouter = Router();
 
-const isProd = process.env.NODE_ENV === "production";
+router.get("/test-email", async (req, res) => {
+  try {
+    await transporter.verify();
+    console.log("SMTP READY ✅");
+
+    const info = await transporter.sendMail({
+      from: '"Souq App" <souq.arab.app@gmail.com>',
+      to: "contact.nexburst@gmail.com",
+      subject: "Test Email",
+      text: "اشتغل الإيميل 🔥",
+    });
+
+    console.log("EMAIL SENT ✅", info.response);
+    res.send("Email sent ✅");
+  } catch (err: any) {
+    console.error("ERROR ❌:", err);
+    res.send(err.message);
+  }
+});
+const isProd = true;
 
 const signupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1h
@@ -116,10 +147,26 @@ function resetExpiry() {
   return new Date(Date.now() + 60 * 60 * 1000); // 60 min
 }
 
-// Replace these stubs with real email delivery (e.g. SendGrid) once configured.
 async function deliverVerificationCode(email: string, code: string) {
-  // eslint-disable-next-line no-console
-  console.log(`[email-verification] code for ${email}: ${code}`);
+  try {
+    await transporter.sendMail({
+      from: `"Souq App" <souq.arab.app@gmail.com>`,
+      to: email,
+      subject: "رمز التفعيل",
+      html: `
+        <div dir="rtl">
+          <h2>رمز التفعيل الخاص بك</h2>
+          <p style="font-size:24px; font-weight:bold;">${code}</p>
+          <p>لا تشارك هذا الرمز مع أي شخص</p>
+        </div>
+      `,
+    });
+
+    console.log("تم إرسال الإيميل إلى:", email);
+  } catch (error) {
+    console.error("خطأ في إرسال الإيميل:", error);
+    throw error;
+  }
 }
 
 async function deliverPasswordResetLink(email: string, url: string) {
@@ -128,68 +175,119 @@ async function deliverPasswordResetLink(email: string, url: string) {
 }
 
 router.post("/auth/signup", signupLimiter, async (req, res) => {
-  const parsed = AuthSignupBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "بيانات غير صحيحة" });
-    return;
+  try {
+    const parsed = AuthSignupBody.safeParse(req.body);
+
+    if (!parsed.success) {
+      res.status(400).json({ error: "بيانات غير صحيحة" });
+      return;
+    }
+
+    const { email, password, name, phone, city } = parsed.data;
+    const normalizedEmail = email.toLowerCase();
+
+    const existing = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, normalizedEmail))
+      .limit(1);
+
+    if (existing[0]) {
+      const user = existing[0];
+
+      if (!user.emailVerified) {
+        const code = generateCode();
+
+        await db
+          .update(usersTable)
+          .set({
+            passwordHash: await bcrypt.hash(password, 10),
+            name,
+            phone,
+            city: city ?? "",
+            verificationCode: code,
+            verificationExpiresAt: expiryDate(),
+          })
+          .where(eq(usersTable.id, user.id));
+
+        await deliverVerificationCode(user.email, code);
+
+        res.json({
+          ok: true,
+          email: user.email,
+          needsVerification: true,
+          message: "تم إرسال رمز تفعيل جديد",
+        });
+        return;
+      }
+
+      res.status(409).json({ error: "البريد الإلكتروني مسجل مسبقاً" });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const code = generateCode();
+
+    const [user] = await db
+      .insert(usersTable)
+      .values({
+        email: normalizedEmail,
+        passwordHash,
+        name,
+        phone,
+        city: city ?? "",
+        emailVerified: false,
+        verificationCode: code,
+        verificationExpiresAt: expiryDate(),
+      })
+      .returning();
+
+    await deliverVerificationCode(normalizedEmail, code);
+
+    res.json({
+      ok: true,
+      email: normalizedEmail,
+      needsVerification: true,
+      message: "تم إنشاء الحساب، تحقق من بريدك",
+      user: serializeUserBasic(user!),
+    });
+  } catch (error) {
+    console.error("Signup error:", error);
+    res.status(500).json({ error: "تعذر إنشاء الحساب" });
   }
-  const { email, password, name, phone, city } = parsed.data;
-  const existing = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.email, email.toLowerCase()))
-    .limit(1);
-  if (existing[0]) {
-    res.status(409).json({ error: "البريد الإلكتروني مسجل مسبقاً" });
-    return;
-  }
-  const passwordHash = await bcrypt.hash(password, 10);
-  const code = generateCode();
-  const [user] = await db
-    .insert(usersTable)
-    .values({
-      email: email.toLowerCase(),
-      passwordHash,
-      name,
-      phone,
-      city: city ?? "",
-      emailVerified: false,
-      verificationCode: code,
-      verificationExpiresAt: expiryDate(),
-    })
-    .returning();
-  await deliverVerificationCode(user!.email, code);
-  // Don't sign user in until verified.
-  res.json({
-    ...serializeUserBasic(user!),
-    // Only included outside production so users can complete the flow without
-    // a configured email provider. Remove once SMTP is connected.
-    ...(isProd ? {} : { devVerificationCode: code }),
-  });
 });
 
 router.post("/auth/login", loginLimiter, async (req, res) => {
   const parsed = AuthLoginBody.safeParse(req.body);
+
   if (!parsed.success) {
     res.status(400).json({ error: "بيانات غير صحيحة" });
     return;
   }
+
   const { email, password } = parsed.data;
+  const normalizedEmail = email.toLowerCase();
+
   const rows = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.email, email.toLowerCase()))
+    .where(eq(usersTable.email, normalizedEmail))
     .limit(1);
+
   const user = rows[0];
+
   if (!user) {
     res.status(401).json({ error: "البريد أو كلمة المرور غير صحيحة" });
     return;
   }
+
   const ok = await bcrypt.compare(password, user.passwordHash);
+
   if (!ok) {
     res.status(401).json({ error: "البريد أو كلمة المرور غير صحيحة" });
     return;
   }
+
   if (!user.emailVerified) {
     res.status(403).json({
       error: "لم يتم تفعيل البريد الإلكتروني بعد",
@@ -198,6 +296,7 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
     });
     return;
   }
+
   req.session.userId = user.id;
   res.json(await serializeUserMe(user));
 });
@@ -265,14 +364,22 @@ router.post("/auth/change-password", async (req, res) => {
     res.status(401).json({ error: "غير مسجل الدخول" });
     return;
   }
-  const body = req.body as { currentPassword?: unknown; newPassword?: unknown };
-  const current = typeof body.currentPassword === "string" ? body.currentPassword : "";
+  const body = req.body as {
+    currentPassword?: unknown;
+    newPassword?: unknown;
+  };
+  const current =
+    typeof body.currentPassword === "string" ? body.currentPassword : "";
   const next = typeof body.newPassword === "string" ? body.newPassword : "";
   if (next.length < 6) {
     res.status(400).json({ error: "كلمة المرور الجديدة قصيرة جداً" });
     return;
   }
-  const rows = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  const rows = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
   const user = rows[0];
   if (!user) {
     res.status(401).json({ error: "غير مسجل الدخول" });
@@ -284,7 +391,10 @@ router.post("/auth/change-password", async (req, res) => {
     return;
   }
   const passwordHash = await bcrypt.hash(next, 10);
-  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, userId));
+  await db
+    .update(usersTable)
+    .set({ passwordHash })
+    .where(eq(usersTable.id, userId));
   res.json({ ok: true });
 });
 
@@ -338,7 +448,7 @@ router.post("/auth/verify-email", verifyLimiter, async (req, res) => {
   if (
     !user.verificationCode ||
     !user.verificationExpiresAt ||
-    user.verificationCode !== code ||
+    String(user.verificationCode).trim() !== String(code).trim() ||
     user.verificationExpiresAt.getTime() < Date.now()
   ) {
     res.status(400).json({ error: "رمز التفعيل غير صحيح أو منتهي الصلاحية" });
@@ -383,13 +493,13 @@ router.post("/auth/resend-verification", verifyLimiter, async (req, res) => {
   await deliverVerificationCode(user.email, code);
   res.json({
     ok: true,
-    ...(isProd ? {} : { devVerificationCode: code }),
   });
 });
 
 router.post("/auth/forgot-password", passwordResetLimiter, async (req, res) => {
   const body = req.body as { email?: unknown };
-  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const email =
+    typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   if (!email || !email.includes("@")) {
     res.status(400).json({ error: "بريد إلكتروني غير صحيح" });
     return;
@@ -413,8 +523,7 @@ router.post("/auth/forgot-password", passwordResetLimiter, async (req, res) => {
       passwordResetExpiresAt: resetExpiry(),
     })
     .where(eq(usersTable.id, user.id));
-  const origin = (req.get("origin") || `${req.protocol}://${req.get("host")}`).replace(/\/$/, "");
-  const url = `${origin}/reset-password?token=${token}`;
+  const url = `https://796954c8-8650-4692-8c58-ccaa3bfea85b-00-2ptjcbj5jjblu.kirk.replit.dev:3000/reset-password?token=${token}`;
   await deliverPasswordResetLink(user.email, url);
   res.json({
     ok: true,
@@ -463,5 +572,43 @@ router.post("/auth/reset-password", passwordResetLimiter, async (req, res) => {
 
 // Suppress unused import warning when only referenced via select chains.
 void and;
+
+router.post("/admin-login", async (req, res) => {
+  const { password } = req.body;
+  console.log("ADMIN CHECK", {
+    inputLength: String(password || "").trim().length,
+    envExists: !!process.env.ADMIN_PASSWORD,
+    envLength: String(process.env.ADMIN_PASSWORD || "").trim().length,
+  });
+
+  if (!password) {
+    return res.status(400).json({ error: "Missing password" });
+  }
+
+  if (
+    String(password).trim() !== String(process.env.ADMIN_PASSWORD || "").trim()
+  ) {
+    return res.status(401).json({ error: "Wrong password" });
+  }
+
+  (req.session as any).isAdmin = true;
+
+  return res.json({ success: true });
+});
+
+router.get("/admin/me", (req, res) => {
+  if ((req.session as any).isAdmin) {
+    return res.json({ isAdmin: true });
+  }
+
+  return res.status(401).json({ isAdmin: false });
+});
+
+router.post("/admin-logout", (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie("souq.sid");
+    return res.json({ success: true });
+  });
+});
 
 export default router;

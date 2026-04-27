@@ -14,7 +14,9 @@ import Profile from "@/pages/profile";
 import Favorites from "@/pages/favorites";
 import Stats from "@/pages/stats";
 import Login from "@/pages/login";
+import AdminLogin from "@/pages/admin-login";
 import Signup from "@/pages/signup";
+import AdminPage from "./pages/admin";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import UserProfile from "@/pages/user-profile";
@@ -49,6 +51,8 @@ function Router() {
         <Route path="/new">{() => <CreateAd />}</Route>
         <Route path="/edit/:id" component={EditAd} />
         <Route path="/login" component={Login} />
+        <Route path="/admin-login" component={AdminLogin} />
+        <Route path="/admin" component={AdminPage} />
         <Route path="/signup" component={Signup} />
         <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/forgot-password" component={ForgotPassword} />

@@ -33,19 +33,29 @@ export default function ForgotPassword() {
     defaultValues: { email: "" },
   });
 
-  const onSubmit = (data: Values) => {
-    mut.mutate(
-      { data },
-      {
-        onSuccess: (res) => {
-          setSubmitted(true);
-          if (res.devResetUrl) setDevUrl(res.devResetUrl);
+  const onSubmit = async (data: Values) => {
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        onError: () => {
-          setSubmitted(true);
-        },
-      },
-    );
+        credentials: "include",
+        body: JSON.stringify({
+          email: data.email.trim(),
+        }),
+      });
+
+      const json = await res.json();
+
+      setSubmitted(true);
+
+      if (json.devResetUrl) {
+        setDevUrl(json.devResetUrl);
+      }
+    } catch {
+      setSubmitted(true);
+    }
   };
 
   return (

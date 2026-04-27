@@ -46,16 +46,22 @@ function Row({ icon, label, hint, onClick, trailing, destructive }: RowProps) {
     >
       <div
         className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-          destructive ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground"
+          destructive
+            ? "bg-destructive/10 text-destructive"
+            : "bg-muted text-foreground"
         }`}
       >
         {icon}
       </div>
       <div className="flex-1 flex flex-col items-start min-w-0">
-        <span className={`text-sm font-medium ${destructive ? "text-destructive" : ""}`}>
+        <span
+          className={`text-sm font-medium ${destructive ? "text-destructive" : ""}`}
+        >
           {label}
         </span>
-        {hint && <span className="text-xs text-muted-foreground truncate">{hint}</span>}
+        {hint && (
+          <span className="text-xs text-muted-foreground truncate">{hint}</span>
+        )}
       </div>
       {trailing ?? (
         <ChevronLeft className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -64,7 +70,13 @@ function Row({ icon, label, hint, onClick, trailing, destructive }: RowProps) {
   );
 }
 
-function Section({ title, children }: { title?: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="px-4 mb-6">
       {title && (
@@ -72,7 +84,9 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
           {title}
         </h2>
       )}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">{children}</div>
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        {children}
+      </div>
     </section>
   );
 }
@@ -107,14 +121,11 @@ export default function Settings() {
   };
 
   const handleLogout = () => {
-    logoutMutation.mutate(undefined, {
-      onSuccess: async () => {
-        await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
-        await queryClient.invalidateQueries({ queryKey: getListMyAdsQueryKey() });
-        toast({ title: "تم تسجيل الخروج" });
-        navigate("/");
-      },
-    });
+    localStorage.clear();
+    sessionStorage.clear();
+    queryClient.clear();
+
+    window.location.href = "/login";
   };
 
   const go = (path: string) => () => navigate(path);
@@ -139,7 +150,7 @@ export default function Settings() {
         <Section>
           <div className="flex items-center gap-3 p-4">
             <div className="w-14 h-14 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xl font-bold shrink-0">
-              {user.name.charAt(0).toUpperCase()}
+              {(user.name || user.email || "?").charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-bold truncate">{user.name}</div>
@@ -181,7 +192,12 @@ export default function Settings() {
         <Row
           icon={<Bell className="w-4 h-4" />}
           label="الإشعارات"
-          trailing={<Switch checked={notifications} onCheckedChange={toggleNotifications} />}
+          trailing={
+            <Switch
+              checked={notifications}
+              onCheckedChange={toggleNotifications}
+            />
+          }
         />
         <Row
           icon={<Moon className="w-4 h-4" />}

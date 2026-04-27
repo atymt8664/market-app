@@ -107,25 +107,41 @@ export default function Profile() {
         animate={{ opacity: 1 }}
         className="flex flex-col w-full min-h-[100dvh] bg-background"
       >
-        <header className="pt-12 pb-10 px-4 text-foreground flex flex-col items-center">
-          <div className="w-24 h-24 rounded-full bg-muted border border-border flex items-center justify-center mb-3">
-            <UserIcon className="w-12 h-12 text-muted-foreground" />
+        <div className="flex flex-col items-center justify-center flex-1 gap-8 px-6">
+          {/* الأيقونة */}
+          <div className="relative">
+            <div className="absolute inset-0 blur-2xl bg-primary/20 rounded-full"></div>
+            <div className="relative w-28 h-28 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shadow-xl">
+              <UserIcon className="w-12 h-12 text-primary" />
+            </div>
           </div>
-          <h1 className="text-xl font-bold">مرحباً بك</h1>
-          <p className="text-muted-foreground text-sm mt-1">سجّل الدخول لإدارة إعلاناتك</p>
-        </header>
 
-        <div className="p-6 flex flex-col gap-3">
-          <Link href="/login">
-            <Button className="w-full py-6 text-base font-bold gap-2">
-              <LogIn className="w-5 h-5" /> تسجيل الدخول
-            </Button>
-          </Link>
-          <Link href="/signup">
-            <Button variant="outline" className="w-full py-6 text-base font-bold gap-2">
-              <UserPlus className="w-5 h-5" /> إنشاء حساب جديد
-            </Button>
-          </Link>
+          {/* النص */}
+          <div className="text-center space-y-3">
+            <h1 className="text-2xl font-extrabold">مرحباً بك 👋</h1>
+            <p className="text-sm text-muted-foreground">
+              سجّل الدخول لإدارة إعلاناتك بسهولة
+            </p>
+          </div>
+
+          {/* الأزرار */}
+          <div className="w-full flex flex-col gap-4 mt-4">
+            <Link href="/login">
+              <Button className="w-[60%] ml-auto mr-16 h-14 rounded-2xl bg-primary text-black font-bold text-base shadow-lg hover:scale-[1.02] active:scale-[0.97] transition-all">
+                تسجيل الدخول →
+              </Button>
+            </Link>
+
+            <Link href="/signup">
+              <Button
+                variant="outline"
+                className="w-[60%] mx-auto h-14 rounded-2xl border border-border text-muted-foreground flex items-center justify-center gap-2 hover:bg-muted/30 transition-all"
+              >
+                <UserPlus className="w-5 h-5" />
+                إنشاء حساب جديد
+              </Button>
+            </Link>
+          </div>
         </div>
       </motion.div>
     );
@@ -151,7 +167,9 @@ export default function Profile() {
       { adId: adToDelete },
       {
         onSuccess: async () => {
-          await queryClient.invalidateQueries({ queryKey: getListMyAdsQueryKey() });
+          await queryClient.invalidateQueries({
+            queryKey: getListMyAdsQueryKey(),
+          });
           toast({ title: "تم حذف الإعلان" });
           setAdToDelete(null);
         },
@@ -190,6 +208,33 @@ export default function Profile() {
     : null;
   const avatarBusy = isUploading || updateProfile.isPending;
 
+  if (!user) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex flex-col items-center justify-center w-full min-h-[100dvh] bg-background px-6 text-center"
+      >
+        <h1 className="text-2xl font-bold mb-3">مرحباً بك 👋</h1>
+        <p className="text-muted-foreground mb-8">
+          سجل الدخول لإدارة إعلاناتك بسهولة
+        </p>
+
+        <Link href="/login" className="w-full max-w-xs">
+          <button className="w-full h-14 rounded-2xl bg-primary text-black font-bold text-base">
+            تسجيل الدخول
+          </button>
+        </Link>
+
+        <Link href="/signup" className="w-full max-w-xs mt-4">
+          <button className="w-full h-14 rounded-2xl border border-border">
+            إنشاء حساب جديد
+          </button>
+        </Link>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -200,9 +245,12 @@ export default function Profile() {
       <div className="px-4 pt-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-foreground truncate">حسابي</h1>
+            <h1 className="text-2xl font-bold text-foreground truncate">
+              حسابي
+            </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {adCount.toLocaleString("ar")} إعلانات · {followerCount.toLocaleString("ar")} متابع
+              {adCount.toLocaleString("ar")} إعلانات ·{" "}
+              {followerCount.toLocaleString("ar")} متابع
             </p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
@@ -216,7 +264,7 @@ export default function Profile() {
             <Link href="/settings">
               <button
                 aria-label="الإعدادات"
-                className="w-9 h-9 flex items-center justify-center text-foreground hover:bg-muted/50 active:bg-muted rounded-full transition-colors"
+                className="w-9 h-9 flex items-center justify-center text-primary hover:bg-muted/50 active:bg-muted rounded-full transition-colors"
               >
                 <Settings className="w-5 h-5" />
               </button>
@@ -258,15 +306,29 @@ export default function Profile() {
 
         {/* Badges */}
         <div className="flex flex-wrap gap-1.5 mt-2">
-          <Badge icon={<ShieldCheck className="w-3 h-3" />} text="موثوق" />
-          <Badge icon={<Smile className="w-3 h-3" />} text="ودود" />
-          <Badge icon={<Leaf className="w-3 h-3" />} text="نشط" />
+          <div className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full bg-purple-600 text-white">
+            <ShieldCheck className="w-3 h-3" />
+            موثوق
+          </div>
+
+          <div className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full bg-purple-600 text-white">
+            <Smile className="w-3 h-3" />
+            ودود
+          </div>
+
+          <div className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full bg-purple-600 text-white">
+            <Leaf className="w-3 h-3" />
+            نشط
+          </div>
         </div>
       </div>
 
       {/* Compact info list (Kleinanzeigen-style stacked rows) */}
       <div className="px-4 mt-3 flex flex-col gap-2 text-[13px]">
-        <CompactInfo icon={<UserIcon className="w-4 h-4 text-primary" />} text="بائع شخصي" />
+        <CompactInfo
+          icon={<UserIcon className="w-4 h-4 text-primary" />}
+          text="بائع شخصي"
+        />
         {memberSince && (
           <CompactInfo
             icon={<ShieldCheck className="w-4 h-4 text-primary" />}
@@ -337,7 +399,7 @@ export default function Profile() {
 
       {/* Empty state CTA */}
       {!adsLoading && adCount === 0 && (
-        <div className="mx-4 mt-4 p-5 rounded-2xl bg-primary/10 border border-primary/30 flex flex-col items-center text-center">
+        <div className="mt-6 flex flex-col items-center text-center">
           <div className="w-14 h-14 rounded-full bg-primary/20 text-primary flex items-center justify-center mb-3">
             <Plus className="w-7 h-7" />
           </div>
@@ -346,8 +408,9 @@ export default function Profile() {
             ابدأ ببيع أشيائك المستعملة بسهولة ومجاناً
           </p>
           <Link href="/new">
-            <Button className="px-8 py-5 font-bold text-base gap-2">
-              <Plus className="w-5 h-5" /> أنشئ إعلاناً
+            <Button className="px-4 py-2 text-sm font-medium rounded-full bg-[#b6e356] text-black inline-flex items-center gap-2 shadow-sm">
+              <Plus className="w-4 h-4" />
+              أنشئ إعلانًا
             </Button>
           </Link>
         </div>
@@ -358,7 +421,9 @@ export default function Profile() {
         <div className="px-4 mt-5 flex-1">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-bold text-base">إعلاناتي</h2>
-            <span className="text-muted-foreground text-xs">{adCount} إعلان</span>
+            <span className="text-muted-foreground text-xs">
+              {adCount} إعلان
+            </span>
           </div>
 
           {adsLoading ? (
@@ -369,41 +434,45 @@ export default function Profile() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {myAds!.map((ad) => (
-                <div key={ad.id} className="relative">
-                  <AdCard ad={ad} />
-                  <div className="absolute top-2 left-2 flex gap-1 z-10">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        navigate(`/edit/${ad.id}`);
-                      }}
-                      className="w-8 h-8 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black"
-                      aria-label="تعديل"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setAdToDelete(ad.id);
-                      }}
-                      className="w-8 h-8 rounded-full bg-destructive/90 text-white flex items-center justify-center hover:bg-destructive"
-                      aria-label="حذف"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+              {Array.isArray(myAds) &&
+                myAds.map((ad) => (
+                  <div key={ad.id} className="relative">
+                    <AdCard ad={ad} />
+                    <div className="absolute top-2 left-2 flex gap-1 z-10">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          navigate(`/edit/${ad.id}`);
+                        }}
+                        className="w-8 h-8 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black"
+                        aria-label="تعديل"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setAdToDelete(ad.id);
+                        }}
+                        className="w-8 h-8 rounded-full bg-destructive/90 text-white flex items-center justify-center hover:bg-destructive"
+                        aria-label="حذف"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>
       )}
 
-      <AlertDialog open={adToDelete !== null} onOpenChange={(open) => !open && setAdToDelete(null)}>
+      <AlertDialog
+        open={adToDelete !== null}
+        onOpenChange={(open) => !open && setAdToDelete(null)}
+      >
         <AlertDialogContent dir="rtl" className="text-right">
           <AlertDialogHeader>
             <AlertDialogTitle>تأكيد حذف الإعلان</AlertDialogTitle>
@@ -460,9 +529,7 @@ function StatCard({
   return (
     <div
       className={`rounded-xl border p-2.5 flex flex-col items-center justify-center text-center ${
-        accent
-          ? "bg-primary/10 border-primary/30"
-          : "bg-card border-border"
+        accent ? "bg-primary/10 border-primary/30" : "bg-card border-border"
       }`}
     >
       <div className="flex items-center gap-1">

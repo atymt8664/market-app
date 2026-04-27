@@ -7,7 +7,14 @@ import { ArrowRight, Loader2, LogIn } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthLogin, getAuthMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -31,42 +38,56 @@ export default function Login() {
     defaultValues: { email: "", password: "" },
   });
 
-  const onSubmit = (data: Values) => {
+  const onSubmit = async (data: Values) => {
     setError(null);
-    loginMutation.mutate(
-      { data },
-      {
-        onSuccess: async () => {
-          await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
-          toast({ title: "تم تسجيل الدخول بنجاح" });
-          const params = new URLSearchParams(window.location.search);
-          navigate(params.get("redirect") || "/");
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        onError: async (err: unknown) => {
-          const e = err as { status?: number; data?: { code?: string; email?: string } };
-          if (e?.status === 403 && e?.data?.code === "EMAIL_NOT_VERIFIED") {
-            const targetEmail = e.data.email || data.email;
-            const params = new URLSearchParams({ email: targetEmail });
-            toast({
-              title: "البريد غير مُفعّل",
-              description: "أدخل رمز التفعيل لإكمال الدخول",
-            });
-            navigate(`/verify-email?${params.toString()}`);
-            return;
-          }
-          setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
-        },
-      },
-    );
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+
+      const text = await res.text();
+      const json = text ? JSON.parse(text) : {};
+
+      if (!res.ok) {
+        if (res.status === 403 && json?.code === "EMAIL_NOT_VERIFIED") {
+          const params = new URLSearchParams({ email: json?.email || data.email });
+
+          toast({
+            title: "البريد غير مُفعّل",
+            description: "أدخل رمز التفعيل لإكمال الدخول",
+          });
+
+          navigate(`/verify-email?${params.toString()}`);
+          return;
+        }
+
+        throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      }
+
+      toast({ title: "تم تسجيل الدخول بنجاح" });
+
+      const params = new URLSearchParams(window.location.search);
+      navigate(params.get("redirect") || "/");
+
+    } catch (err: any) {
+      setError(err.message || "فشل تسجيل الدخول");
+    }
   };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-background"
+      className="flex flex-col w-full min-h-[100dvh] bg-gradient-to-b from-background to-muted/30"
     >
-      <header className="sticky top-0 z-40 bg-background border-b border-border p-4 flex items-center gap-4">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur border-b border-border p-4 flex items-center gap-4">
         <Link href="/">
           <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
             <ArrowRight className="w-5 h-5" />
@@ -75,68 +96,108 @@ export default function Login() {
         <h1 className="font-bold text-lg">تسجيل الدخول</h1>
       </header>
 
-      <div className="p-6 flex flex-col gap-6">
-        <div className="flex flex-col items-center gap-2 pt-4 pb-2">
-          <div className="w-16 h-16 rounded-2xl bg-primary/15 text-primary flex items-center justify-center">
-            <LogIn className="w-8 h-8" />
+      {/* Content */}
+      <div className="flex flex-col gap-8 px-6 pt-10 pb-6">
+        {/* Icon + Title */}
+        <div className="flex flex-col items-center gap-5">
+          <div className="relative flex items-center justify-center">
+            {/* Glow */}
+            <div className="absolute w-44 h-44 rounded-full bg-primary/20 blur-3xl"></div>
+
+            {/* Circle */}
+            <div className="relative w-28 h-28 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shadow-xl">
+              <LogIn className="w-12 h-12 text-primary" />
+            </div>
           </div>
-          <h2 className="text-xl font-bold">أهلاً بعودتك</h2>
-          <p className="text-sm text-muted-foreground text-center">
-            سجّل الدخول لإدارة إعلاناتك ومتابعة المفضلة
-          </p>
+
+          <div className="text-center space-y-1">
+            <h2 className="text-2xl font-bold">أهلاً بعودتك 👋</h2>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              سجّل الدخول لإدارة إعلاناتك ومتابعة المفضلة بسهولة
+            </p>
+          </div>
         </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>البريد الإلكتروني</FormLabel>
-                  <FormControl>
-                    <Input type="email" dir="ltr" className="text-right" placeholder="name@email.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>كلمة المرور</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {error && (
-              <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-center">
-                {error}
-              </p>
-            )}
-
-            <Button type="submit" className="py-6 text-base font-bold mt-2" disabled={loginMutation.isPending}>
-              {loginMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "تسجيل الدخول"}
-            </Button>
-
-            <Link
-              href="/forgot-password"
-              className="text-center text-sm text-primary hover:underline -mt-1"
+        {/* Form Card */}
+        <div className="bg-background/80 backdrop-blur border border-border rounded-2xl p-5 shadow-xl">
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-col gap-4"
             >
-              نسيت كلمة المرور؟
-            </Link>
-          </form>
-        </Form>
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>البريد الإلكتروني</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        dir="ltr"
+                        className="text-right"
+                        placeholder="name@email.com"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>كلمة المرور</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {error && (
+                <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-center">
+                  {error}
+                </p>
+              )}
+
+              <Button
+                type="submit"
+                className="h-14 text-base font-bold mt-2 rounded-xl shadow-lg hover:scale-[1.02] transition-all"
+                disabled={loginMutation.isPending}
+              >
+                {loginMutation.isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  "تسجيل الدخول"
+                )}
+              </Button>
+
+              <Link
+                href="/forgot-password"
+                className="text-center text-sm text-primary hover:underline"
+              >
+                نسيت كلمة المرور؟
+              </Link>
+            </form>
+          </Form>
+        </div>
+
+        {/* Signup */}
         <p className="text-center text-sm text-muted-foreground">
           ليس لديك حساب؟{" "}
-          <Link href="/signup" className="text-primary font-bold hover:underline">
+          <Link
+            href="/signup"
+            className="text-primary font-bold hover:underline"
+          >
             إنشاء حساب جديد
           </Link>
         </p>

@@ -59,7 +59,7 @@ export default function Search() {
           {isLoading ? "جاري البحث..." : `تم العثور على ${ads?.length || 0} نتيجة`}
         </h2>
         
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
           {isLoading ? (
             Array.from({ length: 6 }).map((_, i) => (
               <AdCardSkeleton key={i} />
@@ -69,7 +69,7 @@ export default function Search() {
               <AdCard key={ad.id} ad={ad} />
             ))
           ) : (
-            <div className="col-span-2 flex flex-col items-center justify-center py-12 text-center opacity-80">
+            <div className="col-span-full flex flex-col items-center justify-center py-12 text-center opacity-80">
               <img src="/empty-state.png" alt="لا توجد نتائج" className="w-48 h-48 mb-4" />
               <h2 className="text-xl font-bold mb-2">لا توجد نتائج</h2>
               <p className="text-muted-foreground">جرب كلمات بحث مختلفة أو تصفح الأقسام.</p>

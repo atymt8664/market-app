@@ -2,7 +2,6 @@ import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
-import nodemailer from "nodemailer";
 
 import {
   db,
@@ -20,37 +19,13 @@ import {
   AuthVerifyEmailBody,
   AuthResendVerificationBody,
 } from "@workspace/api-zod";
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: "souq.arab.app@gmail.com",
-    pass: "gqixldqloqcrxoci",
-  },
-});
+import {
+  buildResetPasswordUrl,
+  sendPasswordResetEmail,
+  sendVerificationCodeEmail,
+} from "../lib/email";
 
 const router: IRouter = Router();
-
-router.get("/test-email", async (req, res) => {
-  try {
-    await transporter.verify();
-    console.log("SMTP READY ✅");
-
-    const info = await transporter.sendMail({
-      from: '"Souq App" <souq.arab.app@gmail.com>',
-      to: "contact.nexburst@gmail.com",
-      subject: "Test Email",
-      text: "اشتغل الإيميل 🔥",
-    });
-
-    console.log("EMAIL SENT ✅", info.response);
-    res.send("Email sent ✅");
-  } catch (err: any) {
-    console.error("ERROR ❌:", err);
-    res.send(err.message);
-  }
-});
-const isProd = true;
 
 const signupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1h
@@ -148,30 +123,11 @@ function resetExpiry() {
 }
 
 async function deliverVerificationCode(email: string, code: string) {
-  try {
-    await transporter.sendMail({
-      from: `"Souq App" <souq.arab.app@gmail.com>`,
-      to: email,
-      subject: "رمز التفعيل",
-      html: `
-        <div dir="rtl">
-          <h2>رمز التفعيل الخاص بك</h2>
-          <p style="font-size:24px; font-weight:bold;">${code}</p>
-          <p>لا تشارك هذا الرمز مع أي شخص</p>
-        </div>
-      `,
-    });
-
-    console.log("تم إرسال الإيميل إلى:", email);
-  } catch (error) {
-    console.error("خطأ في إرسال الإيميل:", error);
-    throw error;
-  }
+  await sendVerificationCodeEmail(email, code);
 }
 
 async function deliverPasswordResetLink(email: string, url: string) {
-  // eslint-disable-next-line no-console
-  console.log(`[password-reset] link for ${email}: ${url}`);
+  await sendPasswordResetEmail(email, url);
 }
 
 router.post("/auth/signup", signupLimiter, async (req, res) => {
@@ -441,8 +397,7 @@ router.post("/auth/verify-email", verifyLimiter, async (req, res) => {
     return;
   }
   if (user.emailVerified) {
-    req.session.userId = user.id;
-    res.json(await serializeUserMe(user));
+    res.json({ ok: true, alreadyVerified: true });
     return;
   }
   if (
@@ -463,8 +418,11 @@ router.post("/auth/verify-email", verifyLimiter, async (req, res) => {
     })
     .where(eq(usersTable.id, user.id))
     .returning();
-  req.session.userId = updated!.id;
-  res.json(await serializeUserMe(updated!));
+  res.json({
+    ok: true,
+    email: updated!.email,
+    verified: true,
+  });
 });
 
 router.post("/auth/resend-verification", verifyLimiter, async (req, res) => {
@@ -523,12 +481,9 @@ router.post("/auth/forgot-password", passwordResetLimiter, async (req, res) => {
       passwordResetExpiresAt: resetExpiry(),
     })
     .where(eq(usersTable.id, user.id));
-  const url = `https://796954c8-8650-4692-8c58-ccaa3bfea85b-00-2ptjcbj5jjblu.kirk.replit.dev:3000/reset-password?token=${token}`;
+  const url = buildResetPasswordUrl(token);
   await deliverPasswordResetLink(user.email, url);
-  res.json({
-    ok: true,
-    ...(isProd ? {} : { devResetUrl: url, devResetToken: token }),
-  });
+  res.json({ ok: true });
 });
 
 router.post("/auth/reset-password", passwordResetLimiter, async (req, res) => {

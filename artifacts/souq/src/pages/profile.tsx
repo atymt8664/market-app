@@ -1,6 +1,5 @@
 import { Link, useLocation } from "wouter";
 import {
-  LogIn,
   UserPlus,
   Trash2,
   Pencil,
@@ -9,17 +8,14 @@ import {
   Share2,
   ShieldCheck,
   Eye,
-  ChevronLeft,
   Users,
   UserCheck,
   Heart,
-  Smile,
-  Leaf,
   Camera,
   Loader2,
-  Receipt,
   Clock,
   User as UserIcon,
+  Megaphone,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useRef } from "react";
@@ -29,6 +25,8 @@ import {
   getListMyAdsQueryKey,
   useAuthUpdateProfile,
   getAuthMeQueryKey,
+  useListAds,
+  getListAdsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUpload } from "@workspace/object-storage-web";
@@ -47,6 +45,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function Profile() {
   const { user, isLoading: authLoading } = useAuth();
@@ -65,6 +64,19 @@ export default function Profile() {
       retry: false,
     },
   });
+  const [activeTab, setActiveTab] = useState("my-ads");
+  const [favorites] = useState<number[]>(() => {
+    try {
+      const raw = localStorage.getItem("favorites");
+      return raw ? (JSON.parse(raw) as number[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const { data: allAds } = useListAds(
+    {},
+    { query: { queryKey: getListAdsQueryKey({}), enabled: favorites.length > 0 } },
+  );
 
   const { uploadFile, isUploading } = useUpload({
     onSuccess: (response) => {
@@ -107,7 +119,7 @@ export default function Profile() {
         animate={{ opacity: 1 }}
         className="flex flex-col w-full min-h-[100dvh] bg-background"
       >
-        <div className="flex flex-col items-center justify-center flex-1 gap-8 px-6">
+        <div className="mx-auto w-full max-w-screen-md flex flex-col items-center justify-center flex-1 gap-8 px-6 md:px-8">
           {/* الأيقونة */}
           <div className="relative">
             <div className="absolute inset-0 blur-2xl bg-primary/20 rounded-full"></div>
@@ -125,9 +137,9 @@ export default function Profile() {
           </div>
 
           {/* الأزرار */}
-          <div className="w-full flex flex-col gap-4 mt-4">
+          <div className="w-full max-w-sm flex flex-col gap-4 mt-4">
             <Link href="/login">
-              <Button className="w-[60%] ml-auto mr-16 h-14 rounded-2xl bg-primary text-black font-bold text-base shadow-lg hover:scale-[1.02] active:scale-[0.97] transition-all">
+              <Button className="w-full h-14 rounded-2xl bg-primary text-black font-bold text-base shadow-lg hover:scale-[1.02] active:scale-[0.97] transition-all">
                 تسجيل الدخول →
               </Button>
             </Link>
@@ -135,7 +147,7 @@ export default function Profile() {
             <Link href="/signup">
               <Button
                 variant="outline"
-                className="w-[60%] mx-auto h-14 rounded-2xl border border-border text-muted-foreground flex items-center justify-center gap-2 hover:bg-muted/30 transition-all"
+                className="w-full h-14 rounded-2xl border border-border text-muted-foreground flex items-center justify-center gap-2 hover:bg-muted/30 transition-all"
               >
                 <UserPlus className="w-5 h-5" />
                 إنشاء حساب جديد
@@ -207,33 +219,7 @@ export default function Profile() {
       })
     : null;
   const avatarBusy = isUploading || updateProfile.isPending;
-
-  if (!user) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex flex-col items-center justify-center w-full min-h-[100dvh] bg-background px-6 text-center"
-      >
-        <h1 className="text-2xl font-bold mb-3">مرحباً بك 👋</h1>
-        <p className="text-muted-foreground mb-8">
-          سجل الدخول لإدارة إعلاناتك بسهولة
-        </p>
-
-        <Link href="/login" className="w-full max-w-xs">
-          <button className="w-full h-14 rounded-2xl bg-primary text-black font-bold text-base">
-            تسجيل الدخول
-          </button>
-        </Link>
-
-        <Link href="/signup" className="w-full max-w-xs mt-4">
-          <button className="w-full h-14 rounded-2xl border border-border">
-            إنشاء حساب جديد
-          </button>
-        </Link>
-      </motion.div>
-    );
-  }
+  const favoriteAds = (allAds ?? []).filter((ad) => favorites.includes(ad.id));
 
   return (
     <motion.div
@@ -241,233 +227,179 @@ export default function Profile() {
       animate={{ opacity: 1 }}
       className="flex flex-col w-full min-h-[100dvh] bg-background pb-6"
     >
-      {/* Top header — dark, with title + icon actions */}
-      <div className="px-4 pt-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-foreground truncate">
-              حسابي
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {adCount.toLocaleString("ar")} إعلانات ·{" "}
-              {followerCount.toLocaleString("ar")} متابع
-            </p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={handleShare}
-              aria-label="مشاركة"
-              className="w-9 h-9 flex items-center justify-center text-primary hover:bg-muted/50 active:bg-muted rounded-full transition-colors"
-            >
-              <Share2 className="w-5 h-5" />
-            </button>
-            <Link href="/settings">
-              <button
-                aria-label="الإعدادات"
-                className="w-9 h-9 flex items-center justify-center text-primary hover:bg-muted/50 active:bg-muted rounded-full transition-colors"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Avatar row */}
-        <div className="flex items-center gap-3 mt-4">
-          <div className="relative shrink-0">
-            <AvatarCircle name={user.name} src={user.avatarUrl} size={56} />
-            <button
-              type="button"
-              onClick={handleAvatarPick}
-              disabled={avatarBusy}
-              aria-label="تغيير الصورة"
-              className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full bg-muted text-foreground border border-border flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
-            >
-              {avatarBusy ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Camera className="w-3 h-3" />
-              )}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={onFileChange}
-            />
-          </div>
-        </div>
-
-        {/* Name */}
-        <h2 className="text-lg font-bold text-foreground truncate mt-3">
-          {user.name}
-        </h2>
-
-        {/* Badges */}
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          <div className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full bg-purple-600 text-white">
-            <ShieldCheck className="w-3 h-3" />
-            موثوق
-          </div>
-
-          <div className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full bg-purple-600 text-white">
-            <Smile className="w-3 h-3" />
-            ودود
-          </div>
-
-          <div className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full bg-purple-600 text-white">
-            <Leaf className="w-3 h-3" />
-            نشط
-          </div>
-        </div>
-      </div>
-
-      {/* Compact info list (Kleinanzeigen-style stacked rows) */}
-      <div className="px-4 mt-3 flex flex-col gap-2 text-[13px]">
-        <CompactInfo
-          icon={<UserIcon className="w-4 h-4 text-primary" />}
-          text="بائع شخصي"
-        />
-        {memberSince && (
-          <CompactInfo
-            icon={<ShieldCheck className="w-4 h-4 text-primary" />}
-            text={`عضو منذ ${memberSince}`}
-          />
-        )}
-        <CompactInfo
-          icon={<Clock className="w-4 h-4 text-primary" />}
-          text="يرد عادةً خلال ساعات قليلة"
-        />
-        <CompactInfo
-          icon={<Users className="w-4 h-4 text-primary" />}
-          text={`${followerCount.toLocaleString("ar")} متابع`}
-        />
-      </div>
-
-      {/* Stats grid */}
-      <div className="px-4 mt-4">
-        <div className="grid grid-cols-4 gap-2">
-          <StatCard label="إعلانات" value={adCount} />
-          <StatCard label="نشطة" value={adCount} accent />
-          <StatCard
-            label="متابعون"
-            value={followerCount}
-            icon={<Users className="w-3.5 h-3.5" />}
-          />
-          <StatCard
-            label="مشاهدات"
-            value={profileViews}
-            icon={<Eye className="w-3.5 h-3.5" />}
-          />
-        </div>
-      </div>
-
-      {/* Sales overview placeholder */}
-      <div className="mx-4 mt-4">
-        <Link href="/stats">
-          <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3 hover:bg-muted/40 active:scale-[0.99] transition-all cursor-pointer">
-            <div className="w-12 h-12 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
-              <Receipt className="w-6 h-6" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-sm">نظرة عامة على المبيعات</h3>
+      <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-5">
+        <div className="pt-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-foreground truncate">حسابي</h1>
               <p className="text-xs text-muted-foreground mt-0.5">
-                تابع أداء إعلاناتك ومشاهداتك
+                {adCount.toLocaleString("ar")} إعلانات · {followerCount.toLocaleString("ar")} متابع
               </p>
             </div>
-            <ChevronLeft className="w-5 h-5 text-muted-foreground shrink-0" />
-          </div>
-        </Link>
-      </div>
-
-      {/* Quick links */}
-      <div className="mx-4 mt-3 grid grid-cols-2 gap-2">
-        <Link href="/favorites">
-          <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-2 hover:bg-muted/50 active:bg-muted transition-colors h-full">
-            <Heart className="w-4 h-4 text-primary" />
-            <span className="text-xs font-medium flex-1">المفضلة</span>
-          </div>
-        </Link>
-        <Link href={`/users/${user.id}`}>
-          <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-2 hover:bg-muted/50 active:bg-muted transition-colors h-full">
-            <UserCheck className="w-4 h-4 text-primary" />
-            <span className="text-xs font-medium flex-1">ملفي العام</span>
-          </div>
-        </Link>
-      </div>
-
-      {/* Empty state CTA */}
-      {!adsLoading && adCount === 0 && (
-        <div className="mt-6 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-full bg-primary/20 text-primary flex items-center justify-center mb-3">
-            <Plus className="w-7 h-7" />
-          </div>
-          <h3 className="font-bold text-base mb-1">انشر أول إعلان لك</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            ابدأ ببيع أشيائك المستعملة بسهولة ومجاناً
-          </p>
-          <Link href="/new">
-            <Button className="px-4 py-2 text-sm font-medium rounded-full bg-[#b6e356] text-black inline-flex items-center gap-2 shadow-sm">
-              <Plus className="w-4 h-4" />
-              أنشئ إعلانًا
-            </Button>
-          </Link>
-        </div>
-      )}
-
-      {/* My ads grid */}
-      {(adsLoading || adCount > 0) && (
-        <div className="px-4 mt-5 flex-1">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-base">إعلاناتي</h2>
-            <span className="text-muted-foreground text-xs">
-              {adCount} إعلان
-            </span>
-          </div>
-
-          {adsLoading ? (
-            <div className="grid grid-cols-2 gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <AdCardSkeleton key={i} />
-              ))}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={handleShare}
+                aria-label="مشاركة"
+                className="w-9 h-9 flex items-center justify-center text-primary hover:bg-muted/50 rounded-full transition-colors"
+              >
+                <Share2 className="w-5 h-5" />
+              </button>
+              <Link href="/settings">
+                <button
+                  aria-label="الإعدادات"
+                  className="w-9 h-9 flex items-center justify-center text-primary hover:bg-muted/50 rounded-full transition-colors"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+              </Link>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {Array.isArray(myAds) &&
-                myAds.map((ad) => (
-                  <div key={ad.id} className="relative">
-                    <AdCard ad={ad} />
-                    <div className="absolute top-2 left-2 flex gap-1 z-10">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          navigate(`/edit/${ad.id}`);
-                        }}
-                        className="w-8 h-8 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black"
-                        aria-label="تعديل"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setAdToDelete(ad.id);
-                        }}
-                        className="w-8 h-8 rounded-full bg-destructive/90 text-white flex items-center justify-center hover:bg-destructive"
-                        aria-label="حذف"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+          </div>
+        </div>
+
+        <section className="mt-3 rounded-2xl border border-border bg-card/70 p-4 md:p-5">
+          <div className="flex items-center gap-4">
+            <div className="relative shrink-0">
+              <AvatarCircle name={user.name} src={user.avatarUrl} size={72} />
+              <button
+                type="button"
+                onClick={handleAvatarPick}
+                disabled={avatarBusy}
+                aria-label="تغيير الصورة"
+                className="absolute -bottom-1 -left-1 w-7 h-7 rounded-full bg-muted text-foreground border border-border flex items-center justify-center disabled:opacity-60"
+              >
+                {avatarBusy ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Camera className="w-3.5 h-3.5" />
+                )}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onFileChange}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg md:text-xl font-bold truncate">{user.name}</h2>
+              <div className="mt-1.5 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1">
+                  <UserIcon className="w-3.5 h-3.5" />
+                  بائع شخصي
+                </span>
+                {memberSince && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    عضو منذ {memberSince}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3.5 grid grid-cols-2 md:grid-cols-4 gap-2">
+            <StatCard label="إعلانات" value={adCount} icon={<Megaphone className="w-3.5 h-3.5" />} />
+            <StatCard label="نشطة" value={adCount} accent />
+            <StatCard label="متابعون" value={followerCount} icon={<Users className="w-3.5 h-3.5" />} />
+            <StatCard label="مشاهدات" value={profileViews} icon={<Eye className="w-3.5 h-3.5" />} />
+          </div>
+        </section>
+
+        <section className="mt-4 rounded-2xl border border-border bg-card/50 p-3 md:p-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">
+            <TabsList className="h-auto w-full grid grid-cols-3 rounded-xl bg-muted/50 p-1">
+              <TabsTrigger value="my-ads" className="text-xs md:text-sm">إعلاناتي</TabsTrigger>
+              <TabsTrigger value="favorites" className="text-xs md:text-sm">المفضلة</TabsTrigger>
+              <TabsTrigger value="public" className="text-xs md:text-sm">الملف العام</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="my-ads" className="mt-4">
+              {!adsLoading && adCount === 0 ? (
+                <div className="py-10 text-center">
+                  <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-primary/20 text-primary flex items-center justify-center">
+                    <Plus className="w-7 h-7" />
                   </div>
-                ))}
-            </div>
-          )}
-        </div>
-      )}
+                  <h3 className="font-bold text-base mb-1">انشر أول إعلان لك</h3>
+                  <p className="text-sm text-muted-foreground mb-4">ابدأ ببيع أشيائك بسهولة</p>
+                  <Link href="/new">
+                    <Button className="px-4 py-2 text-sm font-medium rounded-full bg-[#b6e356] text-black inline-flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      أنشئ إعلانًا
+                    </Button>
+                  </Link>
+                </div>
+              ) : adsLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <AdCardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                  {Array.isArray(myAds) &&
+                    myAds.map((ad) => (
+                      <div key={ad.id} className="relative w-full">
+                        <AdCard ad={ad} />
+                        <div className="absolute top-2 left-2 flex gap-1 z-10">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              navigate(`/edit/${ad.id}`);
+                            }}
+                            className="w-8 h-8 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black"
+                            aria-label="تعديل"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setAdToDelete(ad.id);
+                            }}
+                            className="w-8 h-8 rounded-full bg-destructive/90 text-white flex items-center justify-center hover:bg-destructive"
+                            aria-label="حذف"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="favorites" className="mt-4">
+              {favoriteAds.length === 0 ? (
+                <div className="py-12 text-center text-sm text-muted-foreground">لا توجد عناصر في المفضلة حالياً</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                  {favoriteAds.map((ad) => (
+                    <AdCard key={ad.id} ad={ad} />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="public" className="mt-4">
+              <div className="rounded-xl border border-border bg-background/60 p-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm">شاهد ملفك كما يراه الآخرون</p>
+                  <p className="text-xs text-muted-foreground mt-1">يمكنك مراجعة الإعلانات والبيانات العامة</p>
+                </div>
+                <Link href={`/users/${user.id}`}>
+                  <Button variant="outline" className="gap-2 shrink-0">
+                    <UserCheck className="w-4 h-4" />
+                    فتح الملف العام
+                  </Button>
+                </Link>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </section>
+      </div>
 
       <AlertDialog
         open={adToDelete !== null}
@@ -497,24 +429,6 @@ export default function Profile() {
   );
 }
 
-function Badge({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <span className="inline-flex items-center gap-1 bg-white/15 text-white text-[11px] font-medium px-2 py-1 rounded-full">
-      {icon}
-      {text}
-    </span>
-  );
-}
-
-function CompactInfo({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <div className="flex items-center gap-2 text-foreground/90">
-      <span className="shrink-0">{icon}</span>
-      <span className="truncate">{text}</span>
-    </div>
-  );
-}
-
 function StatCard({
   label,
   value,
@@ -528,13 +442,13 @@ function StatCard({
 }) {
   return (
     <div
-      className={`rounded-xl border p-2.5 flex flex-col items-center justify-center text-center ${
+      className={`rounded-xl border p-2 flex flex-col items-center justify-center text-center ${
         accent ? "bg-primary/10 border-primary/30" : "bg-card border-border"
       }`}
     >
       <div className="flex items-center gap-1">
         {icon}
-        <span className="text-base font-bold tabular-nums">
+        <span className="text-sm md:text-base font-bold tabular-nums">
           {value.toLocaleString("ar")}
         </span>
       </div>

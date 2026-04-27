@@ -52,23 +52,27 @@ export default function AccountPassword() {
   return (
     <div className="flex flex-col w-full min-h-[100dvh] bg-background pb-8">
       <AccountHeader title="تغيير كلمة المرور" />
-      <form onSubmit={onSubmit} className="p-4 flex flex-col gap-5">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="current">كلمة المرور الحالية</Label>
-          <Input id="current" type="password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="next">كلمة المرور الجديدة</Label>
-          <Input id="next" type="password" value={next} onChange={(e) => setNext(e.target.value)} required minLength={6} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="confirm">تأكيد كلمة المرور</Label>
-          <Input id="confirm" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={6} />
-        </div>
-        <Button type="submit" disabled={change.isPending} className="mt-2 py-6 text-base font-bold">
-          {change.isPending ? "جاري الحفظ..." : "تحديث كلمة المرور"}
-        </Button>
-      </form>
+      <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-5">
+        <form onSubmit={onSubmit} className="rounded-2xl border border-border bg-card/70 p-4 md:p-5 flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="current">كلمة المرور الحالية</Label>
+            <Input id="current" type="password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="next">كلمة المرور الجديدة</Label>
+            <Input id="next" type="password" value={next} onChange={(e) => setNext(e.target.value)} required minLength={6} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="confirm">تأكيد كلمة المرور</Label>
+            <Input id="confirm" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={6} />
+          </div>
+          <div className="pt-1">
+            <Button type="submit" disabled={change.isPending} className="w-full sm:w-auto sm:min-w-[200px] py-2.5 text-sm font-bold">
+              {change.isPending ? "جاري الحفظ..." : "تحديث كلمة المرور"}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

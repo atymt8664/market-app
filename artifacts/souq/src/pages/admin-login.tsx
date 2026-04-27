@@ -1,7 +1,6 @@
 import { useState } from "react";
 
-const API_BASE =
-  "https://796954c8-8650-4692-8c58-ccaa3bfea85b-00-2ptjcbj5jjblu.kirk.replit.dev:3002";
+const API_BASE = "";
 
 export default function AdminLogin() {
   const [password, setPassword] = useState("");

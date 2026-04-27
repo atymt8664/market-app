@@ -26,6 +26,9 @@ if (!basePath) {
   );
 }
 
+const apiProxyTarget =
+  process.env.API_PROXY_TARGET?.trim() || "http://localhost:3001";
+
 export default defineConfig({
   base: basePath,
   plugins: [
@@ -72,7 +75,7 @@ export default defineConfig({
       strict: true,
     },
     proxy: {
-      "/api": "http://localhost:3000",
+      "/api": apiProxyTarget,
     },
   },
   preview: {

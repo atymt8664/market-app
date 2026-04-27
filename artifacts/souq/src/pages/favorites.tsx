@@ -33,13 +33,13 @@ export default function Favorites() {
       </header>
 
       <div className="p-4 flex-1">
-        <div className="grid grid-cols-2 gap-3 pb-20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 pb-20">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, i) => <AdCardSkeleton key={i} />)
           ) : favoriteAds.length > 0 ? (
             favoriteAds.map((ad) => <AdCard key={ad.id} ad={ad} />)
           ) : (
-            <div className="col-span-2 flex flex-col items-center justify-center py-20 text-center">
+            <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
               <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-4">
                 <Heart className="w-10 h-10 text-muted-foreground opacity-50" />
               </div>

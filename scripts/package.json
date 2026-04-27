@@ -6,6 +6,10 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed": "tsx ./src/seed.ts",
+    "db:export": "tsx ./src/db-export.ts",
+    "db:import": "tsx ./src/db-import.ts",
+    "db:schema:snapshot": "tsx ./src/db-schema-snapshot.ts",
+    "db:schema:compare": "tsx ./src/db-schema-compare.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

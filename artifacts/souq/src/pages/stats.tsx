@@ -1,6 +1,6 @@
 import { useGetAdsStats } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { ArrowRight, BarChart3, TrendingUp, MapPin, Tag } from "lucide-react";
+import { ArrowRight, BarChart3, MapPin, Tag } from "lucide-react";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -17,31 +17,33 @@ export default function Stats() {
       exit={{ opacity: 0, x: -20 }}
       className="flex flex-col w-full min-h-[100dvh] bg-background pb-20"
     >
-      <header className="sticky top-0 z-40 bg-background border-b border-border p-4 flex items-center gap-4">
-        <Link href="/profile">
-          <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </Link>
-        <h1 className="font-bold text-xl flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-primary" />
-          حالة السوق
-        </h1>
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
+        <div className="mx-auto w-full max-w-5xl px-4 md:px-6 py-4 flex items-center gap-4">
+          <Link href="/profile">
+            <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </Link>
+          <h1 className="font-bold text-xl flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-primary" />
+            حالة السوق
+          </h1>
+        </div>
       </header>
 
       {isLoading ? (
-        <div className="p-4 space-y-6">
-          <div className="grid grid-cols-3 gap-3">
+        <div className="mx-auto w-full max-w-5xl px-4 md:px-6 py-5 space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
           </div>
           <Skeleton className="h-48 rounded-xl" />
           <Skeleton className="h-48 rounded-xl" />
         </div>
       ) : stats ? (
-        <div className="p-4 space-y-6">
+        <div className="mx-auto w-full max-w-5xl px-4 md:px-6 py-5 space-y-6">
           
           {/* Top Level Stats */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-primary/10 rounded-xl p-4 flex flex-col items-center justify-center text-center border border-primary/20">
               <span className="text-3xl font-bold text-primary mb-1">{stats.totalAds}</span>
               <span className="text-xs font-medium opacity-80">إعلان نشط</span>

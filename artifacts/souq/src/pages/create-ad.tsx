@@ -76,6 +76,9 @@ interface CreateAdProps {
   editId?: number;
 }
 
+const MAX_IMAGES = 10;
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+
 export default function CreateAd({ editId }: CreateAdProps = {}) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -102,7 +105,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [selectedCatId, setSelectedCatId] = useState<number | null>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [isSubmittingUploads, setIsSubmittingUploads] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingImageFilesRef = useRef<Record<string, File>>({});
   const { uploadFile, isUploading, progress } = useUpload();
 
   const { data: subcategories } = useListSubcategories(selectedCatId || 0, {
@@ -150,6 +155,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       });
       setSelectedCatId(existingAd.categoryId);
       setUploadedImages(existingAd.images);
+      pendingImageFilesRef.current = {};
     }
   }, [existingAd, isEdit, form]);
 
@@ -174,12 +180,49 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     (s) => s.id === watchSubcategoryId,
   );
 
-  const onSubmit = (data: CreateAdFormValues) => {
+  const uploadPendingImages = async () => {
+    const finalUrls: string[] = [];
+
+    for (const src of uploadedImages) {
+      const pendingFile = pendingImageFilesRef.current[src];
+      if (!pendingFile) {
+        finalUrls.push(src);
+        continue;
+      }
+
+      const result = await uploadFile(pendingFile);
+      if (!result?.objectPath) {
+        throw new Error("image_upload_failed");
+      }
+
+      finalUrls.push(`/api/storage${result.objectPath}`);
+      delete pendingImageFilesRef.current[src];
+      URL.revokeObjectURL(src);
+    }
+
+    return finalUrls;
+  };
+
+  const onSubmit = async (data: CreateAdFormValues) => {
     if (uploadedImages.length === 0) {
       toast({ title: "أضف صورة واحدة على الأقل", variant: "destructive" });
       return;
     }
-    data.images = uploadedImages;
+
+    try {
+      setIsSubmittingUploads(true);
+      data.images = await uploadPendingImages();
+      setUploadedImages(data.images);
+    } catch {
+      toast({
+        title: "فشل رفع الصور",
+        description: "تعذر رفع صورة واحدة أو أكثر، حاول مرة أخرى",
+        variant: "destructive",
+      });
+      setIsSubmittingUploads(false);
+      return;
+    }
+    setIsSubmittingUploads(false);
 
     const invalidate = async () => {
       await queryClient.invalidateQueries({ queryKey: getListMyAdsQueryKey() });
@@ -233,26 +276,67 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
 
   const handleFilesSelected = async (files: FileList | null) => {
     if (!files) return;
-    const list = Array.from(files).slice(0, 10 - uploadedImages.length);
+    if (uploadedImages.length >= MAX_IMAGES) {
+      toast({
+        title: `الحد الأقصى ${MAX_IMAGES} صور`,
+        variant: "destructive",
+      });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const availableSlots = MAX_IMAGES - uploadedImages.length;
+    const selected = Array.from(files);
+    const list = selected.slice(0, availableSlots);
+
+    if (selected.length > availableSlots) {
+      toast({
+        title: `يمكنك رفع ${MAX_IMAGES} صور كحد أقصى`,
+        description: `تم تجاهل ${selected.length - availableSlots} صورة إضافية`,
+        variant: "destructive",
+      });
+    }
+
     for (const file of list) {
       if (!file.type.startsWith("image/")) {
         toast({ title: "الصور فقط مسموح بها", variant: "destructive" });
         continue;
       }
-      const result = await uploadFile(file);
-      if (result?.objectPath) {
-        setUploadedImages((prev) => [
-          ...prev,
-          `/api/storage${result.objectPath}`,
-        ]);
+      if (file.size > MAX_IMAGE_SIZE_BYTES) {
+        toast({
+          title: "حجم الصورة كبير جداً",
+          description: "الحد الأقصى 5MB لكل صورة",
+          variant: "destructive",
+        });
+        continue;
       }
+
+      const previewUrl = URL.createObjectURL(file);
+      pendingImageFilesRef.current[previewUrl] = file;
+      setUploadedImages((prev) => [...prev, previewUrl]);
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeImage = (index: number) => {
-    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
+    setUploadedImages((prev) => {
+      const src = prev[index];
+      if (src && pendingImageFilesRef.current[src]) {
+        delete pendingImageFilesRef.current[src];
+        URL.revokeObjectURL(src);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
+
+  useEffect(() => {
+    return () => {
+      Object.keys(pendingImageFilesRef.current).forEach((src) =>
+        URL.revokeObjectURL(src),
+      );
+      pendingImageFilesRef.current = {};
+    };
+  }, []);
 
   const handleImproveDescription = () => {
     if (!watchTitle || !watchDesc) {
@@ -313,26 +397,29 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       exit={{ opacity: 0, y: -20 }}
       className="flex flex-col w-full min-h-[100dvh] bg-background pb-24"
     >
-      <header className="sticky top-0 z-40 bg-background border-b border-border p-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/">
-            <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </Link>
-          <h1 className="font-bold text-lg">
-            {isEdit ? "تعديل الإعلان" : "إنشاء إعلان"}
-          </h1>
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
+        <div className="mx-auto w-full max-w-[900px] px-4 md:px-6 py-4 flex items-center">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </Link>
+            <h1 className="font-bold text-lg">
+              {isEdit ? "تعديل الإعلان" : "إنشاء إعلان"}
+            </h1>
+          </div>
         </div>
       </header>
 
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="p-4 flex flex-col gap-6"
+          className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-5 flex flex-col gap-4 md:gap-5"
         >
           {/* Photo Upload */}
-          <div>
+          <section className="rounded-2xl border border-border bg-card/70 p-4 md:p-5 space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">الصور</h2>
             <input
               ref={fileInputRef}
               type="file"
@@ -345,8 +432,8 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="w-full aspect-video border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-3 bg-muted/20 active:bg-muted/50 hover:border-primary/50 transition-colors disabled:opacity-50"
+                disabled={isUploading || isSubmittingUploads}
+                className="w-full h-[190px] sm:h-[220px] md:h-[280px] border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-3 bg-muted/20 active:bg-muted/50 hover:border-primary/50 transition-colors disabled:opacity-50"
               >
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                   {isUploading ? (
@@ -356,7 +443,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   )}
                 </div>
                 <span className="font-medium">
-                  {isUploading ? `جارٍ الرفع... ${progress}%` : "إضافة الصور"}
+                  {isSubmittingUploads || isUploading
+                    ? `جارٍ الرفع... ${progress}%`
+                    : "إضافة الصور"}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   صورة واحدة على الأقل · حتى 10 صور
@@ -393,7 +482,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploading}
+                      disabled={isUploading || isSubmittingUploads}
                       className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors disabled:opacity-50"
                     >
                       {isUploading ? (
@@ -402,7 +491,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         <Plus className="w-6 h-6" />
                       )}
                       <span className="text-[10px]">
-                        {isUploading ? `${progress}%` : "إضافة"}
+                        {isSubmittingUploads || isUploading
+                          ? `${progress}%`
+                          : "إضافة"}
                       </span>
                     </button>
                   )}
@@ -412,8 +503,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 </p>
               </div>
             )}
-          </div>
+          </section>
 
+          <section className="rounded-2xl border border-border bg-card/70 p-4 md:p-5 space-y-4">
           <FormField
             control={form.control}
             name="type"
@@ -423,7 +515,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   <RadioGroup
                     onValueChange={field.onChange}
                     defaultValue={field.value}
-                    className="flex gap-4 p-1 bg-muted rounded-lg"
+                  className="flex gap-3 p-1 bg-muted rounded-lg"
                     dir="rtl"
                   >
                     <FormItem className="flex-1">
@@ -433,7 +525,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                           className="peer sr-only"
                         />
                       </FormControl>
-                      <FormLabel className="flex items-center justify-center w-full py-3 rounded-md font-medium cursor-pointer peer-data-[state=checked]:bg-background peer-data-[state=checked]:shadow-sm transition-all">
+                      <FormLabel className="flex items-center justify-center w-full py-2.5 rounded-md font-medium cursor-pointer peer-data-[state=checked]:bg-background peer-data-[state=checked]:shadow-sm transition-all">
                         أعرض (بيع)
                       </FormLabel>
                     </FormItem>
@@ -444,7 +536,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                           className="peer sr-only"
                         />
                       </FormControl>
-                      <FormLabel className="flex items-center justify-center w-full py-3 rounded-md font-medium cursor-pointer peer-data-[state=checked]:bg-background peer-data-[state=checked]:shadow-sm transition-all">
+                      <FormLabel className="flex items-center justify-center w-full py-2.5 rounded-md font-medium cursor-pointer peer-data-[state=checked]:bg-background peer-data-[state=checked]:shadow-sm transition-all">
                         أبحث (شراء)
                       </FormLabel>
                     </FormItem>
@@ -480,7 +572,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               <SheetTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-between py-6 h-auto text-right font-normal"
+                  className="w-full justify-between py-5 h-auto text-right font-normal"
                 >
                   <span
                     className={
@@ -564,12 +656,12 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             )}
           </div>
 
-          <div className="flex gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="price"
               render={({ field }) => (
-                <FormItem className="flex-1">
+                <FormItem>
                   <div className="flex justify-between items-center mb-2">
                     <FormLabel>السعر (€)</FormLabel>
                     {watchTitle &&
@@ -614,7 +706,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               control={form.control}
               name="priceType"
               render={({ field }) => (
-                <FormItem className="flex-1">
+                <FormItem>
                   <FormLabel className="mb-2 block">نوع السعر</FormLabel>
                   <Sheet>
                     <SheetTrigger asChild>
@@ -675,7 +767,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 <FormControl>
                   <Textarea
                     placeholder="صف المنتج بدقة. اذكر حالته، مدة الاستخدام، وأي تفاصيل تهم المشتري."
-                    className="min-h-[120px] resize-none"
+                    className="min-h-[130px] md:min-h-[150px] resize-none"
                     {...field}
                   />
                 </FormControl>
@@ -701,43 +793,46 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               </FormItem>
             )}
           />
+          </section>
 
-          <div className="space-y-4 pt-4 border-t border-border">
+          <section className="rounded-2xl border border-border bg-card/70 p-4 md:p-5 space-y-4">
             <h3 className="font-bold text-lg">معلومات التواصل</h3>
 
-            <FormField
-              control={form.control}
-              name="sellerName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>الاسم</FormLabel>
-                  <FormControl>
-                    <Input placeholder="اسمك" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="sellerName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>الاسم</FormLabel>
+                    <FormControl>
+                      <Input placeholder="اسمك" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="sellerPhone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>رقم الهاتف (للواتساب)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="tel"
-                      placeholder="مثال: +491761234567"
-                      dir="ltr"
-                      className="text-right"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="sellerPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>رقم الهاتف (للواتساب)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="tel"
+                        placeholder="مثال: +491761234567"
+                        dir="ltr"
+                        className="text-right"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -756,7 +851,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 </FormItem>
               )}
             />
-          </div>
+          </section>
         </form>
       </Form>
 
@@ -768,9 +863,19 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             type="button"
             onClick={form.handleSubmit(onSubmit)}
             className="absolute top-[-2px] left-0 bg-[#A3E635] text-black text-sm font-semibold px-4 py-1.5 rounded-full shadow-sm hover:bg-[#84CC16] transition"
-            disabled={createAdMutation.isPending || updateAdMutation.isPending}
+            disabled={
+              createAdMutation.isPending ||
+              updateAdMutation.isPending ||
+              isSubmittingUploads ||
+              isUploading
+            }
           >
-            {createAdMutation.isPending || updateAdMutation.isPending ? (
+            {isSubmittingUploads || isUploading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                جارٍ رفع الصور...
+              </>
+            ) : createAdMutation.isPending || updateAdMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               "نشر الإعلان"

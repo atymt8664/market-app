@@ -13,10 +13,8 @@ export function Layout({ children }: LayoutProps) {
   const isAdminPage = location.startsWith("/admin");
 
   return (
-    // 👇 هذا مهم جداً (wrapper خارجي)
-    <div className="w-full min-h-screen bg-background flex justify-center lg:justify-start">
-      {/* 👇 هذا هو الكونتينر الحقيقي */}
-      <div className="w-full max-w-[480px] lg:max-w-none min-h-[100dvh] relative pb-[64px] lg:pb-[76px] bg-card shadow-2xl lg:shadow-none overflow-x-hidden">
+    <div className="w-full min-h-screen bg-background">
+      <div className="w-full max-w-screen-2xl min-h-[100dvh] mx-auto relative pb-[64px] md:pb-[72px] bg-background overflow-x-hidden">
         {children}
 
         {!isAdminPage && <BottomNav />}
@@ -58,8 +56,7 @@ function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-      {/* 👇 التعديل المهم هون */}
-      <div className="w-full max-w-[480px] lg:max-w-none h-[64px] lg:h-[76px] bg-card border-t border-border flex items-center justify-around lg:justify-evenly px-2 lg:px-10 pointer-events-auto relative">
+      <div className="w-full max-w-screen-2xl h-[64px] md:h-[72px] bg-card border-t border-border flex items-center justify-around lg:justify-evenly px-2 md:px-4 lg:px-10 pointer-events-auto relative">
         <NavItem
           href="/"
           icon={<Home className="w-6 h-6" />}
@@ -74,10 +71,10 @@ function BottomNav() {
           isActive={location === "/favorites"}
         />
 
-        <div className="flex-1 flex flex-col items-center justify-end relative -top-3">
+        <div className="flex-1 flex flex-col items-center justify-end relative -top-3 md:-top-4">
           <button
             onClick={handleCreateClick}
-            className="w-14 h-14 lg:w-16 lg:h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:scale-95 active:scale-90 transition-transform duration-200 border-4 border-card"
+            className="w-14 h-14 md:w-15 md:h-15 lg:w-16 lg:h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:scale-95 active:scale-90 transition-transform duration-200 border-4 border-card"
           >
             <PlusCircle className="w-8 h-8 lg:w-9 lg:h-9" />
           </button>

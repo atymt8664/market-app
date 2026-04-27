@@ -78,7 +78,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="px-4 mb-6">
+    <section className="mb-4">
       {title && (
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
           {title}
@@ -137,32 +137,35 @@ export default function Settings() {
       animate={{ opacity: 1 }}
       className="flex flex-col w-full min-h-[100dvh] bg-background pb-8"
     >
-      <header className="sticky top-0 z-40 bg-background border-b border-border p-4 flex items-center gap-3">
-        <Link href="/profile">
-          <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </Link>
-        <h1 className="font-bold text-lg">الإعدادات</h1>
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
+        <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-4 flex items-center gap-3">
+          <Link href="/profile">
+            <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </Link>
+          <h1 className="font-bold text-lg">الإعدادات</h1>
+        </div>
       </header>
 
-      {user && (
-        <Section>
-          <div className="flex items-center gap-3 p-4">
-            <div className="w-14 h-14 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xl font-bold shrink-0">
-              {(user.name || user.email || "?").charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold truncate">{user.name}</div>
-              <div className="text-sm text-muted-foreground truncate" dir="ltr">
-                {user.email}
+      <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-5">
+        {user && (
+          <Section>
+            <div className="flex items-center gap-3 p-4">
+              <div className="w-14 h-14 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xl font-bold shrink-0">
+                {(user.name || user.email || "?").charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold truncate">{user.name}</div>
+                <div className="text-sm text-muted-foreground truncate" dir="ltr">
+                  {user.email}
+                </div>
               </div>
             </div>
-          </div>
-        </Section>
-      )}
+          </Section>
+        )}
 
-      <Section title="الحساب">
+        <Section title="الحساب">
         <Row
           icon={<UserIcon className="w-4 h-4" />}
           label="الملف الشخصي"
@@ -186,9 +189,9 @@ export default function Settings() {
           hint="قريباً"
           onClick={go("/account/payments")}
         />
-      </Section>
+        </Section>
 
-      <Section title="التفضيلات">
+        <Section title="التخصيص">
         <Row
           icon={<Bell className="w-4 h-4" />}
           label="الإشعارات"
@@ -210,9 +213,9 @@ export default function Settings() {
           hint="العربية"
           onClick={go("/account/language")}
         />
-      </Section>
+        </Section>
 
-      <Section title="الخصوصية والأمان">
+        <Section title="الخصوصية والأمان">
         <Row
           icon={<Shield className="w-4 h-4" />}
           label="الخصوصية"
@@ -223,9 +226,9 @@ export default function Settings() {
           label="الأمان"
           onClick={go("/account/security")}
         />
-      </Section>
+        </Section>
 
-      <Section title="عن التطبيق">
+        <Section title="عن التطبيق">
         <Row
           icon={<Star className="w-4 h-4" />}
           label="قيّم التطبيق"
@@ -242,20 +245,21 @@ export default function Settings() {
           hint="الإصدار 1.0.0"
           onClick={go("/account/about")}
         />
-      </Section>
+        </Section>
 
-      {user && (
-        <div className="px-4">
-          <Button
-            variant="outline"
-            onClick={handleLogout}
-            disabled={logoutMutation.isPending}
-            className="w-full py-6 text-base font-medium gap-2 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-          >
-            <LogOut className="w-5 h-5" /> تسجيل الخروج
-          </Button>
-        </div>
-      )}
+        {user && (
+          <div className="pt-1">
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              disabled={logoutMutation.isPending}
+              className="w-full py-5 text-sm md:text-base font-medium gap-2 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="w-5 h-5" /> تسجيل الخروج
+            </Button>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }

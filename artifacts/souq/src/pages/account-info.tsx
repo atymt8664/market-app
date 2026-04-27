@@ -89,15 +89,17 @@ export default function AccountInfoPage() {
     return (
       <div className="flex flex-col w-full min-h-[100dvh] bg-background">
         <AccountHeader title="غير موجود" />
-        <div className="p-6 text-center text-muted-foreground">الصفحة غير موجودة.</div>
+        <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-6 text-center text-muted-foreground">
+          الصفحة غير موجودة.
+        </div>
       </div>
     );
   }
   return (
     <div className="flex flex-col w-full min-h-[100dvh] bg-background pb-8">
       <AccountHeader title={page.title} />
-      <div className="p-4">
-        <div className="bg-card rounded-xl border border-border p-5">
+      <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-5">
+        <div className="bg-card/70 rounded-2xl border border-border p-5">
           <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
             {page.icon}
           </div>

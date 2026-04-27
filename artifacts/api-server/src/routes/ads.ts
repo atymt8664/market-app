@@ -132,11 +132,24 @@ router.get("/admin/ads", async (req, res) => {
   }
 
   const status = req.query.status as string | undefined;
+  const q = (req.query.q as string | undefined)?.trim();
 
   let query: any = baseSelect(null);
 
   if (status) {
     query = query.where(eq(adsTable.status, status));
+  }
+
+  if (q) {
+    const pattern = `%${q}%`;
+    const searchClause = or(
+      ilike(adsTable.title, pattern),
+      ilike(adsTable.description, pattern),
+      ilike(adsTable.city, pattern),
+      ilike(adsTable.sellerName, pattern),
+      ilike(adsTable.sellerPhone, pattern),
+    );
+    query = query.where(searchClause);
   }
 
   const rows = await query.orderBy(desc(adsTable.createdAt)).limit(100);

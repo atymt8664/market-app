@@ -31,14 +31,11 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Separator } from "@/components/ui/separator";
 
 export default function AdDetail() {
   const params = useParams();
@@ -203,6 +200,7 @@ export default function AdDetail() {
 
   const handleCopyPhone = () => {
     if (!ad) return;
+    if (!requireLogin()) return;
     navigator.clipboard.writeText(ad.sellerPhone);
     setCopied(true);
     toast({
@@ -224,6 +222,16 @@ export default function AdDetail() {
       navigator.clipboard.writeText(window.location.href);
       toast({ title: "تم نسخ الرابط" });
     }
+  };
+
+  const handleWhatsappContact = () => {
+    if (!ad) return;
+    if (!requireLogin()) return;
+    const text = encodeURIComponent(`مرحباً، أنا مهتم بإعلانك: ${ad.title}`);
+    window.open(
+      `https://wa.me/${ad.sellerPhone.replace(/[^0-9+]/g, "")}?text=${text}`,
+      "_blank",
+    );
   };
 
   if (isLoading) {
@@ -263,7 +271,7 @@ export default function AdDetail() {
       className="flex flex-col w-full min-h-[100dvh] bg-background pb-24"
     >
       <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-        <div className="w-full max-w-[480px] px-4 py-3 flex justify-between items-center pointer-events-auto">
+        <div className="w-full max-w-5xl px-4 md:px-6 py-3 flex justify-between items-center pointer-events-auto">
           <Link href="/">
             <button className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform">
               <ArrowRight className="w-5 h-5" />
@@ -291,143 +299,141 @@ export default function AdDetail() {
       </header>
 
       {/* Images Carousel */}
-      <div className="w-full aspect-square bg-muted relative">
-        {ad.images && ad.images.length > 0 ? (
-          <Carousel className="w-full h-full" dir="ltr">
-            <CarouselContent className="h-full">
-              {ad.images.map((img, i) => (
-                <CarouselItem key={i} className="h-full">
-                  <img
-                    src={img}
-                    alt={`${ad.title} - صورة ${i + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            {ad.images.length > 1 && (
-              <>
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1 z-10">
-                  {ad.images.map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-2 h-2 rounded-full bg-white/50 backdrop-blur-sm"
+      <div className="mx-auto mt-2 w-full max-w-5xl px-4 md:px-6">
+        <div className="w-full h-[190px] sm:h-[250px] md:h-[320px] lg:h-[380px] rounded-2xl overflow-hidden bg-muted/60 relative border border-border">
+          {ad.images && ad.images.length > 0 ? (
+            <Carousel className="w-full h-full" dir="ltr">
+              <CarouselContent className="h-full">
+                {ad.images.map((img, i) => (
+                  <CarouselItem key={i} className="h-full">
+                    <img
+                      src={img}
+                      alt={`${ad.title} - صورة ${i + 1}`}
+                      className="w-full h-full object-cover"
                     />
-                  ))}
-                </div>
-              </>
-            )}
-          </Carousel>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            لا توجد صور
-          </div>
-        )}
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              {ad.images.length > 1 && (
+                <>
+                  <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1 z-10">
+                    {ad.images.map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-2 h-2 rounded-full bg-white/50 backdrop-blur-sm"
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </Carousel>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs sm:text-sm">
+              لا توجد صور
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="p-4 flex flex-col gap-4">
-        {/* Title and Price */}
-        <div>
-          <h1 className="text-xl font-bold leading-tight mb-2">{ad.title}</h1>
-          {isFree ? (
-            <div className="text-primary font-bold text-2xl">مجاناً</div>
-          ) : (
-            <div className="text-primary font-bold text-2xl flex items-center gap-2">
-              {formatPrice(ad.price, ad.priceType)}
-              {ad.priceType === "negotiable" && (
-                <span className="text-sm font-medium bg-primary/10 px-2 py-0.5 rounded-md text-primary">
-                  قابل للتفاوض
-                </span>
+      <div className="mx-auto w-full max-w-5xl px-4 md:px-6 py-3 md:py-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px] gap-4 lg:gap-5">
+          <div className="flex flex-col gap-4">
+            {/* Title and Price */}
+            <div className="rounded-2xl border border-border bg-card/70 p-4 md:p-4.5">
+              <h1 className="text-xl md:text-2xl font-bold leading-tight mb-2">{ad.title}</h1>
+              {isFree ? (
+                <div className="text-primary font-bold text-2xl">مجاناً</div>
+              ) : (
+                <div className="text-primary font-bold text-2xl flex items-center gap-2 flex-wrap">
+                  {formatPrice(ad.price, ad.priceType)}
+                  {ad.priceType === "negotiable" && (
+                    <span className="text-xs font-medium bg-primary/10 px-2 py-0.5 rounded-md text-primary">
+                      قابل للتفاوض
+                    </span>
+                  )}
+                </div>
               )}
+              <div className="flex items-center flex-wrap text-sm text-muted-foreground gap-x-1 gap-y-1 mt-2">
+                <MapPin className="w-4 h-4 shrink-0" />
+                <span>{ad.city}</span>
+                <span className="mx-2 opacity-50">•</span>
+                <span>{formatRelativeTime(ad.createdAt)}</span>
+              </div>
             </div>
-          )}
-          <div className="flex items-center flex-wrap text-sm text-muted-foreground gap-x-1 gap-y-1 mt-2">
-            <MapPin className="w-4 h-4 shrink-0" />
-            <span>{ad.city}</span>
-            <span className="mx-2 opacity-50">•</span>
-            <span>{formatRelativeTime(ad.createdAt)}</span>
-          </div>
-        </div>
 
-        {/* Engagement counter strip + reaction buttons */}
-        <div className="bg-card border border-border rounded-2xl px-3 py-2.5 flex items-stretch divide-x divide-border/60 [direction:rtl] [&>*]:px-2">
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground flex-1 justify-center">
-            <Eye className="w-4 h-4" />
-            <span className="font-semibold text-foreground tabular-nums">
-              {(viewCount ?? ad.views ?? 0).toLocaleString("ar")}
-            </span>
-            <span className="text-xs">مشاهدة</span>
-          </div>
-          <button
-            type="button"
-            onClick={handleToggleLike}
-            aria-label="like"
-            disabled={likeMut.isPending || unlikeMut.isPending}
-            className={`flex items-center gap-1.5 text-sm flex-1 justify-center active:scale-95 transition-all rounded-lg ${ad.isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <ThumbsUp
-              className={`w-4 h-4 ${ad.isLiked ? "fill-primary" : ""}`}
-            />
-            <span className="font-semibold tabular-nums">
-              {(ad.likeCount ?? 0).toLocaleString("ar")}
-            </span>
-            <span className="text-xs">إعجاب</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleToggleFavorite}
-            aria-label="favorite-counter"
-            disabled={favMut.isPending || unfavMut.isPending}
-            className={`flex items-center gap-1.5 text-sm flex-1 justify-center active:scale-95 transition-all rounded-lg ${ad.isFavorited ? "text-amber-500" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Star
-              className={`w-4 h-4 ${ad.isFavorited ? "fill-amber-500" : ""}`}
-            />
-            <span className="font-semibold tabular-nums">
-              {(ad.favoriteCount ?? 0).toLocaleString("ar")}
-            </span>
-            <span className="text-xs">مفضّلة</span>
-          </button>
-        </div>
-
-        <Separator />
-
-        {/* Description */}
-        <div>
-          <h3 className="font-semibold mb-2">الوصف</h3>
-          <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
-            {ad.description}
-          </p>
-        </div>
-
-        <Separator />
-
-        {/* Details List */}
-        <div className="flex flex-col gap-2 text-sm">
-          <div className="flex justify-between py-1 border-b border-border/50">
-            <span className="text-muted-foreground">القسم</span>
-            <span className="font-medium">{ad.categoryName}</span>
-          </div>
-          {ad.subcategoryName && (
-            <div className="flex justify-between py-1 border-b border-border/50">
-              <span className="text-muted-foreground">الفئة الفرعية</span>
-              <span className="font-medium">{ad.subcategoryName}</span>
+            {/* Engagement counter strip + reaction buttons */}
+            <div className="bg-card border border-border rounded-2xl px-2 py-1.5 flex items-stretch divide-x divide-border/60 [direction:rtl] [&>*]:px-1.5">
+              <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground flex-1 justify-center">
+                <Eye className="w-4 h-4" />
+                <span className="font-semibold text-foreground tabular-nums">
+                  {(viewCount ?? ad.views ?? 0).toLocaleString("ar")}
+                </span>
+                <span className="text-[11px]">مشاهدة</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleLike}
+                aria-label="like"
+                disabled={likeMut.isPending || unlikeMut.isPending}
+                className={`flex items-center gap-1 text-xs sm:text-sm flex-1 justify-center active:scale-95 transition-all rounded-lg ${ad.isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <ThumbsUp
+                  className={`w-4 h-4 ${ad.isLiked ? "fill-primary" : ""}`}
+                />
+                <span className="font-semibold tabular-nums">
+                  {(ad.likeCount ?? 0).toLocaleString("ar")}
+                </span>
+                <span className="text-[11px]">إعجاب</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleFavorite}
+                aria-label="favorite-counter"
+                disabled={favMut.isPending || unfavMut.isPending}
+                className={`flex items-center gap-1 text-xs sm:text-sm flex-1 justify-center active:scale-95 transition-all rounded-lg ${ad.isFavorited ? "text-amber-500" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <Star
+                  className={`w-4 h-4 ${ad.isFavorited ? "fill-amber-500" : ""}`}
+                />
+                <span className="font-semibold tabular-nums">
+                  {(ad.favoriteCount ?? 0).toLocaleString("ar")}
+                </span>
+                <span className="text-[11px]">مفضّلة</span>
+              </button>
             </div>
-          )}
-          <div className="flex justify-between py-1 border-b border-border/50">
-            <span className="text-muted-foreground">نوع الإعلان</span>
-            <span className="font-medium">
-              {ad.type === "offer" ? "عرض" : "طلب"}
-            </span>
+
+            {/* Description */}
+            <div className="rounded-2xl border border-border bg-card/70 p-4">
+              <h3 className="font-semibold mb-2">الوصف</h3>
+              <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
+                {ad.description}
+              </p>
+            </div>
+
+            {/* Details List */}
+            <div className="rounded-2xl border border-border bg-card/70 p-4 flex flex-col gap-2 text-sm">
+              <div className="flex justify-between py-1 border-b border-border/50">
+                <span className="text-muted-foreground">القسم</span>
+                <span className="font-medium">{ad.categoryName}</span>
+              </div>
+              {ad.subcategoryName && (
+                <div className="flex justify-between py-1 border-b border-border/50">
+                  <span className="text-muted-foreground">الفئة الفرعية</span>
+                  <span className="font-medium">{ad.subcategoryName}</span>
+                </div>
+              )}
+              <div className="flex justify-between py-1 border-b border-border/50">
+                <span className="text-muted-foreground">نوع الإعلان</span>
+                <span className="font-medium">
+                  {ad.type === "offer" ? "عرض" : "طلب"}
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
-
-        <Separator />
-
-        {/* Seller Info */}
-        <div>
-          <h3 className="font-semibold mb-2">معلومات البائع</h3>
-          <div className="flex flex-col gap-3 p-3 rounded-xl border border-border bg-muted/20">
+          {/* Seller Info */}
+          <aside className="h-fit rounded-2xl border border-border bg-card/70 p-3 space-y-2 lg:sticky lg:top-20">
+            <h3 className="font-semibold">معلومات البائع</h3>
+            <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-muted/20 p-3">
             {ad.userId ? (
               <Link
                 href={`/users/${ad.userId}`}
@@ -464,23 +470,15 @@ export default function AdDetail() {
               type="button"
               onClick={handleMessage}
               disabled={startConversation?.isPending}
-              className="w-full bg-[#b6e356] hover:bg-[#a8d94c] text-black rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-2 transition-all"
+              className="w-full bg-[#b6e356] hover:bg-[#a8d94c] text-black rounded-xl py-2 text-sm font-medium flex items-center justify-center gap-2 transition-all"
             >
               <MessageSquare className="w-4 h-4" />
               راسل البائع داخل التطبيق
             </Button>
             <Button
               type="button"
-              onClick={() => {
-                const text = encodeURIComponent(
-                  `مرحباً، أنا مهتم بإعلانك: ${ad.title}`,
-                );
-                window.open(
-                  `https://wa.me/${ad.sellerPhone.replace(/[^0-9+]/g, "")}?text=${text}`,
-                  "_blank",
-                );
-              }}
-              className="w-full bg-transparent border border-green-500 text-green-400 hover:bg-green-500/10 rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-2 transition-all"
+              onClick={handleWhatsappContact}
+              className="w-full bg-transparent border border-green-500 text-green-400 hover:bg-green-500/10 rounded-xl py-2 text-sm font-medium flex items-center justify-center gap-2 transition-all"
             >
               <MessageCircle className="w-5 h-5" />
               تواصل عبر واتساب
@@ -488,7 +486,7 @@ export default function AdDetail() {
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full border p-3 rounded bg-background text-right"
+              className="w-full border p-2.5 rounded bg-background text-right text-sm"
               required
             >
               <option value="" disabled>
@@ -504,7 +502,7 @@ export default function AdDetail() {
             {reason === "أخرى" && (
               <textarea
                 placeholder="اكتب تفاصيل إضافية..."
-                className="w-full border p-3 rounded bg-background text-right"
+                className="w-full border p-2.5 rounded bg-background text-right text-sm"
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
               />
@@ -518,8 +516,8 @@ export default function AdDetail() {
             >
               {reporting ? "جاري الإرسال..." : "🚩 إبلاغ عن الإعلان"}
             </Button>
-          </div>
-          <button
+            </div>
+            <button
             type="button"
             onClick={handleCopyPhone}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-md border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors"
@@ -533,7 +531,8 @@ export default function AdDetail() {
             ) : (
               <Copy className="w-4 h-4 opacity-60" />
             )}
-          </button>
+            </button>
+          </aside>
         </div>
       </div>
     </motion.div>

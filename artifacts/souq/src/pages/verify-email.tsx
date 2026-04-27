@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-const API_BASE =
-  "https://796954c8-8650-4692-8c58-ccaa3bfea85b-00-2ptjcbj5jjblu.kirk.replit.dev:3002";
+const API_BASE = "";
 
 export default function VerifyEmail() {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,10 +51,9 @@ export default function VerifyEmail() {
 
       toast({
         title: "تم التفعيل",
-        description: "تم تفعيل الحساب بنجاح",
+        description: "تم تفعيل الحساب بنجاح، يمكنك تسجيل الدخول الآن",
       });
-
-      window.location.href = "/";
+      navigate("/login");
     } catch (err: any) {
       toast({
         title: "خطأ",

@@ -40,6 +40,7 @@ import AccountInfo from "@/pages/account-info";
 import Messages from "@/pages/messages";
 import MessageThread from "@/pages/message-thread";
 import SupportHelpPage from "@/pages/support-help";
+import GuestWelcome from "@/pages/guest-welcome";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,6 +79,7 @@ function Router() {
         <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/guest-welcome" component={GuestWelcome} />
         <Route path="/users/:id" component={UserProfile} />
         <Route path="/settings" component={Settings} />
         <Route path="/account/profile" component={AccountProfile} />

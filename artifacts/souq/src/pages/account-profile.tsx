@@ -27,7 +27,7 @@ export default function AccountProfile() {
     }
   }, [user]);
 
-  if (!isLoading && !user) return <Redirect to="/login?redirect=/account/profile" />;
+  if (!isLoading && !user) return <Redirect to="/guest-welcome?redirect=/account/profile" />;
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();

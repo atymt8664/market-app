@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { BuyerSafetyNote } from "@/components/buyer-safety-note";
 
 export default function AdDetail() {
   const params = useParams();
@@ -532,6 +533,7 @@ export default function AdDetail() {
               <Copy className="w-4 h-4 opacity-60" />
             )}
             </button>
+            <BuyerSafetyNote />
           </aside>
         </div>
       </div>

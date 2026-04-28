@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
+import { z } from "zod";
 
 import {
   db,
@@ -14,7 +15,6 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 
 import {
-  AuthSignupBody,
   AuthLoginBody,
   AuthVerifyEmailBody,
   AuthResendVerificationBody,
@@ -130,16 +130,68 @@ async function deliverPasswordResetLink(email: string, url: string) {
   await sendPasswordResetEmail(email, url);
 }
 
+const SignupRequestBody = z
+  .object({
+    firstName: z.string().trim().min(1, "الاسم الأول مطلوب"),
+    lastName: z.string().trim().min(1, "اسم العائلة مطلوب"),
+    email: z.string().trim().email("البريد الإلكتروني غير صحيح"),
+    country: z.string().trim().min(2, "الرجاء اختيار الدولة"),
+    countryCode: z.string().trim().min(2, "الرجاء اختيار الدولة"),
+    phoneCountryCode: z.string().trim().regex(/^\+[0-9]{1,4}$/, "رقم الهاتف غير صحيح لهذه الدولة"),
+    phoneNumber: z.string().trim().regex(/^[0-9]{6,15}$/, "رقم الهاتف غير صحيح لهذه الدولة"),
+    city: z.string().trim().min(1, "الرجاء اختيار المدينة من القائمة"),
+    password: z.string().min(1, "كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم، ولا تقل عن 8 أحرف"),
+    confirmPassword: z.string().min(1, "تأكيد كلمة المرور مطلوب"),
+    acceptTerms: z.literal(true, { message: "يجب الموافقة على الشروط والأحكام" }),
+    acceptPrivacy: z.literal(true, { message: "يجب الموافقة على سياسة الخصوصية" }),
+  })
+  .superRefine((v, ctx) => {
+    if (!/[a-z]/.test(v.password) || !/[A-Z]/.test(v.password) || !/[0-9]/.test(v.password)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["password"],
+        message: "كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم، ولا تقل عن 8 أحرف",
+      });
+    }
+    if (v.password.length < 8) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["password"],
+        message: "كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم، ولا تقل عن 8 أحرف",
+      });
+    }
+    if (v.password !== v.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirmPassword"],
+        message: "كلمة المرور وتأكيد كلمة المرور غير متطابقين",
+      });
+    }
+  });
+
 router.post("/auth/signup", signupLimiter, async (req, res) => {
   try {
-    const parsed = AuthSignupBody.safeParse(req.body);
+    const parsed = SignupRequestBody.safeParse(req.body);
 
     if (!parsed.success) {
-      res.status(400).json({ error: "بيانات غير صحيحة" });
+      res.status(400).json({
+        error: "بيانات غير صحيحة",
+        fieldErrors: parsed.error.flatten().fieldErrors,
+      });
       return;
     }
 
-    const { email, password, name, phone, city } = parsed.data;
+    const {
+      email,
+      password,
+      firstName,
+      lastName,
+      phoneCountryCode,
+      phoneNumber,
+      city,
+    } = parsed.data;
+    const name = `${firstName} ${lastName}`.trim();
+    const phone = `${phoneCountryCode}${phoneNumber}`;
     const normalizedEmail = email.toLowerCase();
 
     const existing = await db
@@ -160,13 +212,24 @@ router.post("/auth/signup", signupLimiter, async (req, res) => {
             passwordHash: await bcrypt.hash(password, 10),
             name,
             phone,
-            city: city ?? "",
+            city,
             verificationCode: code,
             verificationExpiresAt: expiryDate(),
           })
           .where(eq(usersTable.id, user.id));
 
-        await deliverVerificationCode(user.email, code);
+        try {
+          await deliverVerificationCode(user.email, code);
+        } catch (mailError) {
+          console.error("Verification email send failed:", mailError);
+          const details =
+            mailError instanceof Error ? mailError.message : "Email provider error";
+          res.status(502).json({
+            error: "تعذر إرسال رمز التفعيل إلى البريد الإلكتروني",
+            details,
+          });
+          return;
+        }
 
         res.json({
           ok: true,
@@ -191,14 +254,25 @@ router.post("/auth/signup", signupLimiter, async (req, res) => {
         passwordHash,
         name,
         phone,
-        city: city ?? "",
+        city,
         emailVerified: false,
         verificationCode: code,
         verificationExpiresAt: expiryDate(),
       })
       .returning();
 
-    await deliverVerificationCode(normalizedEmail, code);
+    try {
+      await deliverVerificationCode(normalizedEmail, code);
+    } catch (mailError) {
+      console.error("Verification email send failed:", mailError);
+      const details =
+        mailError instanceof Error ? mailError.message : "Email provider error";
+      res.status(502).json({
+        error: "تعذر إرسال رمز التفعيل إلى البريد الإلكتروني",
+        details,
+      });
+      return;
+    }
 
     res.json({
       ok: true,
@@ -448,7 +522,18 @@ router.post("/auth/resend-verification", verifyLimiter, async (req, res) => {
     .update(usersTable)
     .set({ verificationCode: code, verificationExpiresAt: expiryDate() })
     .where(eq(usersTable.id, user.id));
-  await deliverVerificationCode(user.email, code);
+  try {
+    await deliverVerificationCode(user.email, code);
+  } catch (mailError) {
+    console.error("Verification email resend failed:", mailError);
+    const details =
+      mailError instanceof Error ? mailError.message : "Email provider error";
+    res.status(502).json({
+      error: "تعذر إرسال رمز التفعيل إلى البريد الإلكتروني",
+      details,
+    });
+    return;
+  }
   res.json({
     ok: true,
   });
@@ -490,8 +575,16 @@ router.post("/auth/reset-password", passwordResetLimiter, async (req, res) => {
   const body = req.body as { token?: unknown; password?: unknown };
   const token = typeof body.token === "string" ? body.token : "";
   const password = typeof body.password === "string" ? body.password : "";
-  if (!token || password.length < 6) {
-    res.status(400).json({ error: "بيانات غير صحيحة" });
+  const invalidPassword =
+    password.length < 8 ||
+    !/[a-z]/.test(password) ||
+    !/[A-Z]/.test(password) ||
+    !/[0-9]/.test(password);
+  if (!token || invalidPassword) {
+    res.status(400).json({
+      error:
+        "كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم، ولا تقل عن 8 أحرف",
+    });
     return;
   }
   const rows = await db
@@ -505,7 +598,9 @@ router.post("/auth/reset-password", passwordResetLimiter, async (req, res) => {
     !user.passwordResetExpiresAt ||
     user.passwordResetExpiresAt.getTime() < Date.now()
   ) {
-    res.status(400).json({ error: "الرابط غير صالح أو منتهي الصلاحية" });
+    res
+      .status(400)
+      .json({ error: "رابط إعادة التعيين غير صالح أو منتهي الصلاحية" });
     return;
   }
   const passwordHash = await bcrypt.hash(password, 10);

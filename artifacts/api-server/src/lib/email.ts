@@ -1,18 +1,36 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 const defaultAppUrl = "http://localhost:5173";
-const defaultFromAddress = "Souq <onboarding@resend.dev>";
+const defaultFromAddress = "Souq Arab EU <souqarab.market@gmail.com>";
 
 function normalizeAppUrl(rawUrl: string | undefined) {
   const trimmed = (rawUrl || defaultAppUrl).trim();
   return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
 }
 
-const appUrl = normalizeAppUrl(process.env["APP_URL"]);
-const resendApiKey = process.env["RESEND_API_KEY"];
+function getFrontendUrl() {
+  const frontend = process.env["FRONTEND_URL"];
+  const app = process.env["APP_URL"];
+  return normalizeAppUrl(frontend || app);
+}
+const smtpUser = process.env["EMAIL_USER"] || "souqarab.market@gmail.com";
+const smtpPass = process.env["EMAIL_PASS"];
 const fromAddress = process.env["EMAIL_FROM"] || defaultFromAddress;
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
-const hasResendKey = Boolean(resendApiKey && resendApiKey.trim().length > 0);
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: smtpUser,
+    pass: smtpPass,
+  },
+});
+const hasSmtpCredentials = Boolean(
+  smtpUser &&
+    smtpUser.trim().length > 0 &&
+    smtpPass &&
+    smtpPass.trim().length > 0,
+);
 
 function logEmailDebug(event: string, payload: Record<string, unknown>) {
   // eslint-disable-next-line no-console
@@ -20,15 +38,16 @@ function logEmailDebug(event: string, payload: Record<string, unknown>) {
 }
 
 function ensureEmailProviderConfigured() {
-  if (!resend) {
+  if (!hasSmtpCredentials) {
     throw new Error(
-      "Missing RESEND_API_KEY. Configure it to send transactional emails.",
+      "Missing EMAIL_USER/EMAIL_PASS. Configure Gmail SMTP credentials to send transactional emails.",
     );
   }
 }
 
 export function buildResetPasswordUrl(token: string) {
-  return `${appUrl}/reset-password?token=${encodeURIComponent(token)}`;
+  const frontendUrl = getFrontendUrl();
+  return `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
 }
 
 export async function sendVerificationCodeEmail(email: string, code: string) {
@@ -37,24 +56,50 @@ export async function sendVerificationCodeEmail(email: string, code: string) {
   logEmailDebug("send_verification_start", {
     to: email,
     from: fromAddress,
-    keyLoaded: hasResendKey,
+    smtpConfigured: hasSmtpCredentials,
+    smtpUser,
   });
 
-  const result = await resend!.emails.send({
+  const result = await transporter.sendMail({
     from: fromAddress,
     to: email,
-    subject: "رمز تفعيل الحساب",
+    subject: "رمز تفعيل حسابك في سوق العرب EU",
     html: `
-      <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.8;color:#111;">
-        <h2 style="margin-bottom:8px;">رمز تفعيل حسابك</h2>
-        <p style="margin-top:0;">استخدم الرمز التالي لإكمال التفعيل:</p>
-        <p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0;">${code}</p>
-        <p style="color:#666;">صلاحية الرمز 30 دقيقة. لا تشاركه مع أي شخص.</p>
+      <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.9;color:#111827;max-width:620px;margin:0 auto;">
+        <h2 style="margin:0 0 10px 0;font-size:20px;">مرحباً،</h2>
+        <p style="margin:0 0 10px 0;">شكراً لتسجيلك في سوق العرب EU.</p>
+        <p style="margin:0 0 8px 0;">رمز تفعيل حسابك هو:</p>
+        <div style="margin:12px 0 16px 0;padding:14px 16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;display:inline-block;">
+          <span style="font-size:34px;font-weight:800;letter-spacing:6px;color:#111827;">${code}</span>
+        </div>
+        <p style="margin:0 0 10px 0;">يرجى إدخال هذا الرمز في التطبيق لإكمال عملية التفعيل.</p>
+        <p style="margin:0 0 8px 0;font-weight:700;">تنبيه:</p>
+        <p style="margin:0 0 12px 0;color:#374151;">لا تشارك هذا الرمز مع أي شخص حفاظاً على أمان حسابك.</p>
+        <p style="margin:0 0 12px 0;color:#374151;">إذا لم تقم بإنشاء هذا الحساب، يمكنك تجاهل هذه الرسالة.</p>
+        <p style="margin:0;">مع تحيات،<br/>فريق سوق العرب EU</p>
       </div>
     `,
   });
 
-  logEmailDebug("send_verification_result", result as Record<string, unknown>);
+  logEmailDebug("send_verification_result", {
+    messageId: result.messageId,
+    accepted: result.accepted,
+    rejected: result.rejected,
+    response: result.response,
+  });
+  if (result.rejected.length > 0) {
+    logEmailDebug("send_verification_failed", {
+      to: email,
+      rejected: result.rejected,
+      response: result.response,
+    });
+    throw new Error("فشل إرسال بريد التفعيل عبر Gmail SMTP");
+  }
+  logEmailDebug("send_verification_success", {
+    to: email,
+    from: fromAddress,
+    messageId: result.messageId,
+  });
 }
 
 export async function sendPasswordResetEmail(email: string, resetUrl: string) {
@@ -63,10 +108,12 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   logEmailDebug("send_reset_start", {
     to: email,
     from: fromAddress,
-    keyLoaded: hasResendKey,
+    smtpConfigured: hasSmtpCredentials,
+    smtpUser,
+    frontendUrl: getFrontendUrl(),
   });
 
-  const result = await resend!.emails.send({
+  const result = await transporter.sendMail({
     from: fromAddress,
     to: email,
     subject: "إعادة تعيين كلمة المرور",
@@ -86,5 +133,23 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
     `,
   });
 
-  logEmailDebug("send_reset_result", result as Record<string, unknown>);
+  logEmailDebug("send_reset_result", {
+    messageId: result.messageId,
+    accepted: result.accepted,
+    rejected: result.rejected,
+    response: result.response,
+  });
+  if (result.rejected.length > 0) {
+    logEmailDebug("send_reset_failed", {
+      to: email,
+      rejected: result.rejected,
+      response: result.response,
+    });
+    throw new Error("فشل إرسال بريد إعادة تعيين كلمة المرور عبر Gmail SMTP");
+  }
+  logEmailDebug("send_reset_success", {
+    to: email,
+    from: fromAddress,
+    messageId: result.messageId,
+  });
 }

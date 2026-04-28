@@ -12,7 +12,7 @@ export default function AccountEmail() {
   const { toast } = useToast();
   const resend = useAuthResendVerification();
 
-  if (!isLoading && !user) return <Redirect to="/login?redirect=/account/email" />;
+  if (!isLoading && !user) return <Redirect to="/guest-welcome?redirect=/account/email" />;
   if (!user) return null;
 
   const verified = user.emailVerified;

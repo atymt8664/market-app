@@ -121,11 +121,20 @@ export default function Settings() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
-    sessionStorage.clear();
-    queryClient.clear();
+    logoutMutation.mutate(undefined, {
+      onSettled: async () => {
+        // Keep UX prefs, but clear auth/session-like local data.
+        localStorage.removeItem("favorites");
+        sessionStorage.clear();
 
-    window.location.href = "/login";
+        queryClient.setQueryData(getAuthMeQueryKey(), null);
+        queryClient.removeQueries({ queryKey: getAuthMeQueryKey() });
+        queryClient.removeQueries({ queryKey: getListMyAdsQueryKey() });
+        await queryClient.invalidateQueries();
+
+        navigate("/login");
+      },
+    });
   };
 
   const go = (path: string) => () => navigate(path);

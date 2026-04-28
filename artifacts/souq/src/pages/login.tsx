@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { ArrowRight, Loader2, LogIn } from "lucide-react";
 import { motion } from "framer-motion";
-import { useAuthLogin, getAuthMeQueryKey } from "@workspace/api-client-react";
+import { getAuthMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Form,
@@ -21,7 +21,10 @@ import { useToast } from "@/hooks/use-toast";
 
 const schema = z.object({
   email: z.string().email("بريد إلكتروني غير صحيح"),
-  password: z.string().min(6, "كلمة المرور قصيرة جداً"),
+  password: z
+    .string()
+    .min(1, "كلمة المرور مطلوبة")
+    .min(6, "كلمة المرور قصيرة جداً"),
 });
 
 type Values = z.infer<typeof schema>;
@@ -30,8 +33,8 @@ export default function Login() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const loginMutation = useAuthLogin();
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -40,6 +43,7 @@ export default function Login() {
 
   const onSubmit = async (data: Values) => {
     setError(null);
+    setIsSubmitting(true);
 
     try {
       const res = await fetch("/api/auth/login", {
@@ -71,12 +75,16 @@ export default function Login() {
       }
 
       toast({ title: "تم تسجيل الدخول بنجاح" });
+      queryClient.setQueryData(getAuthMeQueryKey(), json);
+      await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
 
       const params = new URLSearchParams(window.location.search);
       navigate(params.get("redirect") || "/");
 
     } catch (err: any) {
       setError(err.message || "فشل تسجيل الدخول");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -172,9 +180,9 @@ export default function Login() {
               <Button
                 type="submit"
                 className="h-14 text-base font-bold mt-2 rounded-xl shadow-lg hover:scale-[1.02] transition-all"
-                disabled={loginMutation.isPending}
+                disabled={isSubmitting}
               >
-                {loginMutation.isPending ? (
+                {isSubmitting ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   "تسجيل الدخول"

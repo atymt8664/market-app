@@ -28,7 +28,7 @@ export default function Messages() {
     }
   });
 
-  if (!authLoading && !user) return <Redirect to="/login?redirect=/messages" />;
+  if (!authLoading && !user) return <Redirect to="/guest-welcome?redirect=/messages" />;
 
   return (
     <div className="flex flex-col w-full min-h-[100dvh] bg-background">

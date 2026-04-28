@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Home, Heart, PlusCircle, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,34 +25,108 @@ export function Layout({ children }: LayoutProps) {
 
 function BottomNav() {
   const [location, navigate] = useLocation();
-  const { isAuthenticated } = useAuth();
+  const search = useSearch();
+  const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+  const showGuestToast = (nextTarget: string) => {
+    const title = "يرجى تسجيل الدخول أولاً";
+    const descriptionMap: Record<string, string> = {
+      "/create-ad": "يجب أن يكون لديك حساب لنشر إعلان",
+      "/messages": "يجب أن يكون لديك حساب لعرض الرسائل والتواصل مع المستخدمين",
+      "/favorites": "يجب أن يكون لديك حساب لحفظ الإعلانات في المفضلة",
+      "/profile": "يجب أن يكون لديك حساب لعرض وإدارة حسابك",
+    };
+    toast({
+      title,
+      description: descriptionMap[nextTarget] ?? "يجب أن يكون لديك حساب للمتابعة",
+    });
+  };
+  const forceNavigate = (target: string) => {
+    const before = `${window.location.pathname}${window.location.search}`;
+    navigate(target);
+    window.setTimeout(() => {
+      const after = `${window.location.pathname}${window.location.search}`;
+      if (after === before || after !== target) {
+        window.history.pushState({}, "", target);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }
+    }, 0);
+  };
+  const toGuestWelcome = (nextTarget: string) => {
+    const target = `/guest-welcome?next=${encodeURIComponent(nextTarget)}&t=${Date.now()}`;
+    forceNavigate(target);
+  };
+  const logNavTap = (key: "profile" | "messages" | "favorites" | "create", target: string) => {
+    console.log("[bottom-nav]", {
+      key,
+      target,
+      isAuthenticated,
+      isLoading,
+      location,
+      href: `${window.location.pathname}${window.location.search}`,
+    });
+  };
 
-  const handleCreateClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-
+  const handleCreateClick = () => {
+    const nextTarget = "/create-ad";
+    logNavTap("create", nextTarget);
     if (!isAuthenticated) {
-      toast({
-        title: "يرجى تسجيل الدخول أولاً",
-        description: "يجب أن يكون لديك حساب لنشر إعلان",
-      });
-      navigate("/login?redirect=/new");
+      showGuestToast(nextTarget);
+      toGuestWelcome(nextTarget);
       return;
     }
 
-    navigate("/new");
+    forceNavigate("/new");
   };
 
-  const search = window.location.search;
+  const handleProfileClick = () => {
+    const nextTarget = "/profile";
+    logNavTap("profile", nextTarget);
+    if (!isAuthenticated) {
+      showGuestToast(nextTarget);
+      toGuestWelcome(nextTarget);
+      return;
+    }
+
+    forceNavigate("/profile");
+  };
+  const handleMessagesClick = () => {
+    const nextTarget = "/messages";
+    logNavTap("messages", nextTarget);
+    if (!isAuthenticated) {
+      showGuestToast(nextTarget);
+      toGuestWelcome(nextTarget);
+      return;
+    }
+    forceNavigate("/messages");
+  };
+  const handleFavoritesClick = () => {
+    const nextTarget = "/favorites";
+    logNavTap("favorites", nextTarget);
+    if (!isAuthenticated) {
+      showGuestToast(nextTarget);
+      toGuestWelcome(nextTarget);
+      return;
+    }
+    forceNavigate("/favorites");
+  };
+
+  const searchParams = new URLSearchParams(search);
+  const nextTarget = searchParams.get("next") || searchParams.get("redirect");
 
   const isMessagesActive =
-    location.startsWith("/messages") || search.includes("redirect=/messages");
+    location.startsWith("/messages") || nextTarget === "/messages";
 
   const isProfileActive =
     location.startsWith("/profile") ||
     location === "/stats" ||
     location === "/signup" ||
+    (location === "/guest-welcome" && nextTarget === "/profile") ||
     (location.startsWith("/login") && !search.includes("redirect=/messages"));
+
+  const isFavoritesActive =
+    location === "/favorites" ||
+    (location === "/guest-welcome" && nextTarget === "/favorites");
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
@@ -64,12 +138,28 @@ function BottomNav() {
           isActive={location === "/"}
         />
 
-        <NavItem
-          href="/favorites"
-          icon={<Heart className="w-6 h-6" />}
-          label="المفضلة"
-          isActive={location === "/favorites"}
-        />
+        <button
+          type="button"
+          onClick={handleFavoritesClick}
+          className="flex-1 flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform"
+        >
+          <div
+            className={cn(
+              "transition-colors",
+              isFavoritesActive ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <Heart className="w-6 h-6" />
+          </div>
+          <span
+            className={cn(
+              "text-[10px] lg:text-xs font-medium transition-colors",
+              isFavoritesActive ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            المفضلة
+          </span>
+        </button>
 
         <div className="flex-1 flex flex-col items-center justify-end relative -top-3 md:-top-4">
           <button
@@ -83,19 +173,51 @@ function BottomNav() {
           </span>
         </div>
 
-        <NavItem
-          href="/messages"
-          icon={<MessageCircle className="w-6 h-6" />}
-          label="الرسائل"
-          isActive={isMessagesActive}
-        />
+        <button
+          type="button"
+          onClick={handleMessagesClick}
+          className="flex-1 flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform"
+        >
+          <div
+            className={cn(
+              "transition-colors",
+              isMessagesActive ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <MessageCircle className="w-6 h-6" />
+          </div>
+          <span
+            className={cn(
+              "text-[10px] lg:text-xs font-medium transition-colors",
+              isMessagesActive ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            الرسائل
+          </span>
+        </button>
 
-        <NavItem
-          href="/profile"
-          icon={<User className="w-6 h-6" />}
-          label="حسابي"
-          isActive={isProfileActive}
-        />
+        <button
+          type="button"
+          onClick={handleProfileClick}
+          className="flex-1 flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform"
+        >
+          <div
+            className={cn(
+              "transition-colors",
+              isProfileActive ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <User className="w-6 h-6" />
+          </div>
+          <span
+            className={cn(
+              "text-[10px] lg:text-xs font-medium transition-colors",
+              isProfileActive ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            حسابي
+          </span>
+        </button>
       </div>
     </nav>
   );

@@ -5,9 +5,14 @@ import { AdCard, AdCardSkeleton } from "@/components/ad-card";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { Redirect } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Favorites() {
+  const { user, isLoading: authLoading } = useAuth();
   const [favorites] = useLocalStorage<number[]>("favorites", []);
+
+  if (!authLoading && !user) return <Redirect to="/guest-welcome?redirect=/favorites" />;
 
   const { data: ads, isLoading } = useListAds(
     {},

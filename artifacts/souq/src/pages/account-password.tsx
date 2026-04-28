@@ -16,7 +16,7 @@ export default function AccountPassword() {
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
 
-  if (!isLoading && !user) return <Redirect to="/login?redirect=/account/password" />;
+  if (!isLoading && !user) return <Redirect to="/guest-welcome?redirect=/account/password" />;
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();

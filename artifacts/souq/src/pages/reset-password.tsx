@@ -3,7 +3,14 @@ import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { ArrowRight, Loader2, KeyRound, CheckCircle2 } from "lucide-react";
+import {
+  ArrowRight,
+  Loader2,
+  KeyRound,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthResetPassword } from "@workspace/api-client-react";
 import {
@@ -19,12 +26,35 @@ import { Button } from "@/components/ui/button";
 
 const schema = z
   .object({
-    password: z.string().min(6, "كلمة المرور قصيرة جداً"),
-    confirm: z.string().min(6),
+    password: z
+      .string()
+      .min(
+        1,
+        "كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم، ولا تقل عن 8 أحرف",
+      ),
+    confirm: z.string().min(1, "تأكيد كلمة المرور مطلوب"),
   })
-  .refine((d) => d.password === d.confirm, {
-    message: "كلمتا المرور غير متطابقتين",
-    path: ["confirm"],
+  .superRefine((values, ctx) => {
+    if (
+      values.password.length < 8 ||
+      !/[a-z]/.test(values.password) ||
+      !/[A-Z]/.test(values.password) ||
+      !/[0-9]/.test(values.password)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["password"],
+        message:
+          "كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم، ولا تقل عن 8 أحرف",
+      });
+    }
+    if (values.password !== values.confirm) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirm"],
+        message: "كلمة المرور وتأكيد كلمة المرور غير متطابقين",
+      });
+    }
   });
 
 type Values = z.infer<typeof schema>;
@@ -35,12 +65,14 @@ export default function ResetPassword() {
   const [token, setToken] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("token") || "";
     setToken(t);
-    if (!t) setError("الرابط غير صالح");
+    if (!t) setError("رابط إعادة التعيين غير صالح أو منتهي الصلاحية");
   }, []);
 
   const form = useForm<Values>({
@@ -61,7 +93,7 @@ export default function ResetPassword() {
         onError: (err: unknown) => {
           const e = err as { data?: { error?: string } };
           setError(
-            e?.data?.error || "تعذّر إعادة التعيين. ربما انتهت صلاحية الرابط.",
+            e?.data?.error || "رابط إعادة التعيين غير صالح أو منتهي الصلاحية",
           );
         },
       },
@@ -72,88 +104,147 @@ export default function ResetPassword() {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-background"
+      className="flex min-h-[100dvh] w-full flex-col bg-gradient-to-b from-background to-muted/30"
     >
-      <header className="sticky top-0 z-40 bg-background border-b border-border p-4 flex items-center gap-4">
+      <header className="sticky top-0 z-40 flex items-center gap-4 border-b border-border bg-background/80 p-4 backdrop-blur">
         <Link href="/login">
-          <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
+          <button
+            type="button"
+            className="rounded-full p-2 -mr-2 transition-all hover:bg-muted active:scale-95"
+          >
             <ArrowRight className="w-5 h-5" />
           </button>
         </Link>
         <h1 className="font-bold text-lg">تعيين كلمة مرور جديدة</h1>
       </header>
 
-      <div className="p-6 flex flex-col gap-6">
-        <div className="flex flex-col items-center gap-2 pt-4 pb-2">
-          <div className="w-16 h-16 rounded-2xl bg-primary/15 text-primary flex items-center justify-center">
-            <KeyRound className="w-8 h-8" />
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-5 pb-8 pt-10 sm:px-6">
+        <div className="flex flex-col items-center gap-5">
+          <div className="relative flex items-center justify-center">
+            <div className="absolute h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-primary/25 bg-primary/10 shadow-xl">
+              <KeyRound className="h-10 w-10 text-primary" />
+            </div>
           </div>
-          <h2 className="text-xl font-bold">كلمة مرور جديدة</h2>
-          <p className="text-sm text-muted-foreground text-center">
-            أدخل كلمة المرور الجديدة لحسابك
-          </p>
+          <div className="space-y-1 text-center">
+            <h2 className="text-2xl font-bold">كلمة مرور جديدة</h2>
+            <p className="text-sm text-muted-foreground">
+              أدخل كلمة المرور الجديدة لحسابك
+            </p>
+          </div>
         </div>
 
         {done ? (
-          <div className="bg-primary/10 border border-primary/30 rounded-2xl p-5 flex flex-col items-center text-center gap-2">
-            <CheckCircle2 className="w-10 h-10 text-primary" />
-            <h3 className="font-bold">تم تحديث كلمة المرور</h3>
-            <p className="text-sm text-muted-foreground">
-              يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.
-            </p>
+          <div className="rounded-2xl border border-border bg-background/80 p-5 shadow-xl backdrop-blur">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <CheckCircle2 className="h-10 w-10 text-primary" />
+              <h3 className="font-bold">تم تحديث كلمة المرور</h3>
+              <p className="text-sm text-muted-foreground">
+                يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.
+              </p>
+            </div>
           </div>
         ) : (
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col gap-4"
-            >
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>كلمة المرور الجديدة</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="confirm"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>تأكيد كلمة المرور</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {error && (
-                <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-center">
-                  {error}
-                </p>
-              )}
-
-              <Button
-                type="submit"
-                className="py-6 text-base font-bold mt-2"
-                disabled={mut.isPending || !token}
+          <div className="rounded-2xl border border-border bg-background/80 p-5 shadow-xl backdrop-blur">
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="flex flex-col gap-4"
+                dir="rtl"
               >
-                {mut.isPending ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  "حفظ كلمة المرور"
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>كلمة المرور الجديدة</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            className="pr-11"
+                            {...field}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            aria-label={
+                              showPassword
+                                ? "إخفاء كلمة المرور"
+                                : "إظهار كلمة المرور"
+                            }
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="confirm"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>تأكيد كلمة المرور</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type={showConfirmPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            className="pr-11"
+                            {...field}
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowConfirmPassword((prev) => !prev)
+                            }
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            aria-label={
+                              showConfirmPassword
+                                ? "إخفاء تأكيد كلمة المرور"
+                                : "إظهار تأكيد كلمة المرور"
+                            }
+                          >
+                            {showConfirmPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {error && (
+                  <p className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-center text-sm text-destructive">
+                    {error}
+                  </p>
                 )}
-              </Button>
-            </form>
-          </Form>
+                <Button
+                  type="submit"
+                  className="mt-2 h-12 rounded-xl text-base font-bold shadow-lg transition-all hover:scale-[1.01]"
+                  disabled={mut.isPending || !token}
+                >
+                  {mut.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    "حفظ كلمة المرور"
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </div>
         )}
       </div>
     </motion.div>

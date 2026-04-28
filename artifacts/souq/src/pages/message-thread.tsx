@@ -49,7 +49,7 @@ export default function MessageThread() {
     }
   }, [messages]);
 
-  if (!authLoading && !user) return <Redirect to={`/login?redirect=/messages/${convId}`} />;
+  if (!authLoading && !user) return <Redirect to={`/guest-welcome?redirect=/messages/${convId}`} />;
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,14 +100,16 @@ export default function MessageThread() {
 
       <div className="mx-auto w-full max-w-[820px] px-4 md:px-6 py-4 flex-1">
         <div className="rounded-2xl border border-border bg-card/70 h-[calc(100dvh-120px)] min-h-[520px] flex flex-col overflow-hidden">
-          {conv && conv.adPrice !== null && conv.adPriceType !== null && (
+          {conv &&
+            conv.adPrice !== null &&
+            typeof conv.adPriceType === "string" && (
             <Link
               href={`/ad/${conv.adId}`}
               className="px-4 py-2 text-xs text-primary border-b border-border/40 bg-primary/5"
             >
               {formatPrice(conv.adPrice, conv.adPriceType)}
             </Link>
-          )}
+            )}
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
             {isLoading ? (

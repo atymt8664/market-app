@@ -35,7 +35,8 @@
     "pino": "^9",
     "pino-http": "^10",
     "resend": "^6.12.2",
-    "ws": "^8.20.0"
+    "ws": "^8.20.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/connect-pg-simple": "^7.0.3",

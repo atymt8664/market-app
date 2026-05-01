@@ -358,13 +358,27 @@ export async function customFetch<T = unknown>(
     }
   }
 
-  const requestInfo = { method, url: resolveUrl(input) };
+  const resolvedFetchUrl = resolveUrl(input);
+  const requestInfo = { method, url: resolvedFetchUrl };
 
   const isBrowser =
     typeof globalThis !== "undefined" &&
     typeof (globalThis as { window?: unknown }).window !== "undefined";
+
+  let needsCrossOriginCookies = false;
+  if (isBrowser && typeof window !== "undefined" && window.location?.origin) {
+    try {
+      const targetOrigin = new URL(resolvedFetchUrl, window.location.href).origin;
+      needsCrossOriginCookies = targetOrigin !== window.location.origin;
+    } catch {
+      needsCrossOriginCookies = Boolean(_baseUrl);
+    }
+  }
+
   const includeCredentialsByDefault =
-    isBrowser && init.credentials === undefined;
+    isBrowser &&
+    init.credentials === undefined &&
+    (Boolean(_baseUrl) || needsCrossOriginCookies);
 
   const response = await fetch(input, {
     ...init,

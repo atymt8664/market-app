@@ -2,6 +2,8 @@ import { Router } from "express";
 import { db, reportsTable, usersTable, adsTable } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
+import { requireAdmin } from "../middlewares/require-admin";
+import { getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
 
 const router = Router();
 
@@ -9,14 +11,10 @@ const router = Router();
  * إنشاء بلاغ
  */
 router.post("/", requireAuth, async (req, res) => {
-  console.log("🔥 REPORT HIT", req.body);
-
   try {
     const reporterId = (req.session as any).userId;
 
     const { targetUserId, targetAdId, reason, description } = req.body;
-
-    console.log("🔥 REPORT DATA:", { reporterId, targetAdId, reason });
 
     if (!reporterId) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -26,9 +24,18 @@ router.post("/", requireAuth, async (req, res) => {
       return res.status(400).json({ message: "Reason is required" });
     }
 
-    if (!targetUserId && !targetAdId) {
+    const hasUserTarget = Number.isInteger(targetUserId) && Number(targetUserId) > 0;
+    const hasAdTarget = Number.isInteger(targetAdId) && Number(targetAdId) > 0;
+
+    if (!hasUserTarget && !hasAdTarget) {
       return res.status(400).json({
         message: "You must report a user or an ad",
+      });
+    }
+
+    if (hasUserTarget && hasAdTarget) {
+      return res.status(400).json({
+        message: "Report must target either a user or an ad, not both",
       });
     }
 
@@ -36,16 +43,15 @@ router.post("/", requireAuth, async (req, res) => {
       .insert(reportsTable)
       .values({
         reporterId,
-        targetUserId: targetUserId ?? null,
-        targetAdId: targetAdId ?? null,
+        targetUserId: hasUserTarget ? Number(targetUserId) : null,
+        targetAdId: hasAdTarget ? Number(targetAdId) : null,
         reason,
         description: description ?? null,
       })
       .returning();
 
     return res.json(report[0]);
-  } catch (err) {
-    console.error("REPORT ERROR:", err);
+  } catch (_err) {
     return res.status(500).json({ message: "Server error" });
   }
 });
@@ -53,11 +59,7 @@ router.post("/", requireAuth, async (req, res) => {
 /**
  * جلب البلاغات للأدمن
  */
-router.get("/admin", async (req, res) => {
-  if (!(req.session as any).isAdmin) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
+router.get("/admin", requireAdmin, async (_req, res) => {
   const reports = await db
     .select({
       id: reportsTable.id,
@@ -84,11 +86,7 @@ router.get("/admin", async (req, res) => {
   );
 });
 
-router.patch("/admin/:id/status", async (req, res) => {
-  if (!(req.session as any).isAdmin) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
+router.patch("/admin/:id/status", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid report id" });
@@ -113,11 +111,7 @@ router.patch("/admin/:id/status", async (req, res) => {
   return res.json(updated[0]);
 });
 
-router.post("/admin/:id/ad-action", async (req, res) => {
-  if (!(req.session as any).isAdmin) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
+router.post("/admin/:id/ad-action", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid report id" });
@@ -157,6 +151,21 @@ router.post("/admin/:id/ad-action", async (req, res) => {
     .update(reportsTable)
     .set({ status: "resolved" })
     .where(eq(reportsTable.id, id));
+
+  await logAdminActivity({
+    action: action === "hide" ? "ad.hide" : "ad.delete",
+    actorAdminId: getAdminActorId(req),
+    targetType: "ad",
+    targetId: report.targetAdId,
+    details: { source: "reports.ad_action", reportId: id },
+  });
+  await logAdminActivity({
+    action: "report.resolve",
+    actorAdminId: getAdminActorId(req),
+    targetType: "report",
+    targetId: id,
+    details: { via: "ad_action", adAction: action, targetAdId: report.targetAdId },
+  });
 
   return res.json({ success: true, action, targetAdId: report.targetAdId });
 });

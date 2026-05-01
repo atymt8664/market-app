@@ -1,2 +1,2 @@
 export { ObjectUploader } from "./ObjectUploader";
-export { useUpload } from "./use-upload";
+export { UploadFailureError, useUpload } from "./use-upload";

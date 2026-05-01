@@ -32,11 +32,6 @@ const hasSmtpCredentials = Boolean(
     smtpPass.trim().length > 0,
 );
 
-function logEmailDebug(event: string, payload: Record<string, unknown>) {
-  // eslint-disable-next-line no-console
-  console.log(`[email:${event}]`, payload);
-}
-
 function ensureEmailProviderConfigured() {
   if (!hasSmtpCredentials) {
     throw new Error(
@@ -52,13 +47,6 @@ export function buildResetPasswordUrl(token: string) {
 
 export async function sendVerificationCodeEmail(email: string, code: string) {
   ensureEmailProviderConfigured();
-
-  logEmailDebug("send_verification_start", {
-    to: email,
-    from: fromAddress,
-    smtpConfigured: hasSmtpCredentials,
-    smtpUser,
-  });
 
   const result = await transporter.sendMail({
     from: fromAddress,
@@ -81,37 +69,13 @@ export async function sendVerificationCodeEmail(email: string, code: string) {
     `,
   });
 
-  logEmailDebug("send_verification_result", {
-    messageId: result.messageId,
-    accepted: result.accepted,
-    rejected: result.rejected,
-    response: result.response,
-  });
   if (result.rejected.length > 0) {
-    logEmailDebug("send_verification_failed", {
-      to: email,
-      rejected: result.rejected,
-      response: result.response,
-    });
     throw new Error("فشل إرسال بريد التفعيل عبر Gmail SMTP");
   }
-  logEmailDebug("send_verification_success", {
-    to: email,
-    from: fromAddress,
-    messageId: result.messageId,
-  });
 }
 
 export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   ensureEmailProviderConfigured();
-
-  logEmailDebug("send_reset_start", {
-    to: email,
-    from: fromAddress,
-    smtpConfigured: hasSmtpCredentials,
-    smtpUser,
-    frontendUrl: getFrontendUrl(),
-  });
 
   const result = await transporter.sendMail({
     from: fromAddress,
@@ -133,23 +97,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
     `,
   });
 
-  logEmailDebug("send_reset_result", {
-    messageId: result.messageId,
-    accepted: result.accepted,
-    rejected: result.rejected,
-    response: result.response,
-  });
   if (result.rejected.length > 0) {
-    logEmailDebug("send_reset_failed", {
-      to: email,
-      rejected: result.rejected,
-      response: result.response,
-    });
     throw new Error("فشل إرسال بريد إعادة تعيين كلمة المرور عبر Gmail SMTP");
   }
-  logEmailDebug("send_reset_success", {
-    to: email,
-    from: fromAddress,
-    messageId: result.messageId,
-  });
 }

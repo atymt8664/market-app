@@ -1,61 +1,66 @@
-import { useListAds, getListAdsQueryKey } from "@workspace/api-client-react";
+import {
+  useListFavoriteAds,
+  getListFavoriteAdsQueryKey,
+} from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Heart, Search } from "lucide-react";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
-import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Redirect } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { t } from "@/i18n";
 
 export default function Favorites() {
   const { user, isLoading: authLoading } = useAuth();
-  const [favorites] = useLocalStorage<number[]>("favorites", []);
+
+  const { data, isLoading } = useListFavoriteAds({
+    query: {
+      queryKey: getListFavoriteAdsQueryKey(),
+      enabled: !!user,
+      retry: false,
+    },
+  });
 
   if (!authLoading && !user) return <Redirect to="/guest-welcome?redirect=/favorites" />;
 
-  const { data: ads, isLoading } = useListAds(
-    {},
-    { query: { queryKey: getListAdsQueryKey({}) } }, // We fetch all for simplicity, then filter client side
-  );
-
-  const favoriteAds = (Array.isArray(ads) ? ads : []).filter((ad) =>
-    favorites.includes(ad.id),
-  );
+  const favoriteAds = Array.isArray(data) ? data : [];
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-background"
+      className="flex min-h-[100dvh] w-full flex-col bg-background"
     >
-      <header className="sticky top-0 z-40 bg-background border-b border-border p-4">
-        <h1 className="font-bold text-xl flex items-center gap-2">
-          <Heart className="w-6 h-6 text-primary fill-primary" />
-          المفضلة
+      <header className="sticky top-0 z-40 border-b border-border bg-background p-4">
+        <h1 className="flex items-center gap-2 text-xl font-bold">
+          <Heart className="h-6 w-6 fill-primary text-primary" />
+          {t("favorites.title")}
         </h1>
       </header>
 
-      <div className="p-4 flex-1">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 pb-20">
+      <div className="flex-1 p-4 pb-20">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, i) => <AdCardSkeleton key={i} />)
           ) : favoriteAds.length > 0 ? (
-            favoriteAds.map((ad) => <AdCard key={ad.id} ad={ad} />)
+            favoriteAds.map((ad) => (
+              <AdCard key={ad.id} ad={ad} favoritesList />
+            ))
           ) : (
             <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Heart className="w-10 h-10 text-muted-foreground opacity-50" />
+              <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-muted">
+                <Heart className="h-10 w-10 text-muted-foreground opacity-50" />
               </div>
-              <h3 className="text-xl font-bold mb-2">قائمتك فارغة</h3>
-              <p className="text-muted-foreground mb-6">
-                احفظ الإعلانات التي تعجبك للعودة إليها لاحقاً.
+              <h3 className="mb-2 text-xl font-bold">{t("favorites.empty_title")}</h3>
+              <p className="mb-6 text-muted-foreground">
+                {t("favorites.empty_desc")}
               </p>
               <Link href="/">
                 <Button variant="outline" className="gap-2">
-                  <Search className="w-4 h-4" />
-                  تصفح الإعلانات
+                  <Search className="h-4 w-4" />
+                  {t("favorites.browse_ads")}
                 </Button>
               </Link>
             </div>

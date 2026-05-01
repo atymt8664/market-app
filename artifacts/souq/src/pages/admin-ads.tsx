@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import { adminLogout, deleteAdminAd, updateAdminAdStatus } from "@/features/admin/api";
 import { AdminShell } from "@/features/admin/components/admin-shell";
-import { useAdminAds, useRequireAdmin } from "@/features/admin/hooks";
+import { useAdminAds, useAdminDashboard, useRequireAdmin } from "@/features/admin/hooks";
 import type { AdminAd } from "@/features/admin/types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -35,10 +35,13 @@ export default function AdminAdsPage() {
   const [searchInput, setSearchInput] = useState(params.get("q") || "");
   const [search, setSearch] = useState(params.get("q") || "");
   const [selectedAd, setSelectedAd] = useState<AdminAd | null>(null);
+  const [dismissedFocusId, setDismissedFocusId] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState(params.get("sort") || "created");
   const focusId = Number(params.get("focusId") || 0);
 
   const adsQuery = useAdminAds({ status, q: search });
+  const dashboardQuery = useAdminDashboard();
+  const adsStatusCounts = dashboardQuery.data?.statusCounts?.ads ?? {};
   const visibleAds = useMemo(() => {
     const list = [...(adsQuery.data ?? [])];
     if (sortBy === "views") {
@@ -46,6 +49,16 @@ export default function AdminAdsPage() {
     }
     return list;
   }, [adsQuery.data, sortBy]);
+
+  const openAdDetails = (ad: AdminAd) => {
+    setDismissedFocusId(null);
+    setSelectedAd(ad);
+  };
+
+  const closeAdDetails = () => {
+    setDismissedFocusId(selectedAd?.id ?? focusId ?? null);
+    setSelectedAd(null);
+  };
 
   useEffect(() => {
     const next = new URLSearchParams();
@@ -61,10 +74,21 @@ export default function AdminAdsPage() {
   }, [status, search, sortBy, selectedAd, location, navigate]);
 
   useEffect(() => {
-    if (!focusId || !visibleAds.length) return;
+    if (!focusId || !visibleAds.length || focusId === dismissedFocusId) return;
     const target = visibleAds.find((ad) => ad.id === focusId);
     if (target) setSelectedAd(target);
-  }, [focusId, visibleAds]);
+  }, [focusId, visibleAds, dismissedFocusId]);
+
+  useEffect(() => {
+    if (!selectedAd) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeAdDetails();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedAd, focusId]);
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["admin", "ads"] });
@@ -134,6 +158,24 @@ export default function AdminAdsPage() {
         </header>
 
         <section className="rounded-2xl border border-slate-800 bg-[#0d1324] p-4">
+          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
+              <p className="text-xs text-slate-400">قيد المراجعة</p>
+              <p className="mt-1 text-xl font-semibold text-amber-300">{Number(adsStatusCounts.pending ?? 0)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
+              <p className="text-xs text-slate-400">مقبول</p>
+              <p className="mt-1 text-xl font-semibold text-emerald-300">{Number(adsStatusCounts.approved ?? 0)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
+              <p className="text-xs text-slate-400">مرفوض</p>
+              <p className="mt-1 text-xl font-semibold text-red-300">{Number(adsStatusCounts.rejected ?? 0)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
+              <p className="text-xs text-slate-400">مخفي</p>
+              <p className="mt-1 text-xl font-semibold text-slate-200">{Number(adsStatusCounts.hidden ?? 0)}</p>
+            </div>
+          </div>
           <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <form
               className="flex w-full max-w-xl gap-2"
@@ -148,7 +190,10 @@ export default function AdminAdsPage() {
                 placeholder="ابحث بالعنوان، الوصف، المدينة، اسم البائع..."
                 className="w-full rounded-xl border border-slate-700 bg-[#0a1020] px-4 py-2 text-sm outline-none focus:border-indigo-400"
               />
-              <button type="submit" className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white">
+              <button
+                type="submit"
+                className="cursor-pointer rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-indigo-400 hover:shadow-[0_0_0_1px_rgba(129,140,248,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/70 active:scale-[0.98]"
+              >
                 بحث
               </button>
             </form>
@@ -159,10 +204,10 @@ export default function AdminAdsPage() {
                   key={item.key}
                   type="button"
                   onClick={() => setStatus(item.key)}
-                  className={`rounded-lg px-3 py-1 text-sm ${
+                  className={`cursor-pointer rounded-lg px-3 py-1 text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 active:scale-[0.98] ${
                     status === item.key
-                      ? "bg-indigo-500/20 text-indigo-200"
-                      : "bg-[#0a1020] text-slate-300 hover:bg-slate-800"
+                      ? "bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/30 focus-visible:ring-indigo-300/70"
+                      : "bg-[#0a1020] text-slate-300 hover:bg-slate-800 focus-visible:ring-slate-300/70"
                   }`}
                 >
                   {item.label}
@@ -173,8 +218,10 @@ export default function AdminAdsPage() {
               <button
                 type="button"
                 onClick={() => setSortBy("created")}
-                className={`rounded-lg px-3 py-1 text-sm ${
-                  sortBy === "created" ? "bg-indigo-500/20 text-indigo-200" : "bg-[#0a1020] text-slate-300 hover:bg-slate-800"
+                className={`cursor-pointer rounded-lg px-3 py-1 text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 active:scale-[0.98] ${
+                  sortBy === "created"
+                    ? "bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/30 focus-visible:ring-indigo-300/70"
+                    : "bg-[#0a1020] text-slate-300 hover:bg-slate-800 focus-visible:ring-slate-300/70"
                 }`}
               >
                 الأحدث
@@ -182,8 +229,10 @@ export default function AdminAdsPage() {
               <button
                 type="button"
                 onClick={() => setSortBy("views")}
-                className={`rounded-lg px-3 py-1 text-sm ${
-                  sortBy === "views" ? "bg-indigo-500/20 text-indigo-200" : "bg-[#0a1020] text-slate-300 hover:bg-slate-800"
+                className={`cursor-pointer rounded-lg px-3 py-1 text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 active:scale-[0.98] ${
+                  sortBy === "views"
+                    ? "bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/30 focus-visible:ring-indigo-300/70"
+                    : "bg-[#0a1020] text-slate-300 hover:bg-slate-800 focus-visible:ring-slate-300/70"
                 }`}
               >
                 الأعلى مشاهدة
@@ -233,8 +282,8 @@ export default function AdminAdsPage() {
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => setSelectedAd(ad)}
-                            className="rounded-lg bg-slate-700 px-2 py-1 text-xs text-white"
+                            onClick={() => openAdDetails(ad)}
+                            className="cursor-pointer rounded-lg bg-blue-600 px-2 py-1 text-xs text-white transition-all duration-200 hover:bg-blue-500 hover:shadow-[0_0_0_1px_rgba(96,165,250,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/70 active:scale-[0.98]"
                           >
                             التفاصيل
                           </button>
@@ -242,7 +291,7 @@ export default function AdminAdsPage() {
                             type="button"
                             onClick={() => statusMutation.mutate({ id: ad.id, nextStatus: "approved" })}
                             disabled={statusMutation.isPending || deleteMutation.isPending}
-                            className="rounded-lg bg-green-600 px-2 py-1 text-xs text-white"
+                            className="cursor-pointer rounded-lg bg-emerald-600 px-2 py-1 text-xs text-white transition-all duration-200 hover:bg-emerald-500 hover:shadow-[0_0_0_1px_rgba(52,211,153,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
                           >
                             قبول
                           </button>
@@ -250,7 +299,7 @@ export default function AdminAdsPage() {
                             type="button"
                             onClick={() => statusMutation.mutate({ id: ad.id, nextStatus: "rejected" })}
                             disabled={statusMutation.isPending || deleteMutation.isPending}
-                            className="rounded-lg bg-amber-600 px-2 py-1 text-xs text-white"
+                            className="cursor-pointer rounded-lg bg-orange-600 px-2 py-1 text-xs text-white transition-all duration-200 hover:bg-orange-500 hover:shadow-[0_0_0_1px_rgba(251,146,60,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/70 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
                           >
                             رفض
                           </button>
@@ -258,7 +307,7 @@ export default function AdminAdsPage() {
                             type="button"
                             onClick={() => statusMutation.mutate({ id: ad.id, nextStatus: "hidden" })}
                             disabled={statusMutation.isPending || deleteMutation.isPending}
-                            className="rounded-lg bg-slate-600 px-2 py-1 text-xs text-white"
+                            className="cursor-pointer rounded-lg bg-slate-600 px-2 py-1 text-xs text-white transition-all duration-200 hover:bg-slate-500 hover:shadow-[0_0_0_1px_rgba(148,163,184,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
                           >
                             إخفاء
                           </button>
@@ -270,7 +319,7 @@ export default function AdminAdsPage() {
                               }
                             }}
                             disabled={statusMutation.isPending || deleteMutation.isPending}
-                            className="rounded-lg bg-red-600 px-2 py-1 text-xs text-white"
+                            className="cursor-pointer rounded-lg bg-red-600 px-2 py-1 text-xs text-white transition-all duration-200 hover:bg-red-500 hover:shadow-[0_0_0_1px_rgba(248,113,113,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300/70 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
                           >
                             حذف
                           </button>
@@ -287,11 +336,20 @@ export default function AdminAdsPage() {
 
       {selectedAd &&
         createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-[#0d1324] p-5">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => closeAdDetails()}
+          role="presentation"
+        >
+          <div
+            className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-[#0d1324] p-5"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">تفاصيل الإعلان #{selectedAd.id}</h2>
-              <button type="button" onClick={() => setSelectedAd(null)} className="rounded-lg bg-slate-700 px-3 py-1 text-sm">
+              <button type="button" onClick={() => closeAdDetails()} className="rounded-lg bg-slate-700 px-3 py-1 text-sm">
                 إغلاق
               </button>
             </div>

@@ -1,17 +1,47 @@
-import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  integer,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { adsTable } from "./ads";
 import { usersTable } from "./users";
 
-export const conversationsTable = pgTable("conversations", {
-  id: serial("id").primaryKey(),
-  adId: integer("ad_id").notNull().references(() => adsTable.id, { onDelete: "cascade" }),
-  buyerId: integer("buyer_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-  sellerId: integer("seller_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-  lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
-  lastMessagePreview: text("last_message_preview"),
-  lastMessageSenderId: integer("last_message_sender_id").references(() => usersTable.id, { onDelete: "set null" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+/** One row per (ad, buyer); required for upsert + prevents duplicate threads. */
+export const conversationsTable = pgTable(
+  "conversations",
+  {
+    id: serial("id").primaryKey(),
+    adId: integer("ad_id")
+      .notNull()
+      .references(() => adsTable.id, { onDelete: "cascade" }),
+    buyerId: integer("buyer_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    sellerId: integer("seller_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastMessagePreview: text("last_message_preview"),
+    lastMessageSenderId: integer("last_message_sender_id").references(
+      () => usersTable.id,
+      { onDelete: "set null" },
+    ),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    adBuyerUnique: uniqueIndex("conversations_ad_id_buyer_id_unique").on(
+      t.adId,
+      t.buyerId,
+    ),
+  }),
+);
 
 export const messagesTable = pgTable("messages", {
   id: serial("id").primaryKey(),

@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 import { adminLogout, moderateReportedAd, updateAdminReportStatus } from "@/features/admin/api";
 import { AdminShell } from "@/features/admin/components/admin-shell";
-import { useAdminReports, useRequireAdmin } from "@/features/admin/hooks";
+import { useAdminDashboard, useAdminReports, useRequireAdmin } from "@/features/admin/hooks";
 import type { AdminReport } from "@/features/admin/types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,6 +21,8 @@ export default function AdminReportsPage() {
   const queryClient = useQueryClient();
   const meQuery = useRequireAdmin();
   const reportsQuery = useAdminReports();
+  const dashboardQuery = useAdminDashboard();
+  const reportsStatusCounts = dashboardQuery.data?.statusCounts?.reports ?? {};
   const { toast } = useToast();
   const [selectedReport, setSelectedReport] = useState<AdminReport | null>(null);
   const params = new URLSearchParams(window.location.search);
@@ -90,10 +92,6 @@ export default function AdminReportsPage() {
     navigate("/admin-login");
   };
 
-  if (meQuery.isLoading) {
-    return <div className="min-h-screen bg-[#070b16] text-slate-200 flex items-center justify-center">جاري التحميل...</div>;
-  }
-
   const reports = reportsQuery.data ?? [];
   const actionPending = statusMutation.isPending || adActionMutation.isPending;
   const visibleReports = useMemo(() => {
@@ -118,6 +116,10 @@ export default function AdminReportsPage() {
     if (target) setSelectedReport(target);
   }, [focusReportId, reports]);
 
+  if (meQuery.isLoading) {
+    return <div className="min-h-screen bg-[#070b16] text-slate-200 flex items-center justify-center">جاري التحميل...</div>;
+  }
+
   return (
     <AdminShell activeKey="reports" onLogout={handleLogout}>
       <div className="space-y-4">
@@ -127,6 +129,26 @@ export default function AdminReportsPage() {
         </header>
 
         <section className="rounded-2xl border border-slate-800 bg-[#0d1324] p-4">
+          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
+              <p className="text-xs text-slate-400">جديدة</p>
+              <p className="mt-1 text-xl font-semibold text-amber-300">{Number(reportsStatusCounts.pending ?? 0)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
+              <p className="text-xs text-slate-400">قيد المراجعة</p>
+              <p className="mt-1 text-xl font-semibold text-blue-300">{Number(reportsStatusCounts.in_review ?? 0)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
+              <p className="text-xs text-slate-400">تم الحل</p>
+              <p className="mt-1 text-xl font-semibold text-emerald-300">{Number(reportsStatusCounts.resolved ?? 0)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
+              <p className="text-xs text-slate-400">متجاهلة</p>
+              <p className="mt-1 text-xl font-semibold text-slate-200">
+                {Number(reportsStatusCounts.ignored ?? reportsStatusCounts.rejected ?? 0)}
+              </p>
+            </div>
+          </div>
           <div className="mb-3 flex flex-wrap gap-2">
             {[
               { key: "all", label: "الكل" },

@@ -14,6 +14,7 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
+import { useAdminDashboard } from "@/features/admin/hooks";
 
 const NAV_ITEMS = [
   { key: "dashboard", href: "/admin", label: "الرئيسية", icon: LayoutGrid },
@@ -35,6 +36,37 @@ type AdminShellProps = {
 };
 
 export function AdminShell({ activeKey, onLogout, children }: AdminShellProps) {
+  const dashboardQuery = useAdminDashboard();
+  const fallbackBadges = {
+    adsPendingReview: Number(dashboardQuery.data?.highlights?.adsPendingReview ?? 0),
+    reportsOpen: Number(dashboardQuery.data?.highlights?.reportsNew ?? 0),
+    supportOpen: Number(dashboardQuery.data?.highlights?.supportOpen ?? 0),
+    usersNewToday: 0,
+  };
+  const badges = {
+    adsPendingReview: Number(
+      dashboardQuery.data?.badges?.adsPendingReview ??
+        fallbackBadges.adsPendingReview,
+    ),
+    reportsOpen: Number(
+      dashboardQuery.data?.badges?.reportsOpen ?? fallbackBadges.reportsOpen,
+    ),
+    supportOpen: Number(
+      dashboardQuery.data?.badges?.supportOpen ?? fallbackBadges.supportOpen,
+    ),
+    usersNewToday: Number(
+      dashboardQuery.data?.badges?.usersNewToday ??
+        fallbackBadges.usersNewToday,
+    ),
+  };
+  const getBadge = (key: string): number => {
+    if (key === "ads") return badges.adsPendingReview;
+    if (key === "reports") return badges.reportsOpen;
+    if (key === "support") return badges.supportOpen;
+    if (key === "users") return badges.usersNewToday;
+    return 0;
+  };
+
   return (
     <div className="min-h-screen bg-[#070b16] text-slate-100">
       <div className="mx-auto flex w-full max-w-[1600px]">
@@ -60,7 +92,14 @@ export function AdminShell({ activeKey, onLogout, children }: AdminShellProps) {
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                <span>{label}</span>
+                <span className="inline-flex w-full items-center justify-between gap-2">
+                  <span className="truncate">{label}</span>
+                  {getBadge(key) > 0 ? (
+                    <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white shadow-sm">
+                      {getBadge(key) > 99 ? "99+" : getBadge(key)}
+                    </span>
+                  ) : null}
+                </span>
               </Link>
             ))}
           </nav>

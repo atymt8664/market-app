@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
+import { getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
 
 const router = Router();
 const ALLOWED_SUPPORT_CATEGORIES = new Set([
@@ -61,7 +62,6 @@ router.post("/support/tickets", requireAuth, async (req, res) => {
       req.body && typeof req.body === "object"
         ? (req.body as Record<string, unknown>)
         : {};
-    console.log("[support] POST /support/tickets raw body:", rawBody);
 
     const rawCategory = rawBody["category"];
     const rawSubject = rawBody["subject"];
@@ -133,12 +133,6 @@ router.post("/support/tickets", requireAuth, async (req, res) => {
         relatedUserExists = false;
       }
     }
-    console.log("[support] related_user_id handling:", {
-      rawRelatedUserId,
-      normalizedRelatedUserId: safeRelatedUserId,
-      relatedUserExists,
-    });
-
     const insertPayload = {
       // Exact schema order: user_id, category, subject, message, status, priority, related_ad_id, related_user_id
       userId,
@@ -150,8 +144,6 @@ router.post("/support/tickets", requireAuth, async (req, res) => {
       relatedAdId: safeRelatedAdId,
       relatedUserId: safeRelatedUserId,
     };
-    console.log("[support] normalized payload before insert:", insertPayload);
-
     const [ticket] = await db
       .insert(supportTicketsTable)
       .values(insertPayload)
@@ -175,11 +167,9 @@ router.post("/support/tickets", requireAuth, async (req, res) => {
       ...ticket,
       createdAt: ticket.createdAt?.toISOString?.() ?? null,
     });
-  } catch (error) {
-    console.error("[support] ticket creation failed:", error);
+  } catch (_error) {
     return res.status(500).json({
       error: "Failed to create support ticket",
-      details: error instanceof Error ? error.message : "Unknown error",
     });
   }
 });
@@ -338,6 +328,20 @@ router.patch("/admin/support/tickets/:id", requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "Invalid priority" });
   }
 
+  const [before] = await db
+    .select({
+      id: supportTicketsTable.id,
+      status: supportTicketsTable.status,
+      priority: supportTicketsTable.priority,
+    })
+    .from(supportTicketsTable)
+    .where(eq(supportTicketsTable.id, id))
+    .limit(1);
+
+  if (!before) {
+    return res.status(404).json({ error: "Ticket not found" });
+  }
+
   const [updated] = await db
     .update(supportTicketsTable)
     .set({
@@ -353,9 +357,25 @@ router.patch("/admin/support/tickets/:id", requireAdmin, async (req, res) => {
       priority: supportTicketsTable.priority,
     });
 
-  if (!updated) {
-    return res.status(404).json({ error: "Ticket not found" });
-  }
+  const effectiveStatus = status ?? before.status;
+  const action =
+    effectiveStatus === "closed"
+      ? "support.close"
+      : effectiveStatus === "resolved"
+        ? "support.resolve"
+        : "support.update";
+  await logAdminActivity({
+    action,
+    actorAdminId: getAdminActorId(req),
+    targetType: "support_ticket",
+    targetId: id,
+    details: {
+      fromStatus: before.status,
+      toStatus: effectiveStatus,
+      fromPriority: before.priority,
+      toPriority: priority ?? before.priority,
+    },
+  });
 
   return res.json(updated);
 });

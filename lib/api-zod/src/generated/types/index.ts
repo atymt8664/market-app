@@ -48,6 +48,4 @@ export * from "./subcategory";
 export * from "./suggestPrice200";
 export * from "./suggestPriceBody";
 export * from "./updateProfileInput";
-export * from "./uploadUrlRequest";
-export * from "./uploadUrlResponse";
 export * from "./verifyEmailInput";

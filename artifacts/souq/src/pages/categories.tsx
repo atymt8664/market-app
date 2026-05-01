@@ -4,9 +4,15 @@ import { ChevronLeft, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryIcon } from "@/components/category-icon";
 import { motion } from "framer-motion";
+import { t } from "@/i18n";
+import { useLocale } from "@/hooks/use-locale";
+import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 
 export default function Categories() {
+  const { locale } = useLocale();
   const { data: categories, isLoading } = useListCategories();
+  const hasArabicText = (value?: string | null) =>
+    !!value && /[\u0600-\u06FF]/.test(value);
 
   return (
     <motion.div 
@@ -21,7 +27,7 @@ export default function Categories() {
             <ArrowRight className="w-5 h-5" />
           </button>
         </Link>
-        <h1 className="font-bold text-xl">التصنيفات</h1>
+        <h1 className="font-bold text-xl">{t("categories.title")}</h1>
       </header>
 
       <div className="flex flex-col">
@@ -44,8 +50,20 @@ export default function Categories() {
                   <CategoryIcon name={cat.icon} className="w-6 h-6" />
                 </div>
                 <div className="flex-1 flex flex-col">
-                  <h3 className="font-semibold text-base">{cat.name}</h3>
-                  <p className="text-sm text-muted-foreground">{cat.subtitle}</p>
+                  <h3 className="font-semibold text-base">
+                    {getCreateAdTaxonomyLabel(locale, cat.name)}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {cat.subtitle
+                      ? (() => {
+                          const mapped = getCreateAdTaxonomyLabel(locale, cat.subtitle);
+                          if (locale !== "ar" && hasArabicText(mapped)) {
+                            return t("category.subtitle");
+                          }
+                          return mapped;
+                        })()
+                      : t("category.subtitle")}
+                  </p>
                 </div>
                 <ChevronLeft className="w-5 h-5 text-muted-foreground" />
               </div>

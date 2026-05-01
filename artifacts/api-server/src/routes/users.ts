@@ -5,6 +5,7 @@ import {
   type Response,
   type NextFunction,
 } from "express";
+import multer from "multer";
 import crypto from "crypto";
 import {
   db,
@@ -13,9 +14,21 @@ import {
   userViewsTable,
   adsTable,
 } from "@workspace/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import {
+  MissingSupabaseStorageConfigError,
+  uploadAvatarImageForUser,
+} from "../lib/supabaseStorage";
+import { PUBLIC_AD_STATUSES } from "../lib/ad-visibility";
 
 const router: IRouter = Router();
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    files: 1,
+    fileSize: 5 * 1024 * 1024,
+  },
+});
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session.userId) {
@@ -47,6 +60,13 @@ function viewerKeyFor(req: Request): string {
 }
 
 async function followStats(profileId: number, currentUserId?: number | null) {
+  const isOwner = currentUserId === profileId;
+  const adVisibilityClause = isOwner
+    ? eq(adsTable.userId, profileId)
+    : and(
+        eq(adsTable.userId, profileId),
+        inArray(adsTable.status, [...PUBLIC_AD_STATUSES]),
+      );
   const [followerRow] = await db
     .select({ c: sql<number>`count(*)::int` })
     .from(userFollowsTable)
@@ -62,7 +82,23 @@ async function followStats(profileId: number, currentUserId?: number | null) {
   const [adsRow] = await db
     .select({ c: sql<number>`count(*)::int` })
     .from(adsTable)
-    .where(eq(adsTable.userId, profileId));
+    .where(adVisibilityClause);
+  const [adViewsRow] = await db
+    .select({ c: sql<number>`coalesce(sum(${adsTable.views}), 0)::int` })
+    .from(adsTable)
+    .where(adVisibilityClause);
+  const likesResult = await db.execute<{ c: number }>(
+    isOwner
+      ? sql`select count(*)::int as c from ad_likes l inner join ads a on a.id = l.ad_id where a.user_id = ${profileId}`
+      : sql`select count(*)::int as c from ad_likes l inner join ads a on a.id = l.ad_id where a.user_id = ${profileId} and a.status = 'approved'`,
+  );
+  const favoritesResult = await db.execute<{ c: number }>(
+    isOwner
+      ? sql`select count(*)::int as c from ad_favorites f inner join ads a on a.id = f.ad_id where a.user_id = ${profileId}`
+      : sql`select count(*)::int as c from ad_favorites f inner join ads a on a.id = f.ad_id where a.user_id = ${profileId} and a.status = 'approved'`,
+  );
+  const likesRow = likesResult.rows[0];
+  const favoritesRow = favoritesResult.rows[0];
   let isFollowing = false;
   if (currentUserId && currentUserId !== profileId) {
     const r = await db
@@ -82,6 +118,10 @@ async function followStats(profileId: number, currentUserId?: number | null) {
     followingCount: Number(followingRow?.c ?? 0),
     profileViews: Number(viewsRow?.c ?? 0),
     adCount: Number(adsRow?.c ?? 0),
+    activeAdCount: Number(adsRow?.c ?? 0),
+    totalAdViews: Number(adViewsRow?.c ?? 0),
+    totalLikes: Number(likesRow?.c ?? 0),
+    totalFavorites: Number(favoritesRow?.c ?? 0),
     isFollowing,
   };
 }
@@ -197,6 +237,82 @@ router.delete("/users/:userId/follow", requireAuth, async (req, res) => {
     followerCount: stats.followerCount,
     followingCount: stats.followingCount,
   });
+});
+
+router.post(
+  "/users/upload-avatar",
+  requireAuth,
+  avatarUpload.single("image"),
+  async (req, res) => {
+    const userId = req.session.userId!;
+    const file = req.file;
+
+    req.log.info(
+      {
+        hasFile: !!file,
+        fileFieldName: file?.fieldname,
+        fileName: file?.originalname,
+        fileType: file?.mimetype,
+        fileSize: file?.size ?? 0,
+      },
+      "Avatar upload request received",
+    );
+
+    if (!file) {
+      res.status(400).json({ error: "لم يتم استلام ملف الصورة" });
+      return;
+    }
+    if (!file.mimetype?.startsWith("image/")) {
+      res.status(400).json({ error: "الملف المحدد ليس صورة" });
+      return;
+    }
+    if (!file.buffer || file.size === 0) {
+      res.status(400).json({ error: "ملف الصورة فارغ أو تالف" });
+      return;
+    }
+
+    try {
+      const imageUrl = await uploadAvatarImageForUser(userId, {
+        buffer: file.buffer,
+        mimetype: file.mimetype,
+      });
+      await db
+        .update(usersTable)
+        .set({ avatarUrl: imageUrl })
+        .where(eq(usersTable.id, userId));
+
+      res.json({ success: true, imageUrl });
+    } catch (error) {
+      if (error instanceof MissingSupabaseStorageConfigError) {
+        req.log.warn(
+          {
+            missingEnvVar: error.missingEnvVar,
+          },
+          "Missing Supabase storage config for avatar upload",
+        );
+        res.status(503).json({
+          error: "خدمة رفع الصور غير متاحة حالياً",
+          code: "SUPABASE_STORAGE_NOT_CONFIGURED",
+          missingEnvVar: error.missingEnvVar,
+        });
+        return;
+      }
+      req.log.error({ err: error }, "Avatar upload failed");
+      res.status(500).json({ error: "فشل رفع الصورة" });
+    }
+  },
+);
+
+router.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      res.status(400).json({ error: "حجم الصورة يتجاوز الحد المسموح (5MB)" });
+      return;
+    }
+    res.status(400).json({ error: "فشل قراءة ملف الصورة" });
+    return;
+  }
+  next(err);
 });
 
 export default router;

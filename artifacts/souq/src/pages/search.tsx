@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { motion } from "framer-motion";
+import { t } from "@/i18n";
 
 export default function Search() {
   const searchString = useSearch();
@@ -41,7 +42,7 @@ export default function Search() {
             <SearchIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
               type="search"
-              placeholder="بحث..." 
+              placeholder={t("search.placeholder")} 
               className="w-full pl-4 pr-9 py-2 bg-muted/50 border-transparent focus-visible:ring-primary rounded-lg text-sm h-10"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -56,7 +57,9 @@ export default function Search() {
 
       <div className="p-4 flex-1">
         <h2 className="font-semibold text-sm text-muted-foreground mb-4">
-          {isLoading ? "جاري البحث..." : `تم العثور على ${ads?.length || 0} نتيجة`}
+          {isLoading
+            ? t("search.loading")
+            : t("search.results_count", { count: ads?.length || 0 })}
         </h2>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
@@ -70,9 +73,9 @@ export default function Search() {
             ))
           ) : (
             <div className="col-span-full flex flex-col items-center justify-center py-12 text-center opacity-80">
-              <img src="/empty-state.png" alt="لا توجد نتائج" className="w-48 h-48 mb-4" />
-              <h2 className="text-xl font-bold mb-2">لا توجد نتائج</h2>
-              <p className="text-muted-foreground">جرب كلمات بحث مختلفة أو تصفح الأقسام.</p>
+              <img src="/empty-state.png" alt={t("search.empty_title")} className="w-48 h-48 mb-4" />
+              <h2 className="text-xl font-bold mb-2">{t("search.empty_title")}</h2>
+              <p className="text-muted-foreground">{t("search.empty_desc")}</p>
             </div>
           )}
         </div>

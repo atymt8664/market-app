@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminLogout, updateAdminUserStatus } from "@/features/admin/api";
 import { AdminShell } from "@/features/admin/components/admin-shell";
-import { useAdminUsers, useRequireAdmin } from "@/features/admin/hooks";
+import { useAdminDashboard, useAdminUsers, useRequireAdmin } from "@/features/admin/hooks";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_OPTIONS = [
@@ -17,6 +17,8 @@ export default function AdminUsersPage() {
   const meQuery = useRequireAdmin();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const dashboardQuery = useAdminDashboard();
+  const usersStatusCounts = dashboardQuery.data?.statusCounts?.users ?? {};
   const [status, setStatus] = useState("all");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -89,6 +91,16 @@ export default function AdminUsersPage() {
               المستخدمون المحظورون
             </p>
             <p className="mt-2 text-2xl font-semibold text-red-300">{stats.banned}</p>
+          </div>
+        </section>
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="rounded-2xl border border-slate-800 bg-[#0d1324] p-4">
+            <p className="text-xs text-slate-400">المستخدمون النشطون (إجمالي)</p>
+            <p className="mt-2 text-2xl font-semibold text-emerald-300">{Number(usersStatusCounts.active ?? 0)}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-[#0d1324] p-4">
+            <p className="text-xs text-slate-400">المستخدمون المحظورون (إجمالي)</p>
+            <p className="mt-2 text-2xl font-semibold text-red-300">{Number(usersStatusCounts.blocked ?? 0)}</p>
           </div>
         </section>
 

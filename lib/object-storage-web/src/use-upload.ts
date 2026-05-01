@@ -37,6 +37,41 @@ interface UploadFileOptions {
   fileExtension?: string;
 }
 
+export class UploadFailureError extends Error {
+  readonly statusCode?: number;
+  readonly status?: number;
+  readonly bucket: string;
+  readonly path?: string;
+  readonly fileName: string;
+  readonly fileType: string;
+  readonly fileSize: number;
+  readonly causeName?: string;
+
+  constructor(params: {
+    message: string;
+    statusCode?: number;
+    status?: number;
+    bucket: string;
+    path?: string;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    causeName?: string;
+  }) {
+    super(params.message);
+    Object.setPrototypeOf(this, UploadFailureError.prototype);
+    this.name = "UploadFailureError";
+    this.statusCode = params.statusCode;
+    this.status = params.status;
+    this.bucket = params.bucket;
+    this.path = params.path;
+    this.fileName = params.fileName;
+    this.fileType = params.fileType;
+    this.fileSize = params.fileSize;
+    this.causeName = params.causeName;
+  }
+}
+
 /**
  * React hook for handling file uploads with presigned URLs.
  *
@@ -84,6 +119,24 @@ export function useUpload(options: UseUploadOptions = {}) {
   const [error, setError] = useState<Error | null>(null);
   const [progress, setProgress] = useState(0);
 
+  const buildPublicObjectUrl = useCallback(
+    (objectPath: string): string => {
+      if (supabase) {
+        const { data } = supabase.storage.from(uploadsBucket).getPublicUrl(objectPath);
+        if (data?.publicUrl) return data.publicUrl;
+      }
+      if (!supabaseUrl) {
+        throw new Error("Missing VITE_SUPABASE_URL for public URL generation");
+      }
+      const encodedPath = objectPath
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+      return `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/public/${uploadsBucket}/${encodedPath}`;
+    },
+    [supabase, supabaseUrl],
+  );
+
   const buildUploadPath = useCallback(
     (file: File, uploadOptions?: UploadFileOptions): string => {
       const folder = uploadOptions?.folder ?? "misc";
@@ -104,16 +157,21 @@ export function useUpload(options: UseUploadOptions = {}) {
     async (
       file: File,
       uploadOptions?: UploadFileOptions,
-    ): Promise<UploadResponse | null> => {
+    ): Promise<UploadResponse> => {
       setIsUploading(true);
       setError(null);
       setProgress(0);
 
       try {
         if (!supabase) {
-          throw new Error(
-            "Supabase is not configured. Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY.",
-          );
+          throw new UploadFailureError({
+            message:
+              "Supabase is not configured. Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY.",
+            bucket: uploadsBucket,
+            fileName: file.name,
+            fileType: file.type || "application/octet-stream",
+            fileSize: file.size,
+          });
         }
 
         setProgress(10);
@@ -128,7 +186,17 @@ export function useUpload(options: UseUploadOptions = {}) {
           });
 
         if (uploadError) {
-          throw new Error(uploadError.message || "Supabase upload failed");
+          throw new UploadFailureError({
+            message: uploadError.message || "Supabase upload failed",
+            statusCode: (uploadError as { statusCode?: number }).statusCode,
+            status: (uploadError as { status?: number }).status,
+            bucket: uploadsBucket,
+            path: objectPath,
+            fileName: file.name,
+            fileType: file.type || "application/octet-stream",
+            fileSize: file.size,
+            causeName: uploadError.name,
+          });
         }
 
         const { data: publicUrlData } = supabase.storage
@@ -150,15 +218,31 @@ export function useUpload(options: UseUploadOptions = {}) {
         options.onSuccess?.(uploadResponse);
         return uploadResponse;
       } catch (err) {
-        const error = err instanceof Error ? err : new Error("Upload failed");
+        const error =
+          err instanceof UploadFailureError
+            ? err
+            : new UploadFailureError({
+                message:
+                  err instanceof Error ? err.message : "Upload failed",
+                bucket: uploadsBucket,
+                fileName: file.name,
+                fileType: file.type || "application/octet-stream",
+                fileSize: file.size,
+                causeName: err instanceof Error ? err.name : undefined,
+              });
         setError(error);
         options.onError?.(error);
-        return null;
+        throw error;
       } finally {
         setIsUploading(false);
       }
     },
-    [buildUploadPath, options, supabase]
+    [
+      buildPublicObjectUrl,
+      buildUploadPath,
+      options,
+      supabase,
+    ]
   );
 
   const getUploadParameters = useCallback(

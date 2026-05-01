@@ -14,12 +14,12 @@ export default function AdminSettingsPage() {
   };
 
   if (meQuery.isLoading) {
-    return <div className="min-h-screen bg-[#070b16] text-slate-200 flex items-center justify-center">ÌÇÑí ÇáÊÍãíá...</div>;
+    return <div className="min-h-screen bg-[#070b16] text-slate-200 flex items-center justify-center">ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½...</div>;
   }
 
   return (
     <AdminShell activeKey="settings" onLogout={handleLogout}>
-      <AdminComingSoon title="ÇáÅÚÏÇÏÇÊ" />
+      <AdminComingSoon title="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" />
     </AdminShell>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from "@/features/admin/api";
 import { AdminShell } from "@/features/admin/components/admin-shell";
 import {
+  useAdminDashboard,
   useAdminSupportMessages,
   useAdminSupportTickets,
   useRequireAdmin,
@@ -45,6 +46,8 @@ export default function AdminSupportPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const meQuery = useRequireAdmin();
+  const dashboardQuery = useAdminDashboard();
+  const supportStatusCounts = dashboardQuery.data?.statusCounts?.support ?? {};
 
   const [status, setStatus] = useState("all");
   const [searchInput, setSearchInput] = useState("");
@@ -140,6 +143,24 @@ export default function AdminSupportPage() {
         </header>
 
         <section className="rounded-2xl border border-slate-800 bg-[#0d1324] p-4">
+          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
+              <p className="text-xs text-slate-400">مفتوحة</p>
+              <p className="mt-1 text-xl font-semibold text-amber-300">{Number(supportStatusCounts.open ?? 0)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
+              <p className="text-xs text-slate-400">قيد المعالجة</p>
+              <p className="mt-1 text-xl font-semibold text-blue-300">{Number(supportStatusCounts.pending ?? 0)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
+              <p className="text-xs text-slate-400">تم الحل</p>
+              <p className="mt-1 text-xl font-semibold text-emerald-300">{Number(supportStatusCounts.resolved ?? 0)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
+              <p className="text-xs text-slate-400">مغلقة</p>
+              <p className="mt-1 text-xl font-semibold text-slate-200">{Number(supportStatusCounts.closed ?? 0)}</p>
+            </div>
+          </div>
           <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <form
               className="flex w-full max-w-xl gap-2"

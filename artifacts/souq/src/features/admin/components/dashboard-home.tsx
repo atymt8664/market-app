@@ -44,6 +44,20 @@ function StatCard({
 
 export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps) {
   const [, navigate] = useLocation();
+  const totals = data?.totals ?? { users: 0, ads: 0, reports: 0, views: 0 };
+  const highlights = {
+    adsPendingReview: Number(data?.highlights?.adsPendingReview ?? 0),
+    reportsNew: Number(data?.highlights?.reportsNew ?? 0),
+    supportOpen: Number(data?.highlights?.supportOpen ?? 0),
+    adsPublishedToday: Number(data?.highlights?.adsPublishedToday ?? 0),
+  };
+  const latestReports = Array.isArray(data?.latestReports) ? data.latestReports : [];
+  const latestSupportTickets = Array.isArray(data?.latestSupportTickets)
+    ? data.latestSupportTickets
+    : [];
+  const topAds = Array.isArray(data?.topAds) ? data.topAds : [];
+  const topCities = Array.isArray(data?.topCities) ? data.topCities : [];
+  const adsStatus = Array.isArray(data?.adsStatus) ? data.adsStatus : [];
 
   const now = Date.now();
   const isUnread = (status: string, createdAt: string | null) => {
@@ -70,27 +84,54 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="إجمالي المستخدمين"
-          value={data.totals.users}
+          value={totals.users}
           icon={<Users className="h-4 w-4" />}
           onClick={() => navigate("/admin/users")}
         />
         <StatCard
           label="إجمالي الإعلانات"
-          value={data.totals.ads}
+          value={totals.ads}
           icon={<Megaphone className="h-4 w-4" />}
           onClick={() => navigate("/admin/ads")}
         />
         <StatCard
           label="إجمالي البلاغات"
-          value={data.totals.reports}
+          value={totals.reports}
           icon={<Flag className="h-4 w-4" />}
           onClick={() => navigate("/admin/reports?status=pending")}
         />
         <StatCard
           label="إجمالي المشاهدات"
-          value={data.totals.views}
+          value={totals.views}
           icon={<Eye className="h-4 w-4" />}
           onClick={() => navigate("/admin/ads?sort=views")}
+        />
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="إعلانات قيد المراجعة"
+          value={highlights.adsPendingReview}
+          icon={<Megaphone className="h-4 w-4" />}
+          onClick={() => navigate("/admin/ads?status=pending")}
+        />
+        <StatCard
+          label="بلاغات جديدة"
+          value={highlights.reportsNew}
+          icon={<Flag className="h-4 w-4" />}
+          onClick={() => navigate("/admin/reports?status=pending")}
+        />
+        <StatCard
+          label="طلبات دعم مفتوحة"
+          value={highlights.supportOpen}
+          icon={<Users className="h-4 w-4" />}
+          onClick={() => navigate("/admin/support?status=open")}
+        />
+        <StatCard
+          label="إعلانات منشورة اليوم"
+          value={highlights.adsPublishedToday}
+          icon={<Eye className="h-4 w-4" />}
+          onClick={() => navigate("/admin/ads?status=approved")}
         />
       </section>
 
@@ -118,14 +159,14 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
                 </tr>
               </thead>
               <tbody>
-                {data.latestReports.length === 0 ? (
+                {latestReports.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-2 py-6 text-center text-slate-400">
                       لا توجد بلاغات حديثة حالياً
                     </td>
                   </tr>
                 ) : (
-                  data.latestReports.map((report) => (
+                  latestReports.map((report) => (
                   <tr
                     key={report.id}
                     className={`cursor-pointer border-b border-slate-900/80 transition hover:bg-slate-900/60 ${
@@ -151,8 +192,8 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={data.adsStatus} innerRadius={55} outerRadius={80} dataKey="value" nameKey="status">
-                  {data.adsStatus.map((entry) => (
+                <Pie data={adsStatus} innerRadius={55} outerRadius={80} dataKey="value" nameKey="status">
+                  {adsStatus.map((entry) => (
                     <Cell key={entry.status} fill={STATUS_COLORS[entry.status] || "#3b82f6"} />
                   ))}
                 </Pie>
@@ -167,12 +208,12 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
         <div className="rounded-2xl border border-slate-800 bg-[#0d1324] p-4">
           <h2 className="mb-3 text-lg font-semibold">أحدث طلبات الدعم</h2>
           <div className="space-y-3">
-            {data.latestSupportTickets.length === 0 ? (
+            {latestSupportTickets.length === 0 ? (
               <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-4 text-sm text-slate-400">
                 لا توجد طلبات دعم حالياً
               </div>
             ) : (
-              data.latestSupportTickets.map((ticket) => (
+              latestSupportTickets.map((ticket) => (
               <div key={ticket.id} className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
                 <p className="line-clamp-1 font-medium">{ticket.subject}</p>
                 <p className="text-xs text-slate-400">
@@ -187,12 +228,12 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
         <div className="rounded-2xl border border-slate-800 bg-[#0d1324] p-4">
           <h2 className="mb-3 text-lg font-semibold">أكثر الإعلانات مشاهدة</h2>
           <div className="space-y-3">
-            {data.topAds.length === 0 ? (
+            {topAds.length === 0 ? (
               <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-4 text-sm text-slate-400">
                 لا توجد بيانات إعلانات بعد
               </div>
             ) : (
-              data.topAds.map((ad) => (
+              topAds.map((ad) => (
               <button
                 key={ad.id}
                 type="button"
@@ -215,12 +256,12 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
         <div className="rounded-2xl border border-slate-800 bg-[#0d1324] p-4">
           <h2 className="mb-3 text-lg font-semibold">أعلى المدن حسب عدد الإعلانات</h2>
           <div className="space-y-3">
-            {data.topCities.length === 0 ? (
+            {topCities.length === 0 ? (
               <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-4 text-sm text-slate-400">
                 لا توجد بيانات مدن حالياً
               </div>
             ) : (
-              data.topCities.map((city) => (
+              topCities.map((city) => (
               <div key={city.city} className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="font-medium">{city.city}</p>
@@ -230,7 +271,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
                   <div
                     className="h-full rounded-full bg-indigo-400"
                     style={{
-                      width: `${Math.max(8, Math.min(100, (city.adsCount / (data.topCities[0]?.adsCount || 1)) * 100))}%`,
+                      width: `${Math.max(8, Math.min(100, (city.adsCount / (topCities[0]?.adsCount || 1)) * 100))}%`,
                     }}
                   />
                 </div>

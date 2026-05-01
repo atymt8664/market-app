@@ -9,6 +9,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
+import { t } from "@/i18n";
+import { useLocale } from "@/hooks/use-locale";
 
 interface CitySelectProps {
   value: string;
@@ -21,10 +23,12 @@ interface CitySelectProps {
 export function CitySelect({
   value,
   onChange,
-  placeholder = "اختر المدينة",
+  placeholder = t("city_select.placeholder"),
   showAllOption = false,
   className,
 }: CitySelectProps) {
+  const { locale } = useLocale();
+  const isAr = locale === "ar";
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -60,18 +64,18 @@ export function CitySelect({
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="bottom"
-          dir="rtl"
+          dir={isAr ? "rtl" : "ltr"}
           className="h-[85dvh] flex flex-col p-0 max-w-[480px] mx-auto rounded-t-2xl"
         >
           <SheetHeader className="p-4 border-b border-border">
-            <SheetTitle className="text-right">اختر المدينة</SheetTitle>
+            <SheetTitle className="text-right">{t("city_select.title")}</SheetTitle>
           </SheetHeader>
           <div className="p-4 border-b border-border">
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 autoFocus
-                placeholder="ابحث عن مدينة..."
+                placeholder={t("city_select.search")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pr-10"
@@ -88,13 +92,13 @@ export function CitySelect({
                   value === "" && "bg-primary/10",
                 )}
               >
-                <span className="font-medium">كل ألمانيا</span>
+                <span className="font-medium">{t("city_select.all_germany")}</span>
                 {value === "" && <Check className="w-4 h-4 text-primary" />}
               </button>
             )}
             {filtered.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground text-sm">
-                لا توجد نتائج
+                {t("city_select.no_results")}
               </div>
             ) : (
               filtered.map((city) => (

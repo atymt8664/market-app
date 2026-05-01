@@ -1,17 +1,54 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
 import OpenAI from "openai";
 import { ImproveDescriptionBody, SuggestPriceBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-const openai = new OpenAI({
-  apiKey: process.env["AI_INTEGRATIONS_OPENAI_API_KEY"],
-  baseURL: process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"],
-});
+/** Non-empty key from integration-specific or standard OpenAI env names. */
+function resolveOpenAiApiKey(): string | undefined {
+  const fromIntegration = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"]?.trim();
+  const fromStandard = process.env["OPENAI_API_KEY"]?.trim();
+  const key = fromIntegration || fromStandard;
+  return key || undefined;
+}
+
+function resolveOpenAiBaseUrl(): string | undefined {
+  const fromIntegration = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"]?.trim();
+  const fromStandard = process.env["OPENAI_BASE_URL"]?.trim();
+  const url = fromIntegration || fromStandard;
+  return url || undefined;
+}
+
+function createOpenAiClient(): OpenAI | null {
+  const apiKey = resolveOpenAiApiKey();
+  if (!apiKey) return null;
+  const baseURL = resolveOpenAiBaseUrl();
+  return new OpenAI(baseURL ? { apiKey, baseURL } : { apiKey });
+}
+
+const openai = createOpenAiClient();
+
+if (!openai) {
+  logger.info(
+    "AI routes are disabled: set AI_INTEGRATIONS_OPENAI_API_KEY or OPENAI_API_KEY in the API server environment.",
+  );
+}
+
+function aiUnavailable(res: Response) {
+  res.status(503).json({
+    error: "AI_UNAVAILABLE",
+    message:
+      "ميزة الذكاء الاصطناعي غير مفعّلة على الخادم. لطلب التحسين أو التسعير عبر AI، أضف المفتاح في ملف بيئة الـ API: AI_INTEGRATIONS_OPENAI_API_KEY (مفضّل) أو OPENAI_API_KEY، واختياريًا عنوان القاعدة: AI_INTEGRATIONS_OPENAI_BASE_URL أو OPENAI_BASE_URL.",
+  });
+}
 
 router.post("/ai/improve-description", async (req, res) => {
   const body = ImproveDescriptionBody.parse(req.body);
+  if (!openai) {
+    aiUnavailable(res);
+    return;
+  }
   try {
     const r = await openai.chat.completions.create({
       model: "gpt-5.4",
@@ -38,6 +75,10 @@ router.post("/ai/improve-description", async (req, res) => {
 
 router.post("/ai/suggest-price", async (req, res) => {
   const body = SuggestPriceBody.parse(req.body);
+  if (!openai) {
+    aiUnavailable(res);
+    return;
+  }
   try {
     const r = await openai.chat.completions.create({
       model: "gpt-5.4",

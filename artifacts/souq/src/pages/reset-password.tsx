@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { t } from "@/i18n";
+import { useLocale } from "@/hooks/use-locale";
 
 const schema = z
   .object({
@@ -30,9 +32,9 @@ const schema = z
       .string()
       .min(
         1,
-        "كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم، ولا تقل عن 8 أحرف",
+        "auth.validation.password_policy",
       ),
-    confirm: z.string().min(1, "تأكيد كلمة المرور مطلوب"),
+    confirm: z.string().min(1, "auth.validation.confirm_password_required"),
   })
   .superRefine((values, ctx) => {
     if (
@@ -45,14 +47,14 @@ const schema = z
         code: z.ZodIssueCode.custom,
         path: ["password"],
         message:
-          "كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم، ولا تقل عن 8 أحرف",
+          "auth.validation.password_policy",
       });
     }
     if (values.password !== values.confirm) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["confirm"],
-        message: "كلمة المرور وتأكيد كلمة المرور غير متطابقين",
+        message: "auth.validation.passwords_mismatch",
       });
     }
   });
@@ -60,6 +62,7 @@ const schema = z
 type Values = z.infer<typeof schema>;
 
 export default function ResetPassword() {
+  const { locale } = useLocale();
   const [, navigate] = useLocation();
   const mut = useAuthResetPassword();
   const [token, setToken] = useState<string>("");
@@ -72,7 +75,7 @@ export default function ResetPassword() {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("token") || "";
     setToken(t);
-    if (!t) setError("رابط إعادة التعيين غير صالح أو منتهي الصلاحية");
+    if (!t) setError("auth.reset.invalid_or_expired_link");
   }, []);
 
   const form = useForm<Values>({
@@ -93,7 +96,7 @@ export default function ResetPassword() {
         onError: (err: unknown) => {
           const e = err as { data?: { error?: string } };
           setError(
-            e?.data?.error || "رابط إعادة التعيين غير صالح أو منتهي الصلاحية",
+            e?.data?.error || t("auth.reset.invalid_or_expired_link"),
           );
         },
       },
@@ -105,6 +108,7 @@ export default function ResetPassword() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="flex min-h-[100dvh] w-full flex-col bg-gradient-to-b from-background to-muted/30"
+      dir={locale === "ar" ? "rtl" : "ltr"}
     >
       <header className="sticky top-0 z-40 flex items-center gap-4 border-b border-border bg-background/80 p-4 backdrop-blur">
         <Link href="/login">
@@ -115,7 +119,7 @@ export default function ResetPassword() {
             <ArrowRight className="w-5 h-5" />
           </button>
         </Link>
-        <h1 className="font-bold text-lg">تعيين كلمة مرور جديدة</h1>
+        <h1 className="font-bold text-lg">{t("auth.reset.title")}</h1>
       </header>
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-5 pb-8 pt-10 sm:px-6">
@@ -127,9 +131,9 @@ export default function ResetPassword() {
             </div>
           </div>
           <div className="space-y-1 text-center">
-            <h2 className="text-2xl font-bold">كلمة مرور جديدة</h2>
+            <h2 className="text-2xl font-bold">{t("auth.reset.heading")}</h2>
             <p className="text-sm text-muted-foreground">
-              أدخل كلمة المرور الجديدة لحسابك
+              {t("auth.reset.subheading")}
             </p>
           </div>
         </div>
@@ -138,9 +142,9 @@ export default function ResetPassword() {
           <div className="rounded-2xl border border-border bg-background/80 p-5 shadow-xl backdrop-blur">
             <div className="flex flex-col items-center gap-3 text-center">
               <CheckCircle2 className="h-10 w-10 text-primary" />
-              <h3 className="font-bold">تم تحديث كلمة المرور</h3>
+              <h3 className="font-bold">{t("auth.reset.success_title")}</h3>
               <p className="text-sm text-muted-foreground">
-                يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.
+                {t("auth.reset.success_desc")}
               </p>
             </div>
           </div>
@@ -150,14 +154,13 @@ export default function ResetPassword() {
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="flex flex-col gap-4"
-                dir="rtl"
               >
                 <FormField
                   control={form.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>كلمة المرور الجديدة</FormLabel>
+                      <FormLabel>{t("auth.reset.new_password")}</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
@@ -172,8 +175,8 @@ export default function ResetPassword() {
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                             aria-label={
                               showPassword
-                                ? "إخفاء كلمة المرور"
-                                : "إظهار كلمة المرور"
+                                ? t("auth.aria.hide_password")
+                                : t("auth.aria.show_password")
                             }
                           >
                             {showPassword ? (
@@ -184,7 +187,7 @@ export default function ResetPassword() {
                           </button>
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage>{form.formState.errors.password?.message ? t(String(form.formState.errors.password.message)) : ""}</FormMessage>
                     </FormItem>
                   )}
                 />
@@ -193,7 +196,7 @@ export default function ResetPassword() {
                   name="confirm"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>تأكيد كلمة المرور</FormLabel>
+                      <FormLabel>{t("auth.fields.confirm_password")}</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
@@ -210,8 +213,8 @@ export default function ResetPassword() {
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                             aria-label={
                               showConfirmPassword
-                                ? "إخفاء تأكيد كلمة المرور"
-                                : "إظهار تأكيد كلمة المرور"
+                                ? t("auth.aria.hide_confirm_password")
+                                : t("auth.aria.show_confirm_password")
                             }
                           >
                             {showConfirmPassword ? (
@@ -222,7 +225,7 @@ export default function ResetPassword() {
                           </button>
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage>{form.formState.errors.confirm?.message ? t(String(form.formState.errors.confirm.message)) : ""}</FormMessage>
                     </FormItem>
                   )}
                 />
@@ -239,7 +242,7 @@ export default function ResetPassword() {
                   {mut.isPending ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    "حفظ كلمة المرور"
+                    t("auth.reset.submit")
                   )}
                 </Button>
               </form>

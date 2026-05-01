@@ -14,7 +14,8 @@ import {
   categoriesTable,
   subcategoriesTable,
 } from "@workspace/db";
-import { and, desc, eq, gte, ilike, lte, sql, or } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, lte, sql, or, inArray } from "drizzle-orm";
+import { getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
 import crypto from "crypto";
 import {
   ListAdsQueryParams,
@@ -22,8 +23,35 @@ import {
   UpdateAdBody,
   GetAdParams,
 } from "@workspace/api-zod";
+import { requireAdmin } from "../middlewares/require-admin";
+import { PUBLIC_AD_STATUSES, isPublicAdStatus } from "../lib/ad-visibility";
 
 const router: IRouter = Router();
+let ensureAdsDetailsColumnPromise: Promise<void> | null = null;
+
+function ensureAdsDetailsColumn() {
+  if (!ensureAdsDetailsColumnPromise) {
+    ensureAdsDetailsColumnPromise = db
+      .execute(
+        sql`alter table ads add column if not exists details jsonb not null default '{}'::jsonb`,
+      )
+      .then(() => undefined)
+      .catch((err) => {
+        ensureAdsDetailsColumnPromise = null;
+        throw err;
+      });
+  }
+  return ensureAdsDetailsColumnPromise;
+}
+
+router.use(async (_req, _res, next) => {
+  try {
+    await ensureAdsDetailsColumn();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.session.userId) {
@@ -58,6 +86,10 @@ function serializeAd(row: {
     subcategoryName: row.subcategoryName,
     sellerName: ad.sellerName,
     sellerPhone: ad.sellerPhone,
+    details:
+      ad.details && typeof ad.details === "object"
+        ? (ad.details as Record<string, unknown>)
+        : {},
     featured: ad.featured,
     status: (ad as any).status,
     views: ad.views ?? 0,
@@ -121,16 +153,17 @@ const baseSelect = (currentUserId?: number | null) =>
 
 router.get("/ads/featured", async (req, res) => {
   const rows = await baseSelect(req.session.userId ?? null)
-    .where(and(eq(adsTable.featured, true), eq(adsTable.status, "approved")))
+    .where(
+      and(
+        eq(adsTable.featured, true),
+        inArray(adsTable.status, [...PUBLIC_AD_STATUSES]),
+      ),
+    )
     .orderBy(desc(adsTable.createdAt))
     .limit(10);
   res.json(rows.map(serializeAd));
 });
-router.get("/admin/ads", async (req, res) => {
-  if (!(req.session as any).isAdmin) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
+router.get("/admin/ads", requireAdmin, async (req, res) => {
   const status = req.query.status as string | undefined;
   const q = (req.query.q as string | undefined)?.trim();
 
@@ -162,24 +195,38 @@ router.get("/admin/ads", async (req, res) => {
   );
 });
 
-router.delete("/admin/ads/:id", async (req, res) => {
-  if (!(req.session as any).isAdmin) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
+router.delete("/admin/ads/:id", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid id" });
   }
 
+  const [existing] = await db
+    .select({ id: adsTable.id, status: adsTable.status })
+    .from(adsTable)
+    .where(eq(adsTable.id, id))
+    .limit(1);
+  if (!existing) {
+    return res.status(404).json({ error: "Ad not found" });
+  }
+
   await db.delete(adsTable).where(eq(adsTable.id, id));
+
+  await logAdminActivity({
+    action: "ad.delete",
+    actorAdminId: getAdminActorId(req),
+    targetType: "ad",
+    targetId: id,
+    details: { fromStatus: existing.status, source: "admin.ads.delete" },
+  });
 
   return res.json({ ok: true });
 });
 
 router.get("/ads/recommended", async (req, res) => {
   const rows = await baseSelect(req.session.userId ?? null)
+    .where(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]))
     .orderBy(desc(adsTable.createdAt))
     .limit(20);
 
@@ -192,7 +239,8 @@ router.get("/ads/stats", async (_req, res) => {
       totalAds: sql<number>`count(*)::int`,
       totalCities: sql<number>`count(distinct ${adsTable.city})::int`,
     })
-    .from(adsTable);
+    .from(adsTable)
+    .where(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]));
 
   const totalCategories = await db
     .select({ c: sql<number>`count(*)::int` })
@@ -204,7 +252,13 @@ router.get("/ads/stats", async (_req, res) => {
       count: sql<number>`count(${adsTable.id})::int`,
     })
     .from(categoriesTable)
-    .leftJoin(adsTable, eq(adsTable.categoryId, categoriesTable.id))
+    .leftJoin(
+      adsTable,
+      and(
+        eq(adsTable.categoryId, categoriesTable.id),
+        inArray(adsTable.status, [...PUBLIC_AD_STATUSES]),
+      ),
+    )
     .groupBy(categoriesTable.id, categoriesTable.name)
     .orderBy(sql`count(${adsTable.id}) desc`)
     .limit(8);
@@ -215,6 +269,7 @@ router.get("/ads/stats", async (_req, res) => {
       count: sql<number>`count(*)::int`,
     })
     .from(adsTable)
+    .where(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]))
     .groupBy(adsTable.city)
     .orderBy(sql`count(*) desc`)
     .limit(8);
@@ -235,6 +290,21 @@ router.get("/ads/mine", requireAuth, async (req, res) => {
   res.json(rows.map(serializeAd));
 });
 
+router.get("/ads/favorites", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const rows = await baseSelect(userId)
+    .innerJoin(
+      adFavoritesTable,
+      and(
+        eq(adFavoritesTable.adId, adsTable.id),
+        eq(adFavoritesTable.userId, userId),
+      ),
+    )
+    .where(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]))
+    .orderBy(desc(adsTable.createdAt));
+  res.json(rows.map(serializeAd));
+});
+
 router.get("/ads/:adId", async (req, res) => {
   const params = GetAdParams.parse({ adId: Number(req.params["adId"]) });
   const rows = await baseSelect(req.session.userId ?? null)
@@ -245,13 +315,21 @@ router.get("/ads/:adId", async (req, res) => {
     res.status(404).json({ error: "Ad not found" });
     return;
   }
+  const st = row.ads.status;
+  const uid = req.session.userId ?? null;
+  const isOwner = uid !== null && row.ads.userId === uid;
+  if (!isPublicAdStatus(st) && !isOwner) {
+    res.status(404).json({ error: "Ad not found" });
+    return;
+  }
   res.json(serializeAd(row));
 });
 
 router.get("/ads", async (req, res) => {
   const q = ListAdsQueryParams.parse(req.query);
   const conds = [] as ReturnType<typeof eq>[];
-  conds.push(eq(adsTable.status, "approved"));
+  conds.push(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]));
+  if (q.userId !== undefined) conds.push(eq(adsTable.userId, q.userId));
   if (q.q) {
     const pat = `%${q.q}%`;
     const like = or(
@@ -314,11 +392,15 @@ router.post("/ads/:adId/like", requireAuth, async (req, res) => {
   if (adId === null) return;
   const userId = req.session.userId!;
   const exists = await db
-    .select({ id: adsTable.id })
+    .select({ id: adsTable.id, status: adsTable.status })
     .from(adsTable)
     .where(eq(adsTable.id, adId))
     .limit(1);
   if (!exists[0]) {
+    res.status(404).json({ error: "Ad not found" });
+    return;
+  }
+  if (!isPublicAdStatus(exists[0].status)) {
     res.status(404).json({ error: "Ad not found" });
     return;
   }
@@ -344,11 +426,15 @@ router.post("/ads/:adId/favorite", requireAuth, async (req, res) => {
   if (adId === null) return;
   const userId = req.session.userId!;
   const exists = await db
-    .select({ id: adsTable.id })
+    .select({ id: adsTable.id, status: adsTable.status })
     .from(adsTable)
     .where(eq(adsTable.id, adId))
     .limit(1);
   if (!exists[0]) {
+    res.status(404).json({ error: "Ad not found" });
+    return;
+  }
+  if (!isPublicAdStatus(exists[0].status)) {
     res.status(404).json({ error: "Ad not found" });
     return;
   }
@@ -379,6 +465,7 @@ router.post("/ads", requireAuth, async (req, res) => {
     .insert(adsTable)
     .values({
       userId: req.session.userId!,
+      status: "pending",
       title: body.title,
       description: body.description,
       price:
@@ -393,6 +480,8 @@ router.post("/ads", requireAuth, async (req, res) => {
       subcategoryId: body.subcategoryId ?? null,
       sellerName: body.sellerName,
       sellerPhone: body.sellerPhone,
+      details:
+        body.details && typeof body.details === "object" ? body.details : {},
     })
     .returning();
   const id = inserted[0]!.id;
@@ -415,106 +504,174 @@ router.patch("/ads/:adId", requireAuth, async (req, res) => {
     res.status(403).json({ error: "غير مصرح" });
     return;
   }
-  const body = req.body as any;
+
+  const [prevRow] = await db
+    .select()
+    .from(adsTable)
+    .where(eq(adsTable.id, adId))
+    .limit(1);
+  if (!prevRow) {
+    res.status(404).json({ error: "Ad not found" });
+    return;
+  }
+
+  const b = req.body as Record<string, unknown>;
+
+  const nextPrice =
+    "price" in b
+      ? b.price === null || b.price === undefined
+        ? null
+        : String(Number(b.price as number))
+      : prevRow.price;
+
+  const nextSubcategory =
+    "subcategoryId" in b
+      ? b.subcategoryId === null || b.subcategoryId === undefined
+        ? null
+        : Number(b.subcategoryId)
+      : prevRow.subcategoryId;
+
+  const nextImages =
+    "images" in b && Array.isArray(b.images)
+      ? (b.images as string[])
+      : (prevRow.images as string[]);
 
   await db
     .update(adsTable)
     .set({
-      title: body.title,
-      description: body.description,
-
-      price:
-        body.price !== undefined && body.price !== null
-          ? body.price.toString()
-          : null,
-
-      priceType: body.priceType,
-      type: body.type,
-      city: body.city,
-      images: body.images ?? [],
-      categoryId: body.categoryId,
-      subcategoryId: body.subcategoryId ?? null,
-      sellerName: body.sellerName,
-      sellerPhone: body.sellerPhone,
-
-      // ✅🔥 أهم سطر (إضافة الستاتوس)
-      status: body.status ?? undefined,
+      title: typeof b.title === "string" ? b.title : prevRow.title,
+      description:
+        typeof b.description === "string" ? b.description : prevRow.description,
+      price: nextPrice,
+      priceType:
+        typeof b.priceType === "string" ? b.priceType : prevRow.priceType,
+      type: typeof b.type === "string" ? b.type : prevRow.type,
+      city: typeof b.city === "string" ? b.city : prevRow.city,
+      images: nextImages,
+      categoryId:
+        typeof b.categoryId === "number" ? b.categoryId : prevRow.categoryId,
+      subcategoryId: nextSubcategory,
+      sellerName:
+        typeof b.sellerName === "string" ? b.sellerName : prevRow.sellerName,
+      sellerPhone:
+        typeof b.sellerPhone === "string" ? b.sellerPhone : prevRow.sellerPhone,
+      details:
+        b.details && typeof b.details === "object"
+          ? (b.details as Record<string, unknown>)
+          : (prevRow.details as Record<string, unknown>),
+      status: prevRow.status,
     })
     .where(eq(adsTable.id, adId));
 
-  const rows = await baseSelect().where(eq(adsTable.id, adId)).limit(1);
+  const rows = await baseSelect(req.session.userId ?? null)
+    .where(eq(adsTable.id, adId))
+    .limit(1);
 
   res.json(serializeAd(rows[0]!));
-
-  router.post("/ads/:adId/view", async (req, res) => {
-    const adId = Number(req.params["adId"]);
-    if (!Number.isInteger(adId) || adId <= 0) {
-      res.status(400).json({ error: "معرّف غير صالح" });
-      return;
-    }
-    const adRows = await db
-      .select({ id: adsTable.id })
-      .from(adsTable)
-      .where(eq(adsTable.id, adId))
-      .limit(1);
-    if (!adRows[0]) {
-      res.status(404).json({ error: "Ad not found" });
-      return;
-    }
-    const key = viewerKeyFor(req);
-    const inserted = await db
-      .insert(adViewsTable)
-      .values({ adId, viewerKey: key })
-      .onConflictDoNothing()
-      .returning({ id: adViewsTable.id });
-    if (inserted.length > 0) {
-      await db
-        .update(adsTable)
-        .set({ views: sql`${adsTable.views} + 1` })
-        .where(eq(adsTable.id, adId));
-    }
-    const fresh = await db
-      .select({ views: adsTable.views })
-      .from(adsTable)
-      .where(eq(adsTable.id, adId))
-      .limit(1);
-    res.json({ views: fresh[0]?.views ?? 0, counted: inserted.length > 0 });
-  });
-
-  router.delete("/ads/:adId", requireAuth, async (req, res) => {
-    const adId = Number(req.params["adId"]);
-    const existing = await db
-      .select({ userId: adsTable.userId })
-      .from(adsTable)
-      .where(eq(adsTable.id, adId))
-      .limit(1);
-    if (!existing[0]) {
-      res.status(404).end();
-      return;
-    }
-    if (existing[0].userId !== req.session.userId) {
-      res.status(403).json({ error: "غير مصرح" });
-      return;
-    }
-    await db.delete(adsTable).where(eq(adsTable.id, adId));
-    res.status(204).end();
-  });
 });
 
-router.patch("/admin/ads/:id/status", async (req, res) => {
-  if (!(req.session as any).isAdmin) {
-    return res.status(401).json({ error: "Unauthorized" });
+router.post("/ads/:adId/view", async (req, res) => {
+  const adId = Number(req.params["adId"]);
+  if (!Number.isInteger(adId) || adId <= 0) {
+    res.status(400).json({ error: "معرّف غير صالح" });
+    return;
   }
+  const adRows = await db
+    .select({ id: adsTable.id, status: adsTable.status, userId: adsTable.userId })
+    .from(adsTable)
+    .where(eq(adsTable.id, adId))
+    .limit(1);
+  if (!adRows[0]) {
+    res.status(404).json({ error: "Ad not found" });
+    return;
+  }
+  const viewerId = req.session.userId ?? null;
+  const isOwner =
+    viewerId !== null &&
+    adRows[0].userId !== null &&
+    viewerId === adRows[0].userId;
+  if (!isPublicAdStatus(adRows[0].status) && !isOwner) {
+    res.status(404).json({ error: "Ad not found" });
+    return;
+  }
+  const key = viewerKeyFor(req);
+  const inserted = await db
+    .insert(adViewsTable)
+    .values({ adId, viewerKey: key })
+    .onConflictDoNothing()
+    .returning({ id: adViewsTable.id });
+  if (inserted.length > 0) {
+    await db
+      .update(adsTable)
+      .set({ views: sql`${adsTable.views} + 1` })
+      .where(eq(adsTable.id, adId));
+  }
+  const fresh = await db
+    .select({ views: adsTable.views })
+    .from(adsTable)
+    .where(eq(adsTable.id, adId))
+    .limit(1);
+  res.json({ views: fresh[0]?.views ?? 0, counted: inserted.length > 0 });
+});
 
+router.delete("/ads/:adId", requireAuth, async (req, res) => {
+  const adId = Number(req.params["adId"]);
+  if (!Number.isInteger(adId) || adId <= 0) {
+    res.status(400).json({ error: "Invalid ad id" });
+    return;
+  }
+  const existing = await db
+    .select({ userId: adsTable.userId })
+    .from(adsTable)
+    .where(eq(adsTable.id, adId))
+    .limit(1);
+  if (!existing[0]) {
+    res.status(404).json({ error: "Ad not found" });
+    return;
+  }
+  if (existing[0].userId !== req.session.userId) {
+    res.status(403).json({ error: "غير مصرح" });
+    return;
+  }
+  await db.delete(adsTable).where(eq(adsTable.id, adId));
+  res.status(204).end();
+});
+
+router.patch("/admin/ads/:id/status", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
-  console.log("STATUS ROUTE HIT", id, req.body);
-  const { status } = req.body;
+  const status = req.body?.status;
 
-  if (!["approved", "rejected", "hidden"].includes(status)) {
+  if (typeof status !== "string" || !["approved", "rejected", "hidden"].includes(status)) {
     return res.status(400).json({ error: "Invalid status" });
   }
 
+  const [before] = await db
+    .select({ id: adsTable.id, status: adsTable.status })
+    .from(adsTable)
+    .where(eq(adsTable.id, id))
+    .limit(1);
+
+  if (!before) {
+    return res.status(404).json({ error: "Ad not found" });
+  }
+
   await db.update(adsTable).set({ status }).where(eq(adsTable.id, id));
+
+  const action =
+    status === "approved"
+      ? before.status === "hidden"
+        ? "ad.unhide"
+        : "ad.approve"
+      : status === "rejected"
+        ? "ad.reject"
+        : "ad.hide";
+  await logAdminActivity({
+    action,
+    actorAdminId: getAdminActorId(req),
+    targetType: "ad",
+    targetId: id,
+    details: { fromStatus: before.status, toStatus: status },
+  });
 
   return res.json({ success: true });
 });

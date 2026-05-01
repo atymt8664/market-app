@@ -3,6 +3,7 @@ import { db, conversationsTable, messagesTable, adsTable, usersTable } from "@wo
 import { and, asc, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
 import { broadcastToUser } from "../lib/realtime";
+import { isPublicAdStatus } from "../lib/ad-visibility";
 
 const router: IRouter = Router();
 
@@ -38,23 +39,66 @@ router.post("/conversations", requireAuth, async (req, res) => {
     res.status(400).json({ error: "لا يمكنك مراسلة إعلانك" });
     return;
   }
-  const inserted = await db
-    .insert(conversationsTable)
-    .values({ adId, buyerId: userId, sellerId: ad.userId })
-    .onConflictDoNothing({
-      target: [conversationsTable.adId, conversationsTable.buyerId],
-    })
-    .returning();
-  if (inserted[0]) {
-    res.status(201).json({ id: inserted[0].id });
+  if (!isPublicAdStatus(ad.status)) {
+    res.status(400).json({ error: "لا يمكن مراسلة هذا الإعلان" });
     return;
   }
-  const existing = await db
-    .select({ id: conversationsTable.id })
+  const sellerId = ad.userId;
+
+  const existingFirst = await db
+    .select({
+      id: conversationsTable.id,
+      hasPreview: conversationsTable.lastMessagePreview,
+    })
     .from(conversationsTable)
-    .where(and(eq(conversationsTable.adId, adId), eq(conversationsTable.buyerId, userId)))
+    .where(
+      and(
+        eq(conversationsTable.adId, adId),
+        eq(conversationsTable.buyerId, userId),
+      ),
+    )
     .limit(1);
-  res.json({ id: existing[0]!.id });
+  if (existingFirst[0]) {
+    res.json({ id: existingFirst[0].id });
+    return;
+  }
+
+  try {
+    const created = await db.transaction(async (tx) => {
+      const [conv] = await tx
+        .insert(conversationsTable)
+        .values({
+          adId,
+          buyerId: userId,
+          sellerId,
+        })
+        .returning();
+      return conv!;
+    });
+    res.status(201).json({ id: created.id });
+  } catch (err: unknown) {
+    const code =
+      typeof err === "object" && err !== null && "code" in err
+        ? String((err as { code?: string }).code)
+        : "";
+    if (code === "23505") {
+      const again = await db
+        .select({ id: conversationsTable.id })
+        .from(conversationsTable)
+        .where(
+          and(
+            eq(conversationsTable.adId, adId),
+            eq(conversationsTable.buyerId, userId),
+          ),
+        )
+        .limit(1);
+      if (again[0]) {
+        res.json({ id: again[0].id });
+        return;
+      }
+    }
+    throw err;
+  }
 });
 
 router.get("/conversations", requireAuth, async (req, res) => {

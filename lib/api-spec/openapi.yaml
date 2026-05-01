@@ -17,36 +17,6 @@ tags:
   - name: Storage
     description: Object storage upload and serving endpoints.
 paths:
-  /storage/uploads/request-url:
-    post:
-      tags: [Storage]
-      operationId: requestUploadUrl
-      summary: Request a presigned URL for file upload
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UploadUrlRequest'
-      responses:
-        '200':
-          description: Presigned upload URL generated.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UploadUrlResponse'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
   /storage/public-objects/{filePath}:
     get:
       tags: [Storage]
@@ -251,6 +221,27 @@ paths:
       responses:
         "200":
           description: My ads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ad"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /ads/favorites:
+    get:
+      operationId: listFavoriteAds
+      tags: [ads]
+      summary: List ads favorited by the authenticated user
+      responses:
+        "200":
+          description: Favorite ads
           content:
             application/json:
               schema:
@@ -1265,19 +1256,6 @@ components:
           type: array
           items: { type: string }
 
-    UploadUrlRequest:
-      type: object
-      required: [name, size, contentType]
-      properties:
-        name: { type: string, minLength: 1 }
-        size: { type: integer, minimum: 1 }
-        contentType: { type: string, minLength: 1 }
-    UploadUrlResponse:
-      type: object
-      required: [uploadURL, objectPath]
-      properties:
-        uploadURL: { type: string, format: uri }
-        objectPath: { type: string }
     ErrorEnvelope:
       type: object
       required: [error]

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean } from "drizzle-orm/pg-core";
 
 export const categoriesTable = pgTable("categories", {
   id: serial("id").primaryKey(),
@@ -7,6 +7,7 @@ export const categoriesTable = pgTable("categories", {
   icon: text("icon").notNull(),
   subtitle: text("subtitle").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
+  isHidden: boolean("is_hidden").notNull().default(false),
 });
 
 export type Category = typeof categoriesTable.$inferSelect;
@@ -18,6 +19,8 @@ export const subcategoriesTable = pgTable("subcategories", {
   categoryId: integer("category_id")
     .notNull()
     .references(() => categoriesTable.id, { onDelete: "cascade" }),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isHidden: boolean("is_hidden").notNull().default(false),
 });
 
 export type Subcategory = typeof subcategoriesTable.$inferSelect;

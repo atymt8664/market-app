@@ -1,16 +1,25 @@
-import { useListAds, useListSubcategories, getListAdsQueryKey } from "@workspace/api-client-react";
+import { useListAds, useListSubcategories, useListCategories, getListAdsQueryKey } from "@workspace/api-client-react";
 import { Link, useParams } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
+import { t } from "@/i18n";
+import { useLocale } from "@/hooks/use-locale";
+import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 
 export default function Category() {
+  const { locale } = useLocale();
   const params = useParams();
   const categoryId = Number(params.id);
 
+  const { data: categories } = useListCategories();
   const { data: subcategories, isLoading: isLoadingSubs } = useListSubcategories(categoryId);
   const { data: ads, isLoading: isLoadingAds } = useListAds({ categoryId }, { query: { enabled: !!categoryId, queryKey: getListAdsQueryKey({ categoryId }) } });
+  const selectedCategory = categories?.find((cat) => cat.id === categoryId);
+  const title = selectedCategory
+    ? getCreateAdTaxonomyLabel(locale, selectedCategory.name)
+    : t("category.title_fallback");
 
   return (
     <motion.div 
@@ -25,12 +34,12 @@ export default function Category() {
             <ArrowRight className="w-5 h-5" />
           </button>
         </Link>
-        <h1 className="font-bold text-xl">إعلانات التصنيف</h1>
+        <h1 className="font-bold text-xl">{title}</h1>
       </header>
 
       {/* Subcategories */}
       <div className="border-b border-border bg-muted/20">
-        <ScrollArea className="w-full whitespace-nowrap" dir="rtl">
+        <ScrollArea className="w-full whitespace-nowrap" dir={locale === "ar" ? "rtl" : "ltr"}>
           <div className="flex gap-2 p-3">
             {isLoadingSubs ? (
               Array.from({ length: 4 }).map((_, i) => (
@@ -40,7 +49,7 @@ export default function Category() {
               subcategories?.map((sub) => (
                 <Link key={sub.id} href={`/search?categoryId=${categoryId}&subcategoryId=${sub.id}`}>
                   <div className="px-4 py-1.5 bg-background border border-border rounded-full text-sm font-medium hover:bg-muted active:scale-95 transition-all cursor-pointer">
-                    {sub.name}
+                    {getCreateAdTaxonomyLabel(locale, sub.name)}
                   </div>
                 </Link>
               ))
@@ -63,9 +72,9 @@ export default function Category() {
             ))
           ) : (
             <div className="col-span-2 flex flex-col items-center justify-center py-12 text-center opacity-80">
-              <img src="/empty-state.png" alt="لا توجد إعلانات" className="w-48 h-48 mb-4" />
-              <h2 className="text-xl font-bold mb-2">لا توجد إعلانات</h2>
-              <p className="text-muted-foreground">لم يتم العثور على إعلانات في هذا التصنيف.</p>
+              <img src="/empty-state.png" alt={t("category.empty_title")} className="w-48 h-48 mb-4" />
+              <h2 className="text-xl font-bold mb-2">{t("category.empty_title")}</h2>
+              <p className="text-muted-foreground">{t("category.empty_desc")}</p>
             </div>
           )}
         </div>

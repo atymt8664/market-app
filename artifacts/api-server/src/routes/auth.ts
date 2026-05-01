@@ -24,6 +24,8 @@ import {
   sendPasswordResetEmail,
   sendVerificationCodeEmail,
 } from "../lib/email";
+import { ensureAppSettingsTable } from "../lib/ensure-app-settings-table";
+import { hasValidAdminSession } from "../middlewares/require-admin";
 
 const router: IRouter = Router();
 
@@ -58,6 +60,44 @@ const passwordResetLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "محاولات كثيرة، حاول لاحقاً" },
 });
+
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "بيانات الدخول غير صحيحة" },
+});
+
+const ADMIN_LOGIN_MAX_FAILURES = 5;
+const ADMIN_LOGIN_LOCK_MS = 15 * 60 * 1000;
+const adminLoginFailures = new Map<string, { count: number; lockUntil: number }>();
+
+function getAdminLoginIdentifier() {
+  return "admin-login";
+}
+
+function isAdminLoginLocked(identifier: string): boolean {
+  const state = adminLoginFailures.get(identifier);
+  if (!state) return false;
+  if (state.lockUntil > Date.now()) return true;
+  adminLoginFailures.delete(identifier);
+  return false;
+}
+
+function registerAdminLoginFailure(identifier: string) {
+  const current = adminLoginFailures.get(identifier) ?? { count: 0, lockUntil: 0 };
+  const nextCount = current.count + 1;
+  const lockUntil = nextCount >= ADMIN_LOGIN_MAX_FAILURES ? Date.now() + ADMIN_LOGIN_LOCK_MS : 0;
+  adminLoginFailures.set(identifier, {
+    count: lockUntil ? 0 : nextCount,
+    lockUntil,
+  });
+}
+
+function clearAdminLoginFailures(identifier: string) {
+  adminLoginFailures.delete(identifier);
+}
 
 async function statsForUser(userId: number) {
   const [followerRow] = await db
@@ -567,7 +607,18 @@ router.post("/auth/forgot-password", passwordResetLimiter, async (req, res) => {
     })
     .where(eq(usersTable.id, user.id));
   const url = buildResetPasswordUrl(token);
-  await deliverPasswordResetLink(user.email, url);
+  try {
+    await deliverPasswordResetLink(user.email, url);
+  } catch (mailError) {
+    console.error("Password reset email send failed:", mailError);
+    const details =
+      mailError instanceof Error ? mailError.message : "Email provider error";
+    res.status(502).json({
+      error: "تعذر إرسال بريد إعادة التعيين",
+      details,
+    });
+    return;
+  }
   res.json({ ok: true });
 });
 
@@ -623,31 +674,59 @@ router.post("/auth/reset-password", passwordResetLimiter, async (req, res) => {
 // Suppress unused import warning when only referenced via select chains.
 void and;
 
-router.post("/admin-login", async (req, res) => {
+router.post("/admin-login", adminLoginLimiter, async (req, res) => {
   const { password } = req.body;
-  console.log("ADMIN CHECK", {
-    inputLength: String(password || "").trim().length,
-    envExists: !!process.env.ADMIN_PASSWORD,
-    envLength: String(process.env.ADMIN_PASSWORD || "").trim().length,
+  const loginIdentifier = getAdminLoginIdentifier();
+
+  if (isAdminLoginLocked(loginIdentifier)) {
+    return res.status(429).json({ error: "بيانات الدخول غير صحيحة" });
+  }
+
+  if (!password || typeof password !== "string") {
+    return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+  }
+
+  await ensureAppSettingsTable();
+  const settingsResult = await db.execute(
+    sql`select admin_password_hash as admin_password_hash from app_settings where id = 1 limit 1`,
+  );
+  const settingsRows = Array.isArray(settingsResult)
+    ? (settingsResult as Array<{ admin_password_hash?: unknown }>)
+    : (
+        settingsResult as unknown as { rows?: Array<{ admin_password_hash?: unknown }> }
+      ).rows;
+  const settingsRow = settingsRows?.[0];
+  const adminPasswordHash =
+    settingsRow && typeof settingsRow.admin_password_hash === "string"
+      ? settingsRow.admin_password_hash
+      : "";
+  if (!adminPasswordHash) {
+    return res.status(500).json({ error: "Admin password is not configured" });
+  }
+
+  const isValid = await bcrypt.compare(password, adminPasswordHash);
+  if (!isValid) {
+    registerAdminLoginFailure(loginIdentifier);
+    return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+  }
+
+  clearAdminLoginFailures(loginIdentifier);
+  await new Promise<void>((resolve, reject) => {
+    req.session.regenerate((err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      req.session.isAdmin = true;
+      req.session.adminAuthenticatedAt = Date.now();
+      resolve();
+    });
   });
-
-  if (!password) {
-    return res.status(400).json({ error: "Missing password" });
-  }
-
-  if (
-    String(password).trim() !== String(process.env.ADMIN_PASSWORD || "").trim()
-  ) {
-    return res.status(401).json({ error: "Wrong password" });
-  }
-
-  (req.session as any).isAdmin = true;
-
   return res.json({ success: true });
 });
 
 router.get("/admin/me", (req, res) => {
-  if ((req.session as any).isAdmin) {
+  if (hasValidAdminSession(req)) {
     return res.json({ isAdmin: true });
   }
 

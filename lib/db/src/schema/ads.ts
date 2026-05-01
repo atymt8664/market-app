@@ -33,6 +33,7 @@ export const adsTable = pgTable("ads", {
   ),
   sellerName: text("seller_name").notNull(),
   sellerPhone: text("seller_phone").notNull(),
+  details: jsonb("details").notNull().default({}),
   featured: boolean("featured").notNull().default(false),
   status: text("status").notNull().default("pending"),
   views: integer("views").notNull().default(0),

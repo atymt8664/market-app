@@ -154,6 +154,8 @@ export interface Ad {
   sellerName: string;
   sellerPhone: string;
   featured?: boolean;
+  /** Moderation state from API (`pending`, `approved`, `rejected`, `hidden`). */
+  status?: string;
   views: number;
   likeCount: number;
   favoriteCount: number;
@@ -267,20 +269,6 @@ export interface CreateAdInput {
   images?: string[];
 }
 
-export interface UploadUrlRequest {
-  /** @minLength 1 */
-  name: string;
-  /** @minimum 1 */
-  size: number;
-  /** @minLength 1 */
-  contentType: string;
-}
-
-export interface UploadUrlResponse {
-  uploadURL: string;
-  objectPath: string;
-}
-
 export interface ErrorEnvelope {
   error: string;
 }
@@ -310,6 +298,7 @@ export type ListAdsParams = {
   city?: string;
   minPrice?: number;
   maxPrice?: number;
+  userId?: number;
   type?: ListAdsType;
   limit?: number;
 };

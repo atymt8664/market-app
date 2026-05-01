@@ -8,21 +8,6 @@
 import * as zod from "zod";
 
 /**
- * @summary Request a presigned URL for file upload
- */
-
-export const RequestUploadUrlBody = zod.object({
-  name: zod.string().min(1),
-  size: zod.number().min(1),
-  contentType: zod.string().min(1),
-});
-
-export const RequestUploadUrlResponse = zod.object({
-  uploadURL: zod.string().url(),
-  objectPath: zod.string(),
-});
-
-/**
  * @summary Serve a public asset
  */
 export const GetPublicObjectParams = zod.object({
@@ -66,7 +51,7 @@ export const ListSubcategoriesResponseItem = zod.object({
   categoryId: zod.number(),
 });
 export const ListSubcategoriesResponse = zod.array(
-  ListSubcategoriesResponseItem,
+  ListSubcategoriesResponseItem
 );
 
 /**
@@ -81,6 +66,7 @@ export const ListAdsQueryParams = zod.object({
   city: zod.coerce.string().optional(),
   minPrice: zod.coerce.number().optional(),
   maxPrice: zod.coerce.number().optional(),
+  userId: zod.coerce.number().optional(),
   type: zod.enum(["offer", "request"]).optional(),
   limit: zod.coerce.number().default(listAdsQueryLimitDefault),
 });
@@ -100,6 +86,7 @@ export const ListAdsResponseItem = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
+  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -131,6 +118,7 @@ export const CreateAdBody = zod.object({
   city: zod.string(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
+  details: zod.record(zod.string(), zod.unknown()).optional(),
   images: zod.array(zod.string()).optional(),
 });
 
@@ -152,6 +140,7 @@ export const ListFeaturedAdsResponseItem = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
+  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -181,6 +170,7 @@ export const ListRecommendedAdsResponseItem = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
+  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -191,7 +181,7 @@ export const ListRecommendedAdsResponseItem = zod.object({
   createdAt: zod.coerce.date(),
 });
 export const ListRecommendedAdsResponse = zod.array(
-  ListRecommendedAdsResponseItem,
+  ListRecommendedAdsResponseItem
 );
 
 /**
@@ -205,13 +195,13 @@ export const GetAdsStatsResponse = zod.object({
     zod.object({
       categoryName: zod.string(),
       count: zod.number(),
-    }),
+    })
   ),
   byCity: zod.array(
     zod.object({
       city: zod.string(),
       count: zod.number(),
-    }),
+    })
   ),
 });
 
@@ -233,6 +223,7 @@ export const ListMyAdsResponseItem = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
+  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -243,6 +234,36 @@ export const ListMyAdsResponseItem = zod.object({
   createdAt: zod.coerce.date(),
 });
 export const ListMyAdsResponse = zod.array(ListMyAdsResponseItem);
+
+/**
+ * @summary List ads favorited by the authenticated user
+ */
+export const ListFavoriteAdsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string(),
+  price: zod.number().nullable(),
+  priceType: zod.enum(["fixed", "negotiable", "free", "swap"]),
+  type: zod.enum(["offer", "request"]),
+  city: zod.string(),
+  images: zod.array(zod.string()),
+  categoryId: zod.number(),
+  subcategoryId: zod.number().nullish(),
+  categoryName: zod.string(),
+  subcategoryName: zod.string().nullish(),
+  sellerName: zod.string(),
+  sellerPhone: zod.string(),
+  details: zod.record(zod.string(), zod.unknown()).optional(),
+  featured: zod.boolean().optional(),
+  views: zod.number(),
+  likeCount: zod.number(),
+  favoriteCount: zod.number(),
+  isLiked: zod.boolean(),
+  isFavorited: zod.boolean(),
+  userId: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListFavoriteAdsResponse = zod.array(ListFavoriteAdsResponseItem);
 
 export const GetAdParams = zod.object({
   adId: zod.coerce.number(),
@@ -263,6 +284,7 @@ export const GetAdResponse = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
+  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -297,6 +319,7 @@ export const UpdateAdBody = zod.object({
   city: zod.string(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
+  details: zod.record(zod.string(), zod.unknown()).optional(),
   images: zod.array(zod.string()).optional(),
 });
 
@@ -315,6 +338,7 @@ export const UpdateAdResponse = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
+  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -360,7 +384,7 @@ export const AuthSignupResponse = zod.object({
     .string()
     .optional()
     .describe(
-      "Returned only outside production while no email provider is connected.",
+      "Returned only outside production while no email provider is connected."
     ),
 });
 
@@ -388,7 +412,7 @@ export const AuthLoginResponse = zod.object({
     .string()
     .optional()
     .describe(
-      "Returned only outside production while no email provider is connected.",
+      "Returned only outside production while no email provider is connected."
     ),
 });
 
@@ -409,7 +433,7 @@ export const AuthMeResponse = zod.object({
     .string()
     .optional()
     .describe(
-      "Returned only outside production while no email provider is connected.",
+      "Returned only outside production while no email provider is connected."
     ),
 });
 
@@ -441,7 +465,7 @@ export const AuthUpdateProfileResponse = zod.object({
     .string()
     .optional()
     .describe(
-      "Returned only outside production while no email provider is connected.",
+      "Returned only outside production while no email provider is connected."
     ),
 });
 
@@ -473,7 +497,7 @@ export const AuthVerifyEmailResponse = zod.object({
     .string()
     .optional()
     .describe(
-      "Returned only outside production while no email provider is connected.",
+      "Returned only outside production while no email provider is connected."
     ),
 });
 
@@ -516,6 +540,10 @@ export const GetUserProfileResponse = zod.object({
   followingCount: zod.number(),
   profileViews: zod.number(),
   adCount: zod.number(),
+  activeAdCount: zod.number().optional(),
+  totalAdViews: zod.number().optional(),
+  totalLikes: zod.number().optional(),
+  totalFavorites: zod.number().optional(),
 });
 
 export const RecordProfileViewParams = zod.object({
@@ -632,7 +660,7 @@ export const ListConversationsResponseItem = zod.object({
   unreadCount: zod.number(),
 });
 export const ListConversationsResponse = zod.array(
-  ListConversationsResponseItem,
+  ListConversationsResponseItem
 );
 
 /**

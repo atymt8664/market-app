@@ -3,6 +3,13 @@ import { Home, Heart, PlusCircle, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { t } from "@/i18n";
+import {
+  useListFavoriteAds,
+  getListFavoriteAdsQueryKey,
+  useListConversations,
+  getListConversationsQueryKey,
+} from "@workspace/api-client-react";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -28,17 +35,37 @@ function BottomNav() {
   const search = useSearch();
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+
+  const { data: favoriteAds } = useListFavoriteAds({
+    query: {
+      queryKey: getListFavoriteAdsQueryKey(),
+      enabled: isAuthenticated && !isLoading,
+      retry: false,
+    },
+  });
+  const favCount = Array.isArray(favoriteAds) ? favoriteAds.length : 0;
+
+  const { data: conversations } = useListConversations({
+    query: {
+      queryKey: getListConversationsQueryKey(),
+      enabled: isAuthenticated && !isLoading,
+      retry: false,
+    },
+  });
+  const unreadTotal = Array.isArray(conversations)
+    ? conversations.reduce((acc, c) => acc + (c.unreadCount ?? 0), 0)
+    : 0;
   const showGuestToast = (nextTarget: string) => {
-    const title = "يرجى تسجيل الدخول أولاً";
+    const title = t("bottom_nav.login_required_title");
     const descriptionMap: Record<string, string> = {
-      "/create-ad": "يجب أن يكون لديك حساب لنشر إعلان",
-      "/messages": "يجب أن يكون لديك حساب لعرض الرسائل والتواصل مع المستخدمين",
-      "/favorites": "يجب أن يكون لديك حساب لحفظ الإعلانات في المفضلة",
-      "/profile": "يجب أن يكون لديك حساب لعرض وإدارة حسابك",
+      "/create-ad": t("bottom_nav.login_required_create"),
+      "/messages": t("bottom_nav.login_required_messages"),
+      "/favorites": t("bottom_nav.login_required_favorites"),
+      "/profile": t("bottom_nav.login_required_profile"),
     };
     toast({
       title,
-      description: descriptionMap[nextTarget] ?? "يجب أن يكون لديك حساب للمتابعة",
+      description: descriptionMap[nextTarget] ?? t("bottom_nav.login_required_default"),
     });
   };
   const forceNavigate = (target: string) => {
@@ -134,7 +161,7 @@ function BottomNav() {
         <NavItem
           href="/"
           icon={<Home className="w-6 h-6" />}
-          label="بحث"
+          label={t("bottom_nav.home")}
           isActive={location === "/"}
         />
 
@@ -145,11 +172,19 @@ function BottomNav() {
         >
           <div
             className={cn(
-              "transition-colors",
+              "relative transition-colors",
               isFavoritesActive ? "text-primary" : "text-muted-foreground",
             )}
           >
             <Heart className="w-6 h-6" />
+            {isAuthenticated && favCount > 0 && (
+              <span
+                dir="ltr"
+                className="absolute -top-1.5 -end-1 min-h-[1.125rem] min-w-[1.125rem] rounded-full border-2 border-card bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground flex items-center justify-center tabular-nums"
+              >
+                {favCount > 99 ? "99+" : favCount}
+              </span>
+            )}
           </div>
           <span
             className={cn(
@@ -157,7 +192,7 @@ function BottomNav() {
               isFavoritesActive ? "text-primary" : "text-muted-foreground",
             )}
           >
-            المفضلة
+            {t("bottom_nav.favorites")}
           </span>
         </button>
 
@@ -169,7 +204,7 @@ function BottomNav() {
             <PlusCircle className="w-8 h-8 lg:w-9 lg:h-9" />
           </button>
           <span className="text-[10px] lg:text-xs font-medium text-primary mt-1">
-            إعلان
+            {t("bottom_nav.post")}
           </span>
         </div>
 
@@ -180,11 +215,19 @@ function BottomNav() {
         >
           <div
             className={cn(
-              "transition-colors",
+              "relative transition-colors",
               isMessagesActive ? "text-primary" : "text-muted-foreground",
             )}
           >
             <MessageCircle className="w-6 h-6" />
+            {isAuthenticated && unreadTotal > 0 && (
+              <span
+                dir="ltr"
+                className="absolute -top-1.5 -end-1 min-h-[1.125rem] min-w-[1.125rem] rounded-full border-2 border-card bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground flex items-center justify-center tabular-nums"
+              >
+                {unreadTotal > 99 ? "99+" : unreadTotal}
+              </span>
+            )}
           </div>
           <span
             className={cn(
@@ -192,7 +235,7 @@ function BottomNav() {
               isMessagesActive ? "text-primary" : "text-muted-foreground",
             )}
           >
-            الرسائل
+            {t("bottom_nav.messages")}
           </span>
         </button>
 
@@ -215,7 +258,7 @@ function BottomNav() {
               isProfileActive ? "text-primary" : "text-muted-foreground",
             )}
           >
-            حسابي
+            {t("bottom_nav.account")}
           </span>
         </button>
       </div>

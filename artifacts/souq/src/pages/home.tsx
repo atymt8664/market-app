@@ -4,9 +4,10 @@ import {
   useListRecommendedAds,
   useListAds,
   getListAdsQueryKey,
+  getListRecommendedAdsQueryKey,
 } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
-import { Search, ChevronLeft } from "lucide-react";
+import { Search, ChevronLeft, X } from "lucide-react";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
 import { CategoryIcon } from "@/components/category-icon";
 import { LocationPicker } from "@/components/location-picker";
@@ -15,11 +16,21 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useSelectedCity } from "@/hooks/use-selected-city";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { t } from "@/i18n";
+import { useLocale } from "@/hooks/use-locale";
+import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 
 export default function Home() {
+  const { locale } = useLocale();
+  const isRtl = locale === "ar";
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const { city } = useSelectedCity();
+  const [locationHintDismissed, setLocationHintDismissed] = useLocalStorage(
+    "location_filter_hint_dismissed",
+    false,
+  );
 
   const { data: categories, isLoading: isLoadingCategories } =
     useListCategories();
@@ -28,7 +39,7 @@ export default function Home() {
   const { data: defaultRecommended, isLoading: isLoadingDefaultRec } =
     useListRecommendedAds({
       query: {
-        queryKey: ["recommended-ads"],
+        queryKey: getListRecommendedAdsQueryKey(),
         enabled: !city,
       },
     });
@@ -59,39 +70,83 @@ export default function Home() {
       exit={{ opacity: 0 }}
       className="flex flex-col w-full min-h-screen bg-background"
     >
-      {/* Header / Sticky Search */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="mx-auto w-full max-w-screen-xl px-4 md:px-6 lg:px-8 py-4 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <img src="/logo.png" alt="سوق العرب" className="h-8 object-contain" />
-            <LocationPicker />
+      {/* App header: brand + location filter + search */}
+      <header
+        className="sticky top-0 z-40 border-b border-border/80 bg-background/95 shadow-sm backdrop-blur-md"
+        dir={isRtl ? "rtl" : "ltr"}
+      >
+        <div className="mx-auto flex w-full max-w-screen-xl flex-col gap-2.5 px-4 py-3 md:gap-3 md:px-6 md:py-3.5 lg:px-8">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="min-w-0 flex-1 text-lg font-bold leading-none tracking-tight text-foreground">
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                <span>{t("app.brand")}</span>
+                <span className="inline-flex shrink-0 items-center rounded-md bg-primary/15 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-primary">
+                  EU
+                </span>
+              </span>
+            </h1>
+            <div className="flex shrink-0 items-center ps-1">
+              <LocationPicker />
+            </div>
           </div>
 
-          <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="عن ماذا تبحث؟"
-              className="w-full pl-4 pr-10 py-6 bg-muted/50 border-transparent focus-visible:ring-primary rounded-xl text-base"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </form>
+          {!locationHintDismissed ? (
+            <div className="flex items-start gap-2 rounded-xl border border-dashed border-primary/25 bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground transition-colors">
+              <span className="min-w-0 flex-1">
+                {t("home.location_hint_prefix")}{" "}
+                <span className="font-medium text-foreground/85">{t("home.location_picker")}</span>{" "}
+                {t("home.location_hint_suffix")}
+              </span>
+              <button
+                type="button"
+                onClick={() => setLocationHintDismissed(true)}
+                className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                aria-label={t("home.hide_hint")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
+
+          <div
+            className="flex items-center gap-2 rounded-xl border border-dashed border-primary/25 bg-primary/5 px-3 py-2.5 transition-colors focus-within:border-primary/35 focus-within:bg-primary/[0.08]"
+            role="search"
+          >
+            <form
+              onSubmit={handleSearch}
+              className="relative flex min-h-0 w-full min-w-0 items-center"
+            >
+              <label className="sr-only">{t("home.search_label")}</label>
+              <Search
+                className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                type="search"
+                enterKeyHint="search"
+                autoComplete="off"
+                placeholder={t("home.search_placeholder")}
+                className="h-8 w-full border-0 bg-transparent pr-9 pl-1 text-sm leading-tight text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </form>
+          </div>
         </div>
       </header>
 
       {/* Categories Horizontal Scroll */}
       <section className="py-4">
-        <div className="mx-auto w-full max-w-screen-xl px-4 md:px-6 lg:px-8 flex items-center justify-between mb-3">
-          <h2 className="font-bold text-lg">التصنيفات</h2>
+        <div className="mx-auto mb-3 flex w-full max-w-screen-xl items-center justify-between px-4 md:px-6 lg:px-8">
+          <h2 className="text-base font-semibold tracking-tight text-foreground md:text-lg">{t("home.categories")}</h2>
           <Link
             href="/categories"
             className="text-primary text-sm font-medium flex items-center"
           >
-            عرض الكل <ChevronLeft className="w-4 h-4" />
+            {t("home.view_all")} <ChevronLeft className="w-4 h-4" />
           </Link>
         </div>
-        <ScrollArea className="w-full whitespace-nowrap" dir="rtl">
+        <ScrollArea className="w-full whitespace-nowrap" dir={isRtl ? "rtl" : "ltr"}>
           <div className="mx-auto w-full max-w-screen-xl flex gap-4 px-4 md:px-6 lg:px-8 pb-2">
             {isLoadingCategories
               ? Array.from({ length: 5 }).map((_, i) => (
@@ -108,7 +163,7 @@ export default function Home() {
                         <CategoryIcon name={cat.icon} className="w-7 h-7" />
                       </div>
                       <span className="text-xs font-medium text-center w-16 truncate">
-                        {cat.name}
+                        {getCreateAdTaxonomyLabel(locale, cat.name)}
                       </span>
                     </div>
                   </Link>
@@ -119,21 +174,21 @@ export default function Home() {
       </section>
 
       {/* Featured Ads */}
-      <section className="py-2 bg-muted/30">
-        <div className="mx-auto w-full max-w-screen-xl px-4 md:px-6 lg:px-8 mb-3">
-          <h2 className="font-bold text-lg">إعلانات مميزة</h2>
+      <section className="border-b border-border/40 bg-muted/25 py-4 md:py-5">
+        <div className="mx-auto mb-3 w-full max-w-screen-xl px-4 md:mb-3.5 md:px-6 lg:px-8">
+          <h2 className="text-base font-semibold tracking-tight text-foreground md:text-lg">{t("home.featured_ads")}</h2>
         </div>
-        <ScrollArea className="w-full whitespace-nowrap" dir="rtl">
-          <div className="mx-auto w-full max-w-screen-xl flex gap-4 px-4 md:px-6 lg:px-8 pb-4">
+        <ScrollArea className="w-full whitespace-nowrap" dir={isRtl ? "rtl" : "ltr"}>
+          <div className="mx-auto flex w-full max-w-screen-xl gap-3 px-4 pb-1 md:gap-3.5 md:px-6 lg:px-8">
             {isLoadingFeatured ? (
-              Array.from({ length: 3 }).map((_, i) => (
+              Array.from({ length: 4 }).map((_, i) => (
                 <AdCardSkeleton key={i} featured />
               ))
             ) : Array.isArray(featuredAds) && featuredAds.length ? (
               featuredAds.map((ad) => <AdCard key={ad.id} ad={ad} featured />)
             ) : (
-              <div className="text-sm text-muted-foreground w-full text-center py-4">
-                لا توجد إعلانات مميزة حالياً
+              <div className="w-full py-6 text-center text-sm text-muted-foreground">
+                {t("home.no_featured_ads")}
               </div>
             )}
           </div>
@@ -142,17 +197,19 @@ export default function Home() {
       </section>
 
       {/* Recommended Ads Grid */}
-      <section className="mx-auto w-full max-w-screen-xl px-4 md:px-6 lg:px-8 py-4">
-        <h2 className="font-bold text-lg mb-4">موصى لك</h2>
+      <section className="mx-auto w-full max-w-screen-xl px-4 py-5 md:px-6 md:py-6 lg:px-8">
+        <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground md:mb-4 md:text-lg">{t("home.recommended")}</h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 lg:gap-5">
+        <div className="grid grid-cols-2 items-start gap-2.5 md:grid-cols-3 md:gap-3 xl:grid-cols-4 xl:gap-3.5 2xl:grid-cols-5 2xl:gap-4">
           {isLoadingRecommended ? (
-            Array.from({ length: 6 }).map((_, i) => <AdCardSkeleton key={i} />)
+            Array.from({ length: 10 }).map((_, i) => (
+              <AdCardSkeleton key={i} />
+            ))
           ) : Array.isArray(recommendedAds) && recommendedAds.length ? (
             recommendedAds.map((ad) => <AdCard key={ad.id} ad={ad} />)
           ) : (
             <div className="col-span-full text-sm text-muted-foreground text-center py-8">
-              لا توجد إعلانات حالياً
+              {t("home.no_ads")}
             </div>
           )}
         </div>

@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { logger } from "./logger";
 
 const defaultAppUrl = "http://localhost:5173";
 const defaultFromAddress = "Souq Arab EU <souqarab.market@gmail.com>";
@@ -20,6 +21,11 @@ const hasResendApiKey = Boolean(
   process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim().length > 0,
 );
 
+/** Same `from` resolution as password reset: EMAIL_FROM when set, else legacy default, else Resend sandbox. */
+function resolveSendFromAddress(): string {
+  return (fromAddress || resendFromAddress).trim();
+}
+
 function ensureEmailProviderConfigured() {
   if (!hasResendApiKey) {
     throw new Error(
@@ -36,8 +42,16 @@ export function buildResetPasswordUrl(token: string) {
 export async function sendVerificationCodeEmail(email: string, code: string) {
   ensureEmailProviderConfigured();
 
+  const resolvedFrom = resolveSendFromAddress();
+  logger.info({
+    kind: "resend_otp_attempt",
+    recipient: email,
+    resolvedFrom,
+    hasResendApiKey,
+  });
+
   const result = await resend.emails.send({
-    from: resendFromAddress,
+    from: resolvedFrom,
     to: email,
     subject: "رمز التفعيل",
     html: `<p>رمز التفعيل الخاص بك هو: <b>${code}</b></p>`,
@@ -52,7 +66,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   ensureEmailProviderConfigured();
 
   const result = await resend.emails.send({
-    from: fromAddress || resendFromAddress,
+    from: resolveSendFromAddress(),
     to: email,
     subject: "إعادة تعيين كلمة المرور",
     html: `

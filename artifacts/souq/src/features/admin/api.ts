@@ -1,15 +1,21 @@
 import type {
   AdminAd,
+  AdminActivityLog,
+  AdminCategory,
+  AdminCitiesResponse,
   AdminDashboardResponse,
   AdminReport,
+  AdminStatsPeriod,
+  AdminStatsResponse,
   AdminSupportMessage,
   AdminSupportTicket,
   AdminUser,
   AdminUserDetails,
 } from "./types";
+import { apiUrl } from "@/lib/api-url";
 
 async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(apiUrl(path), {
     credentials: "include",
     cache: "no-store",
     signal,
@@ -29,7 +35,7 @@ export function getAdminDashboard(signal?: AbortSignal) {
 }
 
 export async function adminLogout() {
-  const res = await fetch("/api/admin-logout", {
+  const res = await fetch(apiUrl("/api/admin-logout"), {
     method: "POST",
     credentials: "include",
   });
@@ -48,7 +54,7 @@ export async function updateAdminAdStatus(
   id: number,
   status: "approved" | "rejected" | "hidden",
 ) {
-  const res = await fetch(`/api/admin/ads/${id}/status`, {
+  const res = await fetch(apiUrl(`/api/admin/ads/${id}/status`), {
     method: "PATCH",
     credentials: "include",
     cache: "no-store",
@@ -62,7 +68,7 @@ export async function updateAdminAdStatus(
 }
 
 export async function deleteAdminAd(id: number) {
-  const res = await fetch(`/api/admin/ads/${id}`, {
+  const res = await fetch(apiUrl(`/api/admin/ads/${id}`), {
     method: "DELETE",
     credentials: "include",
     cache: "no-store",
@@ -81,7 +87,7 @@ export async function updateAdminReportStatus(
   id: number,
   status: "pending" | "in_review" | "resolved" | "rejected",
 ) {
-  const res = await fetch(`/api/admin/reports/${id}/status`, {
+  const res = await fetch(apiUrl(`/api/admin/reports/${id}/status`), {
     method: "PATCH",
     credentials: "include",
     cache: "no-store",
@@ -95,7 +101,7 @@ export async function updateAdminReportStatus(
 }
 
 export async function moderateReportedAd(id: number, action: "hide" | "delete") {
-  const res = await fetch(`/api/reports/admin/${id}/ad-action`, {
+  const res = await fetch(apiUrl(`/api/reports/admin/${id}/ad-action`), {
     method: "POST",
     credentials: "include",
     cache: "no-store",
@@ -142,7 +148,7 @@ export async function createSupportTicket(payload: {
     related_user_id: parseOptionalId(payload.relatedUserId),
   };
 
-  const res = await fetch("/api/support/tickets", {
+  const res = await fetch(apiUrl("/api/support/tickets"), {
     method: "POST",
     credentials: "include",
     cache: "no-store",
@@ -176,7 +182,7 @@ export async function updateAdminSupportTicket(
   id: number,
   payload: { status?: "open" | "pending" | "resolved" | "closed"; priority?: "low" | "normal" | "high" | "urgent" },
 ) {
-  const res = await fetch(`/api/admin/support/tickets/${id}`, {
+  const res = await fetch(apiUrl(`/api/admin/support/tickets/${id}`), {
     method: "PATCH",
     credentials: "include",
     cache: "no-store",
@@ -190,7 +196,7 @@ export async function updateAdminSupportTicket(
 }
 
 export async function replyAdminSupportTicket(id: number, message: string) {
-  const res = await fetch(`/api/admin/support/tickets/${id}/reply`, {
+  const res = await fetch(apiUrl(`/api/admin/support/tickets/${id}/reply`), {
     method: "POST",
     credentials: "include",
     cache: "no-store",
@@ -219,7 +225,7 @@ export async function updateAdminUserStatus(
   id: number,
   status: "active" | "banned",
 ) {
-  const res = await fetch(`/api/admin/users/${id}`, {
+  const res = await fetch(apiUrl(`/api/admin/users/${id}`), {
     method: "PATCH",
     credentials: "include",
     cache: "no-store",
@@ -230,6 +236,146 @@ export async function updateAdminUserStatus(
     const body = await res.text();
     throw new Error(body || "User status update failed");
   }
+}
+
+export function getAdminStats(period: AdminStatsPeriod, signal?: AbortSignal) {
+  const search = new URLSearchParams();
+  if (period !== "all") search.set("period", period);
+  const qs = search.toString();
+  return apiGet<AdminStatsResponse>(`/api/admin/stats${qs ? `?${qs}` : ""}`, signal);
+}
+
+export async function getAdminLogs(params: {
+  actionType?: string;
+  targetType?: string;
+  q?: string;
+  from?: string;
+  to?: string;
+}) {
+  const search = new URLSearchParams();
+  if (params.actionType && params.actionType !== "all") {
+    search.set("actionType", params.actionType);
+  }
+  if (params.targetType && params.targetType !== "all") {
+    search.set("targetType", params.targetType);
+  }
+  if (params.q?.trim()) search.set("q", params.q.trim());
+  if (params.from?.trim()) search.set("from", params.from.trim());
+  if (params.to?.trim()) search.set("to", params.to.trim());
+  const qs = search.toString();
+  return apiGet<AdminActivityLog[]>(`/api/admin/logs${qs ? `?${qs}` : ""}`);
+}
+
+export async function getAdminCategories(params: { q?: string; status?: string }) {
+  const search = new URLSearchParams();
+  if (params.q?.trim()) search.set("q", params.q.trim());
+  if (params.status && params.status !== "all") search.set("status", params.status);
+  const qs = search.toString();
+  return apiGet<AdminCategory[]>(`/api/admin/categories${qs ? `?${qs}` : ""}`);
+}
+
+export async function createAdminCategory(payload: {
+  type: "category" | "subcategory";
+  name: string;
+  slug?: string;
+  icon?: string;
+  subtitle?: string;
+  sortOrder?: number;
+  categoryId?: number;
+}) {
+  const res = await fetch(apiUrl("/api/admin/categories"), {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error((await res.text()) || "Create category failed");
+  return res.json();
+}
+
+export async function updateAdminCategory(
+  id: number,
+  payload: {
+    type: "category" | "subcategory";
+    name?: string;
+    slug?: string;
+    icon?: string;
+    subtitle?: string;
+    sortOrder?: number;
+    isHidden?: boolean;
+    categoryId?: number;
+  },
+) {
+  const res = await fetch(apiUrl(`/api/admin/categories/${id}`), {
+    method: "PATCH",
+    credentials: "include",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error((await res.text()) || "Update category failed");
+  return res.json();
+}
+
+export async function deleteAdminCategory(id: number, type: "category" | "subcategory") {
+  const res = await fetch(apiUrl(`/api/admin/categories/${id}?type=${type}`), {
+    method: "DELETE",
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error((await res.text()) || "Delete category failed");
+}
+
+export async function getAdminCities(params: {
+  q?: string;
+  status?: string;
+  countryCode?: string;
+}) {
+  const search = new URLSearchParams();
+  if (params.q?.trim()) search.set("q", params.q.trim());
+  if (params.status && params.status !== "all") search.set("status", params.status);
+  if (params.countryCode && params.countryCode !== "all") {
+    search.set("countryCode", params.countryCode.toUpperCase());
+  }
+  const qs = search.toString();
+  return apiGet<AdminCitiesResponse>(`/api/admin/cities${qs ? `?${qs}` : ""}`);
+}
+
+export async function createAdminCity(payload: {
+  name: string;
+  countryCode: string;
+  countryName: string;
+}) {
+  const res = await fetch(apiUrl("/api/admin/cities"), {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error((await res.text()) || "Create city failed");
+  return res.json();
+}
+
+export async function updateAdminCity(
+  id: number,
+  payload: {
+    name?: string;
+    countryCode?: string;
+    countryName?: string;
+    isHidden?: boolean;
+  },
+) {
+  const res = await fetch(apiUrl(`/api/admin/cities/${id}`), {
+    method: "PATCH",
+    credentials: "include",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error((await res.text()) || "Update city failed");
+  return res.json();
 }
 
 export type UserSupportTicket = {

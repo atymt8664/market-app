@@ -1,10 +1,21 @@
 import { useEffect, useRef } from "react";
+import { getApiBaseUrl } from "@/lib/api-url";
 
 export type ChatSocketEvent =
   | { type: "message"; conversationId: number; message: { id: number; conversationId: number; senderId: number; body: string; createdAt: string; readAt: string | null } }
   | { type: "pong" };
 
 export function buildWsUrl(): string {
+  const base = getApiBaseUrl();
+  if (base) {
+    try {
+      const u = new URL(base);
+      const proto = u.protocol === "https:" ? "wss:" : "ws:";
+      return `${proto}//${u.host}/api/ws`;
+    } catch {
+      /* fall through */
+    }
+  }
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${proto}//${window.location.host}/api/ws`;
 }

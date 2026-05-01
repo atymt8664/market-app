@@ -3,14 +3,18 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   getAdminAds,
+  getAdminCategories,
+  getAdminCities,
   getAdminDashboard,
   getAdminMe,
   getAdminReports,
+  getAdminStats,
   getAdminSupportMessages,
   getAdminSupportTickets,
   getAdminUserDetails,
   getAdminUsers,
 } from "./api";
+import type { AdminStatsPeriod } from "./types";
 
 export function useAdminMe() {
   return useQuery({
@@ -28,6 +32,32 @@ export function useAdminDashboard() {
     refetchIntervalInBackground: true,
     staleTime: 10000,
     placeholderData: (previousData) => previousData,
+  });
+}
+
+export function useAdminStats(period: AdminStatsPeriod) {
+  return useQuery({
+    queryKey: ["admin", "stats", period],
+    queryFn: ({ signal }) => getAdminStats(period, signal),
+    refetchInterval: 30000,
+    refetchIntervalInBackground: true,
+    refetchOnMount: "always",
+    staleTime: 0,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+export function useAdminCategories(params: { status: string; q: string }) {
+  return useQuery({
+    queryKey: ["admin", "categories", params.status, params.q],
+    queryFn: () => getAdminCategories(params),
+  });
+}
+
+export function useAdminCities(params: { status: string; q: string; countryCode: string }) {
+  return useQuery({
+    queryKey: ["admin", "cities", params.status, params.q, params.countryCode],
+    queryFn: () => getAdminCities(params),
   });
 }
 

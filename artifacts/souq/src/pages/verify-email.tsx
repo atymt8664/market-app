@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-
-const API_BASE = "";
+import { apiUrl } from "@/lib/api-url";
 
 export default function VerifyEmail() {
   const [, navigate] = useLocation();
@@ -33,7 +32,7 @@ export default function VerifyEmail() {
       const email = localStorage.getItem("email");
       if (!email) throw new Error("ما في إيميل محفوظ، ارجع سجل من جديد");
 
-      const res = await fetch(`${API_BASE}/api/auth/verify-email`, {
+      const res = await fetch(apiUrl("/api/auth/verify-email"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -72,7 +71,7 @@ export default function VerifyEmail() {
       const email = localStorage.getItem("email");
       if (!email) throw new Error("ما في إيميل محفوظ");
 
-      const res = await fetch(`${API_BASE}/api/auth/resend-verification`, {
+      const res = await fetch(apiUrl("/api/auth/resend-verification"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

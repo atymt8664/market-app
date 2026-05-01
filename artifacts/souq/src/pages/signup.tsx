@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { apiUrl } from "@/lib/api-url";
 import {
   SIGNUP_COUNTRIES,
   SIGNUP_COUNTRY_BY_CODE,
@@ -129,7 +130,7 @@ export default function Signup() {
     }
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/auth/signup", {
+      const res = await fetch(apiUrl("/api/auth/signup"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

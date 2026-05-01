@@ -8,6 +8,7 @@ import {
   useFavoriteAd,
   useUnfavoriteAd,
 } from "@workspace/api-client-react";
+import { apiUrl } from "@/lib/api-url";
 import { Link, useLocation, useParams } from "wouter";
 import {
   ArrowRight,
@@ -93,7 +94,7 @@ export default function AdDetail() {
     try {
       setReporting(true);
 
-      const res = await fetch("/api/reports", {
+      const res = await fetch(apiUrl("/api/reports"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

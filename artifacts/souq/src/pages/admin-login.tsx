@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-const API_BASE = "";
+import { apiUrl } from "@/lib/api-url";
 
 export default function AdminLogin() {
   const [password, setPassword] = useState("");
@@ -17,7 +16,7 @@ export default function AdminLogin() {
       setError("");
       setLoading(true);
 
-      const res = await fetch(`${API_BASE}/api/admin-login`, {
+      const res = await fetch(apiUrl("/api/admin-login"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

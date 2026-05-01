@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { apiUrl } from "@/lib/api-url";
 
 const schema = z.object({
   email: z.string().email("بريد إلكتروني غير صحيح"),
@@ -36,7 +37,7 @@ export default function ForgotPassword() {
     setApiError(null);
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/auth/forgot-password", {
+      const res = await fetch(apiUrl("/api/auth/forgot-password"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

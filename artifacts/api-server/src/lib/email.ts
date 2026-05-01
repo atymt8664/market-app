@@ -1,7 +1,8 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 const defaultAppUrl = "http://localhost:5173";
 const defaultFromAddress = "Souq Arab EU <souqarab.market@gmail.com>";
+const resendFromAddress = "Souq Arab EU <onboarding@resend.dev>";
 
 function normalizeAppUrl(rawUrl: string | undefined) {
   const trimmed = (rawUrl || defaultAppUrl).trim();
@@ -13,30 +14,16 @@ function getFrontendUrl() {
   const app = process.env["APP_URL"];
   return normalizeAppUrl(frontend || app);
 }
-const smtpUser = process.env["EMAIL_USER"] || "souqarab.market@gmail.com";
-const smtpPass = process.env["EMAIL_PASS"];
 const fromAddress = process.env["EMAIL_FROM"] || defaultFromAddress;
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  requireTLS: true,
-  auth: {
-    user: smtpUser,
-    pass: smtpPass,
-  },
-});
-const hasSmtpCredentials = Boolean(
-  smtpUser &&
-    smtpUser.trim().length > 0 &&
-    smtpPass &&
-    smtpPass.trim().length > 0,
+const resend = new Resend(process.env.RESEND_API_KEY);
+const hasResendApiKey = Boolean(
+  process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim().length > 0,
 );
 
 function ensureEmailProviderConfigured() {
-  if (!hasSmtpCredentials) {
+  if (!hasResendApiKey) {
     throw new Error(
-      "Missing EMAIL_USER/EMAIL_PASS. Configure Gmail SMTP credentials to send transactional emails.",
+      "Missing RESEND_API_KEY. Configure Resend API key to send transactional emails.",
     );
   }
 }
@@ -49,37 +36,23 @@ export function buildResetPasswordUrl(token: string) {
 export async function sendVerificationCodeEmail(email: string, code: string) {
   ensureEmailProviderConfigured();
 
-  const result = await transporter.sendMail({
-    from: fromAddress,
+  const result = await resend.emails.send({
+    from: resendFromAddress,
     to: email,
-    subject: "رمز تفعيل حسابك في سوق العرب EU",
-    html: `
-      <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.9;color:#111827;max-width:620px;margin:0 auto;">
-        <h2 style="margin:0 0 10px 0;font-size:20px;">مرحباً،</h2>
-        <p style="margin:0 0 10px 0;">شكراً لتسجيلك في سوق العرب EU.</p>
-        <p style="margin:0 0 8px 0;">رمز تفعيل حسابك هو:</p>
-        <div style="margin:12px 0 16px 0;padding:14px 16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;display:inline-block;">
-          <span style="font-size:34px;font-weight:800;letter-spacing:6px;color:#111827;">${code}</span>
-        </div>
-        <p style="margin:0 0 10px 0;">يرجى إدخال هذا الرمز في التطبيق لإكمال عملية التفعيل.</p>
-        <p style="margin:0 0 8px 0;font-weight:700;">تنبيه:</p>
-        <p style="margin:0 0 12px 0;color:#374151;">لا تشارك هذا الرمز مع أي شخص حفاظاً على أمان حسابك.</p>
-        <p style="margin:0 0 12px 0;color:#374151;">إذا لم تقم بإنشاء هذا الحساب، يمكنك تجاهل هذه الرسالة.</p>
-        <p style="margin:0;">مع تحيات،<br/>فريق سوق العرب EU</p>
-      </div>
-    `,
+    subject: "رمز التفعيل",
+    html: `<p>رمز التفعيل الخاص بك هو: <b>${code}</b></p>`,
   });
 
-  if (result.rejected.length > 0) {
-    throw new Error("فشل إرسال بريد التفعيل عبر Gmail SMTP");
+  if (result.error) {
+    throw new Error(result.error.message || "فشل إرسال بريد التفعيل عبر Resend");
   }
 }
 
 export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   ensureEmailProviderConfigured();
 
-  const result = await transporter.sendMail({
-    from: fromAddress,
+  const result = await resend.emails.send({
+    from: fromAddress || resendFromAddress,
     to: email,
     subject: "إعادة تعيين كلمة المرور",
     html: `
@@ -98,7 +71,9 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
     `,
   });
 
-  if (result.rejected.length > 0) {
-    throw new Error("فشل إرسال بريد إعادة تعيين كلمة المرور عبر Gmail SMTP");
+  if (result.error) {
+    throw new Error(
+      result.error.message || "فشل إرسال بريد إعادة تعيين كلمة المرور عبر Resend",
+    );
   }
 }

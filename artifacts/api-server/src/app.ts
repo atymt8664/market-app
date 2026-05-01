@@ -3,18 +3,22 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import helmet from "helmet";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { ensureCoreSchema } from "./lib/ensure-core-schema";
 
 declare module "express-session" {
   interface SessionData {
     userId?: number;
     isAdmin?: boolean;
+    adminAuthenticatedAt?: number;
   }
 }
 
 const app: Express = express();
+const isProduction = process.env.NODE_ENV === "production";
 
 app.use(
   pinoHttp({
@@ -37,6 +41,12 @@ app.use(
 );
 
 app.use(cors({ origin: true, credentials: true }));
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
 app.use((_req, res, next) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   next();
@@ -61,7 +71,7 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false,
+      secure: isProduction,
       sameSite: "lax",
       maxAge: 1000 * 60 * 60 * 24 * 30,
     },
@@ -80,14 +90,16 @@ app.use((err: any, _req: any, res: any, _next: any) => {
         : 500;
   if (res.headersSent) return;
   res.status(statusCode).json({
-    error: err?.message || "Internal Server Error",
+    error: statusCode >= 500 ? "Internal Server Error" : err?.message || "Request failed",
   });
 });
 
-void pool
-  .query(
-    `
+void ensureCoreSchema(pool)
+  .then(() =>
+    pool.query(
+      `
     ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE ads ADD COLUMN IF NOT EXISTS details JSONB NOT NULL DEFAULT '{}'::jsonb;
 
     CREATE TABLE IF NOT EXISTS support_tickets (
       id SERIAL PRIMARY KEY,
@@ -155,10 +167,31 @@ void pool
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS support_ticket_messages_ticket_idx ON support_ticket_messages(ticket_id);
+
+    WITH dedup AS (
+      SELECT id
+      FROM (
+        SELECT
+          id,
+          row_number() OVER (
+            PARTITION BY ad_id, buyer_id
+            ORDER BY last_message_at DESC NULLS LAST, id DESC
+          ) AS rn
+        FROM conversations
+      ) ranked
+      WHERE rn > 1
+    )
+    DELETE FROM conversations c
+    USING dedup
+    WHERE c.id = dedup.id;
+
+    CREATE UNIQUE INDEX IF NOT EXISTS conversations_ad_id_buyer_id_unique
+      ON conversations(ad_id, buyer_id);
     `,
+    ),
   )
   .catch((err) => {
-    logger.error({ err }, "Failed to ensure support ticket tables");
+    logger.error({ err }, "Failed to ensure DB schema (core + support/conversations)");
   });
 
 export default app;

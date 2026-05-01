@@ -360,7 +360,18 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  const isBrowser =
+    typeof globalThis !== "undefined" &&
+    typeof (globalThis as { window?: unknown }).window !== "undefined";
+  const includeCredentialsByDefault =
+    isBrowser && init.credentials === undefined;
+
+  const response = await fetch(input, {
+    ...init,
+    method,
+    headers,
+    ...(includeCredentialsByDefault ? { credentials: "include" } : {}),
+  });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

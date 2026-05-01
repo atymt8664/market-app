@@ -18,6 +18,9 @@ declare module "express-session" {
 
 const app: Express = express();
 const isProduction = process.env.NODE_ENV === "production";
+const sessionCookieSecure = isProduction;
+/** Cross-origin SPA (e.g. Vercel) calling API on another origin needs SameSite=None + Secure. */
+const sessionSameSite: "lax" | "none" = isProduction ? "none" : "lax";
 
 app.use(
   pinoHttp({
@@ -70,8 +73,8 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: "lax",
+      secure: sessionCookieSecure,
+      sameSite: sessionSameSite,
       maxAge: 1000 * 60 * 60 * 24 * 30,
     },
   }),

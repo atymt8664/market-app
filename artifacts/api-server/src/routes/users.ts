@@ -16,6 +16,7 @@ import {
 } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
+  InvalidSupabaseServiceRoleKeyError,
   MissingSupabaseStorageConfigError,
   uploadAvatarImageForUser,
 } from "../lib/supabaseStorage";
@@ -297,8 +298,26 @@ router.post(
         });
         return;
       }
-      req.log.error({ err: error }, "Avatar upload failed");
-      res.status(500).json({ error: "فشل رفع الصورة" });
+      if (error instanceof InvalidSupabaseServiceRoleKeyError) {
+        req.log.error(
+          { jwtRole: error.jwtRole },
+          "Invalid Supabase service role key for avatar upload",
+        );
+        res.status(503).json({
+          error:
+            "إعداد خادم التخزين غير صحيح: استخدم مفتاح service_role من لوحة Supabase وليس مفتاح anon",
+          code: "SUPABASE_SERVICE_ROLE_KEY_INVALID",
+        });
+        return;
+      }
+      const msg =
+        error instanceof Error ? error.message : typeof error === "string" ? error : "unknown";
+      req.log.error({ err: error, supabaseMessage: msg.slice(0, 280) }, "Avatar upload failed");
+      res.status(500).json({
+        error: "فشل رفع الصورة",
+        code: "STORAGE_UPLOAD_FAILED",
+        reason: msg.slice(0, 280),
+      });
     }
   },
 );

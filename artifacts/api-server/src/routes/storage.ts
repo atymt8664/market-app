@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import multer from "multer";
 import {
+  InvalidSupabaseServiceRoleKeyError,
   MissingSupabaseStorageConfigError,
   uploadAdImagesForUser,
 } from "../lib/supabaseStorage";
@@ -41,6 +42,10 @@ router.post("/storage/uploads/ad-images", upload.array("images", 10), async (req
 
   const files = (req.files as Express.Multer.File[] | undefined) ?? [];
   if (files.length === 0) {
+    req.log.warn(
+      { bodyKeys: Object.keys(req.body ?? {}), hasFiles: false },
+      "ad-images upload received zero files (check form field name is \"images\")",
+    );
     res.status(400).json({ error: "يرجى اختيار صورة واحدة على الأقل" });
     return;
   }
@@ -53,6 +58,14 @@ router.post("/storage/uploads/ad-images", upload.array("images", 10), async (req
   for (const file of files) {
     if (!file.mimetype || !file.mimetype.startsWith("image/")) {
       res.status(400).json({ error: `الملف ${file.originalname} ليس صورة صالحة` });
+      return;
+    }
+    if (!file.buffer || file.buffer.length === 0) {
+      req.log.warn(
+        { originalname: file.originalname, size: file.size },
+        "ad-images upload: empty buffer",
+      );
+      res.status(400).json({ error: "ملف الصورة فارغ أو تالف" });
       return;
     }
   }
@@ -79,6 +92,21 @@ router.post("/storage/uploads/ad-images", upload.array("images", 10), async (req
       });
       return;
     }
+    if (error instanceof InvalidSupabaseServiceRoleKeyError) {
+      req.log.error(
+        {
+          jwtRole: error.jwtRole,
+          hint: "Railway SUPABASE_SERVICE_ROLE_KEY must be the service_role JWT from Supabase API settings (not anon)",
+        },
+        "Invalid Supabase service role key for storage",
+      );
+      res.status(503).json({
+        error:
+          "إعداد خادم التخزين غير صحيح: استخدم مفتاح service_role من لوحة Supabase وليس مفتاح anon",
+        code: "SUPABASE_SERVICE_ROLE_KEY_INVALID",
+      });
+      return;
+    }
     if (error instanceof MissingObjectStorageConfigError) {
       req.log.warn(
         {
@@ -90,8 +118,36 @@ router.post("/storage/uploads/ad-images", upload.array("images", 10), async (req
       res.status(503).json(getMissingConfigResponse(error));
       return;
     }
-    req.log.error({ err: error }, "Error uploading ad images");
-    res.status(500).json({ error: "تعذر رفع الصور، يرجى المحاولة مرة أخرى" });
+
+    const msg =
+      error instanceof Error ? error.message : typeof error === "string" ? error : "unknown";
+    const safeReason = msg.slice(0, 280);
+    let code = "STORAGE_UPLOAD_FAILED";
+    if (/row-level security|RLS/i.test(msg)) {
+      code = "STORAGE_RLS_DENIED";
+    } else if (/Bucket not found|not found/i.test(msg)) {
+      code = "STORAGE_BUCKET_MISSING";
+    } else if (/JWT|Invalid API key|permission denied/i.test(msg)) {
+      code = "STORAGE_AUTH_REJECTED";
+    }
+
+    req.log.error(
+      {
+        err: error,
+        userId,
+        fileCount: files.length,
+        code,
+        supabaseMessage: safeReason,
+      },
+      "Error uploading ad images",
+    );
+
+    res.status(500).json({
+      error: "تعذر رفع الصور، يرجى المحاولة مرة أخرى",
+      code,
+      /** Safe operator hint (Supabase error text); no secrets */
+      reason: safeReason,
+    });
   }
 });
 

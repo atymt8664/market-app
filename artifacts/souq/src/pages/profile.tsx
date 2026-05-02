@@ -18,8 +18,8 @@ import {
   RefreshCw,
   ThumbsUp,
   ArrowUp,
+  Megaphone,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useState, useRef } from "react";
 import {
   useListMyAds,
@@ -59,6 +59,10 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+
+/** أزرار الرأس — ظل ثابت خفيف، بدون transform (يقلّل flicker أثناء التمرير) */
+const profileHeaderIconBtn =
+  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-card/90 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.18)] transition-colors hover:border-primary/75 hover:bg-card/95 active:opacity-90 disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
 
 export default function Profile() {
   const { user, isLoading: authLoading } = useAuth();
@@ -120,7 +124,7 @@ export default function Profile() {
 
   if (authLoading) {
     return (
-      <div className="flex flex-col w-full min-h-[100dvh] bg-background items-center justify-center">
+      <div className="flex min-h-[100svh] w-full flex-col items-center justify-center bg-background">
         <div className="w-12 h-12 rounded-full border-4 border-muted border-t-primary animate-spin" />
       </div>
     );
@@ -205,101 +209,151 @@ export default function Profile() {
   const favoriteAds = (allAds ?? []).filter((ad) => favorites.includes(ad.id));
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-background pb-6"
-    >
+    <div className="flex w-full flex-col bg-black">
       <div className="mx-auto w-full max-w-screen-sm md:max-w-[760px] lg:max-w-[860px] px-3 md:px-6 py-3 md:py-5">
         <header className="pt-2 md:pt-5" dir="rtl">
-          <div className="flex items-start justify-between gap-2" dir="ltr">
-            <div className="flex items-center gap-1.5 shrink-0" dir="ltr">
+          <div className="flex w-full items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-col items-start gap-2.5 text-right">
+              <span className="inline-flex rounded-full border-2 border-primary/60 bg-black/40 px-4 py-1.5 text-sm font-semibold text-primary shadow-[0_0_12px_-6px_hsl(var(--primary)/0.22)]">
+                {t("profile.title")}
+              </span>
+              <div className="relative shrink-0">
+                <div
+                  className="rounded-full p-[3px] shadow-[0_0_16px_-4px_rgba(182,227,86,0.28)]"
+                  style={{
+                    background:
+                      "linear-gradient(145deg, rgba(182,227,86,0.5), rgba(182,227,86,0.08))",
+                  }}
+                >
+                  <div className="rounded-full bg-black p-[2px]">
+                    <AvatarCircle name={user.name} src={user.avatarUrl} size={80} />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAvatarPick}
+                  disabled={avatarBusy}
+                  aria-label={t("profile.change_avatar")}
+                  className="absolute -bottom-0.5 -left-0.5 flex h-8 w-8 items-center justify-center rounded-full border-2 border-black bg-[#b6e356] text-black shadow-[0_0_8px_-1px_rgba(182,227,86,0.4)] disabled:opacity-60"
+                >
+                  {avatarBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="h-3.5 w-3.5" />
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={onFileChange}
+                />
+              </div>
+
+            <h2 className="max-w-full truncate text-right text-xl font-bold leading-tight text-foreground md:text-2xl">
+              {user.name}
+            </h2>
+            <p className="text-right text-[0.82rem] leading-tight text-muted-foreground md:text-sm">
+              <span className="inline-flex items-center gap-1.5">
+                <UserIcon className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
+                {t("profile.seller_type")}
+              </span>
+            </p>
+            {memberSince ? (
+              <p className="text-right text-[0.8rem] leading-tight text-muted-foreground/85 md:text-sm">
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
+                  {t("profile.member_since", { date: memberSince })}
+                </span>
+              </p>
+            ) : null}
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2 self-start" dir="ltr">
               <button
+                type="button"
                 onClick={handleShare}
                 aria-label={t("profile.share")}
-                className="h-9 w-9 md:h-10 md:w-10 flex items-center justify-center text-primary hover:bg-muted/50 rounded-full transition-colors"
+                className={profileHeaderIconBtn}
               >
-                <Share2 className="h-5 w-5" />
+                <Share2 className="h-5 w-5" strokeWidth={2.25} />
               </button>
               <Link href="/settings">
                 <button
+                  type="button"
                   aria-label={t("profile.settings")}
-                  className="h-9 w-9 md:h-10 md:w-10 flex items-center justify-center text-primary hover:bg-muted/50 rounded-full transition-colors"
+                  className={profileHeaderIconBtn}
                 >
-                  <Settings className="h-5 w-5" />
+                  <Settings className="h-5 w-5" strokeWidth={2.25} />
                 </button>
               </Link>
-            </div>
-            <div className="flex flex-col items-end text-right min-w-0">
-              <h1 className="text-xl md:text-2xl font-bold text-foreground">{t("profile.title")}</h1>
-              <div className="mt-6 flex flex-col items-end text-right gap-2.5">
-                <div className="relative shrink-0">
-                  <AvatarCircle name={user.name} src={user.avatarUrl} size={74} />
-                  <button
-                    type="button"
-                    onClick={handleAvatarPick}
-                    disabled={avatarBusy}
-                    aria-label={t("profile.change_avatar")}
-                    className="absolute -bottom-1 -left-1 h-7 w-7 rounded-full border border-border bg-muted text-foreground flex items-center justify-center disabled:opacity-60"
-                  >
-                    {avatarBusy ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Camera className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={onFileChange}
-                  />
-                </div>
-
-                <div className="min-w-0 flex flex-col items-end text-right gap-1.5">
-                  <h2 className="text-lg md:text-xl font-bold leading-tight text-foreground truncate max-w-full">
-                    {user.name}
-                  </h2>
-                  <p className="inline-flex items-center justify-end gap-1.5 text-[0.82rem] md:text-sm leading-tight text-muted-foreground">
-                    <UserIcon className="h-3.5 w-3.5 shrink-0" />
-                    {t("profile.seller_type")}
-                  </p>
-                  {memberSince && (
-                    <p className="inline-flex items-center justify-end gap-1.5 text-[0.8rem] md:text-sm leading-tight text-muted-foreground/85">
-                      <Clock className="h-3.5 w-3.5 shrink-0" />
-                      {t("profile.member_since", { date: memberSince })}
-                    </p>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
         </header>
 
-        <section className="mt-4 md:mt-5 px-1 md:px-2" dir="rtl">
-          <div className="grid grid-cols-3 gap-2.5 md:gap-3 text-center" dir="rtl">
-            <div className="min-w-0 rounded-xl border border-border/70 bg-gradient-to-b from-primary/15 to-card/40 py-3 px-1 shadow-sm">
-              <p className="text-base md:text-lg font-bold tabular-nums text-foreground">{adCount.toLocaleString("ar")}</p>
-              <p className="mt-1 text-[11px] md:text-xs text-muted-foreground">{t("profile.stats.ads")}</p>
+        <section className="mt-5 md:mt-6 px-0 md:px-1" dir="rtl">
+          <div className="grid grid-cols-3 gap-2 md:gap-3 text-center" dir="rtl">
+            <div className="min-w-0 rounded-2xl border border-white/[0.1] bg-[#111111] py-3.5 px-1 shadow-[0_0_12px_-8px_rgba(182,227,86,0.14)]">
+              <Megaphone
+                className="mx-auto mb-2 h-5 w-5 text-[#b6e356]"
+                strokeWidth={2.25}
+              />
+              <p className="text-lg md:text-xl font-bold tabular-nums text-foreground">
+                {adCount.toLocaleString("ar")}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t("profile.stats.ads")}
+              </p>
             </div>
-            <div className="min-w-0 rounded-xl border border-border/70 bg-gradient-to-b from-primary/15 to-card/40 py-3 px-1 shadow-sm">
-              <p className="text-base md:text-lg font-bold tabular-nums text-foreground">{profileViews.toLocaleString("ar")}</p>
-              <p className="mt-1 text-[11px] md:text-xs text-muted-foreground">{t("profile.stats.views")}</p>
+            <div className="min-w-0 rounded-2xl border border-white/[0.1] bg-[#111111] py-3.5 px-1 shadow-[0_0_12px_-8px_rgba(182,227,86,0.14)]">
+              <Eye
+                className="mx-auto mb-2 h-5 w-5 text-[#b6e356]"
+                strokeWidth={2.25}
+              />
+              <p className="text-lg md:text-xl font-bold tabular-nums text-foreground">
+                {profileViews.toLocaleString("ar")}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t("profile.stats.views")}
+              </p>
             </div>
-            <div className="min-w-0 rounded-xl border border-border/70 bg-gradient-to-b from-primary/15 to-card/40 py-3 px-1 shadow-sm">
-              <p className="text-base md:text-lg font-bold tabular-nums text-foreground">{followerCount.toLocaleString("ar")}</p>
-              <p className="mt-1 text-[11px] md:text-xs text-muted-foreground">{t("profile.stats.followers")}</p>
+            <div className="min-w-0 rounded-2xl border border-white/[0.1] bg-[#111111] py-3.5 px-1 shadow-[0_0_12px_-8px_rgba(182,227,86,0.14)]">
+              <UserPlus
+                className="mx-auto mb-2 h-5 w-5 text-[#b6e356]"
+                strokeWidth={2.25}
+              />
+              <p className="text-lg md:text-xl font-bold tabular-nums text-foreground">
+                {followerCount.toLocaleString("ar")}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t("profile.stats.followers")}
+              </p>
             </div>
           </div>
         </section>
 
-        <section className="mt-4 md:mt-5 rounded-2xl border border-border bg-card/60 shadow-sm p-2.5 md:p-4">
+        <section className="mt-5 md:mt-6 rounded-2xl border border-white/[0.08] bg-[#0e0e0e] p-2.5 md:p-4 shadow-[0_0_14px_-10px_rgba(182,227,86,0.12)]">
           <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">
-            <TabsList className="h-auto w-full grid grid-cols-3 rounded-xl bg-muted/50 p-1">
-              <TabsTrigger value="my-ads" className="text-xs md:text-sm">{t("profile.tabs.my_ads")}</TabsTrigger>
-              <TabsTrigger value="favorites" className="text-xs md:text-sm">{t("profile.tabs.favorites")}</TabsTrigger>
-              <TabsTrigger value="public" className="text-xs md:text-sm">{t("profile.tabs.public")}</TabsTrigger>
+            <TabsList className="h-auto w-full grid grid-cols-3 gap-1 rounded-2xl bg-black/40 p-1 border border-white/[0.06]">
+              <TabsTrigger
+                value="my-ads"
+                className="rounded-full text-xs md:text-sm py-2.5 data-[state=active]:bg-[#b6e356] data-[state=active]:text-black data-[state=active]:shadow-[0_0_10px_-4px_rgba(182,227,86,0.35)] data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent"
+              >
+                {t("profile.tabs.my_ads")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="favorites"
+                className="rounded-full text-xs md:text-sm py-2.5 data-[state=active]:bg-[#b6e356] data-[state=active]:text-black data-[state=active]:shadow-[0_0_10px_-4px_rgba(182,227,86,0.35)] data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent"
+              >
+                {t("profile.tabs.favorites")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="public"
+                className="rounded-full text-xs md:text-sm py-2.5 data-[state=active]:bg-[#b6e356] data-[state=active]:text-black data-[state=active]:shadow-[0_0_10px_-4px_rgba(182,227,86,0.35)] data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent"
+              >
+                {t("profile.tabs.public")}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="my-ads" className="mt-3 md:mt-4">
@@ -373,16 +427,25 @@ export default function Profile() {
             </TabsContent>
 
             <TabsContent value="public" className="mt-3 md:mt-4">
-              <div className="rounded-xl border border-border bg-background/60 p-4 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium text-sm">{t("profile.public.title")}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{t("profile.public.subtitle")}</p>
-                </div>
-                <Link href={`/users/${user.id}`}>
-                  <Button variant="outline" className="gap-2 shrink-0">
-                    <UserCheck className="w-4 h-4" />
-                    {t("profile.public.open")}
-                  </Button>
+              <div
+                className={cn(
+                  "rounded-2xl border border-primary/40 bg-card/80 p-4 text-right shadow-[0_0_14px_-10px_hsl(var(--primary)/0.14)] dark:bg-zinc-950/70 md:p-5",
+                )}
+              >
+                <h3 className="text-base font-semibold leading-snug text-foreground md:text-lg">
+                  شاهد ملفك كما يراه الآخرون
+                </h3>
+                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                  يمكنك مراجعة إعلاناتك وبياناتك العامة كما تظهر للزوار.
+                </p>
+                <Link
+                  href={`/users/${user.id}`}
+                  className={cn(
+                    "mt-5 flex w-full min-w-0 max-w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-zinc-950/90 px-1 py-3.5 text-sm font-semibold text-foreground shadow-[0_0_10px_-6px_hsl(var(--primary)/0.15)] transition-colors hover:border-primary/55 hover:bg-zinc-900/95",
+                  )}
+                >
+                  <UserCheck className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
+                  فتح الملف العام
                 </Link>
               </div>
             </TabsContent>
@@ -470,9 +533,7 @@ export default function Profile() {
           </div>
         </DrawerContent>
       </Drawer>
-
-      <div className="h-16" />
-    </motion.div>
+    </div>
   );
 }
 
@@ -636,7 +697,7 @@ function ProfileMobileAdCard({
 
   return (
     <article
-      className="relative w-full rounded-2xl border border-border/70 bg-[#121212] p-3 shadow-[0_2px_8px_rgba(0,0,0,0.25)] active:scale-[0.995] transition-transform"
+      className="relative w-full rounded-2xl border border-border/70 bg-[#121212] p-3 shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-colors"
       onClick={onOpen}
       dir={direction}
     >
@@ -734,7 +795,7 @@ function ProfileMobileAdCard({
             e.stopPropagation();
             onPromote();
           }}
-          className="h-10 rounded-full bg-primary text-black text-xs font-semibold inline-flex items-center justify-center gap-1.5"
+          className="h-10 rounded-full bg-[#b6e356] text-black text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-[0_0_10px_-4px_rgba(182,227,86,0.35)]"
         >
           <ArrowUp className="w-3.5 h-3.5" />
           <span>{t("profile.card.promote")}</span>

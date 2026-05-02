@@ -15,7 +15,6 @@ import { Link, useLocation } from "wouter";
 import {
   ArrowRight,
   Sparkles,
-  EyeOff,
   Loader2,
   Check,
   Plus,
@@ -25,6 +24,7 @@ import {
   TrendingUp,
   BadgeCheck,
   Info,
+  X,
 } from "lucide-react";
 import { useUpload } from "@workspace/object-storage-web";
 import { useRef } from "react";
@@ -46,13 +46,12 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
-  SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { CitySelect } from "@/components/city-select";
@@ -62,6 +61,49 @@ import {
   buildAdDetailsPayload,
   parseStoredAdDetails,
 } from "@/lib/ad-stored-details";
+import { cn } from "@/lib/utils";
+
+/** هوية dark/lime — نفس روح ad-detail / profile */
+const adCardShell =
+  "rounded-2xl border border-primary/40 bg-zinc-950/75 p-4 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-5";
+const adCardShellCompact =
+  "rounded-2xl border border-primary/35 bg-zinc-950/70 p-3 shadow-[0_0_18px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10";
+const adInputClass =
+  "border border-primary/30 bg-zinc-950/90 text-foreground placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0 focus-visible:ring-offset-[#0A0A0A]";
+const adHeaderBackBtn =
+  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/55 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 active:opacity-90";
+
+/** Bottom sheets على صفحة إنشاء إعلان — خلفية داكنة + حدود lime */
+const createAdSheetContentBase =
+  "flex max-h-[min(90dvh,720px)] flex-col gap-0 overflow-hidden rounded-t-2xl border-t border-primary/35 bg-[#0A0A0A] p-0 shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.55)] ring-1 ring-primary/20";
+const createAdSheetCloseBtn =
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-zinc-950/90 text-primary transition-colors hover:border-primary/65 hover:bg-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 active:opacity-90";
+
+function CreateAdSheetHeader({ title }: { title: string }) {
+  return (
+    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-primary/20 px-4 pb-3 pt-4">
+      <SheetTitle className="m-0 flex-1 text-right text-base font-semibold leading-tight text-white">
+        {title}
+      </SheetTitle>
+      <SheetClose
+        type="button"
+        className={createAdSheetCloseBtn}
+        aria-label="إغلاق"
+      >
+        <X className="h-4 w-4" />
+      </SheetClose>
+    </div>
+  );
+}
+
+function buildMockImprovedDescription(
+  originalDescription: string,
+  title?: string,
+  categoryLabel?: string,
+) {
+  const normalized = originalDescription.trim().replace(/\s+/g, " ");
+  return `${title ? `${title}: ` : ""}${normalized}، بحالة جيدة، استخدام خفيف، بدون أعطال واضحة، السعر قابل للتفاوض.${categoryLabel ? ` مناسب ضمن فئة ${categoryLabel}.` : ""}`;
+}
 
 const createAdSchema = z.object({
   title: z.string().min(3, "العنوان قصير جداً").max(65, "العنوان طويل جداً"),
@@ -625,6 +667,8 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const [directBuy, setDirectBuy] = useState<"yes" | "no">("no");
   const [promotionIds, setPromotionIds] = useState<string[]>([]);
   const [sellerSafetyAccepted, setSellerSafetyAccepted] = useState(false);
+  const [safetyNoticeExpanded, setSafetyNoticeExpanded] = useState(false);
+  const [showAiImproveHint, setShowAiImproveHint] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isSubmittingUploads, setIsSubmittingUploads] = useState(false);
@@ -1121,9 +1165,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   }, []);
 
   const handleImproveDescription = () => {
-    if (!watchDesc.trim()) {
+    const currentDescription = form.getValues("description")?.trim() || "";
+    if (!currentDescription) {
       toast({
-        title: "اكتب وصفًا أولاً لتحسينه",
+        title: "اكتب وصف أولاً",
         variant: "destructive",
       });
       return;
@@ -1133,26 +1178,35 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       ? `${selectedCategoryPath.main} - ${selectedCategoryPath.sub}${selectedCategoryPath.leaf ? ` - ${selectedCategoryPath.leaf}` : ""}`
       : selectedCategory?.name || "";
 
-    const fallbackImproved = `إعلان ${
-      watchTitle || "مميز"
-    }\n\n${watchDesc.trim()}\n\n${
-      categoryLabel ? `يندرج هذا المنتج ضمن ${categoryLabel}. ` : ""
-    }تمت كتابة الوصف بصياغة أوضح مع إبراز الحالة والمواصفات الأساسية لتسهيل قرار الشراء.`;
+    const fallbackImproved = buildMockImprovedDescription(
+      currentDescription,
+      watchTitle || undefined,
+      categoryLabel || undefined,
+    );
 
     improveDescMutation.mutate(
       {
         data: {
           title: watchTitle,
-          description: watchDesc,
+          description: currentDescription,
           category: selectedCategory?.name,
         },
       },
       {
         onSuccess: (res) => {
-          form.setValue("description", res.description, {
+          const improvedFromApi = res.description?.trim() || "";
+          const didChange =
+            improvedFromApi.length > 0 && improvedFromApi !== currentDescription;
+          const nextDescription = didChange ? improvedFromApi : fallbackImproved;
+          form.setValue("description", nextDescription, {
             shouldValidate: true,
           });
-          toast({ title: "تم تحسين الوصف بنجاح!" });
+          toast({
+            title: didChange ? "تم تحسين الوصف بنجاح!" : "تم تحسين الوصف مبدئيًا",
+            description: didChange
+              ? undefined
+              : "تم استخدام تحسين مؤقت لأن الخدمة أعادت نصًا غير محسّن",
+          });
         },
         onError: () => {
           form.setValue("description", fallbackImproved, {
@@ -1217,10 +1271,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     updateAdMutation.isPending ||
     isSubmittingUploads ||
     isUploading;
-  const contactInitial = (form.watch("sellerName") || user?.name || "م")
-    .trim()
-    .charAt(0)
-    .toUpperCase();
   const resolvedCategoryPathLabel = selectedCategoryPath
     ? `${selectedCategoryPath.main} → ${selectedCategoryPath.sub}${selectedCategoryPath.leaf ? ` → ${selectedCategoryPath.leaf}` : ""}`
     : watchCategoryId
@@ -1282,25 +1332,42 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     setTempPickupOnly(pickupOnly);
   }, [shippingSheetOpen, shippingIds, pickupOnly]);
 
+  useEffect(() => {
+    const cycleMs = 40_000;
+    const visibleMs = 2_000;
+    let hideTimeoutId: number | undefined = window.setTimeout(() => {
+      setShowAiImproveHint(false);
+    }, visibleMs);
+
+    const intervalId = window.setInterval(() => {
+      setShowAiImproveHint(true);
+      if (hideTimeoutId) window.clearTimeout(hideTimeoutId);
+      hideTimeoutId = window.setTimeout(() => {
+        setShowAiImproveHint(false);
+      }, visibleMs);
+    }, cycleMs);
+
+    return () => {
+      window.clearInterval(intervalId);
+      if (hideTimeoutId) window.clearTimeout(hideTimeoutId);
+    };
+  }, []);
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-background pb-28"
-    >
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
-        <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-4 flex items-center">
-          <div className="flex items-center gap-3">
-            <Link href="/">
-              <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </Link>
-            <h1 className="font-bold text-lg">
-              {isEdit ? "تعديل الإعلان" : "إنشاء إعلان"}
-            </h1>
-          </div>
+    <div className="flex min-h-0 w-full flex-col bg-[#0A0A0A] pb-28">
+      <header
+        className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]"
+        dir="rtl"
+      >
+        <div className="mx-auto flex w-full max-w-[900px] items-center justify-between gap-3 px-4 py-3 md:max-w-[760px] md:px-6 lg:max-w-[860px]">
+          <h1 className="min-w-0 flex-1 text-right text-lg font-bold text-foreground">
+            {isEdit ? "تعديل الإعلان" : "إنشاء إعلان"}
+          </h1>
+          <Link href="/" className="shrink-0">
+            <button type="button" className={adHeaderBackBtn} aria-label="رجوع">
+              <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
+            </button>
+          </Link>
         </div>
       </header>
 
@@ -1309,7 +1376,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           onSubmit={form.handleSubmit(onSubmit)}
           className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-4 flex flex-col gap-4"
         >
-          <section className="space-y-2.5">
+          <section className="space-y-2.5" dir="rtl">
             <input
               ref={fileInputRef}
               type="file"
@@ -1318,102 +1385,122 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               className="hidden"
               onChange={(e) => handleFilesSelected(e.target.files)}
             />
-            <CreateAdImageGallery
-              uploadedImages={uploadedImages}
-              maxImages={MAX_IMAGES}
-              isSubmittingUploads={isSubmittingUploads || isUploading}
-              onPickFiles={() => fileInputRef.current?.click()}
-              onRemoveAt={removeImage}
-            />
-            <p className="text-xs text-muted-foreground text-center">
-              {uploadedImages.length} من 10 صور
-            </p>
+            <div className={cn(adCardShell, "space-y-3")}>
+              <CreateAdImageGallery
+                uploadedImages={uploadedImages}
+                maxImages={MAX_IMAGES}
+                isSubmittingUploads={isSubmittingUploads || isUploading}
+                onPickFiles={() => fileInputRef.current?.click()}
+                onRemoveAt={removeImage}
+              />
+              <p className="text-center text-xs tabular-nums text-zinc-400">
+                {uploadedImages.length} من 10 صور
+              </p>
             <Sheet open={photoTipsOpen} onOpenChange={setPhotoTipsOpen}>
               <SheetTrigger asChild>
                 <button
                   type="button"
-                  className="text-xs font-medium text-primary hover:underline self-end"
+                  className="self-end text-xs font-medium text-primary hover:underline"
                 >
                   نصائح الصور
                 </button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="h-auto pb-6" dir="rtl">
-                <SheetHeader className="text-right mb-3">
-                  <SheetTitle>نصائح الصور</SheetTitle>
-                </SheetHeader>
-                <div className="space-y-2 text-sm text-foreground/90 leading-6">
-                  <p>- صوّر المنتج بإضاءة جيدة</p>
-                  <p>- اجعل المنتج واضحًا وفي منتصف الصورة</p>
-                  <p>- أضف صورًا من أكثر من زاوية</p>
-                  <p>- تجنّب الصور المهتزة أو المظلمة</p>
-                  <p>- لا تستخدم صورًا مضللة أو من الإنترنت</p>
+              <SheetContent
+                hideClose
+                side="bottom"
+                className={cn(createAdSheetContentBase, "h-auto max-h-[85dvh]")}
+                dir="rtl"
+              >
+                <CreateAdSheetHeader title="نصائح الصور" />
+                <div className="space-y-2 px-4 pb-2 pt-1">
+                  {[
+                    "صوّر المنتج بإضاءة جيدة",
+                    "اجعل المنتج واضحًا وفي منتصف الصورة",
+                    "أضف صورًا من أكثر من زاوية",
+                    "تجنّب الصور المهتزة أو المظلمة",
+                    "لا تستخدم صورًا مضللة أو من الإنترنت",
+                  ].map((tip) => (
+                    <div
+                      key={tip}
+                      className="rounded-lg border border-primary/15 bg-zinc-950/80 px-2.5 py-1.5"
+                    >
+                      <p className="text-xs leading-5 text-zinc-300">- {tip}</p>
+                    </div>
+                  ))}
                 </div>
-                <Button
-                  type="button"
-                  className="w-full mt-4 h-11 rounded-xl"
-                  onClick={() => setPhotoTipsOpen(false)}
-                >
-                  فهمت
-                </Button>
+                <div className="px-4 pb-6 pt-2">
+                  <SheetClose asChild>
+                    <Button
+                      type="button"
+                      className="h-12 w-full rounded-full border border-primary/45 bg-zinc-950/80 text-base font-semibold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-zinc-900/90 active:opacity-90"
+                      onClick={() => setPhotoTipsOpen(false)}
+                    >
+                      فهمت
+                    </Button>
+                  </SheetClose>
+                </div>
               </SheetContent>
             </Sheet>
+            </div>
           </section>
 
-          <FormField
-            control={form.control}
-            name="type"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    className="flex items-center gap-5"
-                    dir="rtl"
-                  >
-                    <FormItem className="flex items-center gap-2 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="offer" />
-                      </FormControl>
-                      <FormLabel className="font-medium cursor-pointer">
-                        أعرض (بيع)
-                      </FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center gap-2 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="request" />
-                      </FormControl>
-                      <FormLabel className="font-medium cursor-pointer">
-                        أبحث (شراء)
-                      </FormLabel>
-                    </FormItem>
-                  </RadioGroup>
-                </FormControl>
-              </FormItem>
-            )}
-          />
+          <div className={adCardShell}>
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      className="flex flex-wrap items-center gap-5"
+                      dir="rtl"
+                    >
+                      <FormItem className="flex items-center gap-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="offer" />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer font-medium">
+                          أعرض (بيع)
+                        </FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center gap-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="request" />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer font-medium">
+                          أبحث (شراء)
+                        </FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
 
           <section className="space-y-3" dir="rtl">
-            <div
-              className="w-full rounded-2xl p-4 bg-card/40 space-y-3"
-              style={{ border: "1px solid rgba(255,255,255,0.05)" }}
-            >
+            <div className={cn(adCardShell, "space-y-3")}>
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs text-muted-foreground font-medium">
+                    <FormLabel className="text-xs font-medium text-zinc-400">
                       عنوان الإعلان
                     </FormLabel>
                     <FormControl>
                       <Input
                         placeholder="مثال: آيفون 13 برو بحالة ممتازة"
-                        className="h-11 rounded-xl px-3 text-right"
+                        className={cn(
+                          "h-11 rounded-xl px-3 text-right",
+                          adInputClass,
+                        )}
                         {...field}
                       />
                     </FormControl>
-                    <div className="text-xs text-muted-foreground text-right mt-1">
+                    <div className="mt-1 text-right text-xs text-zinc-500">
                       {field.value.length}/65
                     </div>
                     <FormMessage />
@@ -1422,46 +1509,46 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               />
 
               <div className="space-y-2">
-                <label className="text-xs text-muted-foreground font-medium block text-right">
+                <label className="block text-right text-xs font-medium text-zinc-400">
                   التصنيف
                 </label>
-                <p className="text-xs text-primary/90 min-h-4 text-right">
+                <p className="min-h-4 text-right text-xs text-primary/90">
                   {resolvedCategoryPathLabel}
                 </p>
                 <Sheet open={categorySheetOpen} onOpenChange={setCategorySheetOpen}>
                   <SheetTrigger asChild>
                     <Button
                       variant="outline"
-                      className="w-full h-11 rounded-xl justify-between text-right font-normal px-3"
+                      className="h-11 w-full justify-between rounded-xl border-primary/35 bg-zinc-950/80 px-3 text-right font-normal text-foreground hover:border-primary/50 hover:bg-zinc-900/90"
                     >
                       <span
                         className={
                           resolvedCategoryPathLabel
                             ? "text-foreground"
-                            : "text-muted-foreground"
+                            : "text-zinc-500"
                         }
                       >
                         {resolvedCategoryPathLabel
                           ? "تغيير التصنيف"
                           : "اختيار التصنيف"}
                       </span>
-                      <ArrowRight className="w-4 h-4 opacity-50 rotate-180 shrink-0" />
+                      <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
                     </Button>
                   </SheetTrigger>
                   <SheetContent
+                    hideClose
                     side="bottom"
-                    className="h-[80vh] px-0 flex flex-col"
+                    className={cn(createAdSheetContentBase, "h-[80vh] max-h-[90dvh]")}
                     dir="rtl"
                   >
-                    <SheetHeader className="px-4 border-b border-border pb-4 text-right">
-                      <SheetTitle>اختر التصنيف</SheetTitle>
-                    </SheetHeader>
-                    <div className="flex-1 overflow-y-auto">
+                    <CreateAdSheetHeader title="اختر التصنيف" />
+                    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3">
                       {!pickerMain ? (
                         CATEGORY_TREE.map((main) => (
-                          <div
+                          <button
                             key={main.name}
-                            className="flex items-center justify-between p-4 border-b border-border hover:bg-muted cursor-pointer"
+                            type="button"
+                            className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3.5 text-right text-white transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
                             onClick={() => {
                               setPickerMain(main);
                               setPickerSub(null);
@@ -1470,28 +1557,28 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                             }}
                           >
                             <span className="font-medium">{main.name}</span>
-                            <ArrowRight className="w-4 h-4 text-muted-foreground rotate-180" />
-                          </div>
+                            <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
+                          </button>
                         ))
                       ) : !pickerSub ? (
                         <>
-                          <div
-                            className="flex items-center gap-3 p-4 bg-muted/50 border-b border-border cursor-pointer font-medium text-primary"
+                          <button
+                            type="button"
+                            className="mb-1 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-zinc-950/85 px-3 py-3 text-right text-sm font-medium text-primary transition-colors hover:border-primary/45 hover:bg-zinc-900/90"
                             onClick={() => {
                               setPickerMain(null);
                               setPickerSub(null);
                             }}
                           >
-                            <ArrowRight className="w-4 h-4" />
+                            <ArrowRight className="h-4 w-4 shrink-0" />
                             العودة للتصنيفات الرئيسية
-                          </div>
-                          <div className="px-4 py-2 text-xs text-muted-foreground">
-                            {pickerMain.name}
-                          </div>
+                          </button>
+                          <p className="px-1 pb-1 text-xs text-zinc-500">{pickerMain.name}</p>
                           {pickerMain.subcategories.map((sub) => (
-                            <div
+                            <button
                               key={sub.name}
-                              className="flex items-center justify-between p-4 border-b border-border hover:bg-muted cursor-pointer"
+                              type="button"
+                              className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3.5 text-right text-white transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
                               onClick={() => {
                                 if (!sub.options?.length) {
                                   applyCategorySelection(pickerMain.name, sub.name);
@@ -1501,26 +1588,28 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                               }}
                             >
                               <span>{sub.name}</span>
-                              <ArrowRight className="w-4 h-4 text-muted-foreground rotate-180" />
-                            </div>
+                              <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
+                            </button>
                           ))}
                         </>
                       ) : (
                         <>
-                          <div
-                            className="flex items-center gap-3 p-4 bg-muted/50 border-b border-border cursor-pointer font-medium text-primary"
+                          <button
+                            type="button"
+                            className="mb-1 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-zinc-950/85 px-3 py-3 text-right text-sm font-medium text-primary transition-colors hover:border-primary/45 hover:bg-zinc-900/90"
                             onClick={() => setPickerSub(null)}
                           >
-                            <ArrowRight className="w-4 h-4" />
+                            <ArrowRight className="h-4 w-4 shrink-0" />
                             العودة إلى {pickerMain.name}
-                          </div>
-                          <div className="px-4 py-2 text-xs text-muted-foreground">
+                          </button>
+                          <p className="px-1 pb-1 text-xs text-zinc-500">
                             {pickerMain.name} → {pickerSub.name}
-                          </div>
+                          </p>
                           {pickerSub.options?.map((leaf) => (
-                            <div
+                            <button
                               key={leaf.name}
-                              className="p-4 border-b border-border hover:bg-muted cursor-pointer"
+                              type="button"
+                              className="w-full rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3.5 text-right text-white transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
                               onClick={() => {
                                 applyCategorySelection(
                                   pickerMain.name,
@@ -1530,7 +1619,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                               }}
                             >
                               {leaf.name}
-                            </div>
+                            </button>
                           ))}
                         </>
                       )}
@@ -1549,17 +1638,20 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs text-muted-foreground font-medium">
+                    <FormLabel className="text-xs font-medium text-zinc-400">
                       الوصف
                     </FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="صف المنتج بدقة. اذكر حالته، مدة الاستخدام، وأي تفاصيل تهم المشتري."
-                        className="h-28 max-h-[120px] min-h-[100px] resize-none rounded-xl px-3 py-2 text-right"
+                        className={cn(
+                          "h-28 max-h-[120px] min-h-[100px] resize-none rounded-xl px-3 py-2 text-right",
+                          adInputClass,
+                        )}
                         {...field}
                       />
                     </FormControl>
-                    <div className="text-xs text-muted-foreground text-right mt-1">
+                    <div className="mt-1 text-right text-xs text-zinc-500">
                       {field.value.length}/4000
                     </div>
                     <FormMessage />
@@ -1570,51 +1662,115 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           </section>
 
           {activeDynamicFields.length > 0 && (
-            <section className="space-y-2.5">
-              <p className="text-sm font-medium">حقول مرتبطة بالتصنيف</p>
+            <section className="space-y-2.5" dir="rtl">
+              <p className="text-sm font-medium text-foreground">
+                حقول مرتبطة بالتصنيف
+              </p>
               <div className="grid grid-cols-1 gap-2">
-                {activeDynamicFields.map((field) => (
-                  <div
-                    key={field.id}
-                    className="rounded-xl border border-border bg-card/40 px-3 py-2.5"
-                  >
-                    <label className="text-xs text-muted-foreground block mb-1.5">
-                      {field.label}
-                    </label>
-                    <select
-                      value={dynamicFieldValues[field.id] ?? ""}
-                      onChange={(e) =>
-                        handleDynamicFieldChange(field.id, e.target.value)
-                      }
-                      className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                      dir="rtl"
-                    >
-                      <option value="">اختر {field.label}</option>
-                      {field.options?.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
+                {activeDynamicFields.map((field) => {
+                  const current = dynamicFieldValues[field.id] ?? "";
+                  return (
+                    <div key={field.id} className={cn(adCardShellCompact, "px-3 py-2.5")}>
+                      <label className="mb-1.5 block text-xs text-zinc-400">
+                        {field.label}
+                      </label>
+                      <Sheet>
+                        <SheetTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-11 w-full items-center justify-between rounded-lg border border-primary/30 bg-zinc-950/90 px-3 text-sm transition-colors hover:border-primary/45 hover:bg-zinc-900/90"
+                            dir="rtl"
+                          >
+                            <span
+                              className={
+                                current ? "text-right text-white" : "text-right text-zinc-500"
+                              }
+                            >
+                              {current || `اختر ${field.label}`}
+                            </span>
+                            <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
+                          </button>
+                        </SheetTrigger>
+                        <SheetContent
+                          hideClose
+                          side="bottom"
+                          className={cn(
+                            createAdSheetContentBase,
+                            "max-h-[min(85dvh,560px)]",
+                          )}
+                          dir="rtl"
+                        >
+                          <CreateAdSheetHeader title={`اختر ${field.label}`} />
+                          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-6 pt-2">
+                            <SheetClose asChild>
+                              <button
+                                type="button"
+                                className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/70 px-3 py-3 text-right text-sm text-zinc-400 transition-colors hover:border-primary/35 hover:bg-zinc-900/85"
+                                onClick={() => handleDynamicFieldChange(field.id, "")}
+                              >
+                                <span>إلغاء الاختيار</span>
+                              </button>
+                            </SheetClose>
+                            {field.options?.map((option) => {
+                              const selected = current === option;
+                              return (
+                                <SheetClose key={option} asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleDynamicFieldChange(field.id, option)
+                                    }
+                                    className={cn(
+                                      "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-right text-white transition-colors",
+                                      selected
+                                        ? "border-primary bg-primary/15 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.35)]"
+                                        : "border-primary/25 bg-zinc-950/75 hover:border-primary/45 hover:bg-zinc-900/85",
+                                    )}
+                                  >
+                                    <span className="font-medium">{option}</span>
+                                    <span
+                                      className={cn(
+                                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                                        selected
+                                          ? "border-primary bg-primary text-black"
+                                          : "border-primary/40 bg-transparent",
+                                      )}
+                                      aria-hidden
+                                    >
+                                      {selected ? (
+                                        <Check className="h-3 w-3" />
+                                      ) : null}
+                                    </span>
+                                  </button>
+                                </SheetClose>
+                              );
+                            })}
+                          </div>
+                        </SheetContent>
+                      </Sheet>
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
 
-          <section className="space-y-2.5">
+          <section className="space-y-2.5" dir="rtl">
             <Sheet open={shippingSheetOpen} onOpenChange={setShippingSheetOpen}>
               <SheetTrigger asChild>
                 <button
                   type="button"
-                  className="w-full rounded-xl border border-border bg-card/40 px-3 py-3 text-right"
+                  className={cn(
+                    adCardShellCompact,
+                    "w-full py-3 text-right transition-colors hover:border-primary/45",
+                  )}
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="mb-2 flex items-center justify-between">
                     <p className="text-sm font-medium">طرق الشحن</p>
-                    <ArrowRight className="w-4 h-4 opacity-60 rotate-180 shrink-0" />
+                    <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
                   </div>
                   {pickupOnly ? (
-                    <div className="rounded-lg border border-border/70 bg-background/40 px-2.5 py-2">
+                    <div className="rounded-lg border border-primary/25 bg-zinc-950/60 px-2.5 py-2">
                       <p className="text-sm font-medium">استلام فقط</p>
                     </div>
                   ) : (
@@ -1622,15 +1778,15 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       {collapsedShippingMethods.map((method) => (
                         <div
                           key={method.id}
-                          className="rounded-lg border border-border/70 bg-background/40 px-2.5 py-2"
+                          className="rounded-lg border border-primary/20 bg-zinc-950/50 px-2.5 py-2"
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-sm truncate">{method.name}</span>
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="truncate text-sm">{method.name}</span>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex shrink-0 items-center gap-2">
                               {method.compactPrice && (
-                                <span className="text-xs text-muted-foreground shrink-0">
+                                <span className="shrink-0 text-xs text-zinc-500">
                                   {method.compactPrice}
                                 </span>
                               )}
@@ -1645,12 +1801,15 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   )}
                 </button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="h-[85vh] px-0 flex flex-col" dir="rtl">
-                <SheetHeader className="px-4 border-b border-border pb-4 text-right">
-                  <SheetTitle>طرق الشحن</SheetTitle>
-                </SheetHeader>
-                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-                  <div className="rounded-xl border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground space-y-1">
+              <SheetContent
+                hideClose
+                side="bottom"
+                className={cn(createAdSheetContentBase, "h-[85vh] max-h-[90dvh] px-0")}
+                dir="rtl"
+              >
+                <CreateAdSheetHeader title="طرق الشحن" />
+                <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+                  <div className="space-y-1 rounded-xl border border-primary/25 bg-zinc-950/70 px-3 py-2 text-xs text-zinc-500">
                     <p>- المشتري يختار ويدفع الشحن</p>
                     <p>- يشمل التتبع والتأمين عند توفره</p>
                     <p>- الاستلام متاح دائمًا</p>
@@ -1663,10 +1822,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         key={method.id}
                         type="button"
                         onClick={() => toggleShippingTemp(method.id)}
-                        className={`w-full text-right rounded-xl border px-3 py-3 transition-colors ${
+                        className={`w-full rounded-xl border px-3 py-3 text-right transition-colors ${
                           selected
                             ? "border-primary bg-primary/10"
-                            : "border-border bg-card/40"
+                            : "border-primary/25 bg-zinc-950/70"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -1674,22 +1833,22 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                             <span
                               className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center ${
                                 selected
-                                  ? "bg-primary border-primary text-black"
-                                  : "border-border text-transparent"
+                                  ? "border-primary bg-primary text-black"
+                                  : "border-primary/35 text-transparent"
                               }`}
                             >
                               <Check className="w-3.5 h-3.5" />
                             </span>
                             <div className="min-w-0">
-                              <p className="font-medium truncate">{method.name}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
+                              <p className="truncate font-medium">{method.name}</p>
+                              <p className="mt-0.5 text-xs text-zinc-500">
                                 {method.description}
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex shrink-0 items-center gap-2">
                             {method.priceText && (
-                              <span className="text-xs text-muted-foreground shrink-0">
+                              <span className="shrink-0 text-xs text-zinc-500">
                                 {method.priceText}
                               </span>
                             )}
@@ -1708,18 +1867,18 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       setTempPickupOnly(true);
                       setTempShippingIds([]);
                     }}
-                    className={`w-full text-right rounded-xl border px-3 py-3 transition-colors ${
+                    className={`w-full rounded-xl border px-3 py-3 text-right transition-colors ${
                       tempPickupOnly
                         ? "border-primary bg-primary/10"
-                        : "border-border bg-card/40"
+                        : "border-primary/25 bg-zinc-950/70"
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <span
                         className={`w-5 h-5 rounded border flex items-center justify-center ${
                           tempPickupOnly
-                            ? "bg-primary border-primary text-black"
-                            : "border-border text-transparent"
+                            ? "border-primary bg-primary text-black"
+                            : "border-primary/35 text-transparent"
                         }`}
                       >
                         <Check className="w-3.5 h-3.5" />
@@ -1728,10 +1887,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     </div>
                   </button>
                 </div>
-                <div className="border-t border-border p-4">
+                <div className="border-t border-primary/20 p-4">
                   <Button
                     type="button"
-                    className="w-full h-11 rounded-xl"
+                    className="h-11 w-full rounded-xl"
                     onClick={() => {
                       setPickupOnly(tempPickupOnly);
                       setShippingIds(tempPickupOnly ? [] : tempShippingIds);
@@ -1743,13 +1902,13 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 </div>
               </SheetContent>
             </Sheet>
-            <p className="text-xs text-muted-foreground px-1">الاستلام متاح دائمًا</p>
+            <p className="px-1 text-xs text-zinc-500">الاستلام متاح دائمًا</p>
           </section>
 
           <section className="space-y-3" dir="rtl">
-            <div className="w-full rounded-xl border border-border bg-card/40 p-4 space-y-3">
+            <div className={cn(adCardShell, "space-y-3")}>
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-border bg-background/40 p-3">
+                <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-3">
                   <FormField
                     control={form.control}
                     name="price"
@@ -1777,7 +1936,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                           <Input
                             type="number"
                             placeholder="السعر"
-                            className="h-12 rounded-xl text-right"
+                            className={cn(
+                              "h-12 rounded-xl text-right",
+                              adInputClass,
+                            )}
                             {...field}
                             value={field.value ?? ""}
                             onChange={(e) =>
@@ -1796,9 +1958,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   />
                 </div>
 
-                <div className="rounded-xl border border-border bg-background/40 p-3">
+                <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-3">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium block text-right">
+                    <label className="block text-right text-sm font-medium">
                       العملة
                     </label>
                     <Sheet
@@ -1808,37 +1970,55 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       <SheetTrigger asChild>
                         <button
                           type="button"
-                          className="w-full h-12 rounded-xl border border-border bg-card/40 px-3 flex items-center justify-between text-sm"
+                          className="flex h-12 w-full items-center justify-between rounded-xl border border-primary/35 bg-zinc-950/80 px-3 text-sm text-foreground hover:border-primary/50"
                         >
                           <span>
                             {CURRENCY_OPTIONS.find(
                               (item) => item.id === selectedCurrency,
                             )?.label || "EUR (€)"}
                           </span>
-                          <ArrowRight className="w-4 h-4 rotate-180 opacity-60" />
+                          <ArrowRight className="h-4 w-4 rotate-180 text-primary/70" />
                         </button>
                       </SheetTrigger>
-                      <SheetContent side="bottom" className="h-auto pb-6" dir="rtl">
-                        <SheetHeader className="text-right mb-3">
-                          <SheetTitle>اختر العملة</SheetTitle>
-                        </SheetHeader>
-                        <div className="space-y-2">
-                          {CURRENCY_OPTIONS.map((currency) => (
-                            <button
-                              key={currency.id}
-                              type="button"
-                              className="w-full rounded-xl border border-border px-3 py-3 flex items-center justify-between hover:bg-muted text-right"
-                              onClick={() => {
-                                setSelectedCurrency(currency.id);
-                                setCurrencySheetOpen(false);
-                              }}
-                            >
-                              <span className="font-medium">{currency.label}</span>
-                              {selectedCurrency === currency.id && (
-                                <Check className="w-4 h-4 text-primary" />
-                              )}
-                            </button>
-                          ))}
+                      <SheetContent
+                        hideClose
+                        side="bottom"
+                        className={cn(createAdSheetContentBase, "h-auto max-h-[85dvh]")}
+                        dir="rtl"
+                      >
+                        <CreateAdSheetHeader title="اختر العملة" />
+                        <div className="space-y-2 overflow-y-auto px-4 pb-6 pt-2">
+                          {CURRENCY_OPTIONS.map((currency) => {
+                            const picked = selectedCurrency === currency.id;
+                            return (
+                              <button
+                                key={currency.id}
+                                type="button"
+                                className={cn(
+                                  "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-right text-white transition-colors",
+                                  picked
+                                    ? "border-primary bg-primary/15 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.35)]"
+                                    : "border-primary/25 bg-zinc-950/75 hover:border-primary/45 hover:bg-zinc-900/85",
+                                )}
+                                onClick={() => {
+                                  setSelectedCurrency(currency.id);
+                                  setCurrencySheetOpen(false);
+                                }}
+                              >
+                                <span className="font-medium">{currency.label}</span>
+                                {picked ? (
+                                  <span className="flex h-5 w-5 items-center justify-center rounded-full border border-primary bg-primary text-black">
+                                    <Check className="h-3 w-3" />
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="h-5 w-5 shrink-0 rounded-full border border-primary/40"
+                                    aria-hidden
+                                  />
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       </SheetContent>
                     </Sheet>
@@ -1846,7 +2026,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-background/40 p-3">
+              <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-3">
                 <FormField
                   control={form.control}
                   name="priceType"
@@ -1862,7 +2042,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         <SheetTrigger asChild>
                           <button
                             type="button"
-                            className="w-full h-12 rounded-xl border border-border bg-card/40 px-3 flex items-center justify-between text-sm"
+                            className="flex h-12 w-full items-center justify-between rounded-xl border border-primary/35 bg-zinc-950/80 px-3 text-sm text-foreground hover:border-primary/50"
                           >
                             <span>
                               {field.value === "fixed" && "ثابت"}
@@ -1870,40 +2050,58 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                               {field.value === "free" && "مجاني"}
                               {field.value === "swap" && "للتبادل"}
                             </span>
-                            <ArrowRight className="w-4 h-4 rotate-180 opacity-60" />
+                            <ArrowRight className="h-4 w-4 rotate-180 text-primary/70" />
                           </button>
                         </SheetTrigger>
-                        <SheetContent side="bottom" className="h-auto pb-6" dir="rtl">
-                          <SheetHeader className="text-right mb-3">
-                            <SheetTitle>اختر نوع السعر</SheetTitle>
-                          </SheetHeader>
-                          <div className="space-y-2">
+                        <SheetContent
+                          hideClose
+                          side="bottom"
+                          className={cn(createAdSheetContentBase, "h-auto max-h-[85dvh]")}
+                          dir="rtl"
+                        >
+                          <CreateAdSheetHeader title="اختر نوع السعر" />
+                          <div className="space-y-2 overflow-y-auto px-4 pb-6 pt-2">
                             {[
                               { id: "fixed", label: "ثابت" },
                               { id: "negotiable", label: "قابل للتفاوض" },
                               { id: "free", label: "مجاني" },
                               { id: "swap", label: "للتبادل" },
-                            ].map((pt) => (
-                              <button
-                                key={pt.id}
-                                type="button"
-                                className="w-full rounded-xl border border-border px-3 py-3 flex items-center justify-between hover:bg-muted text-right"
-                                onClick={() => {
-                                  field.onChange(pt.id);
-                                  if (pt.id === "free") {
-                                    form.setValue("price", 0, {
-                                      shouldValidate: true,
-                                    });
-                                  }
-                                  setPriceTypeSheetOpen(false);
-                                }}
-                              >
-                                <span className="font-medium">{pt.label}</span>
-                                {field.value === pt.id && (
-                                  <Check className="w-4 h-4 text-primary" />
-                                )}
-                              </button>
-                            ))}
+                            ].map((pt) => {
+                              const picked = field.value === pt.id;
+                              return (
+                                <button
+                                  key={pt.id}
+                                  type="button"
+                                  className={cn(
+                                    "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-right text-white transition-colors",
+                                    picked
+                                      ? "border-primary bg-primary/15 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.35)]"
+                                      : "border-primary/25 bg-zinc-950/75 hover:border-primary/45 hover:bg-zinc-900/85",
+                                  )}
+                                  onClick={() => {
+                                    field.onChange(pt.id);
+                                    if (pt.id === "free") {
+                                      form.setValue("price", 0, {
+                                        shouldValidate: true,
+                                      });
+                                    }
+                                    setPriceTypeSheetOpen(false);
+                                  }}
+                                >
+                                  <span className="font-medium">{pt.label}</span>
+                                  {picked ? (
+                                    <span className="flex h-5 w-5 items-center justify-center rounded-full border border-primary bg-primary text-black">
+                                      <Check className="h-3 w-3" />
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="h-5 w-5 shrink-0 rounded-full border border-primary/40"
+                                      aria-hidden
+                                    />
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         </SheetContent>
                       </Sheet>
@@ -1915,10 +2113,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           </section>
 
           <section className="space-y-2.5" dir="rtl">
-            <label className="text-sm font-medium block text-right">
+            <label className="block text-right text-sm font-medium">
               الشراء المباشر
             </label>
-            <div className="w-full rounded-xl border border-border bg-card/40 p-4">
+            <div className={adCardShell}>
               <RadioGroup
                 value={directBuy}
                 onValueChange={(value) => setDirectBuy(value as "yes" | "no")}
@@ -1926,10 +2124,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 dir="rtl"
               >
                 <div className="space-y-3">
-                  <label className="rounded-xl border border-border bg-background/40 px-3 py-3 flex items-center gap-2 cursor-pointer">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-zinc-950/60 px-3 py-3">
                     <RadioGroupItem
                       value="yes"
-                      className="data-[state=checked]:border-green-500 [&>span>svg]:fill-green-500"
+                      className="data-[state=checked]:border-primary [&>span>svg]:fill-primary"
                     />
                     <span className="text-sm text-right">
                       نعم، أريد استخدام الشراء المباشر
@@ -1944,10 +2142,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   )}
                 </div>
 
-                <label className="rounded-xl border border-border bg-background/40 px-3 py-3 flex items-center gap-2 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-zinc-950/60 px-3 py-3">
                   <RadioGroupItem
                     value="no"
-                    className="data-[state=checked]:border-green-500 [&>span>svg]:fill-green-500"
+                    className="data-[state=checked]:border-primary [&>span>svg]:fill-primary"
                   />
                   <span className="text-sm text-right">
                     لا، لا أريد استخدام الشراء المباشر
@@ -1958,10 +2156,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           </section>
 
           <section className="space-y-2.5" dir="rtl">
-            <label className="text-sm font-medium block text-right">
+            <label className="block text-right text-sm font-medium">
               ميزات الترويج
             </label>
-            <div className="w-full rounded-xl border border-border bg-card/40 p-4">
+            <div className={adCardShell}>
               <div className="space-y-0">
                 {PROMOTION_FEATURES.map((feature, index) => {
                   const selected = promotionIds.includes(feature.id);
@@ -1971,8 +2169,8 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       key={feature.id}
                       type="button"
                       onClick={() => togglePromotion(feature.id)}
-                      className={`w-full text-right transition-colors py-2 ${
-                        !isLast ? "border-b border-border/60 pb-3 mb-1" : ""
+                      className={`w-full py-2 text-right transition-colors ${
+                        !isLast ? "mb-1 border-b border-primary/20 pb-3" : ""
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -1980,8 +2178,8 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                           <span
                             className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center ${
                               selected
-                                ? "bg-primary border-primary text-black"
-                                : "border-border text-transparent"
+                                ? "border-primary bg-primary text-black"
+                                : "border-primary/35 text-transparent"
                             }`}
                           >
                             <Check className="w-3.5 h-3.5" />
@@ -1989,7 +2187,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                           <span className="mt-0.5">{renderPromotionIcon(feature.icon)}</span>
                           <div className="min-w-0">
                             <p className="font-medium text-sm">{feature.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
+                            <p className="mt-0.5 text-xs text-zinc-500">
                               {feature.description}
                             </p>
                             <p className="text-xs font-semibold text-primary mt-1">
@@ -1997,7 +2195,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                             </p>
                           </div>
                         </div>
-                        <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                        <Info className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
                       </div>
                     </button>
                   );
@@ -2006,59 +2204,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </div>
           </section>
 
-          <section className="space-y-2" dir="rtl">
-            <div
-              className="w-full rounded-xl border border-border bg-card/40 p-3 space-y-2.5"
-              style={{ gap: "10px" }}
-            >
-              <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-2">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                  <h3 className="text-xs font-semibold">تنبيه أمان مهم</h3>
-                </div>
-                <p className="text-[11px] leading-4.5 text-foreground/85">
-                  سوق العرب EU لا يتحمل مسؤولية أي دفع أو تحويل أموال خارج التطبيق. تأكد من الطرف الآخر والمنتج، ويفضل الدفع عند الاستلام أو اللقاء في مكان آمن.
-                </p>
-              </div>
-
-              <label className="rounded-lg border border-border bg-background/40 px-2.5 py-2 flex items-start gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={sellerSafetyAccepted}
-                  onChange={(e) => setSellerSafetyAccepted(e.target.checked)}
-                  className="mt-0.5 w-3.5 h-3.5 accent-primary"
-                />
-                <span className="text-[11px] leading-4.5 text-foreground/90">
-                  أقرّ بأنني قرأت تنبيه الأمان وأتحمل مسؤولية التعاملات خارج التطبيق
-                </span>
-              </label>
-            </div>
-          </section>
-
-          <section className="space-y-3">
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-card/40 px-3 py-2.5">
-              <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center text-base font-semibold shrink-0">
-                {contactInitial}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium truncate">{form.watch("sellerName") || user?.name || "مستخدم"}</p>
-                <p className="text-xs text-muted-foreground truncate" dir="ltr">
-                  {form.watch("sellerPhone") || user?.phone || ""}
-                  {form.watch("city") ? ` · ${form.watch("city")}` : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <EyeOff className="w-4 h-4" />
-                <ArrowRight className="w-4 h-4 rotate-180" />
-              </div>
-            </div>
-
-            <div className="space-y-2" dir="rtl">
-              <p className="text-sm font-medium text-right">معلومات التواصل</p>
-              <div
-                className="w-full rounded-2xl p-4 bg-card/40"
-                style={{ border: "1px solid rgba(255,255,255,0.05)" }}
-              >
+          <section className="space-y-3" dir="rtl">
+            <div className="space-y-2">
+              <p className="text-right text-sm font-medium">معلومات التواصل</p>
+              <div className={adCardShell}>
                 <div className="mb-3">
                   <FormField
                     control={form.control}
@@ -2069,7 +2218,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         <FormControl>
                           <Input
                             placeholder="اسمك"
-                            className="h-12 rounded-xl text-right"
+                            className={cn(
+                              "h-12 rounded-xl text-right",
+                              adInputClass,
+                            )}
                             {...field}
                           />
                         </FormControl>
@@ -2093,7 +2245,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                             type="tel"
                             placeholder="مثال: +491761234567"
                             dir="ltr"
-                            className="text-right h-12 rounded-xl"
+                            className={cn(
+                              "h-12 rounded-xl text-right",
+                              adInputClass,
+                            )}
                             {...field}
                           />
                         </FormControl>
@@ -2114,6 +2269,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                           value={field.value || ""}
                           onChange={field.onChange}
                           placeholder="اختر مدينة في ألمانيا"
+                          className={cn(
+                            "h-12 rounded-xl py-2.5 hover:bg-zinc-900/90",
+                            adInputClass,
+                          )}
                         />
                       </FormControl>
                       <FormMessage />
@@ -2124,10 +2283,48 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </div>
           </section>
 
-          <div className="pt-2 pb-10 space-y-3">
+          <section className="space-y-2" dir="rtl">
+            <div className={cn(adCardShellCompact, "space-y-2.5 p-3")}>
+              <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-2">
+                <div className="mb-1 flex items-center gap-1.5">
+                  <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
+                  <h3 className="text-xs font-semibold">تنبيه أمان مهم</h3>
+                </div>
+                <p
+                  className={cn(
+                    "text-[11px] leading-4.5 text-foreground/85 transition-all",
+                    safetyNoticeExpanded ? "line-clamp-none" : "line-clamp-1",
+                  )}
+                >
+                  سوق العرب EU لا يتحمل مسؤولية أي دفع أو تحويل أموال خارج التطبيق. تأكد من الطرف الآخر والمنتج، ويفضل الدفع عند الاستلام أو اللقاء في مكان آمن.
+                </p>
+                <button
+                  type="button"
+                  className="mt-1 text-xs font-medium text-primary hover:underline"
+                  onClick={() => setSafetyNoticeExpanded((prev) => !prev)}
+                >
+                  {safetyNoticeExpanded ? "عرض أقل" : "عرض المزيد"}
+                </button>
+              </div>
+
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-primary/25 bg-zinc-950/60 px-2.5 py-2">
+                <input
+                  type="checkbox"
+                  checked={sellerSafetyAccepted}
+                  onChange={(e) => setSellerSafetyAccepted(e.target.checked)}
+                  className="mt-0.5 h-3.5 w-3.5 accent-primary"
+                />
+                <span className="text-[11px] leading-4.5 text-foreground/90">
+                  أقرّ بأنني قرأت تنبيه الأمان وأتحمل مسؤولية التعاملات خارج التطبيق
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <div className="space-y-3 pb-10 pt-2">
             <Button
               type="submit"
-              className="w-full h-12 rounded-full bg-primary text-black font-bold text-base"
+              className="h-12 w-full rounded-full border border-primary/45 bg-zinc-950/80 text-base font-bold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-zinc-900/90 active:opacity-90"
               disabled={isSubmittingForm}
             >
               {isSubmittingForm ? (
@@ -2139,13 +2336,14 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 "نشر الإعلان"
               )}
             </Button>
-            <button
+            <Button
               type="button"
-              className="w-full text-center text-sm font-medium text-primary hover:underline"
+              variant="outline"
+              className="h-12 w-full rounded-full border-primary/40 bg-zinc-950/80 text-base font-semibold text-foreground shadow-[0_0_16px_-12px_hsl(var(--primary)/0.3)] transition-colors hover:border-primary/55 hover:bg-zinc-900/90 active:opacity-90"
               onClick={() => setPreviewOpen(true)}
             >
               معاينة
-            </button>
+            </Button>
           </div>
         </form>
       </Form>
@@ -2182,20 +2380,37 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
         }}
       />
 
-      <button
-        type="button"
-        onClick={handleImproveDescription}
-        disabled={improveDescMutation.isPending}
-        aria-label="تحسين الوصف بالذكاء الاصطناعي"
-        className="fixed z-50 bottom-24 right-3.5 h-10 min-w-10 rounded-full border border-violet-300/50 bg-gradient-to-r from-violet-500/90 to-indigo-500/90 text-white shadow-[0_0_0_3px_rgba(139,92,246,0.2),0_8px_20px_rgba(0,0,0,0.35)] px-2 inline-flex items-center justify-center gap-1 disabled:opacity-60"
-      >
-        {improveDescMutation.isPending ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : (
-          <Sparkles className="w-3.5 h-3.5" />
-        )}
-        <span className="text-[10px] font-medium">تحسين</span>
-      </button>
-    </motion.div>
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+80px)] right-1.5 z-50 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleImproveDescription}
+          disabled={improveDescMutation.isPending}
+          aria-label="تحسين الوصف بالذكاء الاصطناعي"
+          className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-primary/45 bg-zinc-950/92 px-2.5 text-primary shadow-[0_0_12px_-12px_hsl(var(--primary)/0.32)] transition-[transform,colors,box-shadow] hover:border-primary/60 hover:bg-zinc-900/95 hover:shadow-[0_0_16px_-12px_hsl(var(--primary)/0.4)] active:scale-[0.98] disabled:opacity-60"
+        >
+          {improveDescMutation.isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="h-3.5 w-3.5" />
+          )}
+          <span className="text-[10px] font-medium">تحسين</span>
+        </button>
+
+        <div
+          className={cn(
+            "max-w-[min(62vw,150px)] rounded-full border border-primary/35 bg-zinc-950/92 px-3 py-1 text-xs text-zinc-100 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.28)] transition-all duration-300",
+            showAiImproveHint
+              ? "translate-x-0 opacity-100"
+              : "pointer-events-none translate-x-2 opacity-0",
+          )}
+          aria-hidden={!showAiImproveHint}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            <span>حسّن منشورك</span>
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

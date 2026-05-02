@@ -14,12 +14,16 @@ import { LocationPicker } from "@/components/location-picker";
 import { Input } from "@/components/ui/input";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
+import { cn } from "@/lib/utils";
+
+/** توحيد كروت الإعلانات مع ad-detail / user-profile (طبقة أب فقط) */
+const homeAdCardTone =
+  "[&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-card/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:dark:bg-zinc-950/70 [&_article]:hover:border-primary/40 [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55";
 
 export default function Home() {
   const { locale } = useLocale();
@@ -64,15 +68,10 @@ export default function Home() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="flex flex-col w-full min-h-screen bg-background"
-    >
+    <div className="flex min-h-0 w-full flex-col bg-[#0A0A0A]">
       {/* App header: brand + location filter + search */}
       <header
-        className="sticky top-0 z-40 border-b border-border/80 bg-background/95 shadow-sm backdrop-blur-md"
+        className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]"
         dir={isRtl ? "rtl" : "ltr"}
       >
         <div className="mx-auto flex w-full max-w-screen-xl flex-col gap-2.5 px-4 py-3 md:gap-3 md:px-6 md:py-3.5 lg:px-8">
@@ -91,7 +90,7 @@ export default function Home() {
           </div>
 
           {!locationHintDismissed ? (
-            <div className="flex items-start gap-2 rounded-xl border border-dashed border-primary/25 bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground transition-colors">
+            <div className="flex items-start gap-2 rounded-2xl border border-primary/30 bg-zinc-950/75 px-3 py-2.5 text-xs leading-relaxed text-zinc-400 ring-1 ring-primary/10 transition-colors">
               <span className="min-w-0 flex-1">
                 {t("home.location_hint_prefix")}{" "}
                 <span className="font-medium text-foreground/85">{t("home.location_picker")}</span>{" "}
@@ -109,7 +108,7 @@ export default function Home() {
           ) : null}
 
           <div
-            className="flex items-center gap-2 rounded-xl border border-dashed border-primary/25 bg-primary/5 px-3 py-2.5 transition-colors focus-within:border-primary/35 focus-within:bg-primary/[0.08]"
+            className="flex items-center gap-2 rounded-2xl border border-primary/30 bg-zinc-950/70 px-3 py-2.5 ring-1 ring-primary/10 transition-colors focus-within:border-primary/45 focus-within:ring-primary/15"
             role="search"
           >
             <form
@@ -159,7 +158,7 @@ export default function Home() {
                 categories.map((cat) => (
                   <Link key={cat.id} href={`/category/${cat.id}`}>
                     <div className="flex flex-col items-center gap-2 group cursor-pointer">
-                      <div className="w-16 h-16 rounded-2xl bg-primary/15 text-primary flex items-center justify-center group-active:scale-95 transition-transform border border-primary/20">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/35 bg-zinc-950/75 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-transform group-active:scale-95">
                         <CategoryIcon name={cat.icon} className="w-7 h-7" />
                       </div>
                       <span className="text-xs font-medium text-center w-16 truncate">
@@ -174,12 +173,17 @@ export default function Home() {
       </section>
 
       {/* Featured Ads */}
-      <section className="border-b border-border/40 bg-muted/25 py-4 md:py-5">
+      <section className="border-b border-primary/15 bg-zinc-950/40 py-4 md:py-5">
         <div className="mx-auto mb-3 w-full max-w-screen-xl px-4 md:mb-3.5 md:px-6 lg:px-8">
           <h2 className="text-base font-semibold tracking-tight text-foreground md:text-lg">{t("home.featured_ads")}</h2>
         </div>
         <ScrollArea className="w-full whitespace-nowrap" dir={isRtl ? "rtl" : "ltr"}>
-          <div className="mx-auto flex w-full max-w-screen-xl gap-3 px-4 pb-1 md:gap-3.5 md:px-6 lg:px-8">
+          <div
+            className={cn(
+              "mx-auto flex w-full max-w-screen-xl gap-3 px-4 pb-1 md:gap-3.5 md:px-6 lg:px-8",
+              homeAdCardTone,
+            )}
+          >
             {isLoadingFeatured ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <AdCardSkeleton key={i} featured />
@@ -200,7 +204,12 @@ export default function Home() {
       <section className="mx-auto w-full max-w-screen-xl px-4 py-5 md:px-6 md:py-6 lg:px-8">
         <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground md:mb-4 md:text-lg">{t("home.recommended")}</h2>
 
-        <div className="grid grid-cols-2 items-start gap-2.5 md:grid-cols-3 md:gap-3 xl:grid-cols-4 xl:gap-3.5 2xl:grid-cols-5 2xl:gap-4">
+        <div
+          className={cn(
+            "grid grid-cols-2 items-start gap-2.5 md:grid-cols-3 md:gap-3 xl:grid-cols-4 xl:gap-3.5 2xl:grid-cols-5 2xl:gap-4",
+            homeAdCardTone,
+          )}
+        >
           {isLoadingRecommended ? (
             Array.from({ length: 10 }).map((_, i) => (
               <AdCardSkeleton key={i} />
@@ -214,6 +223,6 @@ export default function Home() {
           )}
         </div>
       </section>
-    </motion.div>
+    </div>
   );
 }

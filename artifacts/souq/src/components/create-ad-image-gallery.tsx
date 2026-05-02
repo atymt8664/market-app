@@ -135,18 +135,18 @@ export function CreateAdImageGallery({
           type="button"
           onClick={pickFiles}
           disabled={isSubmittingUploads}
-          className="w-full min-h-[52px] py-2.5 px-3 sm:px-4 border-2 border-dashed border-border/90 rounded-xl flex items-center gap-3 bg-muted/15 hover:border-primary/45 active:bg-muted/30 active:scale-[0.995] transition-[colors,transform,background-color] duration-200 disabled:opacity-50 text-right"
+          className="flex min-h-[52px] w-full items-center gap-3 rounded-xl border-2 border-dashed border-primary/40 bg-zinc-950/80 px-3 py-2.5 text-right shadow-[0_0_20px_-12px_hsl(var(--primary)/0.2)] transition-[colors,transform,background-color,box-shadow] duration-200 hover:border-primary/55 hover:bg-zinc-900/70 active:scale-[0.995] disabled:opacity-50 sm:px-4"
           dir="rtl"
         >
-          <div className="flex-1 min-w-0">
-            <span className="block text-sm font-semibold leading-tight">
+          <div className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold leading-tight text-foreground">
               {isSubmittingUploads ? t("create_ad.images.uploading") : t("create_ad.images.add_clear_photos")}
             </span>
-            <span className="block text-[11px] text-muted-foreground mt-0.5 leading-snug">
+            <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500">
               {t("create_ad.images.up_to_photos_tap_to_choose", { count: maxImages })}
             </span>
           </div>
-          <div className="relative w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/35 bg-zinc-950/90 text-primary shadow-[0_0_12px_-4px_hsl(var(--primary)/0.35)]">
             {isSubmittingUploads ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
@@ -167,9 +167,9 @@ export function CreateAdImageGallery({
             type="button"
             onClick={() => openViewer(heroIndex)}
             className={cn(
-              "relative w-full overflow-hidden rounded-2xl border border-border/80 bg-muted/30",
-              "aspect-[4/3] sm:aspect-[16/10] shadow-sm transition-[box-shadow,transform] duration-200",
-              "hover:shadow-md active:scale-[0.998] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
+              "relative w-full overflow-hidden rounded-2xl border border-primary/30 bg-zinc-950/50",
+              "aspect-[4/3] sm:aspect-[16/10] shadow-[0_0_18px_-12px_hsl(var(--primary)/0.15)] transition-[box-shadow,transform] duration-200",
+              "hover:shadow-[0_0_22px_-10px_hsl(var(--primary)/0.22)] active:scale-[0.998] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
             )}
             aria-label={t("create_ad.images.open_gallery")}
           >
@@ -211,8 +211,8 @@ export function CreateAdImageGallery({
                   className={cn(
                     "relative h-[4.25rem] w-[4.25rem] shrink-0 overflow-hidden rounded-xl border-2 transition-[box-shadow,transform,border-color] duration-200",
                     i === heroIndex
-                      ? "border-primary ring-2 ring-primary/35 ring-offset-2 ring-offset-background"
-                      : "border-border/70 hover:border-primary/40 active:scale-[0.98]",
+                      ? "border-primary ring-2 ring-primary/35 ring-offset-2 ring-offset-[#0A0A0A]"
+                      : "border-primary/35 hover:border-primary/55 active:scale-[0.98]",
                   )}
                   aria-label={t("create_ad.images.view_photo_in_preview", { index: i + 1 })}
                   aria-pressed={i === heroIndex}
@@ -236,18 +236,18 @@ export function CreateAdImageGallery({
           type="button"
           onClick={pickFiles}
           disabled={isSubmittingUploads}
-          className="w-full min-h-[48px] py-2 px-3 border-2 border-dashed border-border/90 rounded-xl flex items-center gap-2 text-muted-foreground hover:border-primary/45 hover:text-primary active:scale-[0.995] transition-[colors,transform] duration-200 disabled:opacity-50"
+          className="flex min-h-[48px] w-full items-center gap-2 rounded-xl border-2 border-dashed border-primary/35 bg-zinc-950/70 px-3 py-2 text-zinc-400 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.18)] transition-[colors,transform,box-shadow] duration-200 hover:border-primary/50 hover:text-primary active:scale-[0.995] disabled:opacity-50"
           dir="rtl"
         >
           {isSubmittingUploads ? (
-            <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
           ) : (
-            <Plus className="w-4 h-4 shrink-0" />
+            <Plus className="h-4 w-4 shrink-0 text-primary" />
           )}
           <span className="text-xs font-medium">
             {isSubmittingUploads ? t("create_ad.images.uploading") : t("create_ad.images.add_photos")}
           </span>
-          <span dir="ltr" className="text-[11px] tabular-nums text-muted-foreground ms-auto">
+          <span dir="ltr" className="ms-auto text-[11px] tabular-nums text-zinc-500">
             {count} / {maxImages}
           </span>
         </button>

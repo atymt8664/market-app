@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams, useLocation } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -15,6 +15,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { AvatarCircle } from "@/components/avatar-circle";
+import { cn } from "@/lib/utils";
 import {
   useGetUserProfile,
   getGetUserProfileQueryKey,
@@ -54,9 +55,34 @@ import { apiUrl } from "@/lib/api-url";
 
 const USER_PROFILE_MORE_HINT_KEY = "souq.hint.userProfileMoreMenu.v1";
 
+/** مطابقة أزرار الرأس في ad-detail */
+const floatingHeaderBtn =
+  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-card/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
+
+const pageMax =
+  "mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6";
+
+/** كرت المحتوى — نفس ad-detail (lime + glow) */
+const deviceInfoShell =
+  "rounded-2xl border border-primary/40 bg-card/80 p-4 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 dark:bg-zinc-950/70 md:p-5";
+
+const sellerInnerShell =
+  "rounded-2xl border border-zinc-700/45 bg-zinc-950/85 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] ring-1 ring-white/[0.05] md:p-5";
+
+const statsStripSurface =
+  "rounded-2xl border border-primary/40 bg-muted/25 p-1 shadow-[0_0_28px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 dark:bg-zinc-950/70";
+
+const profileStatTile =
+  "flex min-h-[4.75rem] flex-col items-center justify-center gap-1 rounded-xl border border-primary/32 bg-muted/20 px-2 py-2.5 text-center shadow-[0_0_18px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12 dark:bg-black/40";
+
+/** تجاوز مظهر AdCard ليتوافق مع ad-detail دون تعديل المكوّن */
+const sellerAdsGridCardTone =
+  "[&_article]:rounded-2xl [&_article]:border-primary/40 [&_article]:bg-card/80 [&_article]:shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] [&_article]:ring-1 [&_article]:ring-primary/15 [&_article]:dark:bg-zinc-950/70 [&_article]:hover:border-primary/50 [&_article]:hover:shadow-[0_0_32px_-10px_hsl(var(--primary)/0.28)] [&_article>div:first-child]:rounded-t-2xl [&_button]:rounded-full [&_button]:border [&_button]:border-primary/50 [&_button]:bg-black/55 [&_button]:shadow-[0_0_14px_-4px_hsl(var(--primary)/0.35)] [&_button]:hover:border-primary/65";
+
 export default function UserProfile() {
   const params = useParams();
   const userId = Number(params.id);
+  const profileQueryEnabled = Number.isFinite(userId) && userId > 0;
   const { user: me } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -64,13 +90,13 @@ export default function UserProfile() {
 
   const profileKey = getGetUserProfileQueryKey(userId);
   const { data: profile, isLoading } = useGetUserProfile(userId, {
-    query: { queryKey: profileKey, enabled: !!userId },
+    query: { queryKey: profileKey, enabled: profileQueryEnabled },
   });
 
   const recordView = useRecordProfileView();
   const viewedRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!userId || viewedRef.current === userId) return;
+    if (!profileQueryEnabled || viewedRef.current === userId) return;
     viewedRef.current = userId;
     recordView.mutate(
       { userId },
@@ -83,12 +109,13 @@ export default function UserProfile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  const adsKey = getListAdsQueryKey({});
-  const { data: allAds } = useListAds(
-    {},
-    { query: { queryKey: adsKey, enabled: !!userId } },
+  const listAdsParams = { userId, limit: 100 } as const;
+  const adsKey = getListAdsQueryKey(listAdsParams);
+  const { data: userAds, isLoading: adsLoading } = useListAds(
+    listAdsParams,
+    { query: { queryKey: adsKey, enabled: profileQueryEnabled } },
   );
-  const userAds = (allAds ?? []).filter((a) => a.userId === userId);
+  const sellerAds = userAds ?? [];
 
   const followMut = useFollowUser();
   const unfollowMut = useUnfollowUser();
@@ -208,8 +235,11 @@ export default function UserProfile() {
 
   if (isLoading || !profile) {
     return (
-      <div className="flex flex-col w-full min-h-[100dvh] bg-background items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div
+        dir="rtl"
+        className="flex flex-col w-full min-h-[100dvh] items-center justify-center bg-[#0A0A0A]"
+      >
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -219,144 +249,192 @@ export default function UserProfile() {
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-background"
+      dir="rtl"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex min-h-[100dvh] w-full flex-col bg-[#0A0A0A] pb-10"
     >
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border p-4 flex items-center gap-3">
-        <button
-          onClick={() => window.history.back()}
-          className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all shrink-0"
-          aria-label="رجوع"
-        >
-          <ArrowRight className="w-5 h-5" />
-        </button>
-        <h1 className="font-bold text-lg truncate flex-1 min-w-0">{profile.name}</h1>
-        {!isSelfProfile && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="p-2 rounded-full hover:bg-muted shrink-0"
-                aria-label="المزيد"
-                onClick={() => dismissMoreHint()}
-              >
-                <MoreVertical className="w-5 h-5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[12rem]" dir="rtl">
-              <DropdownMenuItem
-                className="gap-2 cursor-pointer"
-                onSelect={() => setReportOpen(true)}
-              >
-                <Flag className="w-4 h-4 text-amber-500" />
-                إبلاغ عن المستخدم
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="gap-2 cursor-pointer"
-                onSelect={() => setBlockInfoOpen(true)}
-              >
-                <ShieldBan className="w-4 h-4 text-red-400" />
-                حظر المستخدم
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </header>
-
-      {showMoreHint && !isSelfProfile && (
-        <div className="mx-4 mt-3 md:mx-6 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-2.5 text-xs text-foreground/90 leading-relaxed flex gap-2 justify-between items-start">
-          <span>
-            يمكنك الإبلاغ عن هذا المستخدم أو حظره من قائمة «المزيد» (⋮) أعلى الصفحة.
-          </span>
+      <div className={`${pageMax} pb-2 pt-3 md:pt-4`}>
+        <div className="flex items-center justify-between gap-3 py-1">
           <button
             type="button"
-            onClick={dismissMoreHint}
-            className="shrink-0 text-[11px] font-medium text-primary underline underline-offset-2"
+            onClick={() => window.history.back()}
+            className={floatingHeaderBtn}
+            aria-label="رجوع"
           >
-            فهمت
+            <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
           </button>
+          <h1 className="min-w-0 flex-1 truncate text-center text-base font-bold text-foreground md:text-lg">
+            {profile.name}
+          </h1>
+          {!isSelfProfile ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={floatingHeaderBtn}
+                  aria-label="المزيد"
+                  onClick={() => dismissMoreHint()}
+                >
+                  <MoreVertical className="h-5 w-5" strokeWidth={2.25} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[12rem]" dir="rtl">
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onSelect={() => setReportOpen(true)}
+                >
+                  <Flag className="h-4 w-4 text-amber-500" />
+                  إبلاغ عن المستخدم
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onSelect={() => setBlockInfoOpen(true)}
+                >
+                  <ShieldBan className="h-4 w-4 text-red-400" />
+                  حظر المستخدم
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <span className="inline-block h-11 w-11 shrink-0" aria-hidden />
+          )}
+        </div>
+      </div>
+
+      {showMoreHint && !isSelfProfile && (
+        <div
+          className={`${pageMax} pb-3`}
+        >
+          <div className="flex items-start justify-between gap-2 rounded-2xl border border-amber-500/35 bg-zinc-950/80 px-3 py-2.5 text-xs leading-relaxed text-foreground/90 shadow-[0_0_20px_-8px_hsl(var(--primary)/0.15)] ring-1 ring-amber-500/15">
+            <span>
+              يمكنك الإبلاغ عن هذا المستخدم أو حظره من قائمة «المزيد» (⋮) أعلى الصفحة.
+            </span>
+            <button
+              type="button"
+              onClick={dismissMoreHint}
+              className="shrink-0 text-[11px] font-medium text-primary underline underline-offset-2"
+            >
+              فهمت
+            </button>
+          </div>
         </div>
       )}
 
-      <div className="px-4 py-5 flex-1 mx-auto w-full max-w-screen-xl md:px-6 lg:px-8">
-        <section className="rounded-2xl border border-border bg-gradient-to-b from-primary/20 via-primary/5 to-background p-4 md:p-5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <AvatarCircle name={profile.name} src={profile.avatarUrl} size={84} />
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl md:text-2xl font-bold truncate">{profile.name}</h2>
-              {profile.city && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span>{profile.city}</span>
+      <div className={`${pageMax} flex-1 py-2 md:py-4`}>
+        <section className={cn(deviceInfoShell, "space-y-4")}>
+          <div className={cn(sellerInnerShell, "space-y-4")}>
+            <div className="flex items-center gap-4">
+              <div className="shrink-0 ring-2 ring-primary/25 ring-offset-2 ring-offset-zinc-950 rounded-full">
+                <AvatarCircle name={profile.name} src={profile.avatarUrl} size={84} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-xl font-bold text-foreground md:text-2xl">
+                  {profile.name}
+                </h2>
+                {profile.city ? (
+                  <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-primary/80" />
+                    <span>{profile.city}</span>
+                  </div>
+                ) : null}
+                <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-black/40 px-2.5 py-1 text-[11px] text-muted-foreground ring-1 ring-primary/10">
+                  <CalendarDays className="h-3.5 w-3.5 text-primary/80" />
+                  عضو منذ {new Date(profile.createdAt).toLocaleDateString("ar")}
                 </div>
-              )}
-              <div className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground rounded-full border border-border px-2.5 py-1">
-                <CalendarDays className="w-3.5 h-3.5" />
-                عضو منذ {new Date(profile.createdAt).toLocaleDateString("ar")}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mt-4">
-            <Stat label="إعلانات" value={profile.adCount} icon={<Megaphone className="w-3.5 h-3.5" />} />
+          <div
+            className={cn(
+              statsStripSurface,
+              "grid grid-cols-2 gap-2 p-2.5 md:grid-cols-4 md:gap-2",
+            )}
+          >
+            <Stat
+              label="إعلانات"
+              value={profile.adCount}
+              icon={<Megaphone className="h-3.5 w-3.5 text-primary" strokeWidth={2.25} />}
+            />
             <Stat label="متابعون" value={profile.followerCount} />
             <Stat label="يتابع" value={profile.followingCount} />
-            <Stat label="مشاهدات" value={profile.profileViews} icon={<Eye className="w-3.5 h-3.5" />} />
+            <Stat
+              label="مشاهدات"
+              value={profile.profileViews}
+              icon={<Eye className="h-3.5 w-3.5 text-primary" strokeWidth={2.25} />}
+            />
           </div>
 
           {!isSelfProfile && (
-            <div className="mt-4">
-              <Button
-                onClick={toggleFollow}
-                disabled={isPending}
-                className={`w-full gap-2 h-11 rounded-xl ${
-                  profile.isFollowing
-                    ? "bg-muted hover:bg-muted/80 text-foreground"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90"
-                }`}
-              >
-                {isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : profile.isFollowing ? (
-                  <>
-                    <UserCheck className="w-4 h-4" /> تتم المتابعة
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="w-4 h-4" /> متابعة
-                  </>
-                )}
-              </Button>
-            </div>
+            <Button
+              type="button"
+              onClick={toggleFollow}
+              disabled={isPending}
+              className={cn(
+                "h-12 w-full gap-2 rounded-2xl border-2 text-sm font-semibold shadow-[0_0_12px_-6px_hsl(var(--primary)/0.2)] transition-colors",
+                profile.isFollowing
+                  ? "border-primary/40 bg-zinc-950/90 text-foreground hover:bg-zinc-900/95"
+                  : "border-primary/55 bg-zinc-950/90 text-primary hover:border-primary/70 hover:bg-zinc-900/95",
+              )}
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : profile.isFollowing ? (
+                <>
+                  <UserCheck className="h-4 w-4" /> تتم المتابعة
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4" /> متابعة
+                </>
+              )}
+            </Button>
           )}
         </section>
 
-        <section className="mt-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-base">إعلانات {profile.name}</h3>
-          <span className="text-muted-foreground text-xs">
-            {userAds.length} إعلان
-          </span>
-        </div>
+        <section className="mt-6 md:mt-8">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h3 className="text-base font-bold text-foreground">
+              إعلانات {profile.name}
+            </h3>
+            <span className="text-xs text-primary/80 tabular-nums">
+              {sellerAds.length} إعلان
+            </span>
+          </div>
 
-        {!allAds ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <AdCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : userAds.length === 0 ? (
-          <div className="text-center text-sm text-muted-foreground py-12">
-            لا توجد إعلانات حالياً
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-            {userAds.map((ad) => (
-              <AdCard key={ad.id} ad={ad} />
-            ))}
-          </div>
-        )}
+          {adsLoading ? (
+            <div
+              className={cn(
+                "grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4 lg:gap-3.5",
+                sellerAdsGridCardTone,
+              )}
+            >
+              {Array.from({ length: 8 }).map((_, i) => (
+                <AdCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : sellerAds.length === 0 ? (
+            <div
+              className={cn(
+                deviceInfoShell,
+                "py-12 text-center text-sm text-muted-foreground",
+              )}
+            >
+              لا توجد إعلانات حالياً
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4 lg:gap-3.5",
+                sellerAdsGridCardTone,
+              )}
+            >
+              {sellerAds.map((ad) => (
+                <AdCard key={ad.id} ad={ad} />
+              ))}
+            </div>
+          )}
         </section>
       </div>
 
@@ -431,14 +509,14 @@ function Stat({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center text-center rounded-xl border border-border/70 bg-background/50 py-2.5 px-1 shadow-sm">
-      <div className="flex items-center gap-1">
+    <div className={profileStatTile}>
+      <div className="flex items-center justify-center gap-1">
         {icon}
-        <span className="text-lg font-bold tabular-nums">
+        <span className="text-lg font-bold tabular-nums text-foreground">
           {value.toLocaleString("ar")}
         </span>
       </div>
-      <span className="text-[10px] text-muted-foreground mt-0.5">{label}</span>
+      <span className="text-[10px] font-medium text-primary/90">{label}</span>
     </div>
   );
 }

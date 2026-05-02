@@ -12,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight, Send } from "lucide-react";
 import { useChatSocket } from "@/hooks/use-chat-socket";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatPrice } from "@/lib/format";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 
@@ -32,6 +31,20 @@ const SELLER_QUICK_KEYS = [
   "message_thread.msg_qs_seller_4",
   "message_thread.msg_qs_seller_5",
   "message_thread.msg_qs_seller_6",
+] as const;
+
+const BUYER_QUICK_REPLIES_AR = [
+  "هل المنتج ما زال متوفراً؟",
+  "هل السعر قابل للتفاوض؟",
+  "أين يمكن الاستلام؟",
+  "هل يوجد شحن؟",
+] as const;
+
+const SELLER_QUICK_REPLIES_AR = [
+  "نعم، المنتج متوفر",
+  "السعر قابل للتفاوض بشكل بسيط",
+  "يمكن الاستلام في [المدينة]",
+  "الشحن متاح",
 ] as const;
 
 function messageDraftStorageKey(convId: number) {
@@ -154,109 +167,148 @@ export default function MessageThread() {
     });
   };
 
+  const quickRepliesAr = conv?.isSeller
+    ? SELLER_QUICK_REPLIES_AR
+    : BUYER_QUICK_REPLIES_AR;
+  const quickReplies = dirRtl ? [...quickRepliesAr] : quickKeys.map((key) => t(key));
+
+  const renderMessageBody = (raw: string) => {
+    const text = raw || "";
+    const linkRegex = /(https?:\/\/[^\s]+|\/ad\/\d+)/g;
+    const parts = text.split(linkRegex).filter(Boolean);
+    const hasLink = parts.some((p) => linkRegex.test(p));
+    linkRegex.lastIndex = 0;
+    if (!hasLink) return <span>{text}</span>;
+
+    return (
+      <div className="space-y-1.5">
+        {parts.map((part, idx) => {
+          const isLink = /^(https?:\/\/[^\s]+|\/ad\/\d+)$/.test(part);
+          if (!isLink) {
+            return <p key={`${part}-${idx}`}>{part}</p>;
+          }
+          const href = part.startsWith("/ad/") ? part : part;
+          return (
+            <a
+              key={`${part}-${idx}`}
+              href={href}
+              target={part.startsWith("http") ? "_blank" : undefined}
+              rel={part.startsWith("http") ? "noreferrer" : undefined}
+              className="block rounded-lg border border-primary/30 bg-zinc-950/70 px-2.5 py-2 text-[11px] text-primary underline underline-offset-2"
+              dir="ltr"
+            >
+              {part}
+            </a>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div
-      className="flex flex-col w-full min-h-[100dvh] bg-background"
+      className="fixed inset-0 z-0 flex h-[100svh] w-full flex-col overflow-hidden bg-[#0A0A0A]"
       dir={dirRtl ? "rtl" : "ltr"}
     >
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
-        <div className="mx-auto w-full max-w-[820px] px-4 md:px-6 py-3 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate("/messages")}
-            className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all"
-          >
-            <ArrowRight className="w-5 h-5" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <div className="font-bold truncate">{conv?.otherName || "..."}</div>
-            {conv && (
+      <header className="sticky top-0 z-50 shrink-0 bg-[#0A0A0A]/95 px-4 pb-2 pt-3 backdrop-blur md:px-6">
+        <div className="mx-auto w-full max-w-[820px] rounded-2xl border border-primary/30 bg-gradient-to-b from-zinc-950/95 to-zinc-900/75 px-3 py-2.5 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/messages")}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/60 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 hover:bg-zinc-900/90 active:opacity-90"
+            >
+              <ArrowRight className="h-5 w-5" />
+            </button>
+            {conv?.adImage ? (
               <Link
                 href={`/ad/${conv.adId}`}
-                className="text-xs text-muted-foreground truncate block hover:text-primary"
+                className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-zinc-900"
               >
-                {conv.adTitle}
+                <img src={conv.adImage} alt="" className="h-full w-full object-cover" />
               </Link>
+            ) : (
+              <div className="h-11 w-11 shrink-0 rounded-xl border border-primary/25 bg-zinc-900" />
             )}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-bold text-white">
+                {conv?.otherName || "..."}
+              </div>
+              {conv && (
+                <Link
+                  href={`/ad/${conv.adId}`}
+                  className="block truncate text-xs text-zinc-400 hover:text-primary"
+                >
+                  {conv.adTitle}
+                </Link>
+              )}
+            </div>
           </div>
-          {conv?.adImage && (
-            <Link
-              href={`/ad/${conv.adId}`}
-              className="w-10 h-10 rounded-lg overflow-hidden shrink-0"
-            >
-              <img src={conv.adImage} alt="" className="w-full h-full object-cover" />
-            </Link>
-          )}
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[820px] px-4 md:px-6 py-4 flex-1">
-        <div className="rounded-2xl border border-border bg-card/70 h-[calc(100dvh-120px)] min-h-[520px] flex flex-col overflow-hidden">
-          {conv &&
-            conv.adPrice !== null &&
-            typeof conv.adPriceType === "string" && (
-            <Link
-              href={`/ad/${conv.adId}`}
-              className="px-4 py-2 text-xs text-primary border-b border-border/40 bg-primary/5"
-            >
-              {formatPrice(conv.adPrice, conv.adPriceType)}
-            </Link>
-            )}
-
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+      <div className="mx-auto flex min-h-0 w-full max-w-[820px] flex-1 px-4 pb-[236px] pt-0 md:px-6">
+        <div className="-mt-5 flex h-[48vh] min-h-0 w-full flex-col overflow-hidden rounded-3xl border border-primary/25 bg-zinc-950/75 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10">
+          <div
+            ref={scrollRef}
+            className="flex max-h-full min-h-0 flex-col items-start gap-2 overflow-y-auto px-3 pb-5 pt-0"
+          >
             {isLoading ? (
               <>
-                <Skeleton className="w-2/3 h-10 rounded-2xl self-start" />
-                <Skeleton className="w-1/2 h-10 rounded-2xl self-end" />
+                <Skeleton className="h-10 w-2/3 self-start rounded-2xl bg-zinc-900/70" />
+                <Skeleton className="h-10 w-1/2 self-end rounded-2xl bg-zinc-900/70" />
               </>
             ) : messages && messages.length > 0 ? (
-              messages.map((m) => {
+              messages.map((m, index) => {
                 const mine = m.senderId === user!.id;
                 return (
                   <div
                     key={m.id}
-                    className={`max-w-[78%] px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words ${
+                    className={`max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-[0_6px_20px_-14px_rgba(0,0,0,0.8)] transition-all duration-300 ${
                       mine
-                        ? "self-end bg-primary text-primary-foreground rounded-br-md"
-                        : "self-start bg-muted text-foreground rounded-bl-md"
+                        ? "self-end rounded-br-md bg-primary text-zinc-950 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.6)]"
+                        : "self-start rounded-bl-md border border-primary/20 bg-[#111111] text-white"
                     }`}
+                    style={{
+                      opacity: 1,
+                      transform: "translateY(0)",
+                      animation: `messageIn 180ms ease ${index * 12}ms both`,
+                    }}
                   >
-                    {m.body}
+                    {renderMessageBody(m.body)}
                   </div>
                 );
               })
             ) : (
-              <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+              <div className="flex w-full flex-col items-center justify-center py-12 text-sm text-zinc-500">
                 {t("message_thread.empty_hint")}
               </div>
             )}
           </div>
 
+        </div>
+      </div>
+      <form
+        onSubmit={handleSend}
+        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+100px)] left-0 right-0 z-50 border-t border-primary/20 bg-[#0A0A0A]/95 px-3 py-2 shadow-[0_-8px_20px_-12px_rgba(0,0,0,0.65)] backdrop-blur"
+      >
+        <div className="mx-auto flex w-full max-w-[820px] flex-col gap-2">
           {conv && (
-            <div
-              className="border-t border-border/60 bg-muted/20 px-2 py-2 flex gap-1.5 overflow-x-auto scrollbar-thin shrink-0"
-              style={{
-                paddingBottom: "calc(0.35rem + env(safe-area-inset-bottom, 0px))",
-              }}
-            >
-              {quickKeys.map((key) => (
+            <div className="scrollbar-thin mb-2 flex gap-2 overflow-x-auto rounded-xl border border-primary/20 bg-zinc-950/75 px-2 py-2">
+              {quickReplies.map((line) => (
                 <button
-                  key={key}
+                  key={`fixed-${line}`}
                   type="button"
-                  onClick={() => appendQuick(t(key))}
-                  className="shrink-0 rounded-full border border-border/80 bg-background/90 px-3 py-1.5 text-[11px] sm:text-xs font-medium text-foreground hover:bg-muted/80 active:scale-[0.98] transition-all whitespace-nowrap max-w-[200px] truncate"
+                  onClick={() => appendQuick(line)}
+                  className="max-w-[240px] shrink-0 truncate whitespace-nowrap rounded-full border border-primary/30 bg-zinc-950/75 px-4 py-2 text-[13px] font-medium text-white shadow-[0_0_14px_-12px_hsl(var(--primary)/0.22)] transition-all duration-200 hover:border-primary/55 hover:bg-primary/15 active:scale-[0.97] active:border-primary/60"
                 >
-                  {t(key)}
+                  {line}
                 </button>
               ))}
             </div>
           )}
-
-          <form
-            onSubmit={handleSend}
-            className="border-t border-border bg-background/80 p-2.5 flex gap-2 items-end"
-            style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}
-          >
+          <div className="flex items-end gap-2">
+          <div className="flex flex-1 items-end gap-2 rounded-full border border-primary/20 bg-[rgba(0,0,0,0.6)] px-3 py-2 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.24)]">
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -268,19 +320,26 @@ export default function MessageThread() {
               }}
               placeholder={t("message_thread.placeholder")}
               rows={1}
-              className="flex-1 resize-none rounded-2xl bg-muted px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary max-h-32"
+              className="max-h-32 flex-1 resize-none bg-transparent px-0 py-0.5 text-sm text-white placeholder:text-zinc-400 focus:outline-none"
             />
-            <button
-              type="submit"
-              disabled={send.isPending || !body.trim()}
-              className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50 active:scale-95 transition-transform shrink-0"
-              aria-label={t("message_thread.send")}
-            >
-              <Send className="w-5 h-5" />
-            </button>
-          </form>
+          </div>
+          <button
+            type="submit"
+            disabled={send.isPending || !body.trim()}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-black shadow-[0_0_16px_-8px_hsl(var(--primary)/0.52)] transition-[transform,box-shadow] hover:shadow-[0_0_20px_-8px_hsl(var(--primary)/0.62)] active:scale-[0.98] disabled:opacity-50"
+            aria-label={t("message_thread.send")}
+          >
+            <Send className="h-5 w-5" />
+          </button>
+          </div>
         </div>
-      </div>
+      </form>
+      <style>{`
+        @keyframes messageIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }

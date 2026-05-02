@@ -16,61 +16,205 @@ import {
   Share2,
   Heart,
   Copy,
-  CheckCircle2,
-  MessageCircle,
   Phone,
   Eye,
   MessageSquare,
   ThumbsUp,
   Star,
-  MoreVertical,
   Flag,
+  ChevronDown,
 } from "lucide-react";
+import { FaWhatsapp } from "react-icons/fa";
 import { useAuth } from "@/hooks/use-auth";
 import { formatRelativeTime, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { CreateAdImageGallery } from "@/components/create-ad-image-gallery";
 import { parseStoredAdDetails } from "@/lib/ad-stored-details";
-import { labelForSpecKey } from "@/lib/ad-dynamic-field-labels";
-import {
-  AD_PROMOTION_LABELS,
-  AD_SHIPPING_LABELS,
-} from "@/lib/ad-meta-labels";
+import { AD_SHIPPING_LABELS } from "@/lib/ad-meta-labels";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { BuyerSafetyNote } from "@/components/buyer-safety-note";
 import { t } from "@/i18n";
+import { cn } from "@/lib/utils";
 
-/** عرض العملة للواجهة العربية دون إظهار رموز خام مثل EUR فقط */
-function currencyDisplayAr(code?: string | null): string | null {
-  if (!code?.trim()) return null;
-  const c = code.trim().toUpperCase();
-  const map: Record<string, string> = {
-    EUR: "يورو (€)",
-    USD: "دولار أمريكي ($)",
-    GBP: "جنيه إسترليني (£)",
-    CHF: "فرنك سويسري",
-    SEK: "كرونة سويدية",
-    NOK: "كرونة نرويجية",
-    DKK: "كرونة دنماركية",
-    CAD: "دولار كندي (C$)",
-  };
-  return map[c] ?? `عملة ${c}`;
+function normalizeAdDetailsRaw(raw: unknown): unknown {
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as unknown;
+    } catch {
+      return undefined;
+    }
+  }
+  return raw;
+}
+
+/**
+ * الحقول من create-ad: `details.specs` (color, condition, storage, …).
+ * الشركة المصنعة: أولاً `specs.manufacturer` إن وُجدت؛ وإلا آخر مستوى من `details.categoryPath.leaf`
+ * (مسار الناشر المحفوظ في نفس JSON — مثل إلكترونيات → هواتف → آبل) ولا يُستخدم إلا إذا وُجدت `leaf`.
+ */
+const DEVICE_SPEC_KEYS_REST = ["color", "condition", "storage", "accessories"] as const;
+
+type DeviceSpecKeyRest = (typeof DEVICE_SPEC_KEYS_REST)[number];
+
+/** بدائل المفاتيح كما في create-ad أو بيانات قديمة (نفس الفتحة المعروضة) */
+const DEVICE_SPEC_ALIASES: Record<DeviceSpecKeyRest, readonly string[]> = {
+  color: ["color"],
+  condition: ["condition"],
+  storage: ["storage", "capacity"],
+  accessories: [
+    "accessories",
+    "deviceAccessories",
+    "device_accessories",
+    "includedItems",
+    "included_items",
+  ],
+};
+
+const DEVICE_SPEC_LABELS_AR: Record<
+  "manufacturer" | DeviceSpecKeyRest,
+  string
+> = {
+  manufacturer: "الشركة المصنعة",
+  color: "اللون",
+  condition: "الحالة",
+  storage: "السعة التخزينية",
+  accessories: "الجهاز والملحقات",
+};
+
+function coerceDeviceSpecString(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string") {
+    const t = value.trim();
+    return t.length > 0 ? t : null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean") return value ? "نعم" : "لا";
+  return null;
+}
+
+/** `specs[key]` ثم جذر details — بدون categoryPath */
+function getDeviceSpecValueFromDetails(
+  detailsRoot: Record<string, unknown> | null,
+  parsedSpecs: Record<string, string>,
+  key: string,
+): string | null {
+  const fromSpecs = coerceDeviceSpecString(parsedSpecs[key]);
+  if (fromSpecs) return fromSpecs;
+  if (!detailsRoot) return null;
+  return coerceDeviceSpecString(detailsRoot[key]);
+}
+
+type ParsedAdDetails = ReturnType<typeof parseStoredAdDetails>;
+
+/** مسار التصنيف من details كما يحفظه الإنشاء (main/sub/leaf) */
+function getStoredCategoryPath(
+  detailsRoot: Record<string, unknown> | null,
+  parsed: ParsedAdDetails,
+): { main: string; sub: string; leaf?: string } | null {
+  const metaPath = parsed.meta?.categoryPath;
+  if (
+    metaPath &&
+    typeof metaPath.main === "string" &&
+    metaPath.main.trim() &&
+    typeof metaPath.sub === "string" &&
+    metaPath.sub.trim()
+  ) {
+    return {
+      main: metaPath.main.trim(),
+      sub: metaPath.sub.trim(),
+      ...(metaPath.leaf?.trim()
+        ? { leaf: metaPath.leaf.trim() }
+        : {}),
+    };
+  }
+  if (!detailsRoot) return null;
+  const cp = detailsRoot["categoryPath"];
+  if (!cp || typeof cp !== "object" || Array.isArray(cp)) return null;
+  const o = cp as Record<string, unknown>;
+  const main = typeof o.main === "string" ? o.main.trim() : "";
+  const sub = typeof o.sub === "string" ? o.sub.trim() : "";
+  if (!main || !sub) return null;
+  const leafRaw = typeof o.leaf === "string" ? o.leaf.trim() : "";
+  return leafRaw
+    ? { main, sub, leaf: leafRaw }
+    : { main, sub };
+}
+
+/**
+ * الشركة المصنعة: من details فقط.
+ * 1) specs.manufacturer أو manufacturer على جذر details
+ * 2) إن غابت: ورقة المسار `categoryPath.leaf` فقط (اختيار الناشر المخزّن)، مع وجود main+sub+leaf — بدون leaf لا نستنتج شركة من المسار.
+ */
+function getManufacturerFromDetails(
+  detailsRoot: Record<string, unknown> | null,
+  parsed: ParsedAdDetails,
+): string | null {
+  const explicit = getDeviceSpecValueFromDetails(
+    detailsRoot,
+    parsed.specs,
+    "manufacturer",
+  );
+  if (explicit) return explicit;
+  /** سيارات وغيرها: create-ad يستخدم `car_brand` لا `manufacturer` */
+  const carBrand = getDeviceSpecValueFromDetails(
+    detailsRoot,
+    parsed.specs,
+    "car_brand",
+  );
+  if (carBrand) return carBrand;
+  const brand = getDeviceSpecValueFromDetails(
+    detailsRoot,
+    parsed.specs,
+    "brand",
+  );
+  if (brand) return brand;
+  const path = getStoredCategoryPath(detailsRoot, parsed);
+  const leaf = path?.leaf?.trim();
+  if (!leaf) return null;
+  return leaf;
+}
+
+function buildDeviceInfoRowsFromDetailsOnly(detailsUnknown: unknown): {
+  id: string;
+  label: string;
+  value: string;
+}[] {
+  const root =
+    detailsUnknown &&
+    typeof detailsUnknown === "object" &&
+    !Array.isArray(detailsUnknown)
+      ? (detailsUnknown as Record<string, unknown>)
+      : null;
+  const parsed = parseStoredAdDetails(detailsUnknown ?? {});
+  const rows: { id: string; label: string; value: string }[] = [];
+
+  const manufacturer = getManufacturerFromDetails(root, parsed);
+  if (manufacturer) {
+    rows.push({
+      id: "device-spec:manufacturer",
+      label: DEVICE_SPEC_LABELS_AR.manufacturer,
+      value: manufacturer,
+    });
+  }
+
+  for (const key of DEVICE_SPEC_KEYS_REST) {
+    let value: string | null = null;
+    for (const alias of DEVICE_SPEC_ALIASES[key]) {
+      value = getDeviceSpecValueFromDetails(root, parsed.specs, alias);
+      if (value) break;
+    }
+    if (!value) continue;
+    rows.push({
+      id: `device-spec:${key}`,
+      label: DEVICE_SPEC_LABELS_AR[key],
+      value,
+    });
+  }
+  return rows;
 }
 
 function buildAdPublicUrl(adId: number): string {
@@ -103,9 +247,9 @@ export default function AdDetail() {
   const [copied, setCopied] = useState(false);
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [reporting, setReporting] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [reportExtra, setReportExtra] = useState("");
+  const [descExpanded, setDescExpanded] = useState(false);
 
   const recordView = useRecordAdView();
   const viewedRef = useRef<number | null>(null);
@@ -179,7 +323,6 @@ export default function AdDetail() {
       });
       setReason("");
       setReportExtra("");
-      setReportOpen(false);
     } catch {
       toast({
         title: t("ad_detail.error"),
@@ -291,17 +434,52 @@ export default function AdDetail() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator
-        .share({
-          title: ad?.title,
-          url: window.location.href,
-        })
-        .catch(console.error);
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast({ title: "تم نسخ الرابط" });
+  const handleShare = async () => {
+    if (!ad) return;
+    const url = buildAdPublicUrl(ad.id);
+    const isFreeAd = ad.priceType === "free";
+    const priceLine = isFreeAd
+      ? t("ad-card.free")
+      : `السعر: ${formatPrice(ad.price, ad.priceType)}`;
+    const descPlain = (ad.description ?? "").replace(/\s+/g, " ").trim();
+    const shortDesc =
+      descPlain.length > 120 ? `${descPlain.slice(0, 120)}…` : descPlain;
+    const brandLine = `${t("app.brand")} EU`;
+    const text = [
+      ad.title,
+      priceLine,
+      shortDesc || undefined,
+      `إعلان على ${brandLine}`,
+      url,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    try {
+      if (
+        typeof navigator !== "undefined" &&
+        typeof navigator.share === "function"
+      ) {
+        await navigator.share({ title: ad.title, text, url });
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        toast({ title: t("ad_detail.link_copied") });
+        return;
+      }
+    } catch (err) {
+      const e = err as { name?: string };
+      if (e?.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(text);
+        toast({ title: t("ad_detail.link_copied") });
+      } catch {
+        toast({
+          title: t("ad_detail.copy_failed"),
+          description: t("ad_detail.copy_failed_desc"),
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -317,7 +495,7 @@ export default function AdDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col w-full min-h-[100dvh] bg-background">
+      <div className="flex flex-col w-full min-h-[100dvh] bg-[#0A0A0A]">
         <Skeleton className="w-full aspect-square" />
         <div className="p-4 flex flex-col gap-4">
           <Skeleton className="w-2/3 h-8" />
@@ -330,7 +508,7 @@ export default function AdDetail() {
 
   if (!ad) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[100dvh] bg-background p-4 text-center">
+      <div className="flex flex-col items-center justify-center min-h-[100dvh] bg-[#0A0A0A] p-4 text-center">
         <h2 className="text-2xl font-bold mb-2">الإعلان غير موجود</h2>
         <p className="text-muted-foreground mb-6">
           ربما تم حذف هذا الإعلان أو أن الرابط غير صحيح.
@@ -343,21 +521,13 @@ export default function AdDetail() {
   }
 
   const isFree = ad.priceType === "free";
-  const parsed = parseStoredAdDetails(ad.details);
-  const specEntries = Object.entries(parsed.specs).filter(
-    ([, v]) => typeof v === "string" && v.trim(),
+  /** `details` يأتي من الـ API لكنه غير مُعرَّف في نوع Ad المولَّد */
+  const detailsRaw = normalizeAdDetailsRaw(
+    (ad as Record<string, unknown>).details,
   );
-  const pathLabel = parsed.meta?.categoryPath
-    ? [
-        parsed.meta.categoryPath.main,
-        parsed.meta.categoryPath.sub,
-        parsed.meta.categoryPath.leaf,
-      ]
-        .filter(Boolean)
-        .join(" ← ")
-    : null;
+  const parsed = parseStoredAdDetails(detailsRaw ?? {});
+  const deviceInfoRows = buildDeviceInfoRowsFromDetailsOnly(detailsRaw ?? {});
 
-  const currencyDisplay = currencyDisplayAr(parsed.meta?.currency);
   const shipMeta = parsed.meta?.shipping;
   const shippingPickupOnly = shipMeta?.pickupOnly === true;
   const shippingIdList = shipMeta?.ids ?? [];
@@ -366,17 +536,42 @@ export default function AdDetail() {
       ? []
       : shippingIdList.map((sid) => AD_SHIPPING_LABELS[sid] ?? sid);
 
-  const promotionRows =
-    parsed.meta?.promotions?.filter(Boolean).map(
-      (pid) => AD_PROMOTION_LABELS[pid] ?? pid,
-    ) ?? [];
-
-  const hasDeviceBlock =
-    specEntries.length > 0 || parsed.meta?.directBuy != null;
-  const hasPromotionBlock = promotionRows.length > 0;
-
   const pageMax =
     "mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6";
+  /** كرت العنوان/السعر/الموقع — نفس روح الإحصائيات ومعلومات الجهاز (lime + glow) */
+  const heroTitlePriceSurface =
+    "rounded-2xl border border-primary/40 bg-card/80 p-4 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 dark:bg-zinc-950/70 md:p-5";
+  /** شريط إحصائيات: حدود lime خفيفة + خلفية داكنة (متناسق مع مرجع الصفحة) */
+  const statsStripSurface =
+    "rounded-2xl border border-primary/40 bg-muted/25 p-1 shadow-[0_0_28px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 dark:bg-zinc-950/70";
+  /** كرت «معلومات الجهاز» — dark + lime خفيف + glow بسيط (متناسق مع شريط الإحصائيات) */
+  const deviceInfoShell =
+    "rounded-2xl border border-primary/40 bg-card/80 p-4 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 dark:bg-zinc-950/70 md:p-5";
+  /** بطاقة مواصفة داخل الشبكة */
+  const deviceSpecTile =
+    "flex min-h-[5.25rem] flex-col justify-start gap-1.5 rounded-xl border border-primary/32 bg-muted/20 p-3.5 text-right shadow-[0_0_18px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12 dark:bg-black/40";
+  /** أزرار علوية فوق المعرض: دائرة داكنة + حدود lime + أيقونة primary + توهج خفيف */
+  const floatingHeaderBtn =
+    "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-card/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
+  const sellerActionH = "h-12 rounded-2xl text-sm font-semibold";
+  /** كرت داخلي داخل «معلومات البائع» — أغمق قليلًا مع حد خفيف */
+  const sellerInnerShell =
+    "rounded-2xl border border-zinc-700/45 bg-zinc-950/85 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] ring-1 ring-white/[0.05] md:p-5";
+  /** صف رقم الهاتف — حدود lime خفيفة أوضح للتفاعل */
+  const sellerPhoneRow =
+    "flex h-12 w-full items-center gap-3 rounded-xl border border-primary/35 bg-black/55 px-3.5 ring-1 ring-primary/10 transition-colors hover:border-primary/45 hover:ring-primary/15 dark:bg-black/50";
+  /** زر عرض الملف الشخصي — حد مشابه لصف الهاتف */
+  const sellerProfileLinkBtn =
+    "flex h-12 w-full items-center justify-center rounded-2xl border border-primary/32 bg-zinc-950/80 text-sm font-semibold text-foreground ring-1 ring-primary/8 transition-colors hover:border-primary/42 hover:bg-zinc-900/90 hover:ring-primary/12";
+  const otherReason = t("ad_detail.report.opt_other");
+  const reportDisabled =
+    reporting ||
+    !reason ||
+    (reason === otherReason && !reportExtra.trim());
+
+  const descRaw = ad.description?.trim() ?? "";
+  const descNeedsToggle =
+    descRaw.length > 100 || descRaw.split("\n").length > 2;
 
   return (
     <motion.div
@@ -384,71 +579,49 @@ export default function AdDetail() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-background pb-28"
+      className="flex flex-col w-full min-h-[100dvh] bg-[#0A0A0A] pb-28"
     >
-      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none bg-gradient-to-b from-background/80 to-transparent pb-2">
-        <div className={`${pageMax} py-3 flex justify-between items-center pointer-events-auto`}>
-          <Link href="/">
+      {/* أزرار علوية ضمن تدفق الصفحة فوق المعرض — بدون fixed/sticky لتجنب التداخل مع الكروت عند التمرير */}
+      <div className={`${pageMax} pb-2 space-y-2`}>
+        <div className="flex items-center justify-between gap-3 py-3 md:py-4">
+          <Link href="/" className="shrink-0">
             <button
               type="button"
-              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform"
+              className={floatingHeaderBtn}
               aria-label="رجوع"
             >
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
             </button>
           </Link>
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={handleShare}
-              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform"
+              onClick={() => void handleShare()}
+              className={floatingHeaderBtn}
               aria-label={t("ad_detail.copy_link")}
             >
-              <Share2 className="w-5 h-5" />
+              <Share2 className="h-5 w-5" strokeWidth={2.25} />
             </button>
             <button
               type="button"
               onClick={handleToggleFavorite}
               aria-label={t("ad_detail.favorite")}
               disabled={favMut.isPending || unfavMut.isPending}
-              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
+              className={floatingHeaderBtn}
             >
               <Heart
-                className={`w-5 h-5 ${ad?.isFavorited ? "fill-primary text-primary" : "text-white"}`}
+                className={cn(
+                  "h-5 w-5",
+                  ad.isFavorited
+                    ? "fill-primary text-primary"
+                    : "text-primary",
+                )}
+                strokeWidth={2.25}
               />
             </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform"
-                  aria-label="المزيد"
-                >
-                  <MoreVertical className="w-5 h-5" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[11rem]" dir="rtl">
-                <DropdownMenuItem
-                  className="gap-2 cursor-pointer"
-                  onSelect={() => {
-                    if (!user) {
-                      navigate(`/login?redirect=/ad/${id}`);
-                      return;
-                    }
-                    setReportOpen(true);
-                  }}
-                >
-                  <Flag className="w-4 h-4" />
-                  {t("ad_detail.report.submit")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
-      </header>
-
-      {/* معرض الصور — مطابق لعرض الإنشاء المحلي */}
-      <div className={`${pageMax} pt-16 md:pt-[4.5rem] pb-2 space-y-2`}>
+        {/* معرض الصور — مطابق لعرض الإنشاء المحلي */}
         <CreateAdImageGallery
           readOnly
           uploadedImages={ad.images ?? []}
@@ -458,350 +631,360 @@ export default function AdDetail() {
       </div>
 
       <div className={`${pageMax} py-2 md:py-4`}>
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_288px] gap-4 md:gap-5 lg:items-start">
-          <div className="flex flex-col gap-4 min-w-0">
-            {/* كرت العنوان والسعر والموقع */}
-            <div
-              className="rounded-2xl border border-border bg-card/70 p-4 md:p-5"
-              style={{ borderColor: "rgba(255,255,255,0.06)" }}
-            >
-              <h1 className="text-xl md:text-2xl font-bold leading-tight mb-2 text-foreground">
-                {ad.title}
-              </h1>
-              {isFree ? (
-                <div className="text-2xl font-bold text-primary">
-                  {t("ad-card.free")}
-                </div>
-              ) : (
-                <div className="flex flex-wrap items-center gap-2 text-2xl font-bold text-primary">
-                  {formatPrice(ad.price, ad.priceType)}
-                  {ad.priceType === "negotiable" && (
-                    <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      {t("ad-card.negotiable")}
-                    </span>
-                  )}
-                </div>
-              )}
-              {currencyDisplay && (
-                <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
-                  {t("create_ad.preview_dialog.display_currency", {
-                    currency: currencyDisplay,
-                  })}
-                </p>
-              )}
-              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4 shrink-0" />
-                <span>{ad.city}</span>
-                <span className="opacity-50">•</span>
-                <span>{formatRelativeTime(ad.createdAt)}</span>
+        <div className="flex flex-col gap-4 min-w-0">
+          {/* كرت العنوان والسعر والموقع */}
+          <div className={heroTitlePriceSurface}>
+            <h1 className="text-xl md:text-2xl font-bold leading-tight mb-2 text-foreground text-right">
+              {ad.title}
+            </h1>
+            {isFree ? (
+              <div className="text-2xl font-bold text-primary">
+                {t("ad-card.free")}
               </div>
+            ) : (
+              <div className="text-2xl md:text-[1.65rem] font-bold text-primary text-right">
+                {formatPrice(ad.price, ad.priceType)}
+              </div>
+            )}
+            {!isFree && ad.priceType === "negotiable" && (
+              <div className="mt-3 flex justify-end">
+                <span className="inline-flex rounded-full border border-primary/50 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                  {t("ad-card.negotiable")}
+                </span>
+              </div>
+            )}
+            <div className="mt-3 flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>{ad.city}</span>
+              <span className="opacity-50">·</span>
+              <span>{formatRelativeTime(ad.createdAt)}</span>
             </div>
+          </div>
 
-            {/* الإحصائيات: المشاهدات — الإعجابات — المفضلة */}
-            <div className="flex items-stretch divide-x divide-border/60 rounded-2xl border border-border bg-card px-2 py-2.5 text-xs sm:text-sm text-muted-foreground [direction:rtl]">
-              <div className="flex flex-1 flex-col items-center justify-center gap-0.5 sm:flex-row sm:gap-1">
-                <Eye className="h-4 w-4 shrink-0" />
-                <span className="font-semibold text-foreground tabular-nums">
+          {/* الإحصائيات — شريط أفقي بحدود lime وثلاثة أعمدة */}
+          <div
+            className={cn(
+              statsStripSurface,
+              "flex min-h-[5.25rem] items-stretch py-3.5",
+            )}
+          >
+            <div className="flex flex-1 flex-col items-center justify-center gap-1.5 px-2">
+              <div className="flex items-center gap-1.5 text-primary">
+                <span className="text-lg font-bold tabular-nums leading-none text-foreground">
                   {(viewCount ?? ad.views ?? 0).toLocaleString("ar")}
                 </span>
-                <span className="text-[11px]">{t("ad_detail.views")}</span>
+                <Eye className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
               </div>
-              <button
-                type="button"
-                onClick={handleToggleLike}
-                aria-label={t("ad_detail.likes")}
-                disabled={likeMut.isPending || unlikeMut.isPending}
-                className={`flex flex-1 flex-col items-center justify-center gap-0.5 active:scale-[0.98] transition-all sm:flex-row sm:gap-1 ${ad.isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                <ThumbsUp
-                  className={`h-4 w-4 shrink-0 ${ad.isLiked ? "fill-primary" : ""}`}
-                />
-                <span className="font-semibold tabular-nums text-foreground">
-                  {(ad.likeCount ?? 0).toLocaleString("ar")}
-                </span>
-                <span className="text-[11px]">{t("ad_detail.likes")}</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleToggleFavorite}
-                aria-label={t("ad_detail.favorites")}
-                disabled={favMut.isPending || unfavMut.isPending}
-                className={`flex flex-1 flex-col items-center justify-center gap-0.5 active:scale-[0.98] transition-all sm:flex-row sm:gap-1 ${ad.isFavorited ? "text-amber-500" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                <Star
-                  className={`h-4 w-4 shrink-0 ${ad.isFavorited ? "fill-amber-500" : ""}`}
-                />
-                <span className="font-semibold tabular-nums text-foreground">
-                  {(ad.favoriteCount ?? 0).toLocaleString("ar")}
-                </span>
-                <span className="text-[11px]">{t("ad_detail.favorites")}</span>
-              </button>
+              <span className="text-[11px] font-medium text-primary/90">
+                {t("ad_detail.views")}
+              </span>
             </div>
-
-            {/* معلومات الجهاز / المواصفات */}
-            {hasDeviceBlock && (
-              <div className="rounded-2xl border border-border bg-card/70 p-4 text-sm">
-                <h3 className="mb-3 font-semibold text-base">
-                  {t("ad_detail.device_info")}
-                </h3>
-                <div className="flex flex-col gap-0">
-                  {specEntries.map(([key, val], idx) => (
-                    <div
-                      key={key}
-                      className={`flex justify-between gap-3 py-2.5 ${idx > 0 ? "border-t border-border/50" : ""}`}
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        {labelForSpecKey(key)}
-                      </span>
-                      <span className="max-w-[58%] text-end font-medium leading-snug">
-                        {val}
-                      </span>
-                    </div>
-                  ))}
-                  {parsed.meta?.directBuy && (
-                    <div
-                      className={`flex justify-between gap-3 py-2.5 ${specEntries.length > 0 ? "border-t border-border/50" : ""}`}
-                    >
-                      <span className="text-muted-foreground">شراء مباشر</span>
-                      <span className="font-medium">
-                        {parsed.meta.directBuy === "yes" ? "نعم" : "لا"}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* الوصف */}
-            <div className="rounded-2xl border border-border bg-card/70 p-4 md:p-5">
-              <h3 className="mb-2 font-semibold text-base">
-                {t("ad_detail.description")}
-              </h3>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                {ad.description?.trim()
-                  ? ad.description
-                  : t("ad_detail.no_description")}
-              </p>
-            </div>
-
-            {/* الشحن والتسليم */}
-            <div className="rounded-2xl border border-border bg-card/70 p-4 text-sm">
-              <h3 className="mb-2 font-semibold text-base">
-                {t("ad_detail.shipping_delivery")}
-              </h3>
-              {shippingPickupOnly ? (
-                <p className="leading-relaxed text-foreground/90">
-                  {t("ad_detail.pickup_only")}
-                </p>
-              ) : shippingRows.length > 0 ? (
-                <ul className="list-disc list-inside space-y-1.5 text-foreground/90 [padding-inline-start:1rem]">
-                  {shippingRows.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground">
-                  {t("ad_detail.no_shipping_options")}
-                </p>
-              )}
-            </div>
-
-            {/* معلومات التصنيف */}
-            <div className="rounded-2xl border border-border bg-card/70 p-4 text-sm">
-              <h3 className="mb-2 font-semibold text-base">
-                {t("ad_detail.classification_info")}
-              </h3>
-              <div className="flex justify-between gap-2 border-b border-border/50 py-2.5 first:pt-0">
-                <span className="text-muted-foreground shrink-0">
-                  {t("create_ad.preview_dialog.category")}
-                </span>
-                <span className="max-w-[60%] text-end font-medium">
-                  {ad.categoryName}
-                </span>
-              </div>
-              {ad.subcategoryName && (
-                <div className="flex justify-between gap-2 border-b border-border/50 py-2.5">
-                  <span className="text-muted-foreground shrink-0">
-                    {t("create_ad.preview_dialog.subcategory")}
-                  </span>
-                  <span className="max-w-[60%] text-end font-medium">
-                    {ad.subcategoryName}
-                  </span>
-                </div>
-              )}
-              {pathLabel && (
-                <div className="flex justify-between gap-2 border-b border-border/50 py-2.5">
-                  <span className="text-muted-foreground shrink-0">
-                    {t("create_ad.preview_dialog.path")}
-                  </span>
-                  <span className="max-w-[65%] text-end text-xs font-medium leading-snug">
-                    {pathLabel}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between gap-2 py-2.5">
-                <span className="text-muted-foreground shrink-0">
-                  {t("create_ad.preview_dialog.ad_type")}
-                </span>
-                <span className="font-medium">
-                  {ad.type === "offer"
-                    ? t("create_ad.type.offer")
-                    : t("create_ad.type.request")}
-                </span>
-              </div>
-            </div>
-
-            {/* العروض الترويجية */}
-            {hasPromotionBlock && (
-              <div className="rounded-2xl border border-border bg-card/70 p-4 text-sm">
-                <h3 className="mb-2 font-semibold text-base">
-                  {t("create_ad.preview_dialog.promotions_optional")}
-                </h3>
-                <ul className="list-disc list-inside space-y-1 text-foreground/90 [padding-inline-start:1rem]">
-                  {promotionRows.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          {/* عمود البائع — مطابق لنمط الكرت المحلي */}
-          <aside className="h-fit rounded-2xl border border-border bg-card/70 p-3 md:p-4 space-y-3 lg:sticky lg:top-[4.75rem]">
-            <h3 className="font-semibold text-base ps-0.5">
-              {t("ad_detail.seller_info")}
-            </h3>
-            <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-muted/15 p-3">
-              {ad.userId ? (
-                <Link
-                  href={`/users/${ad.userId}`}
-                  className="flex items-center gap-3 rounded-lg hover:bg-muted/30 active:scale-[0.99] transition-all p-0.5 -m-0.5"
-                >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/20 text-lg font-bold text-primary">
-                    {ad.sellerName.charAt(0)}
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate font-semibold">
-                      {ad.sellerName}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {t("ad_detail.view_profile_and_ads")}
-                    </span>
-                  </div>
-                </Link>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/20 text-lg font-bold text-primary">
-                    {ad.sellerName ? ad.sellerName.charAt(0) : "؟"}
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate font-semibold">
-                      {ad.sellerName}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {t("ad_detail.member")}
-                    </span>
-                  </div>
-                </div>
-              )}
-              <Button
-                type="button"
-                onClick={handleMessage}
-                disabled={startConversation?.isPending}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#b6e356] text-sm font-semibold text-black hover:bg-[#a8d94c]"
-              >
-                {t("ad_detail.message_seller")}
-                <MessageSquare className="h-4 w-4 shrink-0" />
-              </Button>
-              <Button
-                type="button"
-                onClick={handleWhatsappContact}
-                variant="outline"
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border-green-500/60 text-sm font-medium text-green-500 hover:bg-green-500/10"
-              >
-                {t("ad_detail.contact_whatsapp")}
-                <MessageCircle className="h-5 w-5 shrink-0" />
-              </Button>
-            </div>
+            <div
+              className="w-px shrink-0 bg-primary/25 self-stretch my-0.5"
+              aria-hidden
+            />
             <button
               type="button"
-              onClick={handleCopyPhone}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background py-3 text-sm font-medium transition-colors hover:bg-muted/50"
+              onClick={handleToggleLike}
+              aria-label={t("ad_detail.likes")}
+              disabled={likeMut.isPending || unlikeMut.isPending}
+              className="flex flex-1 flex-col items-center justify-center gap-1.5 px-2 active:scale-[0.98] transition-transform disabled:opacity-60"
             >
-              <Phone className="h-4 w-4 shrink-0" />
-              <span dir="ltr" className="font-mono">
-                {ad.sellerPhone}
+              <div className="flex items-center gap-1.5 text-primary">
+                <span className="text-lg font-bold tabular-nums leading-none text-foreground">
+                  {(ad.likeCount ?? 0).toLocaleString("ar")}
+                </span>
+                <ThumbsUp
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-primary",
+                    ad.isLiked && "fill-primary",
+                  )}
+                  strokeWidth={2.25}
+                />
+              </div>
+              <span className="text-[11px] font-medium text-primary/90">
+                {t("ad_detail.likes")}
               </span>
-              {copied ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-              ) : (
-                <Copy className="h-4 w-4 shrink-0 opacity-60" />
-              )}
             </button>
-            <BuyerSafetyNote />
-          </aside>
+            <div
+              className="w-px shrink-0 bg-primary/25 self-stretch my-0.5"
+              aria-hidden
+            />
+            <button
+              type="button"
+              onClick={handleToggleFavorite}
+              aria-label={t("ad_detail.favorites")}
+              disabled={favMut.isPending || unfavMut.isPending}
+              className="flex flex-1 flex-col items-center justify-center gap-1.5 px-2 active:scale-[0.98] transition-transform disabled:opacity-60"
+            >
+              <div className="flex items-center gap-1.5 text-primary">
+                <span className="text-lg font-bold tabular-nums leading-none text-foreground">
+                  {(ad.favoriteCount ?? 0).toLocaleString("ar")}
+                </span>
+                <Star
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-primary",
+                    ad.isFavorited && "fill-primary",
+                  )}
+                  strokeWidth={2.25}
+                />
+              </div>
+              <span className="text-[11px] font-medium text-primary/90">
+                {t("ad_detail.favorites")}
+              </span>
+            </button>
+          </div>
+
+          {/* 1 — معلومات الجهاز: من ad.details (specs + عند الحاجة categoryPath.leaf للشركة المصنعة) */}
+          {deviceInfoRows.length > 0 ? (
+            <div
+              data-testid="ad-device-info-section"
+              className={cn(deviceInfoShell, "text-sm")}
+            >
+              <h3 className="mb-4 text-right text-base font-semibold tracking-tight text-foreground md:text-lg">
+                {t("ad_detail.device_info")}
+              </h3>
+              <ul className="grid grid-cols-2 gap-3">
+                {deviceInfoRows.map((row) => (
+                  <li key={row.id} className={deviceSpecTile}>
+                    <p className="text-[11px] font-medium leading-tight text-muted-foreground">
+                      {row.label}
+                    </p>
+                    <p className="text-[15px] font-bold leading-snug text-foreground break-words">
+                      {row.value}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {/* 2 — الوصف */}
+          <div className={cn(deviceInfoShell, "text-sm")}>
+            <h3 className="mb-3 text-right text-base font-semibold text-foreground">
+              {t("ad_detail.description")}
+            </h3>
+            {descRaw ? (
+              <>
+                <p
+                  className={cn(
+                    "whitespace-pre-wrap text-right text-sm leading-relaxed text-foreground/90",
+                    descNeedsToggle && !descExpanded && "line-clamp-2",
+                  )}
+                >
+                  {descRaw}
+                </p>
+                {descNeedsToggle ? (
+                  <button
+                    type="button"
+                    onClick={() => setDescExpanded((v) => !v)}
+                    className="mt-2.5 text-sm font-medium text-primary hover:underline"
+                  >
+                    {descExpanded
+                      ? t("ad_detail.show_less")
+                      : t("ad_detail.show_more")}
+                  </button>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-right text-sm text-muted-foreground">
+                {t("ad_detail.no_description")}
+              </p>
+            )}
+          </div>
+
+          {/* 3 — الشحن والتسليم */}
+          <div className={cn(deviceInfoShell, "text-sm")}>
+            <h3 className="mb-3 text-right text-base font-semibold text-foreground">
+              {t("ad_detail.shipping_delivery")}
+            </h3>
+            {shippingPickupOnly ? (
+              <p className="text-right leading-relaxed text-foreground/88">
+                {t("ad_detail.pickup_only")}
+              </p>
+            ) : shippingRows.length > 0 ? (
+              <ul className="list-disc space-y-1.5 text-right text-foreground/88 [padding-inline-start:1.1rem]">
+                {shippingRows.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-right text-muted-foreground">
+                {t("ad_detail.no_shipping_options")}
+              </p>
+            )}
+          </div>
+
+          {/* 4 — كرت البائع */}
+          <section className={cn(deviceInfoShell, "text-sm", "space-y-3")}>
+            <h3 className="text-right text-base font-semibold text-foreground">
+              {t("ad_detail.seller_info")}
+            </h3>
+
+            <div className={cn(sellerInnerShell, "space-y-3.5")}>
+              <div className="flex items-center gap-3 text-right">
+                <div
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-primary-foreground shadow-[0_0_14px_-5px_hsl(var(--primary)/0.38)]"
+                  aria-hidden
+                >
+                  {(ad.sellerName || "?").charAt(0).toUpperCase()}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col items-stretch gap-1">
+                  <p className="truncate text-base font-bold leading-tight text-foreground">
+                    {ad.sellerName}
+                  </p>
+                  <p className="text-xs leading-snug text-muted-foreground">
+                    {ad.userId
+                      ? t("ad_detail.view_profile_and_ads")
+                      : t("ad_detail.member")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleMessage}
+                  disabled={startConversation?.isPending}
+                  className={cn(
+                    sellerActionH,
+                    "flex w-full items-center justify-center gap-2 border-2 border-primary/55 bg-zinc-950/90 font-semibold text-primary shadow-[0_0_12px_-6px_hsl(var(--primary)/0.2)] hover:bg-zinc-900/95 hover:text-primary hover:border-primary/65",
+                  )}
+                >
+                  {t("ad_detail.message_seller")}
+                  <MessageSquare className="h-4 w-4 shrink-0" />
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={handleWhatsappContact}
+                  className={cn(
+                    sellerActionH,
+                    "flex w-full items-center justify-center gap-2 border-2 border-emerald-500/50 bg-zinc-950/90 font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/[0.07] dark:text-emerald-400 dark:border-emerald-500/45",
+                  )}
+                >
+                  <span>{t("ad_detail.contact_whatsapp")}</span>
+                  <FaWhatsapp className="h-5 w-5 shrink-0" aria-hidden />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyPhone}
+                  className={cn(
+                    sellerPhoneRow,
+                    "justify-between font-medium",
+                  )}
+                >
+                  <Phone className="h-4 w-4 shrink-0 text-primary" />
+                  <span
+                    dir="ltr"
+                    className="min-w-0 flex-1 text-center font-mono text-[15px] text-foreground"
+                  >
+                    {ad.sellerPhone}
+                  </span>
+                  <Copy
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-primary",
+                      copied &&
+                        "drop-shadow-[0_0_8px_hsl(var(--primary)/0.35)]",
+                    )}
+                  />
+                </button>
+
+                {ad.userId ? (
+                  <Link
+                    href={`/users/${ad.userId}`}
+                    className={sellerProfileLinkBtn}
+                  >
+                    {t("ad_detail.view_profile")}
+                  </Link>
+                ) : null}
+
+                <div className="relative">
+                  <select
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    className={cn(
+                      sellerActionH,
+                      "w-full appearance-none border border-zinc-600/50 bg-zinc-950/90 py-2.5 ps-10 pe-3 text-right font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/25",
+                    )}
+                  >
+                    <option value="" disabled>
+                      {t("ad_detail.report.choose_reason")}
+                    </option>
+                    <option value={t("ad_detail.report.opt_fraud")}>
+                      {t("ad_detail.report.opt_fraud")}
+                    </option>
+                    <option value={t("ad_detail.report.opt_duplicate")}>
+                      {t("ad_detail.report.opt_duplicate")}
+                    </option>
+                    <option value={t("ad_detail.report.opt_wrong_info")}>
+                      {t("ad_detail.report.opt_wrong_info")}
+                    </option>
+                    <option value={t("ad_detail.report.opt_violation")}>
+                      {t("ad_detail.report.opt_violation")}
+                    </option>
+                    <option value={t("ad_detail.report.opt_inappropriate")}>
+                      {t("ad_detail.report.opt_inappropriate")}
+                    </option>
+                    <option value={otherReason}>{otherReason}</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+
+                {reason === otherReason && (
+                  <textarea
+                    placeholder={t("ad_detail.report.details_placeholder")}
+                    className="min-h-[88px] w-full rounded-2xl border border-zinc-600/45 bg-zinc-950/90 p-3 text-right text-sm text-foreground placeholder:text-muted-foreground"
+                    value={reportExtra}
+                    onChange={(e) => setReportExtra(e.target.value)}
+                  />
+                )}
+
+                <button
+                  type="button"
+                  title={
+                    reportDisabled && !reporting && !reason
+                      ? t("ad_detail.report.choose_reason")
+                      : reportDisabled &&
+                          !reporting &&
+                          reason === otherReason &&
+                          !reportExtra.trim()
+                        ? t("ad_detail.report.details_placeholder")
+                        : undefined
+                  }
+                  className={cn(
+                    "flex w-full items-center justify-center gap-2 font-semibold transition-colors",
+                    sellerActionH,
+                    reportDisabled
+                      ? "cursor-not-allowed border border-zinc-700/60 bg-zinc-950/50 text-foreground/60 shadow-none hover:bg-zinc-950/55"
+                      : "border border-amber-500/35 bg-zinc-950/85 text-amber-200/95 shadow-none hover:bg-amber-950/20 hover:border-amber-500/45",
+                  )}
+                  onClick={() => {
+                    if (!user) {
+                      navigate(`/login?redirect=/ad/${id}`);
+                      return;
+                    }
+                    void handleReport();
+                  }}
+                  disabled={reportDisabled}
+                >
+                  <Flag className="h-4 w-4 shrink-0 text-amber-300/90" />
+                  {reporting
+                    ? t("ad_detail.sending")
+                    : t("ad_detail.report.submit")}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* 5 — التحذير الأمني (خارج كرت البائع) */}
+          <BuyerSafetyNote
+            className={cn("w-full", deviceInfoShell, "text-sm")}
+          />
         </div>
       </div>
-
-      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent dir="rtl" className="text-right sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("ad_detail.report.submit")}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 pt-1">
-            <select
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full border rounded-lg p-2.5 bg-background text-sm"
-            >
-              <option value="" disabled>
-                {t("ad_detail.report.choose_reason")}
-              </option>
-              <option value={t("ad_detail.report.opt_fraud")}>
-                {t("ad_detail.report.opt_fraud")}
-              </option>
-              <option value={t("ad_detail.report.opt_duplicate")}>
-                {t("ad_detail.report.opt_duplicate")}
-              </option>
-              <option value={t("ad_detail.report.opt_wrong_info")}>
-                {t("ad_detail.report.opt_wrong_info")}
-              </option>
-              <option value={t("ad_detail.report.opt_violation")}>
-                {t("ad_detail.report.opt_violation")}
-              </option>
-              <option value={t("ad_detail.report.opt_inappropriate")}>
-                {t("ad_detail.report.opt_inappropriate")}
-              </option>
-              <option value={t("ad_detail.report.opt_other")}>
-                {t("ad_detail.report.opt_other")}
-              </option>
-            </select>
-            {reason === t("ad_detail.report.opt_other") && (
-              <textarea
-                placeholder={t("ad_detail.report.details_placeholder")}
-                className="w-full border rounded-lg p-2.5 bg-background text-sm min-h-[88px]"
-                value={reportExtra}
-                onChange={(e) => setReportExtra(e.target.value)}
-              />
-            )}
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => void handleReport()}
-              disabled={
-                reporting ||
-                !reason ||
-                (reason === t("ad_detail.report.opt_other") &&
-                  !reportExtra.trim())
-              }
-            >
-              {reporting
-                ? t("ad_detail.sending")
-                : t("ad_detail.report.submit")}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </motion.div>
   );
 }

@@ -23,16 +23,32 @@ import {
   MessageSquare,
   ThumbsUp,
   Star,
+  MoreVertical,
+  Flag,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { formatRelativeTime, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { CreateAdImageGallery } from "@/components/create-ad-image-gallery";
+import { parseStoredAdDetails } from "@/lib/ad-stored-details";
+import { labelForSpecKey } from "@/lib/ad-dynamic-field-labels";
+import {
+  AD_PROMOTION_LABELS,
+  AD_SHIPPING_LABELS,
+} from "@/lib/ad-meta-labels";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -70,8 +86,9 @@ export default function AdDetail() {
   const [copied, setCopied] = useState(false);
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [reporting, setReporting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [reason, setReason] = useState("");
-  const [details, setDetails] = useState("");
+  const [reportExtra, setReportExtra] = useState("");
 
   const recordView = useRecordAdView();
   const viewedRef = useRef<number | null>(null);
@@ -118,13 +135,25 @@ export default function AdDetail() {
         body: JSON.stringify({
           targetAdId: id,
           reason,
+          description:
+            reason === "أخرى" ? reportExtra.trim() || undefined : undefined,
         }),
       });
 
-      console.log("REPORT STATUS:", res.status);
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        toast({
+          title: "تعذّر الإبلاغ",
+          description: errText || `رمز ${res.status}`,
+          variant: "destructive",
+        });
+        return;
+      }
 
       toast({ title: "تم", description: "تم إرسال البلاغ" });
       setReason("");
+      setReportExtra("");
+      setReportOpen(false);
     } catch (err) {
       toast({ title: "خطأ", description: "فشل إرسال البلاغ" });
     } finally {
@@ -285,6 +314,38 @@ export default function AdDetail() {
   }
 
   const isFree = ad.priceType === "free";
+  const parsed = parseStoredAdDetails(ad.details);
+  const specEntries = Object.entries(parsed.specs).filter(
+    ([, v]) => typeof v === "string" && v.trim(),
+  );
+  const pathLabel = parsed.meta?.categoryPath
+    ? [
+        parsed.meta.categoryPath.main,
+        parsed.meta.categoryPath.sub,
+        parsed.meta.categoryPath.leaf,
+      ]
+        .filter(Boolean)
+        .join(" ← ")
+    : null;
+  const shippingLine =
+    parsed.meta?.shipping?.pickupOnly === true
+      ? "استلام من البائع فقط"
+      : parsed.meta?.shipping?.ids?.length
+        ? parsed.meta.shipping.ids
+            .map((sid) => AD_SHIPPING_LABELS[sid] ?? sid)
+            .join("، ")
+        : null;
+  const promotionLine =
+    parsed.meta?.promotions?.filter(Boolean).map(
+      (pid) => AD_PROMOTION_LABELS[pid] ?? pid,
+    ) ?? [];
+  const hasExtraDetailsBlock =
+    specEntries.length > 0 ||
+    !!pathLabel ||
+    !!parsed.meta?.currency ||
+    !!shippingLine ||
+    !!parsed.meta?.directBuy ||
+    promotionLine.length > 0;
 
   return (
     <motion.div
@@ -317,45 +378,43 @@ export default function AdDetail() {
                 className={`w-5 h-5 ${ad?.isFavorited ? "fill-primary text-primary" : "text-white"}`}
               />
             </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform"
+                  aria-label="المزيد"
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[11rem]" dir="rtl">
+                <DropdownMenuItem
+                  className="gap-2 cursor-pointer"
+                  onSelect={() => {
+                    if (!user) {
+                      navigate(`/login?redirect=/ad/${id}`);
+                      return;
+                    }
+                    setReportOpen(true);
+                  }}
+                >
+                  <Flag className="w-4 h-4" />
+                  إبلاغ عن الإعلان
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
 
-      {/* Images Carousel */}
-      <div className="mx-auto mt-2 w-full max-w-5xl px-4 md:px-6">
-        <div className="w-full h-[190px] sm:h-[250px] md:h-[320px] lg:h-[380px] rounded-2xl overflow-hidden bg-muted/60 relative border border-border">
-          {ad.images && ad.images.length > 0 ? (
-            <Carousel className="w-full h-full" dir="ltr">
-              <CarouselContent className="h-full">
-                {ad.images.map((img, i) => (
-                  <CarouselItem key={i} className="h-full">
-                    <img
-                      src={img}
-                      alt={`${ad.title} - صورة ${i + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              {ad.images.length > 1 && (
-                <>
-                  <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1 z-10">
-                    {ad.images.map((_, i) => (
-                      <div
-                        key={i}
-                        className="w-2 h-2 rounded-full bg-white/50 backdrop-blur-sm"
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-            </Carousel>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs sm:text-sm">
-              لا توجد صور
-            </div>
-          )}
-        </div>
+      <div className="mx-auto w-full max-w-5xl px-4 md:px-6 pt-16 md:pt-[4.5rem]">
+        <CreateAdImageGallery
+          readOnly
+          uploadedImages={ad.images ?? []}
+          maxImages={Math.max(ad.images?.length ?? 0, 1)}
+          isSubmittingUploads={false}
+        />
       </div>
 
       <div className="mx-auto w-full max-w-5xl px-4 md:px-6 py-3 md:py-4">
@@ -424,6 +483,57 @@ export default function AdDetail() {
                 <span className="text-[11px]">مفضّلة</span>
               </button>
             </div>
+
+            {hasExtraDetailsBlock && (
+              <div className="rounded-2xl border border-border bg-card/70 p-4 space-y-2 text-sm">
+                <h3 className="font-semibold mb-1">التفاصيل والمواصفات</h3>
+                {pathLabel && (
+                  <div className="flex justify-between gap-3 py-1 border-b border-border/50">
+                    <span className="text-muted-foreground shrink-0">مسار التصنيف</span>
+                    <span className="font-medium text-left">{pathLabel}</span>
+                  </div>
+                )}
+                {parsed.meta?.currency && (
+                  <div className="flex justify-between py-1 border-b border-border/50">
+                    <span className="text-muted-foreground">العملة المعروضة</span>
+                    <span className="font-medium">{parsed.meta.currency}</span>
+                  </div>
+                )}
+                {shippingLine && (
+                  <div className="flex justify-between gap-3 py-1 border-b border-border/50">
+                    <span className="text-muted-foreground shrink-0">الشحن</span>
+                    <span className="font-medium text-left">{shippingLine}</span>
+                  </div>
+                )}
+                {parsed.meta?.directBuy && (
+                  <div className="flex justify-between py-1 border-b border-border/50">
+                    <span className="text-muted-foreground">شراء مباشر</span>
+                    <span className="font-medium">
+                      {parsed.meta.directBuy === "yes" ? "نعم" : "لا"}
+                    </span>
+                  </div>
+                )}
+                {promotionLine.length > 0 && (
+                  <div className="flex justify-between gap-3 py-1 border-b border-border/50">
+                    <span className="text-muted-foreground shrink-0">خيارات التمييز</span>
+                    <span className="font-medium text-left">
+                      {promotionLine.join("، ")}
+                    </span>
+                  </div>
+                )}
+                {specEntries.map(([key, val]) => (
+                  <div
+                    key={key}
+                    className="flex justify-between gap-3 py-1 border-b border-border/50 last:border-0"
+                  >
+                    <span className="text-muted-foreground shrink-0">
+                      {labelForSpecKey(key)}
+                    </span>
+                    <span className="font-medium text-left">{val}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Description */}
             <div className="rounded-2xl border border-border bg-card/70 p-4">
@@ -506,39 +616,6 @@ export default function AdDetail() {
               <MessageCircle className="w-5 h-5" />
               تواصل عبر واتساب
             </Button>
-            <select
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full border p-2.5 rounded bg-background text-right text-sm"
-              required
-            >
-              <option value="" disabled>
-                سبب الإبلاغ
-              </option>
-              <option value="احتيال أو نصب">احتيال أو نصب</option>
-              <option value="إعلان مكرر">إعلان مكرر</option>
-              <option value="معلومات غير صحيحة">معلومات غير صحيحة</option>
-              <option value="منتج مخالف">منتج مخالف</option>
-              <option value="محتوى غير لائق">محتوى غير لائق</option>
-              <option value="أخرى">أخرى</option>
-            </select>
-            {reason === "أخرى" && (
-              <textarea
-                placeholder="اكتب تفاصيل إضافية..."
-                className="w-full border p-2.5 rounded bg-background text-right text-sm"
-                value={details}
-                onChange={(e) => setDetails(e.target.value)}
-              />
-            )}
-
-            <Button
-              onClick={handleReport}
-              disabled={
-                reporting || !reason || (reason === "أخرى" && !details.trim())
-              }
-            >
-              {reporting ? "جاري الإرسال..." : "🚩 إبلاغ عن الإعلان"}
-            </Button>
             </div>
             <button
             type="button"
@@ -559,6 +636,51 @@ export default function AdDetail() {
           </aside>
         </div>
       </div>
+
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent dir="rtl" className="text-right sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>إبلاغ عن الإعلان</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <select
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full border rounded-lg p-2.5 bg-background text-sm"
+            >
+              <option value="" disabled>
+                اختر السبب
+              </option>
+              <option value="احتيال أو نصب">احتيال أو نصب</option>
+              <option value="إعلان مكرر">إعلان مكرر</option>
+              <option value="معلومات غير صحيحة">معلومات غير صحيحة</option>
+              <option value="منتج مخالف">منتج مخالف</option>
+              <option value="محتوى غير لائق">محتوى غير لائق</option>
+              <option value="أخرى">أخرى</option>
+            </select>
+            {reason === "أخرى" && (
+              <textarea
+                placeholder="تفاصيل إضافية..."
+                className="w-full border rounded-lg p-2.5 bg-background text-sm min-h-[88px]"
+                value={reportExtra}
+                onChange={(e) => setReportExtra(e.target.value)}
+              />
+            )}
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => void handleReport()}
+              disabled={
+                reporting ||
+                !reason ||
+                (reason === "أخرى" && !reportExtra.trim())
+              }
+            >
+              {reporting ? "جاري الإرسال..." : "إرسال البلاغ"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

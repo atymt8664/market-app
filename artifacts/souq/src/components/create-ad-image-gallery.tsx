@@ -17,18 +17,23 @@ type CreateAdImageGalleryProps = {
   uploadedImages: string[];
   maxImages: number;
   isSubmittingUploads: boolean;
-  onPickFiles: () => void;
-  /** Remove by index — only called from full-screen viewer */
-  onRemoveAt: (index: number) => void;
+  /** When true: no add/remove; lightbox for viewing only (e.g. ad detail). */
+  readOnly?: boolean;
+  onPickFiles?: () => void;
+  /** Remove by index — full-screen viewer; ignored when readOnly */
+  onRemoveAt?: (index: number) => void;
 };
 
 export function CreateAdImageGallery({
   uploadedImages,
   maxImages,
   isSubmittingUploads,
+  readOnly = false,
   onPickFiles,
   onRemoveAt,
 }: CreateAdImageGalleryProps) {
+  const pickFiles = onPickFiles ?? (() => {});
+  const removeAt = onRemoveAt ?? ((_i: number) => {});
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
   /** Which image is shown on the large hero (order in array unchanged: index 0 = first selected). */
@@ -68,10 +73,10 @@ export function CreateAdImageGallery({
   }, [count]);
 
   const deleteInViewer = () => {
-    if (count === 0) return;
+    if (readOnly || count === 0) return;
     const idx = viewerIndex;
     const newCount = count - 1;
-    onRemoveAt(idx);
+    removeAt(idx);
     setDeleteConfirmOpen(false);
     if (newCount === 0) {
       closeViewer();
@@ -120,10 +125,15 @@ export function CreateAdImageGallery({
 
   return (
     <>
-      {count === 0 && (
+      {count === 0 && readOnly && (
+        <div className="flex min-h-[180px] w-full items-center justify-center rounded-2xl border border-dashed border-border/80 bg-muted/20 px-4 text-center text-sm text-muted-foreground">
+          لا توجد صور
+        </div>
+      )}
+      {count === 0 && !readOnly && (
         <button
           type="button"
-          onClick={onPickFiles}
+          onClick={pickFiles}
           disabled={isSubmittingUploads}
           className="w-full min-h-[52px] py-2.5 px-3 sm:px-4 border-2 border-dashed border-border/90 rounded-xl flex items-center gap-3 bg-muted/15 hover:border-primary/45 active:bg-muted/30 active:scale-[0.995] transition-[colors,transform,background-color] duration-200 disabled:opacity-50 text-right"
           dir="rtl"
@@ -221,10 +231,10 @@ export function CreateAdImageGallery({
         </div>
       )}
 
-      {count > 0 && count < maxImages && (
+      {count > 0 && count < maxImages && !readOnly && (
         <button
           type="button"
-          onClick={onPickFiles}
+          onClick={pickFiles}
           disabled={isSubmittingUploads}
           className="w-full min-h-[48px] py-2 px-3 border-2 border-dashed border-border/90 rounded-xl flex items-center gap-2 text-muted-foreground hover:border-primary/45 hover:text-primary active:scale-[0.995] transition-[colors,transform] duration-200 disabled:opacity-50"
           dir="rtl"
@@ -262,17 +272,20 @@ export function CreateAdImageGallery({
             <span dir="ltr" className="tabular-nums text-sm font-medium text-white">
               {viewerIndex + 1} / {count}
             </span>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeleteConfirmOpen(true);
-              }}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/85 text-white transition-colors hover:bg-red-500"
-              aria-label={t("create_ad.images.delete_photo")}
-            >
-              <Trash2 className="h-5 w-5" />
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteConfirmOpen(true);
+                }}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/85 text-white transition-colors hover:bg-red-500"
+                aria-label={t("create_ad.images.delete_photo")}
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
+            )}
+            {readOnly && <span className="w-10 shrink-0" aria-hidden />}
           </div>
 
           <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-0 pb-[env(safe-area-inset-bottom)]">

@@ -277,24 +277,24 @@ export default function Profile() {
           </div>
         </header>
 
-        <section className="mt-3 md:mt-3 px-1 md:px-2" dir="rtl">
-          <div className="mt-4 grid grid-cols-3 gap-3 text-center" dir="rtl">
-            <div className="min-w-0">
-              <p className="text-base md:text-lg font-bold tabular-nums">{adCount.toLocaleString("ar")}</p>
-              <p className="mt-0.5 text-[11px] md:text-xs text-muted-foreground">{t("profile.stats.ads")}</p>
+        <section className="mt-4 md:mt-5 px-1 md:px-2" dir="rtl">
+          <div className="grid grid-cols-3 gap-2.5 md:gap-3 text-center" dir="rtl">
+            <div className="min-w-0 rounded-xl border border-border/70 bg-gradient-to-b from-primary/15 to-card/40 py-3 px-1 shadow-sm">
+              <p className="text-base md:text-lg font-bold tabular-nums text-foreground">{adCount.toLocaleString("ar")}</p>
+              <p className="mt-1 text-[11px] md:text-xs text-muted-foreground">{t("profile.stats.ads")}</p>
             </div>
-            <div className="min-w-0">
-              <p className="text-base md:text-lg font-bold tabular-nums">{profileViews.toLocaleString("ar")}</p>
-              <p className="mt-0.5 text-[11px] md:text-xs text-muted-foreground">{t("profile.stats.views")}</p>
+            <div className="min-w-0 rounded-xl border border-border/70 bg-gradient-to-b from-primary/15 to-card/40 py-3 px-1 shadow-sm">
+              <p className="text-base md:text-lg font-bold tabular-nums text-foreground">{profileViews.toLocaleString("ar")}</p>
+              <p className="mt-1 text-[11px] md:text-xs text-muted-foreground">{t("profile.stats.views")}</p>
             </div>
-            <div className="min-w-0">
-              <p className="text-base md:text-lg font-bold tabular-nums">{followerCount.toLocaleString("ar")}</p>
-              <p className="mt-0.5 text-[11px] md:text-xs text-muted-foreground">{t("profile.stats.followers")}</p>
+            <div className="min-w-0 rounded-xl border border-border/70 bg-gradient-to-b from-primary/15 to-card/40 py-3 px-1 shadow-sm">
+              <p className="text-base md:text-lg font-bold tabular-nums text-foreground">{followerCount.toLocaleString("ar")}</p>
+              <p className="mt-1 text-[11px] md:text-xs text-muted-foreground">{t("profile.stats.followers")}</p>
             </div>
           </div>
         </section>
 
-        <section className="mt-3 md:mt-4 rounded-2xl border border-border bg-card/50 p-2.5 md:p-4">
+        <section className="mt-4 md:mt-5 rounded-2xl border border-border bg-card/60 shadow-sm p-2.5 md:p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">
             <TabsList className="h-auto w-full grid grid-cols-3 rounded-xl bg-muted/50 p-1">
               <TabsTrigger value="my-ads" className="text-xs md:text-sm">{t("profile.tabs.my_ads")}</TabsTrigger>

@@ -14,12 +14,10 @@ import {
 import { Link, useLocation } from "wouter";
 import {
   ArrowRight,
-  Camera,
   Sparkles,
   EyeOff,
   Loader2,
   Check,
-  X,
   Plus,
   Truck,
   ShieldAlert,
@@ -53,16 +51,17 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { CitySelect } from "@/components/city-select";
 import { CreateAdPreviewDialog } from "@/components/create-ad-preview-dialog";
+import { CreateAdImageGallery } from "@/components/create-ad-image-gallery";
+import {
+  buildAdDetailsPayload,
+  parseStoredAdDetails,
+} from "@/lib/ad-stored-details";
 
 const createAdSchema = z.object({
   title: z.string().min(3, "العنوان قصير جداً").max(65, "العنوان طويل جداً"),
@@ -616,7 +615,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const [pickerSub, setPickerSub] = useState<CategorySubcategory | null>(null);
   const [shippingSheetOpen, setShippingSheetOpen] = useState(false);
   const [photoTipsOpen, setPhotoTipsOpen] = useState(false);
-  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
   const [priceTypeSheetOpen, setPriceTypeSheetOpen] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState("EUR");
@@ -629,7 +627,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const [sellerSafetyAccepted, setSellerSafetyAccepted] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isSubmittingUploads, setIsSubmittingUploads] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingImageFilesRef = useRef<Record<string, File>>({});
@@ -679,8 +676,25 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
         images: existingAd.images,
       });
       setSelectedCatId(existingAd.categoryId);
-      setUploadedImages(existingAd.images);
+      setUploadedImages([...(existingAd.images ?? [])]);
       pendingImageFilesRef.current = {};
+
+      const parsed = parseStoredAdDetails(existingAd.details);
+      setDynamicFieldValues(parsed.specs);
+      if (parsed.meta?.categoryPath) {
+        setSelectedCategoryPath(parsed.meta.categoryPath);
+      }
+      if (parsed.meta?.currency) setSelectedCurrency(parsed.meta.currency);
+      if (parsed.meta?.shipping) {
+        setShippingIds(parsed.meta.shipping.ids ?? []);
+        setPickupOnly(parsed.meta.shipping.pickupOnly ?? false);
+      }
+      if (parsed.meta?.directBuy === "yes" || parsed.meta?.directBuy === "no") {
+        setDirectBuy(parsed.meta.directBuy);
+      }
+      if (parsed.meta?.promotions?.length) {
+        setPromotionIds(parsed.meta.promotions);
+      }
     }
   }, [existingAd, isEdit, form]);
 
@@ -941,6 +955,17 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     }
     setIsSubmittingUploads(false);
 
+    const detailsPayload = buildAdDetailsPayload({
+      specs: dynamicFieldValues,
+      categoryPath: selectedCategoryPath ?? undefined,
+      currency: selectedCurrency,
+      shippingIds,
+      pickupOnly,
+      directBuy,
+      promotionIds,
+    });
+    const adBody = { ...data, details: detailsPayload };
+
     const invalidate = async () => {
       await queryClient.invalidateQueries({ queryKey: getListMyAdsQueryKey() });
       await queryClient.invalidateQueries({
@@ -955,7 +980,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
 
     if (isEdit) {
       updateAdMutation.mutate(
-        { adId: editId!, data },
+        { adId: editId!, data: adBody },
         {
           onSuccess: async () => {
             await invalidate();
@@ -972,7 +997,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       );
     } else {
       createAdMutation.mutate(
-        { data },
+        { data: adBody },
         {
           onSuccess: async () => {
             await invalidate();
@@ -1072,10 +1097,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
         );
       }
     }
-    setActiveImageIndex((prev) => {
-      if (uploadedImages.length === 0 && list.length > 0) return 0;
-      return prev;
-    });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -1086,27 +1107,8 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
         delete pendingImageFilesRef.current[src];
         URL.revokeObjectURL(src);
       }
-      const next = prev.filter((_, i) => i !== index);
-      setActiveImageIndex((current) => {
-        if (next.length === 0) return 0;
-        if (index < current) return current - 1;
-        if (index === current) return Math.min(current, next.length - 1);
-        return current;
-      });
-      return next;
+      return prev.filter((_, i) => i !== index);
     });
-  };
-
-  const nextImage = () => {
-    if (uploadedImages.length <= 1) return;
-    setActiveImageIndex((prev) => (prev + 1) % uploadedImages.length);
-  };
-
-  const prevImage = () => {
-    if (uploadedImages.length <= 1) return;
-    setActiveImageIndex((prev) =>
-      prev === 0 ? uploadedImages.length - 1 : prev - 1,
-    );
   };
 
   useEffect(() => {
@@ -1280,13 +1282,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     setTempPickupOnly(pickupOnly);
   }, [shippingSheetOpen, shippingIds, pickupOnly]);
 
-  useEffect(() => {
-    setActiveImageIndex((prev) => {
-      if (uploadedImages.length === 0) return 0;
-      return Math.min(prev, uploadedImages.length - 1);
-    });
-  }, [uploadedImages.length]);
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -1323,141 +1318,13 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               className="hidden"
               onChange={(e) => handleFilesSelected(e.target.files)}
             />
-            {uploadedImages.length === 0 && (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading || isSubmittingUploads}
-                className="w-full h-[186px] border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 bg-muted/10 hover:border-primary/50 active:bg-muted/30 transition-colors disabled:opacity-50"
-              >
-                <div className="relative w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  {isUploading ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  ) : (
-                    <>
-                      <Camera className="w-7 h-7" />
-                      <span className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full bg-primary text-black flex items-center justify-center">
-                        <Plus className="w-3.5 h-3.5" />
-                      </span>
-                    </>
-                  )}
-                </div>
-                <span className="text-xl font-semibold">
-                  {isSubmittingUploads || isUploading
-                    ? `جارٍ الرفع... ${progress}%`
-                    : "إضافة الصور"}
-                </span>
-              </button>
-            )}
-            {uploadedImages.length > 0 && (
-              <>
-                <div className="relative w-full h-[196px] rounded-xl overflow-hidden border border-border bg-muted/30">
-                  <button
-                    type="button"
-                    onClick={() => setImagePreviewOpen(true)}
-                    className="absolute inset-0 z-[1] cursor-zoom-in"
-                    aria-label="معاينة الصورة"
-                  />
-                  <img
-                    src={uploadedImages[activeImageIndex]}
-                    alt=""
-                    className="relative z-0 w-full h-full object-cover pointer-events-none"
-                  />
-                  <div className="absolute inset-x-0 top-2 px-2.5 flex items-center justify-between z-20 pointer-events-none">
-                    <span className="pointer-events-none bg-black/60 text-white text-[11px] font-medium px-2 py-1 rounded-md">
-                      {activeImageIndex + 1}/{uploadedImages.length}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeImage(activeImageIndex);
-                      }}
-                      className="pointer-events-auto w-7 h-7 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  {uploadedImages.length > 1 && (
-                    <div className="absolute inset-x-0 bottom-2 px-2.5 flex items-center justify-between z-20">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          prevImage();
-                        }}
-                        className="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
-                        aria-label="الصورة السابقة"
-                      >
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          nextImage();
-                        }}
-                        className="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
-                        aria-label="الصورة التالية"
-                      >
-                        <ArrowRight className="w-4 h-4 rotate-180" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {uploadedImages.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto pb-0.5 pt-1">
-                    {uploadedImages.map((src, i) => (
-                      <button
-                        key={`${src}-${i}`}
-                        type="button"
-                        onClick={() => setActiveImageIndex(i)}
-                        className={`shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
-                          i === activeImageIndex
-                            ? "border-primary ring-2 ring-primary/30"
-                            : "border-border opacity-80 hover:opacity-100"
-                        }`}
-                      >
-                        <img src={src} alt="" className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
-                  <DialogContent
-                    className="max-w-[min(100vw-2rem,900px)] w-full p-2 border-0 bg-black/95"
-                    dir="rtl"
-                  >
-                    <div className="relative flex max-h-[85dvh] items-center justify-center">
-                      <img
-                        src={uploadedImages[activeImageIndex]}
-                        alt=""
-                        className="max-h-[85dvh] w-auto max-w-full object-contain"
-                      />
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </>
-            )}
-            {uploadedImages.length > 0 && uploadedImages.length < 10 && (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading || isSubmittingUploads}
-                className="w-full h-[92px] border border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors disabled:opacity-50"
-              >
-                {isUploading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Plus className="w-6 h-6" />
-                )}
-                <span className="text-xs font-medium">
-                  {isSubmittingUploads || isUploading
-                    ? `جارٍ الرفع... ${progress}%`
-                    : "إضافة"}
-                </span>
-              </button>
-            )}
+            <CreateAdImageGallery
+              uploadedImages={uploadedImages}
+              maxImages={MAX_IMAGES}
+              isSubmittingUploads={isSubmittingUploads || isUploading}
+              onPickFiles={() => fileInputRef.current?.click()}
+              onRemoveAt={removeImage}
+            />
             <p className="text-xs text-muted-foreground text-center">
               {uploadedImages.length} من 10 صور
             </p>

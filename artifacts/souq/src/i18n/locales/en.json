@@ -270,6 +270,7 @@
   "ad_detail.likes": "Likes",
   "ad_detail.favorites": "Favorites",
   "ad_detail.device_info": "Device information",
+  "ad_detail.classification_info": "Category information",
   "ad_detail.description": "Description",
   "ad_detail.show_less": "Show less",
   "ad_detail.show_more": "Show more",

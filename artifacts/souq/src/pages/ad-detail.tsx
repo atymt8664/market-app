@@ -56,6 +56,23 @@ import { motion } from "framer-motion";
 import { BuyerSafetyNote } from "@/components/buyer-safety-note";
 import { t } from "@/i18n";
 
+/** عرض العملة للواجهة العربية دون إظهار رموز خام مثل EUR فقط */
+function currencyDisplayAr(code?: string | null): string | null {
+  if (!code?.trim()) return null;
+  const c = code.trim().toUpperCase();
+  const map: Record<string, string> = {
+    EUR: "يورو (€)",
+    USD: "دولار أمريكي ($)",
+    GBP: "جنيه إسترليني (£)",
+    CHF: "فرنك سويسري",
+    SEK: "كرونة سويدية",
+    NOK: "كرونة نرويجية",
+    DKK: "كرونة دنماركية",
+    CAD: "دولار كندي (C$)",
+  };
+  return map[c] ?? `عملة ${c}`;
+}
+
 function buildAdPublicUrl(adId: number): string {
   const basePath = import.meta.env.BASE_URL || "/";
   const origin = window.location.origin;
@@ -117,11 +134,17 @@ export default function AdDetail() {
 
   const handleReport = async () => {
     if (!reason) {
-      toast({ title: "خطأ", description: "اختر سبب الإبلاغ" });
+      toast({
+        title: t("ad_detail.error"),
+        description: t("ad_detail.report.choose_reason"),
+        variant: "destructive",
+      });
       return;
     }
 
     if (!requireLogin()) return;
+
+    const otherReason = t("ad_detail.report.opt_other");
 
     try {
       setReporting(true);
@@ -136,26 +159,32 @@ export default function AdDetail() {
           targetAdId: id,
           reason,
           description:
-            reason === "أخرى" ? reportExtra.trim() || undefined : undefined,
+            reason === otherReason ? reportExtra.trim() || undefined : undefined,
         }),
       });
 
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
         toast({
-          title: "تعذّر الإبلاغ",
+          title: t("ad_detail.report.failed"),
           description: errText || `رمز ${res.status}`,
           variant: "destructive",
         });
         return;
       }
 
-      toast({ title: "تم", description: "تم إرسال البلاغ" });
+      toast({
+        title: t("ad_detail.done"),
+        description: t("ad_detail.report.sent"),
+      });
       setReason("");
       setReportExtra("");
       setReportOpen(false);
-    } catch (err) {
-      toast({ title: "خطأ", description: "فشل إرسال البلاغ" });
+    } catch {
+      toast({
+        title: t("ad_detail.error"),
+        description: t("ad_detail.report.failed"),
+      });
     } finally {
       setReporting(false);
     }
@@ -327,50 +356,60 @@ export default function AdDetail() {
         .filter(Boolean)
         .join(" ← ")
     : null;
-  const shippingLine =
-    parsed.meta?.shipping?.pickupOnly === true
-      ? "استلام من البائع فقط"
-      : parsed.meta?.shipping?.ids?.length
-        ? parsed.meta.shipping.ids
-            .map((sid) => AD_SHIPPING_LABELS[sid] ?? sid)
-            .join("، ")
-        : null;
-  const promotionLine =
+
+  const currencyDisplay = currencyDisplayAr(parsed.meta?.currency);
+  const shipMeta = parsed.meta?.shipping;
+  const shippingPickupOnly = shipMeta?.pickupOnly === true;
+  const shippingIdList = shipMeta?.ids ?? [];
+  const shippingRows: string[] =
+    shippingPickupOnly || shippingIdList.length === 0
+      ? []
+      : shippingIdList.map((sid) => AD_SHIPPING_LABELS[sid] ?? sid);
+
+  const promotionRows =
     parsed.meta?.promotions?.filter(Boolean).map(
       (pid) => AD_PROMOTION_LABELS[pid] ?? pid,
     ) ?? [];
-  const hasExtraDetailsBlock =
-    specEntries.length > 0 ||
-    !!pathLabel ||
-    !!parsed.meta?.currency ||
-    !!shippingLine ||
-    !!parsed.meta?.directBuy ||
-    promotionLine.length > 0;
+
+  const hasDeviceBlock =
+    specEntries.length > 0 || parsed.meta?.directBuy != null;
+  const hasPromotionBlock = promotionRows.length > 0;
+
+  const pageMax =
+    "mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6";
 
   return (
     <motion.div
+      dir="rtl"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-background pb-24"
+      className="flex flex-col w-full min-h-[100dvh] bg-background pb-28"
     >
-      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-        <div className="w-full max-w-5xl px-4 md:px-6 py-3 flex justify-between items-center pointer-events-auto">
+      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none bg-gradient-to-b from-background/80 to-transparent pb-2">
+        <div className={`${pageMax} py-3 flex justify-between items-center pointer-events-auto`}>
           <Link href="/">
-            <button className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform">
+            <button
+              type="button"
+              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform"
+              aria-label="رجوع"
+            >
               <ArrowRight className="w-5 h-5" />
             </button>
           </Link>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={handleShare}
               className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform"
+              aria-label={t("ad_detail.copy_link")}
             >
               <Share2 className="w-5 h-5" />
             </button>
             <button
+              type="button"
               onClick={handleToggleFavorite}
-              aria-label="favorite"
+              aria-label={t("ad_detail.favorite")}
               disabled={favMut.isPending || unfavMut.isPending}
               className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
             >
@@ -400,7 +439,7 @@ export default function AdDetail() {
                   }}
                 >
                   <Flag className="w-4 h-4" />
-                  إبلاغ عن الإعلان
+                  {t("ad_detail.report.submit")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -408,7 +447,8 @@ export default function AdDetail() {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-5xl px-4 md:px-6 pt-16 md:pt-[4.5rem]">
+      {/* معرض الصور — مطابق لعرض الإنشاء المحلي */}
+      <div className={`${pageMax} pt-16 md:pt-[4.5rem] pb-2 space-y-2`}>
         <CreateAdImageGallery
           readOnly
           uploadedImages={ad.images ?? []}
@@ -417,220 +457,286 @@ export default function AdDetail() {
         />
       </div>
 
-      <div className="mx-auto w-full max-w-5xl px-4 md:px-6 py-3 md:py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px] gap-4 lg:gap-5">
-          <div className="flex flex-col gap-4">
-            {/* Title and Price */}
-            <div className="rounded-2xl border border-border bg-card/70 p-4 md:p-4.5">
-              <h1 className="text-xl md:text-2xl font-bold leading-tight mb-2">{ad.title}</h1>
+      <div className={`${pageMax} py-2 md:py-4`}>
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_288px] gap-4 md:gap-5 lg:items-start">
+          <div className="flex flex-col gap-4 min-w-0">
+            {/* كرت العنوان والسعر والموقع */}
+            <div
+              className="rounded-2xl border border-border bg-card/70 p-4 md:p-5"
+              style={{ borderColor: "rgba(255,255,255,0.06)" }}
+            >
+              <h1 className="text-xl md:text-2xl font-bold leading-tight mb-2 text-foreground">
+                {ad.title}
+              </h1>
               {isFree ? (
-                <div className="text-primary font-bold text-2xl">مجاناً</div>
+                <div className="text-2xl font-bold text-primary">
+                  {t("ad-card.free")}
+                </div>
               ) : (
-                <div className="text-primary font-bold text-2xl flex items-center gap-2 flex-wrap">
+                <div className="flex flex-wrap items-center gap-2 text-2xl font-bold text-primary">
                   {formatPrice(ad.price, ad.priceType)}
                   {ad.priceType === "negotiable" && (
-                    <span className="text-xs font-medium bg-primary/10 px-2 py-0.5 rounded-md text-primary">
-                      قابل للتفاوض
+                    <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      {t("ad-card.negotiable")}
                     </span>
                   )}
                 </div>
               )}
-              <div className="flex items-center flex-wrap text-sm text-muted-foreground gap-x-1 gap-y-1 mt-2">
-                <MapPin className="w-4 h-4 shrink-0" />
+              {currencyDisplay && (
+                <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+                  {t("create_ad.preview_dialog.display_currency", {
+                    currency: currencyDisplay,
+                  })}
+                </p>
+              )}
+              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4 shrink-0" />
                 <span>{ad.city}</span>
-                <span className="mx-2 opacity-50">•</span>
+                <span className="opacity-50">•</span>
                 <span>{formatRelativeTime(ad.createdAt)}</span>
               </div>
             </div>
 
-            {/* Engagement counter strip + reaction buttons */}
-            <div className="bg-card border border-border rounded-2xl px-2 py-1.5 flex items-stretch divide-x divide-border/60 [direction:rtl] [&>*]:px-1.5">
-              <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground flex-1 justify-center">
-                <Eye className="w-4 h-4" />
+            {/* الإحصائيات: المشاهدات — الإعجابات — المفضلة */}
+            <div className="flex items-stretch divide-x divide-border/60 rounded-2xl border border-border bg-card px-2 py-2.5 text-xs sm:text-sm text-muted-foreground [direction:rtl]">
+              <div className="flex flex-1 flex-col items-center justify-center gap-0.5 sm:flex-row sm:gap-1">
+                <Eye className="h-4 w-4 shrink-0" />
                 <span className="font-semibold text-foreground tabular-nums">
                   {(viewCount ?? ad.views ?? 0).toLocaleString("ar")}
                 </span>
-                <span className="text-[11px]">مشاهدة</span>
+                <span className="text-[11px]">{t("ad_detail.views")}</span>
               </div>
               <button
                 type="button"
                 onClick={handleToggleLike}
-                aria-label="like"
+                aria-label={t("ad_detail.likes")}
                 disabled={likeMut.isPending || unlikeMut.isPending}
-                className={`flex items-center gap-1 text-xs sm:text-sm flex-1 justify-center active:scale-95 transition-all rounded-lg ${ad.isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                className={`flex flex-1 flex-col items-center justify-center gap-0.5 active:scale-[0.98] transition-all sm:flex-row sm:gap-1 ${ad.isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
               >
                 <ThumbsUp
-                  className={`w-4 h-4 ${ad.isLiked ? "fill-primary" : ""}`}
+                  className={`h-4 w-4 shrink-0 ${ad.isLiked ? "fill-primary" : ""}`}
                 />
-                <span className="font-semibold tabular-nums">
+                <span className="font-semibold tabular-nums text-foreground">
                   {(ad.likeCount ?? 0).toLocaleString("ar")}
                 </span>
-                <span className="text-[11px]">إعجاب</span>
+                <span className="text-[11px]">{t("ad_detail.likes")}</span>
               </button>
               <button
                 type="button"
                 onClick={handleToggleFavorite}
-                aria-label="favorite-counter"
+                aria-label={t("ad_detail.favorites")}
                 disabled={favMut.isPending || unfavMut.isPending}
-                className={`flex items-center gap-1 text-xs sm:text-sm flex-1 justify-center active:scale-95 transition-all rounded-lg ${ad.isFavorited ? "text-amber-500" : "text-muted-foreground hover:text-foreground"}`}
+                className={`flex flex-1 flex-col items-center justify-center gap-0.5 active:scale-[0.98] transition-all sm:flex-row sm:gap-1 ${ad.isFavorited ? "text-amber-500" : "text-muted-foreground hover:text-foreground"}`}
               >
                 <Star
-                  className={`w-4 h-4 ${ad.isFavorited ? "fill-amber-500" : ""}`}
+                  className={`h-4 w-4 shrink-0 ${ad.isFavorited ? "fill-amber-500" : ""}`}
                 />
-                <span className="font-semibold tabular-nums">
+                <span className="font-semibold tabular-nums text-foreground">
                   {(ad.favoriteCount ?? 0).toLocaleString("ar")}
                 </span>
-                <span className="text-[11px]">مفضّلة</span>
+                <span className="text-[11px]">{t("ad_detail.favorites")}</span>
               </button>
             </div>
 
-            {hasExtraDetailsBlock && (
-              <div className="rounded-2xl border border-border bg-card/70 p-4 space-y-2 text-sm">
-                <h3 className="font-semibold mb-1">التفاصيل والمواصفات</h3>
-                {pathLabel && (
-                  <div className="flex justify-between gap-3 py-1 border-b border-border/50">
-                    <span className="text-muted-foreground shrink-0">مسار التصنيف</span>
-                    <span className="font-medium text-left">{pathLabel}</span>
-                  </div>
-                )}
-                {parsed.meta?.currency && (
-                  <div className="flex justify-between py-1 border-b border-border/50">
-                    <span className="text-muted-foreground">العملة المعروضة</span>
-                    <span className="font-medium">{parsed.meta.currency}</span>
-                  </div>
-                )}
-                {shippingLine && (
-                  <div className="flex justify-between gap-3 py-1 border-b border-border/50">
-                    <span className="text-muted-foreground shrink-0">الشحن</span>
-                    <span className="font-medium text-left">{shippingLine}</span>
-                  </div>
-                )}
-                {parsed.meta?.directBuy && (
-                  <div className="flex justify-between py-1 border-b border-border/50">
-                    <span className="text-muted-foreground">شراء مباشر</span>
-                    <span className="font-medium">
-                      {parsed.meta.directBuy === "yes" ? "نعم" : "لا"}
-                    </span>
-                  </div>
-                )}
-                {promotionLine.length > 0 && (
-                  <div className="flex justify-between gap-3 py-1 border-b border-border/50">
-                    <span className="text-muted-foreground shrink-0">خيارات التمييز</span>
-                    <span className="font-medium text-left">
-                      {promotionLine.join("، ")}
-                    </span>
-                  </div>
-                )}
-                {specEntries.map(([key, val]) => (
-                  <div
-                    key={key}
-                    className="flex justify-between gap-3 py-1 border-b border-border/50 last:border-0"
-                  >
-                    <span className="text-muted-foreground shrink-0">
-                      {labelForSpecKey(key)}
-                    </span>
-                    <span className="font-medium text-left">{val}</span>
-                  </div>
-                ))}
+            {/* معلومات الجهاز / المواصفات */}
+            {hasDeviceBlock && (
+              <div className="rounded-2xl border border-border bg-card/70 p-4 text-sm">
+                <h3 className="mb-3 font-semibold text-base">
+                  {t("ad_detail.device_info")}
+                </h3>
+                <div className="flex flex-col gap-0">
+                  {specEntries.map(([key, val], idx) => (
+                    <div
+                      key={key}
+                      className={`flex justify-between gap-3 py-2.5 ${idx > 0 ? "border-t border-border/50" : ""}`}
+                    >
+                      <span className="text-muted-foreground shrink-0">
+                        {labelForSpecKey(key)}
+                      </span>
+                      <span className="max-w-[58%] text-end font-medium leading-snug">
+                        {val}
+                      </span>
+                    </div>
+                  ))}
+                  {parsed.meta?.directBuy && (
+                    <div
+                      className={`flex justify-between gap-3 py-2.5 ${specEntries.length > 0 ? "border-t border-border/50" : ""}`}
+                    >
+                      <span className="text-muted-foreground">شراء مباشر</span>
+                      <span className="font-medium">
+                        {parsed.meta.directBuy === "yes" ? "نعم" : "لا"}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Description */}
-            <div className="rounded-2xl border border-border bg-card/70 p-4">
-              <h3 className="font-semibold mb-2">الوصف</h3>
-              <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
-                {ad.description}
+            {/* الوصف */}
+            <div className="rounded-2xl border border-border bg-card/70 p-4 md:p-5">
+              <h3 className="mb-2 font-semibold text-base">
+                {t("ad_detail.description")}
+              </h3>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                {ad.description?.trim()
+                  ? ad.description
+                  : t("ad_detail.no_description")}
               </p>
             </div>
 
-            {/* Details List */}
-            <div className="rounded-2xl border border-border bg-card/70 p-4 flex flex-col gap-2 text-sm">
-              <div className="flex justify-between py-1 border-b border-border/50">
-                <span className="text-muted-foreground">القسم</span>
-                <span className="font-medium">{ad.categoryName}</span>
+            {/* الشحن والتسليم */}
+            <div className="rounded-2xl border border-border bg-card/70 p-4 text-sm">
+              <h3 className="mb-2 font-semibold text-base">
+                {t("ad_detail.shipping_delivery")}
+              </h3>
+              {shippingPickupOnly ? (
+                <p className="leading-relaxed text-foreground/90">
+                  {t("ad_detail.pickup_only")}
+                </p>
+              ) : shippingRows.length > 0 ? (
+                <ul className="list-disc list-inside space-y-1.5 text-foreground/90 [padding-inline-start:1rem]">
+                  {shippingRows.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground">
+                  {t("ad_detail.no_shipping_options")}
+                </p>
+              )}
+            </div>
+
+            {/* معلومات التصنيف */}
+            <div className="rounded-2xl border border-border bg-card/70 p-4 text-sm">
+              <h3 className="mb-2 font-semibold text-base">
+                {t("ad_detail.classification_info")}
+              </h3>
+              <div className="flex justify-between gap-2 border-b border-border/50 py-2.5 first:pt-0">
+                <span className="text-muted-foreground shrink-0">
+                  {t("create_ad.preview_dialog.category")}
+                </span>
+                <span className="max-w-[60%] text-end font-medium">
+                  {ad.categoryName}
+                </span>
               </div>
               {ad.subcategoryName && (
-                <div className="flex justify-between py-1 border-b border-border/50">
-                  <span className="text-muted-foreground">الفئة الفرعية</span>
-                  <span className="font-medium">{ad.subcategoryName}</span>
+                <div className="flex justify-between gap-2 border-b border-border/50 py-2.5">
+                  <span className="text-muted-foreground shrink-0">
+                    {t("create_ad.preview_dialog.subcategory")}
+                  </span>
+                  <span className="max-w-[60%] text-end font-medium">
+                    {ad.subcategoryName}
+                  </span>
                 </div>
               )}
-              <div className="flex justify-between py-1 border-b border-border/50">
-                <span className="text-muted-foreground">نوع الإعلان</span>
+              {pathLabel && (
+                <div className="flex justify-between gap-2 border-b border-border/50 py-2.5">
+                  <span className="text-muted-foreground shrink-0">
+                    {t("create_ad.preview_dialog.path")}
+                  </span>
+                  <span className="max-w-[65%] text-end text-xs font-medium leading-snug">
+                    {pathLabel}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between gap-2 py-2.5">
+                <span className="text-muted-foreground shrink-0">
+                  {t("create_ad.preview_dialog.ad_type")}
+                </span>
                 <span className="font-medium">
-                  {ad.type === "offer" ? "عرض" : "طلب"}
+                  {ad.type === "offer"
+                    ? t("create_ad.type.offer")
+                    : t("create_ad.type.request")}
                 </span>
               </div>
             </div>
-          </div>
-          {/* Seller Info */}
-          <aside className="h-fit rounded-2xl border border-border bg-card/70 p-3 space-y-2 lg:sticky lg:top-20">
-            <h3 className="font-semibold">معلومات البائع</h3>
-            <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-muted/20 p-3">
-            {ad.userId ? (
-              <Link
-                href={`/users/${ad.userId}`}
-                className="flex items-center gap-3 hover:opacity-90 active:scale-[0.99] transition-all"
-              >
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-                  {ad.sellerName.charAt(0)}
-                </div>
-                <div className="flex-1 flex flex-col min-w-0">
-                  <span className="font-semibold truncate">
-                    {ad.sellerName}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    عرض الملف الشخصي وإعلانات أخرى
-                  </span>
-                </div>
-              </Link>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-                  {ad.sellerName ? ad.sellerName.charAt(0) : "؟"}
-                </div>
-                <div className="flex-1 flex flex-col min-w-0">
-                  <span className="font-semibold truncate">
-                    {ad.sellerName}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    عضو في سوق العرب
-                  </span>
-                </div>
+
+            {/* العروض الترويجية */}
+            {hasPromotionBlock && (
+              <div className="rounded-2xl border border-border bg-card/70 p-4 text-sm">
+                <h3 className="mb-2 font-semibold text-base">
+                  {t("create_ad.preview_dialog.promotions_optional")}
+                </h3>
+                <ul className="list-disc list-inside space-y-1 text-foreground/90 [padding-inline-start:1rem]">
+                  {promotionRows.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
               </div>
             )}
-            <Button
-              type="button"
-              onClick={handleMessage}
-              disabled={startConversation?.isPending}
-              className="w-full bg-[#b6e356] hover:bg-[#a8d94c] text-black rounded-xl py-2 text-sm font-medium flex items-center justify-center gap-2 transition-all"
-            >
-              <MessageSquare className="w-4 h-4" />
-              راسل البائع داخل التطبيق
-            </Button>
-            <Button
-              type="button"
-              onClick={handleWhatsappContact}
-              className="w-full bg-transparent border border-green-500 text-green-400 hover:bg-green-500/10 rounded-xl py-2 text-sm font-medium flex items-center justify-center gap-2 transition-all"
-            >
-              <MessageCircle className="w-5 h-5" />
-              تواصل عبر واتساب
-            </Button>
+          </div>
+
+          {/* عمود البائع — مطابق لنمط الكرت المحلي */}
+          <aside className="h-fit rounded-2xl border border-border bg-card/70 p-3 md:p-4 space-y-3 lg:sticky lg:top-[4.75rem]">
+            <h3 className="font-semibold text-base ps-0.5">
+              {t("ad_detail.seller_info")}
+            </h3>
+            <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-muted/15 p-3">
+              {ad.userId ? (
+                <Link
+                  href={`/users/${ad.userId}`}
+                  className="flex items-center gap-3 rounded-lg hover:bg-muted/30 active:scale-[0.99] transition-all p-0.5 -m-0.5"
+                >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/20 text-lg font-bold text-primary">
+                    {ad.sellerName.charAt(0)}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate font-semibold">
+                      {ad.sellerName}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {t("ad_detail.view_profile_and_ads")}
+                    </span>
+                  </div>
+                </Link>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/20 text-lg font-bold text-primary">
+                    {ad.sellerName ? ad.sellerName.charAt(0) : "؟"}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate font-semibold">
+                      {ad.sellerName}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {t("ad_detail.member")}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <Button
+                type="button"
+                onClick={handleMessage}
+                disabled={startConversation?.isPending}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#b6e356] text-sm font-semibold text-black hover:bg-[#a8d94c]"
+              >
+                {t("ad_detail.message_seller")}
+                <MessageSquare className="h-4 w-4 shrink-0" />
+              </Button>
+              <Button
+                type="button"
+                onClick={handleWhatsappContact}
+                variant="outline"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border-green-500/60 text-sm font-medium text-green-500 hover:bg-green-500/10"
+              >
+                {t("ad_detail.contact_whatsapp")}
+                <MessageCircle className="h-5 w-5 shrink-0" />
+              </Button>
             </div>
             <button
-            type="button"
-            onClick={handleCopyPhone}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-md border border-border bg-background text-sm font-medium hover:bg-muted/50 transition-colors"
-          >
-            <Phone className="w-4 h-4" />
-            <span dir="ltr" className="font-mono">
-              {ad.sellerPhone}
-            </span>
-            {copied ? (
-              <CheckCircle2 className="w-4 h-4 text-primary" />
-            ) : (
-              <Copy className="w-4 h-4 opacity-60" />
-            )}
+              type="button"
+              onClick={handleCopyPhone}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background py-3 text-sm font-medium transition-colors hover:bg-muted/50"
+            >
+              <Phone className="h-4 w-4 shrink-0" />
+              <span dir="ltr" className="font-mono">
+                {ad.sellerPhone}
+              </span>
+              {copied ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+              ) : (
+                <Copy className="h-4 w-4 shrink-0 opacity-60" />
+              )}
             </button>
             <BuyerSafetyNote />
           </aside>
@@ -640,7 +746,7 @@ export default function AdDetail() {
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent dir="rtl" className="text-right sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>إبلاغ عن الإعلان</DialogTitle>
+            <DialogTitle>{t("ad_detail.report.submit")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
             <select
@@ -649,18 +755,30 @@ export default function AdDetail() {
               className="w-full border rounded-lg p-2.5 bg-background text-sm"
             >
               <option value="" disabled>
-                اختر السبب
+                {t("ad_detail.report.choose_reason")}
               </option>
-              <option value="احتيال أو نصب">احتيال أو نصب</option>
-              <option value="إعلان مكرر">إعلان مكرر</option>
-              <option value="معلومات غير صحيحة">معلومات غير صحيحة</option>
-              <option value="منتج مخالف">منتج مخالف</option>
-              <option value="محتوى غير لائق">محتوى غير لائق</option>
-              <option value="أخرى">أخرى</option>
+              <option value={t("ad_detail.report.opt_fraud")}>
+                {t("ad_detail.report.opt_fraud")}
+              </option>
+              <option value={t("ad_detail.report.opt_duplicate")}>
+                {t("ad_detail.report.opt_duplicate")}
+              </option>
+              <option value={t("ad_detail.report.opt_wrong_info")}>
+                {t("ad_detail.report.opt_wrong_info")}
+              </option>
+              <option value={t("ad_detail.report.opt_violation")}>
+                {t("ad_detail.report.opt_violation")}
+              </option>
+              <option value={t("ad_detail.report.opt_inappropriate")}>
+                {t("ad_detail.report.opt_inappropriate")}
+              </option>
+              <option value={t("ad_detail.report.opt_other")}>
+                {t("ad_detail.report.opt_other")}
+              </option>
             </select>
-            {reason === "أخرى" && (
+            {reason === t("ad_detail.report.opt_other") && (
               <textarea
-                placeholder="تفاصيل إضافية..."
+                placeholder={t("ad_detail.report.details_placeholder")}
                 className="w-full border rounded-lg p-2.5 bg-background text-sm min-h-[88px]"
                 value={reportExtra}
                 onChange={(e) => setReportExtra(e.target.value)}
@@ -673,10 +791,13 @@ export default function AdDetail() {
               disabled={
                 reporting ||
                 !reason ||
-                (reason === "أخرى" && !reportExtra.trim())
+                (reason === t("ad_detail.report.opt_other") &&
+                  !reportExtra.trim())
               }
             >
-              {reporting ? "جاري الإرسال..." : "إرسال البلاغ"}
+              {reporting
+                ? t("ad_detail.sending")
+                : t("ad_detail.report.submit")}
             </Button>
           </div>
         </DialogContent>

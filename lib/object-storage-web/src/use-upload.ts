@@ -6,11 +6,24 @@ declare global {
   interface ImportMetaEnv {
     readonly VITE_SUPABASE_URL?: string;
     readonly VITE_SUPABASE_ANON_KEY?: string;
+    /** When set (e.g. on Vercel), browser `fetch` must target this host for `/api/*` (session cookies + uploads). */
+    readonly VITE_API_BASE_URL?: string;
   }
 
   interface ImportMeta {
     readonly env: ImportMetaEnv;
   }
+}
+
+/** Same rules as souq `getApiBaseUrl` / `apiUrl`: absolute URL when `VITE_API_BASE_URL` is set. */
+function resolveApiFetchUrl(path: string): string {
+  const raw = import.meta.env.VITE_API_BASE_URL;
+  if (typeof raw !== "string" || !raw.trim()) {
+    return path.startsWith("/") ? path : `/${path}`;
+  }
+  const base = raw.trim().replace(/\/+$/, "");
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${p}`;
 }
 
 interface UploadMetadata {
@@ -179,7 +192,18 @@ export function useUpload(options: UseUploadOptions = {}) {
           setProgress(20);
           const formData = new FormData();
           formData.append("images", file);
-          const res = await fetch("/api/storage/uploads/ad-images", {
+          const uploadUrl = resolveApiFetchUrl("/api/storage/uploads/ad-images");
+          try {
+            const u = new URL(uploadUrl, "http://localhost");
+            console.log("[use-upload] POST ad-images", {
+              path: "/api/storage/uploads/ad-images",
+              apiHost: u.hostname,
+              https: u.protocol === "https:",
+            });
+          } catch {
+            console.log("[use-upload] POST ad-images", { uploadUrl: uploadUrl.slice(0, 80) });
+          }
+          const res = await fetch(uploadUrl, {
             method: "POST",
             body: formData,
             credentials: "include",
@@ -231,7 +255,12 @@ export function useUpload(options: UseUploadOptions = {}) {
           setProgress(20);
           const formData = new FormData();
           formData.append("image", file);
-          const res = await fetch("/api/users/upload-avatar", {
+          const avatarUrl = resolveApiFetchUrl("/api/users/upload-avatar");
+          console.log("[use-upload] POST upload-avatar", {
+            path: "/api/users/upload-avatar",
+            resolved: avatarUrl.startsWith("http"),
+          });
+          const res = await fetch(avatarUrl, {
             method: "POST",
             body: formData,
             credentials: "include",

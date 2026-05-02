@@ -1,15 +1,10 @@
 /**
- * Production API host from Vercel (`VITE_API_BASE_URL`). When empty, use same-origin
- * paths so local dev keeps Vite `/api` proxy.
+ * API host from `VITE_API_BASE_URL` (e.g. https://api.example.com on Vercel).
+ * When empty, use same-origin paths (Vite dev proxy or Vercel rewrite to the API).
  */
 export function getApiBaseUrl(): string {
   const raw = import.meta.env.VITE_API_BASE_URL;
-  if (typeof raw !== "string") return "";
-  // In production, prefer same-origin `/api` (Vercel rewrite -> Railway) so session
-  // cookies are first-party. Local/dev can still set VITE_API_BASE_URL for direct API.
-  if (import.meta.env.PROD) {
-    return "";
-  }
+  if (typeof raw !== "string" || !raw.trim()) return "";
   return raw.trim().replace(/\/+$/, "");
 }
 

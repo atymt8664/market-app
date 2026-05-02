@@ -1030,6 +1030,42 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       const previewUrl = URL.createObjectURL(file);
       pendingImageFilesRef.current[previewUrl] = file;
       setUploadedImages((prev) => [...prev, previewUrl]);
+
+      if (user?.id != null) {
+        const rawExt = file.name.split(".").pop()?.toLowerCase() || "jpg";
+        const fileExtension = ALLOWED_IMAGE_EXTENSIONS.includes(rawExt)
+          ? rawExt
+          : "jpg";
+        try {
+          console.log("[create-ad] uploading selected image to API (folder=ads)", {
+            hasUserId: true,
+          });
+          const result = await uploadFile(file, {
+            folder: "ads",
+            userId: user.id,
+            fileExtension,
+          });
+          if (result?.publicUrl) {
+            setUploadedImages((prev) =>
+              prev.map((u) => (u === previewUrl ? result.publicUrl : u)),
+            );
+            delete pendingImageFilesRef.current[previewUrl];
+            URL.revokeObjectURL(previewUrl);
+          }
+        } catch (err) {
+          console.error("[create-ad] immediate image upload failed", err);
+          toast({
+            title: "تعذر رفع الصورة",
+            description:
+              err instanceof Error ? err.message : "حدث خطأ غير معروف",
+            variant: "destructive",
+          });
+        }
+      } else {
+        console.log(
+          "[create-ad] image preview only — sign in to upload; or upload runs when you publish",
+        );
+      }
     }
     setActiveImageIndex((prev) => {
       if (uploadedImages.length === 0 && list.length > 0) return 0;

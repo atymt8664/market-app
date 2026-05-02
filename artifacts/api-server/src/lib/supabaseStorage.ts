@@ -53,8 +53,45 @@ export function readSupabaseKeyJwtRole(key: string): string | null {
   return null;
 }
 
+/**
+ * Normalize dashboard "Project URL" for @supabase/supabase-js.
+ * Common mis-pastes: trailing slash, `/rest/v1`, or DB pooler host instead of API host.
+ */
+function normalizeSupabaseProjectUrl(raw: string): string {
+  let url = raw.trim().replace(/\/+$/, "");
+  url = url.replace(/\/rest\/v1\/?$/i, "");
+  try {
+    const u = new URL(url);
+    if (/pooler\.supabase\.com$/i.test(u.hostname)) {
+      throw new Error(
+        "SUPABASE_URL must be the HTTPS Project URL (https://<ref>.supabase.co), not the Postgres pooler host.",
+      );
+    }
+    if (!/\.supabase\.co$/i.test(u.hostname)) {
+      logger.warn(
+        { hostname: u.hostname },
+        "SUPABASE_URL hostname does not look like *.supabase.co — Storage may fail; use Project Settings → API → Project URL",
+      );
+    }
+  } catch (e) {
+    if (e instanceof TypeError) {
+      throw new MissingSupabaseStorageConfigError("SUPABASE_URL");
+    }
+    throw e;
+  }
+  return url;
+}
+
 function getSupabaseStorageClient(): SupabaseClient {
-  const url = (process.env["SUPABASE_URL"] || "").trim();
+  const rawUrl = process.env["SUPABASE_URL"] || "";
+  let url: string;
+  try {
+    url = normalizeSupabaseProjectUrl(rawUrl);
+  } catch (e) {
+    if (e instanceof MissingSupabaseStorageConfigError) throw e;
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(msg);
+  }
   if (!url) {
     throw new MissingSupabaseStorageConfigError("SUPABASE_URL");
   }

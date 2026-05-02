@@ -1,6 +1,7 @@
 {
-  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "buildCommand": "cd ../.. && pnpm --filter @workspace/souq run build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @workspace/souq run build",
+  "outputDirectory": "artifacts/souq/dist",
   "headers": [
     {
       "source": "/index.html",

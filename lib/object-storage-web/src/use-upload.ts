@@ -163,6 +163,122 @@ export function useUpload(options: UseUploadOptions = {}) {
       setProgress(0);
 
       try {
+        const folder = uploadOptions?.folder ?? "misc";
+
+        /** Ad + avatar uploads use the API with service role — avoids Storage RLS rejecting anon inserts. */
+        if (folder === "ads") {
+          if (uploadOptions?.userId === undefined || uploadOptions?.userId === null) {
+            throw new UploadFailureError({
+              message: "Missing user ID for ad image upload",
+              bucket: uploadsBucket,
+              fileName: file.name,
+              fileType: file.type || "application/octet-stream",
+              fileSize: file.size,
+            });
+          }
+          setProgress(20);
+          const formData = new FormData();
+          formData.append("images", file);
+          const res = await fetch("/api/storage/uploads/ad-images", {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          });
+          const payload = (await res.json().catch(() => ({}))) as {
+            error?: string;
+            imageUrls?: string[];
+          };
+          if (!res.ok) {
+            throw new UploadFailureError({
+              message:
+                typeof payload.error === "string"
+                  ? payload.error
+                  : res.statusText || "Upload failed",
+              statusCode: res.status,
+              status: res.status,
+              bucket: uploadsBucket,
+              fileName: file.name,
+              fileType: file.type || "application/octet-stream",
+              fileSize: file.size,
+            });
+          }
+          const publicUrl = payload.imageUrls?.[0];
+          if (!publicUrl) {
+            throw new UploadFailureError({
+              message: "لم يُعَد رابط الصورة من الخادم",
+              bucket: uploadsBucket,
+              fileName: file.name,
+              fileType: file.type || "application/octet-stream",
+              fileSize: file.size,
+            });
+          }
+          const uploadResponse: UploadResponse = {
+            uploadURL: publicUrl,
+            publicUrl,
+            objectPath: "",
+            metadata: {
+              name: file.name,
+              size: file.size,
+              contentType: file.type || "application/octet-stream",
+            },
+          };
+          setProgress(100);
+          options.onSuccess?.(uploadResponse);
+          return uploadResponse;
+        }
+
+        if (folder === "avatars") {
+          setProgress(20);
+          const formData = new FormData();
+          formData.append("image", file);
+          const res = await fetch("/api/users/upload-avatar", {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          });
+          const payload = (await res.json().catch(() => ({}))) as {
+            error?: string;
+            imageUrl?: string;
+          };
+          if (!res.ok) {
+            throw new UploadFailureError({
+              message:
+                typeof payload.error === "string"
+                  ? payload.error
+                  : res.statusText || "Upload failed",
+              statusCode: res.status,
+              status: res.status,
+              bucket: uploadsBucket,
+              fileName: file.name,
+              fileType: file.type || "application/octet-stream",
+              fileSize: file.size,
+            });
+          }
+          const publicUrl = payload.imageUrl;
+          if (!publicUrl) {
+            throw new UploadFailureError({
+              message: "لم يُعَد رابط الصورة من الخادم",
+              bucket: uploadsBucket,
+              fileName: file.name,
+              fileType: file.type || "application/octet-stream",
+              fileSize: file.size,
+            });
+          }
+          const uploadResponse: UploadResponse = {
+            uploadURL: publicUrl,
+            publicUrl,
+            objectPath: "",
+            metadata: {
+              name: file.name,
+              size: file.size,
+              contentType: file.type || "application/octet-stream",
+            },
+          };
+          setProgress(100);
+          options.onSuccess?.(uploadResponse);
+          return uploadResponse;
+        }
+
         if (!supabase) {
           throw new UploadFailureError({
             message:
@@ -237,12 +353,7 @@ export function useUpload(options: UseUploadOptions = {}) {
         setIsUploading(false);
       }
     },
-    [
-      buildPublicObjectUrl,
-      buildUploadPath,
-      options,
-      supabase,
-    ]
+    [buildUploadPath, options, supabase]
   );
 
   const getUploadParameters = useCallback(

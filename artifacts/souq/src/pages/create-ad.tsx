@@ -58,6 +58,7 @@ import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { CitySelect } from "@/components/city-select";
+import { CreateAdPreviewDialog } from "@/components/create-ad-preview-dialog";
 
 const createAdSchema = z.object({
   title: z.string().min(3, "العنوان قصير جداً").max(65, "العنوان طويل جداً"),
@@ -621,6 +622,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const [directBuy, setDirectBuy] = useState<"yes" | "no">("no");
   const [promotionIds, setPromotionIds] = useState<string[]>([]);
   const [sellerSafetyAccepted, setSellerSafetyAccepted] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isSubmittingUploads, setIsSubmittingUploads] = useState(false);
@@ -692,6 +694,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const watchPriceType = form.watch("priceType");
   const watchCategoryId = form.watch("categoryId");
   const watchSubcategoryId = form.watch("subcategoryId");
+  const previewValues = form.watch();
 
   const selectedCategory = categories?.find((c) => c.id === watchCategoryId);
   const selectedSubcategory = subcategories?.find(
@@ -841,10 +844,15 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           return { src, remoteUrl: src };
         }
 
+        const rawExt =
+          pendingFile.name.split(".").pop()?.toLowerCase() || "jpg";
+        const fileExtension = ALLOWED_IMAGE_EXTENSIONS.includes(rawExt)
+          ? rawExt
+          : "jpg";
         const result = await uploadFile(pendingFile, {
           folder: "ads",
           userId: user?.id,
-          fileExtension: "jpg",
+          fileExtension,
         });
 
         if (!result?.publicUrl) {
@@ -1184,6 +1192,19 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     selectedShippingLabels.length > 0
       ? selectedShippingLabels.join("، ")
       : "الاستلام متاح دائمًا";
+  const previewShippingLines: string[] = pickupOnly
+    ? []
+    : selectedShippingLabels.length > 0
+      ? selectedShippingLabels
+      : ["الاستلام متاح دائمًا"];
+  const promotionsPreviewLines = PROMOTION_FEATURES.filter((p) =>
+    promotionIds.includes(p.id),
+  ).map((p) => `${p.title} (${p.price})`);
+  const currencyLabelForPreview =
+    CURRENCY_OPTIONS.find((c) => c.id === selectedCurrency)?.label ??
+    selectedCurrency;
+  const categoryLabelForPreview = selectedCategory?.name ?? "";
+  const subcategoryLabelForPreview = selectedSubcategory?.name ?? null;
   const defaultCollapsedShippingIds = [
     "dhl_paket",
     "hermes_packchen",
@@ -2164,18 +2185,45 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             <button
               type="button"
               className="w-full text-center text-sm font-medium text-primary hover:underline"
-              onClick={() =>
-                toast({
-                  title: "المعاينة",
-                  description: "ميزة المعاينة ستكون متاحة قريباً.",
-                })
-              }
+              onClick={() => setPreviewOpen(true)}
             >
               معاينة
             </button>
           </div>
         </form>
       </Form>
+
+      <CreateAdPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        isEdit={isEdit}
+        values={{
+          title: previewValues.title,
+          description: previewValues.description,
+          price: previewValues.price,
+          priceType: previewValues.priceType,
+          type: previewValues.type,
+          categoryId: previewValues.categoryId,
+          subcategoryId: previewValues.subcategoryId ?? null,
+          city: previewValues.city,
+          sellerName: previewValues.sellerName,
+          sellerPhone: previewValues.sellerPhone,
+        }}
+        previewImages={uploadedImages}
+        categoryLabel={categoryLabelForPreview}
+        subcategoryLabel={subcategoryLabelForPreview}
+        categoryPathLabel={resolvedCategoryPathLabel}
+        shippingSummary={previewShippingLines}
+        promotionsSummary={promotionsPreviewLines}
+        pickupOnly={pickupOnly}
+        currencyLabel={currencyLabelForPreview}
+        sellerSafetyAccepted={sellerSafetyAccepted}
+        isSubmitting={isSubmittingForm}
+        onBackToEdit={() => setPreviewOpen(false)}
+        onPublish={() => {
+          void form.handleSubmit(onSubmit)();
+        }}
+      />
 
       <button
         type="button"

@@ -375,10 +375,21 @@ export async function customFetch<T = unknown>(
     }
   }
 
+  /** Session endpoints live under `/api`; always attach cookies in the browser when unset. */
+  let isApiPath = false;
+  if (isBrowser && typeof window !== "undefined") {
+    try {
+      const pathname = new URL(resolvedFetchUrl, window.location.href).pathname;
+      isApiPath = pathname.startsWith("/api");
+    } catch {
+      isApiPath = false;
+    }
+  }
+
   const includeCredentialsByDefault =
     isBrowser &&
     init.credentials === undefined &&
-    (Boolean(_baseUrl) || needsCrossOriginCookies);
+    (Boolean(_baseUrl) || needsCrossOriginCookies || isApiPath);
 
   const response = await fetch(input, {
     ...init,

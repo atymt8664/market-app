@@ -1,13 +1,14 @@
 import "dotenv/config";
 import dns from "node:dns";
 import { createServer } from "http";
-
-/** Prefer IPv4 for outbound HTTPS (Railway/Node + Supabase sometimes fail with undici "fetch failed" on IPv6). */
-dns.setDefaultResultOrder("ipv4first");
 import app from "./app";
 import { logger } from "./lib/logger";
 import { attachWebSocketServer } from "./lib/realtime";
 import { prepareDatabase } from "./lib/prepare-database";
+import { runSupabaseStorageStartupProbe } from "./lib/supabaseStorage";
+
+/** Prefer IPv4 for outbound HTTPS (Railway/Node + Supabase sometimes fail with undici "fetch failed" on IPv6). */
+dns.setDefaultResultOrder("ipv4first");
 
 const rawPort = process.env["PORT"];
 
@@ -32,6 +33,15 @@ async function start() {
   } catch (err) {
     logger.error({ err }, "Database preparation failed");
     process.exit(1);
+  }
+
+  try {
+    await runSupabaseStorageStartupProbe();
+  } catch (probeErr) {
+    logger.warn(
+      { errMessage: probeErr instanceof Error ? probeErr.message : String(probeErr) },
+      "Supabase Storage startup probe threw (non-fatal)",
+    );
   }
 
   server.listen(port, (err?: Error) => {

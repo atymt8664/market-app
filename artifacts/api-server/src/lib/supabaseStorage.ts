@@ -144,6 +144,12 @@ function normalizeSupabaseProjectUrl(raw: string): string {
         "SUPABASE_URL must be the HTTPS Project URL (https://<ref>.supabase.co), not the Postgres pooler host.",
       );
     }
+    if (/^db\./i.test(u.hostname)) {
+      logger.warn(
+        { hostname: u.hostname },
+        "SUPABASE_URL looks like a direct DB host (db.*) — use https://<project-ref>.supabase.co from API settings",
+      );
+    }
     if (!/\.supabase\.co$/i.test(u.hostname)) {
       logger.warn(
         { hostname: u.hostname },
@@ -157,6 +163,141 @@ function normalizeSupabaseProjectUrl(raw: string): string {
     throw e;
   }
   return url;
+}
+
+/**
+ * Startup-only: DNS + raw fetch to Storage REST (no secrets logged).
+ * Helps diagnose Railway ↔ Supabase "fetch failed" (DNS, IPv6, TLS, wrong host).
+ */
+export async function runSupabaseStorageStartupProbe(): Promise<void> {
+  const rawUrl = (process.env["SUPABASE_URL"] || "").trim();
+  const serviceRoleKey = (process.env["SUPABASE_SERVICE_ROLE_KEY"] || "").trim();
+  if (!rawUrl || !serviceRoleKey) {
+    logger.info("Supabase Storage probe skipped (SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY unset)");
+    return;
+  }
+
+  let normalized: string;
+  try {
+    normalized = normalizeSupabaseProjectUrl(rawUrl);
+  } catch (e) {
+    logger.warn(
+      { errMessage: e instanceof Error ? e.message : String(e) },
+      "Supabase Storage probe: SUPABASE_URL normalization failed",
+    );
+    return;
+  }
+
+  let hostname = "";
+  let isHttps = false;
+  try {
+    const u = new URL(normalized);
+    hostname = u.hostname;
+    isHttps = u.protocol === "https:";
+  } catch {
+    logger.warn("Supabase Storage probe: invalid URL after normalization");
+    return;
+  }
+
+  const expectedProjectHost = /^[a-z0-9]+\.supabase\.co$/i.test(hostname);
+  logger.info(
+    {
+      supabaseHostname: hostname,
+      supabaseHttps: isHttps,
+      expectedProjectApiHostPattern: "<project-ref>.supabase.co",
+      hostnameMatchesProjectApiPattern: expectedProjectHost,
+      notPoolerHost: !/pooler\.supabase\.com$/i.test(hostname),
+    },
+    "Supabase Storage env: URL shape (keys never logged)",
+  );
+
+  try {
+    const dns = await import("node:dns/promises");
+    const records = await dns.lookup(hostname, { all: true });
+    logger.info(
+      {
+        dnsRecordCount: records.length,
+        dnsAddresses: records.map((r) => ({
+          address: r.address,
+          family: r.family,
+          ipVersion: r.family === 6 ? "IPv6" : "IPv4",
+        })),
+      },
+      "DNS resolution for SUPABASE_URL host (IPv4 vs IPv6 hints for Railway)",
+    );
+  } catch (dnsErr) {
+    logger.warn(
+      { errorMessage: dnsErr instanceof Error ? dnsErr.message : String(dnsErr) },
+      "DNS lookup failed for Supabase hostname",
+    );
+  }
+
+  const storageListUrl = `${normalized.replace(/\/+$/, "")}/storage/v1/bucket`;
+  logger.info(
+    { storageListPath: "/storage/v1/bucket", storageListHostname: hostname },
+    "Supabase Storage probe: issuing GET (same path the JS client uses for list buckets)",
+  );
+
+  try {
+    const res = await fetch(storageListUrl, {
+      method: "GET",
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+      },
+    });
+    const bodyText = await res.text();
+    const preview = bodyText.length > 800 ? `${bodyText.slice(0, 800)}…` : bodyText;
+
+    logger.info(
+      {
+        httpStatus: res.status,
+        httpStatusText: res.statusText,
+        ok: res.ok,
+        responseBodyPreview: preview,
+      },
+      "Supabase Storage GET /storage/v1/bucket — raw HTTP result",
+    );
+
+    if (res.ok) {
+      try {
+        const parsed = JSON.parse(bodyText) as unknown;
+        const buckets = Array.isArray(parsed) ? parsed : [];
+        const names = buckets
+          .map((b) => (b && typeof b === "object" && "name" in b ? String((b as { name?: string }).name) : ""))
+          .filter(Boolean);
+        const uploadsPresent = names.includes(UPLOADS_BUCKET);
+        logger.info(
+          {
+            bucketCount: names.length,
+            bucketNames: names,
+            uploadsBucketExpected: UPLOADS_BUCKET,
+            uploadsBucketExistsInList: uploadsPresent,
+          },
+          "Supabase Storage buckets from API (uploads bucket check)",
+        );
+      } catch {
+        logger.warn("Supabase Storage probe: could not parse bucket list JSON");
+      }
+    }
+  } catch (fetchErr) {
+    const err = fetchErr as Error & { cause?: unknown };
+    const causeMsg =
+      err.cause instanceof Error
+        ? err.cause.message
+        : err.cause !== undefined
+          ? String(err.cause)
+          : undefined;
+    logger.error(
+      {
+        probe: "GET /storage/v1/bucket",
+        errorName: err.name,
+        errorMessageFull: err.message,
+        errorCause: causeMsg,
+      },
+      "Supabase Storage probe fetch failed (network/DNS/TLS — compare with DNS log above)",
+    );
+  }
 }
 
 function getSupabaseStorageClient(): SupabaseClient {
@@ -229,7 +370,8 @@ async function ensureUploadsBucketExists(supabase: SupabaseClient): Promise<void
       {
         step: "createBucket",
         bucket: UPLOADS_BUCKET,
-        message: msg,
+        supabaseErrorMessageFull: msg,
+        supabaseErrorStatusCode: (createError as { statusCode?: string })?.statusCode,
       },
       "Bucket preflight failed (network); attempting upload without listBuckets/create success",
     );
@@ -237,7 +379,12 @@ async function ensureUploadsBucketExists(supabase: SupabaseClient): Promise<void
   }
 
   logger.error(
-    { step: "createBucket", bucket: UPLOADS_BUCKET, message: msg },
+    {
+      step: "createBucket",
+      bucket: UPLOADS_BUCKET,
+      supabaseErrorMessageFull: msg,
+      supabaseErrorStatusCode: (createError as { statusCode?: string })?.statusCode,
+    },
     "Supabase storage createBucket failed",
   );
   if (isBucketMissingMessage(msg) || /not found/i.test(msg)) {
@@ -297,8 +444,8 @@ export async function uploadAdImagesForUser(
           step: "upload",
           bucket: UPLOADS_BUCKET,
           objectPath,
-          message: error.message,
-          statusCode: (error as { statusCode?: string }).statusCode,
+          supabaseErrorMessageFull: error.message,
+          supabaseErrorStatusCode: (error as { statusCode?: string }).statusCode,
         },
         "Supabase storage upload failed for ad image",
       );
@@ -363,8 +510,8 @@ export async function uploadAvatarImageForUser(
         step: "upload",
         bucket: UPLOADS_BUCKET,
         objectPath,
-        message: error.message,
-        statusCode: (error as { statusCode?: string }).statusCode,
+        supabaseErrorMessageFull: error.message,
+        supabaseErrorStatusCode: (error as { statusCode?: string }).statusCode,
       },
       "Supabase storage upload failed for avatar",
     );

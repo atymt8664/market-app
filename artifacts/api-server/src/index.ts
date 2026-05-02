@@ -1,5 +1,9 @@
 import "dotenv/config";
+import dns from "node:dns";
 import { createServer } from "http";
+
+/** Prefer IPv4 for outbound HTTPS (Railway/Node + Supabase sometimes fail with undici "fetch failed" on IPv6). */
+dns.setDefaultResultOrder("ipv4first");
 import app from "./app";
 import { logger } from "./lib/logger";
 import { attachWebSocketServer } from "./lib/realtime";

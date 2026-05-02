@@ -4,6 +4,8 @@ import multer from "multer";
 import {
   InvalidSupabaseServiceRoleKeyError,
   MissingSupabaseStorageConfigError,
+  SupabaseStorageBucketNotFoundError,
+  SupabaseStorageConnectionError,
   uploadAdImagesForUser,
 } from "../lib/supabaseStorage";
 import {
@@ -118,6 +120,40 @@ router.post("/storage/uploads/ad-images", upload.array("images", 10), async (req
       res.status(503).json(getMissingConfigResponse(error));
       return;
     }
+    if (error instanceof SupabaseStorageConnectionError) {
+      const safeReason = error.message.slice(0, 280);
+      req.log.error(
+        {
+          step: error.step,
+          code: error.code,
+          supabaseMessage: safeReason,
+        },
+        "Supabase storage connection failed (ad images)",
+      );
+      res.status(503).json({
+        error: "تعذر الاتصال بخدمة التخزين، يرجى المحاولة لاحقاً",
+        code: "SUPABASE_STORAGE_CONNECTION_FAILED",
+        reason: safeReason,
+      });
+      return;
+    }
+    if (error instanceof SupabaseStorageBucketNotFoundError) {
+      const safeReason = error.message.slice(0, 280);
+      req.log.error(
+        {
+          step: error.step,
+          code: error.code,
+          supabaseMessage: safeReason,
+        },
+        "Supabase storage bucket missing (ad images)",
+      );
+      res.status(503).json({
+        error: "مجلد التخزين غير متاح، يرجى التحقق من إعدادات المشروع",
+        code: "BUCKET_NOT_FOUND",
+        reason: safeReason,
+      });
+      return;
+    }
 
     const msg =
       error instanceof Error ? error.message : typeof error === "string" ? error : "unknown";
@@ -125,8 +161,10 @@ router.post("/storage/uploads/ad-images", upload.array("images", 10), async (req
     let code = "STORAGE_UPLOAD_FAILED";
     if (/row-level security|RLS/i.test(msg)) {
       code = "STORAGE_RLS_DENIED";
-    } else if (/Bucket not found|not found/i.test(msg)) {
-      code = "STORAGE_BUCKET_MISSING";
+    } else if (/fetch failed|econn|enotfound|etimedout|getaddrinfo|und_err/i.test(msg)) {
+      code = "SUPABASE_STORAGE_CONNECTION_FAILED";
+    } else if (/Bucket not found|not found/i.test(msg) && /bucket|storage/i.test(msg)) {
+      code = "BUCKET_NOT_FOUND";
     } else if (/JWT|Invalid API key|permission denied/i.test(msg)) {
       code = "STORAGE_AUTH_REJECTED";
     }

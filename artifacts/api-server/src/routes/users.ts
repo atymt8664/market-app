@@ -18,6 +18,8 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   InvalidSupabaseServiceRoleKeyError,
   MissingSupabaseStorageConfigError,
+  SupabaseStorageBucketNotFoundError,
+  SupabaseStorageConnectionError,
   uploadAvatarImageForUser,
 } from "../lib/supabaseStorage";
 import { PUBLIC_AD_STATUSES } from "../lib/ad-visibility";
@@ -307,6 +309,32 @@ router.post(
           error:
             "إعداد خادم التخزين غير صحيح: استخدم مفتاح service_role من لوحة Supabase وليس مفتاح anon",
           code: "SUPABASE_SERVICE_ROLE_KEY_INVALID",
+        });
+        return;
+      }
+      if (error instanceof SupabaseStorageConnectionError) {
+        const safeReason = error.message.slice(0, 280);
+        req.log.error(
+          { step: error.step, code: error.code, supabaseMessage: safeReason },
+          "Supabase storage connection failed (avatar)",
+        );
+        res.status(503).json({
+          error: "تعذر الاتصال بخدمة التخزين، يرجى المحاولة لاحقاً",
+          code: "SUPABASE_STORAGE_CONNECTION_FAILED",
+          reason: safeReason,
+        });
+        return;
+      }
+      if (error instanceof SupabaseStorageBucketNotFoundError) {
+        const safeReason = error.message.slice(0, 280);
+        req.log.error(
+          { step: error.step, code: error.code, supabaseMessage: safeReason },
+          "Supabase storage bucket missing (avatar)",
+        );
+        res.status(503).json({
+          error: "مجلد التخزين غير متاح، يرجى التحقق من إعدادات المشروع",
+          code: "BUCKET_NOT_FOUND",
+          reason: safeReason,
         });
         return;
       }

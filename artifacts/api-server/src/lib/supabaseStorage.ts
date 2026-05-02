@@ -28,6 +28,83 @@ export class InvalidSupabaseServiceRoleKeyError extends Error {
   }
 }
 
+/** Upstream Storage unreachable (undici "fetch failed", DNS, TLS, timeout, etc.). */
+export class SupabaseStorageConnectionError extends Error {
+  readonly code = "SUPABASE_STORAGE_CONNECTION_FAILED" as const;
+  constructor(
+    public readonly step: string,
+    public readonly causeMessage: string,
+  ) {
+    super(causeMessage);
+    this.name = "SupabaseStorageConnectionError";
+    Object.setPrototypeOf(this, SupabaseStorageConnectionError.prototype);
+  }
+}
+
+/** Bucket missing and could not be created or used. */
+export class SupabaseStorageBucketNotFoundError extends Error {
+  readonly code = "BUCKET_NOT_FOUND" as const;
+  constructor(
+    public readonly step: string,
+    public readonly causeMessage: string,
+  ) {
+    super(causeMessage);
+    this.name = "SupabaseStorageBucketNotFoundError";
+    Object.setPrototypeOf(this, SupabaseStorageBucketNotFoundError.prototype);
+  }
+}
+
+let storageClientDiagnosticsLogged = false;
+
+function logSupabaseStorageDiagnostics(url: string, jwtRole: string | null): void {
+  if (storageClientDiagnosticsLogged) return;
+  storageClientDiagnosticsLogged = true;
+  try {
+    const u = new URL(url);
+    logger.info(
+      {
+        supabaseHost: u.hostname,
+        supabaseHttps: u.protocol === "https:",
+        serviceRoleJwtClaim: jwtRole ?? "undecoded",
+        serviceRoleValid: jwtRole === "service_role",
+      },
+      "Supabase storage client configured",
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Matches undici/Node fetch failures and common TCP/DNS errors (no secrets). */
+function isLikelySupabaseConnectionFailure(message: string): boolean {
+  const m = (message || "").toLowerCase();
+  return (
+    m.includes("fetch failed") ||
+    m.includes("econnrefused") ||
+    m.includes("econnreset") ||
+    m.includes("etimedout") ||
+    m.includes("enotfound") ||
+    m.includes("enetunreach") ||
+    m.includes("eai_again") ||
+    m.includes("certificate") ||
+    m.includes("ssl") ||
+    m.includes("tls") ||
+    m.includes("und_err") ||
+    m.includes("getaddrinfo")
+  );
+}
+
+function isBucketMissingMessage(message: string): boolean {
+  const m = (message || "").toLowerCase();
+  if (/bucket not found|no such bucket|unknown bucket/i.test(m)) return true;
+  if (/not found/.test(m) && /bucket|storage object/i.test(m)) return true;
+  return false;
+}
+
+function createBucketAlreadyExists(message: string): boolean {
+  return /already exists|duplicate|bucket already exists/i.test(message || "");
+}
+
 /** Best-effort JWT payload role read (no signature verification — sanity check only). */
 export function readSupabaseKeyJwtRole(key: string): string | null {
   const t = key.trim();
@@ -117,43 +194,74 @@ function getSupabaseStorageClient(): SupabaseClient {
     );
   }
 
+  logSupabaseStorageDiagnostics(url, jwtRole);
+
   return createClient(url, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      fetch: (input, init) => globalThis.fetch(input as RequestInfo, init as RequestInit),
+    },
   });
 }
 
+/**
+ * Ensure uploads bucket exists without listBuckets (it can fail with undici "fetch failed" on some hosts).
+ * Uses createBucket only; if that fails with a network error, we continue — upload may still work if the bucket exists.
+ */
 async function ensureUploadsBucketExists(supabase: SupabaseClient): Promise<void> {
   if (uploadsBucketEnsured) return;
 
-  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-  if (listError) {
-    logger.error(
-      { step: "listBuckets", message: listError.message, bucket: UPLOADS_BUCKET },
-      "Supabase storage listBuckets failed",
-    );
-    throw new Error(`Failed to read storage buckets: ${listError.message}`);
-  }
+  const { error: createError } = await supabase.storage.createBucket(UPLOADS_BUCKET, {
+    public: true,
+  });
+  const msg = createError?.message ?? "";
 
-  const exists = (buckets ?? []).some((bucket) => bucket.name === UPLOADS_BUCKET);
-  if (!exists) {
-    logger.info({ bucket: UPLOADS_BUCKET }, "Creating Supabase storage bucket");
-    const { error: createError } = await supabase.storage.createBucket(UPLOADS_BUCKET, {
-      public: true,
-    });
-    if (createError && !/already exists/i.test(createError.message ?? "")) {
-      logger.error(
-        {
-          step: "createBucket",
-          message: createError.message,
-          bucket: UPLOADS_BUCKET,
-        },
-        "Supabase storage createBucket failed",
-      );
-      throw new Error(`Failed to create uploads bucket: ${createError.message}`);
+  if (!createError || createBucketAlreadyExists(msg)) {
+    uploadsBucketEnsured = true;
+    if (createError && createBucketAlreadyExists(msg)) {
+      logger.info({ bucket: UPLOADS_BUCKET, step: "createBucket" }, "Uploads bucket already exists");
     }
+    return;
   }
 
-  uploadsBucketEnsured = true;
+  if (isLikelySupabaseConnectionFailure(msg)) {
+    logger.warn(
+      {
+        step: "createBucket",
+        bucket: UPLOADS_BUCKET,
+        message: msg,
+      },
+      "Bucket preflight failed (network); attempting upload without listBuckets/create success",
+    );
+    return;
+  }
+
+  logger.error(
+    { step: "createBucket", bucket: UPLOADS_BUCKET, message: msg },
+    "Supabase storage createBucket failed",
+  );
+  if (isBucketMissingMessage(msg) || /not found/i.test(msg)) {
+    throw new SupabaseStorageBucketNotFoundError("createBucket", msg);
+  }
+  throw new Error(`Failed to create uploads bucket: ${msg}`);
+}
+
+async function tryCreateUploadsBucket(supabase: SupabaseClient): Promise<void> {
+  const { error } = await supabase.storage.createBucket(UPLOADS_BUCKET, {
+    public: true,
+  });
+  const msg = error?.message ?? "";
+  if (!error || createBucketAlreadyExists(msg)) {
+    uploadsBucketEnsured = true;
+    return;
+  }
+  if (isLikelySupabaseConnectionFailure(msg)) {
+    throw new SupabaseStorageConnectionError("createBucket", msg);
+  }
+  if (isBucketMissingMessage(msg)) {
+    throw new SupabaseStorageBucketNotFoundError("createBucket", msg);
+  }
+  throw new Error(`Failed to create uploads bucket: ${msg}`);
 }
 
 export async function uploadAdImagesForUser(
@@ -168,6 +276,7 @@ export async function uploadAdImagesForUser(
   for (const file of files) {
     const objectPath = `ads/${userId}/${crypto.randomUUID()}.jpg`;
     let lastError: Error | null = null;
+    let triedBucketRecovery = false;
 
     for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt += 1) {
       const { error } = await supabase.storage.from(UPLOADS_BUCKET).upload(objectPath, file.buffer, {
@@ -176,6 +285,7 @@ export async function uploadAdImagesForUser(
       });
 
       if (!error) {
+        uploadsBucketEnsured = true;
         const { data } = supabase.storage.from(UPLOADS_BUCKET).getPublicUrl(objectPath);
         urls.push(data.publicUrl);
         lastError = null;
@@ -192,6 +302,23 @@ export async function uploadAdImagesForUser(
         },
         "Supabase storage upload failed for ad image",
       );
+
+      const errMsg = error.message || "";
+      if (isLikelySupabaseConnectionFailure(errMsg)) {
+        throw new SupabaseStorageConnectionError("upload", errMsg);
+      }
+
+      if (isBucketMissingMessage(errMsg) && !triedBucketRecovery) {
+        triedBucketRecovery = true;
+        await tryCreateUploadsBucket(supabase);
+        attempt -= 1;
+        continue;
+      }
+
+      if (isBucketMissingMessage(errMsg) && triedBucketRecovery) {
+        throw new SupabaseStorageBucketNotFoundError("upload", errMsg);
+      }
+
       lastError = new Error(error.message || "Upload failed");
       if (attempt < MAX_UPLOAD_ATTEMPTS) {
         await new Promise((resolve) => setTimeout(resolve, attempt * 250));
@@ -215,6 +342,7 @@ export async function uploadAvatarImageForUser(
 
   const objectPath = `avatars/${userId}/${crypto.randomUUID()}.jpg`;
   let lastError: Error | null = null;
+  let triedBucketRecovery = false;
 
   for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt += 1) {
     const { error } = await supabase.storage
@@ -225,6 +353,7 @@ export async function uploadAvatarImageForUser(
       });
 
     if (!error) {
+      uploadsBucketEnsured = true;
       const { data } = supabase.storage.from(UPLOADS_BUCKET).getPublicUrl(objectPath);
       return data.publicUrl;
     }
@@ -239,6 +368,23 @@ export async function uploadAvatarImageForUser(
       },
       "Supabase storage upload failed for avatar",
     );
+
+    const errMsg = error.message || "";
+    if (isLikelySupabaseConnectionFailure(errMsg)) {
+      throw new SupabaseStorageConnectionError("upload", errMsg);
+    }
+
+    if (isBucketMissingMessage(errMsg) && !triedBucketRecovery) {
+      triedBucketRecovery = true;
+      await tryCreateUploadsBucket(supabase);
+      attempt -= 1;
+      continue;
+    }
+
+    if (isBucketMissingMessage(errMsg) && triedBucketRecovery) {
+      throw new SupabaseStorageBucketNotFoundError("upload", errMsg);
+    }
+
     lastError = new Error(error.message || "Avatar upload failed");
     if (attempt < MAX_UPLOAD_ATTEMPTS) {
       await new Promise((resolve) => setTimeout(resolve, attempt * 250));

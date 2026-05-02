@@ -5,6 +5,11 @@
 export function getApiBaseUrl(): string {
   const raw = import.meta.env.VITE_API_BASE_URL;
   if (typeof raw !== "string") return "";
+  // In production, prefer same-origin `/api` (Vercel rewrite -> Railway) so session
+  // cookies are first-party. Local/dev can still set VITE_API_BASE_URL for direct API.
+  if (import.meta.env.PROD) {
+    return "";
+  }
   return raw.trim().replace(/\/+$/, "");
 }
 

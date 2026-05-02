@@ -1,6 +1,9 @@
 {
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/.*", "dest": "/index.html" }
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://workspaceapi-server-production-22f2.up.railway.app/api/:path*"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

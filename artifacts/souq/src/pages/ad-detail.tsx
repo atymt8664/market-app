@@ -38,6 +38,21 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { BuyerSafetyNote } from "@/components/buyer-safety-note";
+import { t } from "@/i18n";
+
+function buildAdPublicUrl(adId: number): string {
+  const basePath = import.meta.env.BASE_URL || "/";
+  const origin = window.location.origin;
+  const base =
+    basePath === "/"
+      ? `${origin}/`
+      : `${origin}${basePath.endsWith("/") ? basePath : `${basePath}/`}`;
+  try {
+    return new URL(`ad/${adId}`, base).href;
+  } catch {
+    return `${origin}/ad/${adId}`;
+  }
+}
 
 export default function AdDetail() {
   const params = useParams();
@@ -186,7 +201,13 @@ export default function AdDetail() {
       { data: { adId: ad.id } },
       {
         onSuccess: (data) => {
-          navigate(`/messages/${data.id}`);
+          const draft = t("ad_detail.message_draft", {
+            title: ad.title,
+            url: buildAdPublicUrl(ad.id),
+          });
+          navigate(
+            `/messages/${data.id}?draft=${encodeURIComponent(draft)}`,
+          );
         },
         onError: (err: unknown) => {
           const e = err as { data?: { error?: string } };

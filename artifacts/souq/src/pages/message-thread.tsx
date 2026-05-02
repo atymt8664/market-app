@@ -1,4 +1,4 @@
-import { Link, Redirect, useLocation, useParams } from "wouter";
+import { Link, Redirect, useLocation, useParams, useSearch } from "wouter";
 import { useEffect, useRef, useState } from "react";
 import {
   useGetConversation,
@@ -13,16 +13,39 @@ import { ArrowRight, Send } from "lucide-react";
 import { useChatSocket } from "@/hooks/use-chat-socket";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatPrice } from "@/lib/format";
+import { t } from "@/i18n";
+import { useLocale } from "@/hooks/use-locale";
+
+const BUYER_QUICK_KEYS = [
+  "message_thread.msg_qs_buyer_1",
+  "message_thread.msg_qs_buyer_2",
+  "message_thread.msg_qs_buyer_3",
+  "message_thread.msg_qs_buyer_4",
+  "message_thread.msg_qs_buyer_5",
+  "message_thread.msg_qs_buyer_6",
+] as const;
+
+const SELLER_QUICK_KEYS = [
+  "message_thread.msg_qs_seller_1",
+  "message_thread.msg_qs_seller_2",
+  "message_thread.msg_qs_seller_3",
+  "message_thread.msg_qs_seller_4",
+  "message_thread.msg_qs_seller_5",
+  "message_thread.msg_qs_seller_6",
+] as const;
 
 export default function MessageThread() {
   const { user, isLoading: authLoading } = useAuth();
   const params = useParams();
   const [, navigate] = useLocation();
+  const search = useSearch();
+  const { locale } = useLocale();
   const convId = Number(params.id);
   const queryClient = useQueryClient();
   const send = useSendMessage();
   const [body, setBody] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const draftAppliedRef = useRef(false);
 
   const { data: conv } = useGetConversation(convId, {
     query: {
@@ -49,7 +72,27 @@ export default function MessageThread() {
     }
   }, [messages]);
 
-  if (!authLoading && !user) return <Redirect to={`/guest-welcome?redirect=/messages/${convId}`} />;
+  useEffect(() => {
+    if (!convId || draftAppliedRef.current) return;
+    const paramsQs = new URLSearchParams(search);
+    const draft = paramsQs.get("draft");
+    if (!draft) return;
+    draftAppliedRef.current = true;
+    setBody(draft);
+    navigate(`/messages/${convId}`, { replace: true });
+  }, [convId, search, navigate]);
+
+  if (!authLoading && !user) {
+    const qs =
+      typeof window !== "undefined" && window.location.search
+        ? window.location.search
+        : "";
+    return (
+      <Redirect
+        to={`/guest-welcome?redirect=${encodeURIComponent(`/messages/${convId}${qs}`)}`}
+      />
+    );
+  }
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,11 +109,25 @@ export default function MessageThread() {
     );
   };
 
+  const quickKeys = conv?.isSeller ? SELLER_QUICK_KEYS : BUYER_QUICK_KEYS;
+  const dirRtl = locale === "ar";
+
+  const appendQuick = (line: string) => {
+    setBody((prev) => {
+      const p = prev.trim();
+      return p ? `${p}\n${line}` : line;
+    });
+  };
+
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] bg-background">
+    <div
+      className="flex flex-col w-full min-h-[100dvh] bg-background"
+      dir={dirRtl ? "rtl" : "ltr"}
+    >
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
         <div className="mx-auto w-full max-w-[820px] px-4 md:px-6 py-3 flex items-center gap-3">
           <button
+            type="button"
             onClick={() => navigate("/messages")}
             className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all"
           >
@@ -135,10 +192,30 @@ export default function MessageThread() {
               })
             ) : (
               <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-                ابدأ المحادثة بإرسال رسالة
+                {t("message_thread.empty_hint")}
               </div>
             )}
           </div>
+
+          {conv && (
+            <div
+              className="border-t border-border/60 bg-muted/20 px-2 py-2 flex gap-1.5 overflow-x-auto scrollbar-thin shrink-0"
+              style={{
+                paddingBottom: "calc(0.35rem + env(safe-area-inset-bottom, 0px))",
+              }}
+            >
+              {quickKeys.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => appendQuick(t(key))}
+                  className="shrink-0 rounded-full border border-border/80 bg-background/90 px-3 py-1.5 text-[11px] sm:text-xs font-medium text-foreground hover:bg-muted/80 active:scale-[0.98] transition-all whitespace-nowrap max-w-[200px] truncate"
+                >
+                  {t(key)}
+                </button>
+              ))}
+            </div>
+          )}
 
           <form
             onSubmit={handleSend}
@@ -154,7 +231,7 @@ export default function MessageThread() {
                   handleSend(e as unknown as React.FormEvent);
                 }
               }}
-              placeholder="اكتب رسالة..."
+              placeholder={t("message_thread.placeholder")}
               rows={1}
               className="flex-1 resize-none rounded-2xl bg-muted px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary max-h-32"
             />
@@ -162,7 +239,7 @@ export default function MessageThread() {
               type="submit"
               disabled={send.isPending || !body.trim()}
               className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50 active:scale-95 transition-transform shrink-0"
-              aria-label="إرسال"
+              aria-label={t("message_thread.send")}
             >
               <Send className="w-5 h-5" />
             </button>

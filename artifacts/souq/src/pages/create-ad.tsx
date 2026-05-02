@@ -53,6 +53,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -612,6 +616,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const [pickerSub, setPickerSub] = useState<CategorySubcategory | null>(null);
   const [shippingSheetOpen, setShippingSheetOpen] = useState(false);
   const [photoTipsOpen, setPhotoTipsOpen] = useState(false);
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
   const [priceTypeSheetOpen, setPriceTypeSheetOpen] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState("EUR");
@@ -1345,45 +1350,94 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               </button>
             )}
             {uploadedImages.length > 0 && (
-              <div className="relative w-full h-[196px] rounded-xl overflow-hidden border border-border bg-muted/30">
-                <img
-                  src={uploadedImages[activeImageIndex]}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-x-0 top-2 px-2.5 flex items-center justify-between">
-                  <span className="bg-black/60 text-white text-[11px] font-medium px-2 py-1 rounded-md">
-                    {activeImageIndex + 1}/{uploadedImages.length}
-                  </span>
+              <>
+                <div className="relative w-full h-[196px] rounded-xl overflow-hidden border border-border bg-muted/30">
                   <button
                     type="button"
-                    onClick={() => removeImage(activeImageIndex)}
-                    className="w-7 h-7 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                {uploadedImages.length > 1 && (
-                  <div className="absolute inset-x-0 bottom-2 px-2.5 flex items-center justify-between">
+                    onClick={() => setImagePreviewOpen(true)}
+                    className="absolute inset-0 z-[1] cursor-zoom-in"
+                    aria-label="معاينة الصورة"
+                  />
+                  <img
+                    src={uploadedImages[activeImageIndex]}
+                    alt=""
+                    className="relative z-0 w-full h-full object-cover pointer-events-none"
+                  />
+                  <div className="absolute inset-x-0 top-2 px-2.5 flex items-center justify-between z-20 pointer-events-none">
+                    <span className="pointer-events-none bg-black/60 text-white text-[11px] font-medium px-2 py-1 rounded-md">
+                      {activeImageIndex + 1}/{uploadedImages.length}
+                    </span>
                     <button
                       type="button"
-                      onClick={prevImage}
-                      className="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
-                      aria-label="الصورة السابقة"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeImage(activeImageIndex);
+                      }}
+                      className="pointer-events-auto w-7 h-7 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black"
                     >
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={nextImage}
-                      className="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
-                      aria-label="الصورة التالية"
-                    >
-                      <ArrowRight className="w-4 h-4 rotate-180" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
+                  {uploadedImages.length > 1 && (
+                    <div className="absolute inset-x-0 bottom-2 px-2.5 flex items-center justify-between z-20">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          prevImage();
+                        }}
+                        className="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
+                        aria-label="الصورة السابقة"
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          nextImage();
+                        }}
+                        className="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
+                        aria-label="الصورة التالية"
+                      >
+                        <ArrowRight className="w-4 h-4 rotate-180" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {uploadedImages.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-0.5 pt-1">
+                    {uploadedImages.map((src, i) => (
+                      <button
+                        key={`${src}-${i}`}
+                        type="button"
+                        onClick={() => setActiveImageIndex(i)}
+                        className={`shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
+                          i === activeImageIndex
+                            ? "border-primary ring-2 ring-primary/30"
+                            : "border-border opacity-80 hover:opacity-100"
+                        }`}
+                      >
+                        <img src={src} alt="" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
                 )}
-              </div>
+                <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
+                  <DialogContent
+                    className="max-w-[min(100vw-2rem,900px)] w-full p-2 border-0 bg-black/95"
+                    dir="rtl"
+                  >
+                    <div className="relative flex max-h-[85dvh] items-center justify-center">
+                      <img
+                        src={uploadedImages[activeImageIndex]}
+                        alt=""
+                        className="max-h-[85dvh] w-auto max-w-full object-contain"
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </>
             )}
             {uploadedImages.length > 0 && uploadedImages.length < 10 && (
               <button

@@ -34,6 +34,21 @@ const SELLER_QUICK_KEYS = [
   "message_thread.msg_qs_seller_6",
 ] as const;
 
+function messageDraftStorageKey(convId: number) {
+  return `souq:message-draft:${convId}`;
+}
+
+/** Merge wouter search with window.location so ?draft survives router edge cases in production. */
+function resolveSearchString(wouterSearch: string): string {
+  if (wouterSearch && wouterSearch.length > 0) {
+    return wouterSearch.startsWith("?") ? wouterSearch : `?${wouterSearch}`;
+  }
+  if (typeof window !== "undefined" && window.location.search) {
+    return window.location.search;
+  }
+  return "";
+}
+
 export default function MessageThread() {
   const { user, isLoading: authLoading } = useAuth();
   const params = useParams();
@@ -45,7 +60,6 @@ export default function MessageThread() {
   const send = useSendMessage();
   const [body, setBody] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
-  const draftAppliedRef = useRef(false);
 
   const { data: conv } = useGetConversation(convId, {
     query: {
@@ -73,13 +87,34 @@ export default function MessageThread() {
   }, [messages]);
 
   useEffect(() => {
-    if (!convId || draftAppliedRef.current) return;
-    const paramsQs = new URLSearchParams(search);
-    const draft = paramsQs.get("draft");
-    if (!draft) return;
-    draftAppliedRef.current = true;
-    setBody(draft);
-    navigate(`/messages/${convId}`, { replace: true });
+    if (!convId) return;
+    const qs = resolveSearchString(search);
+    const paramsQs = new URLSearchParams(
+      qs.startsWith("?") ? qs.slice(1) : qs,
+    );
+    const draftFromUrl = paramsQs.get("draft");
+    const storageKey = messageDraftStorageKey(convId);
+
+    if (draftFromUrl) {
+      try {
+        sessionStorage.setItem(storageKey, draftFromUrl);
+      } catch {
+        /* ignore quota / private mode */
+      }
+      setBody(draftFromUrl);
+      navigate(`/messages/${convId}`, { replace: true });
+      return;
+    }
+
+    try {
+      const stored = sessionStorage.getItem(storageKey);
+      if (stored) {
+        sessionStorage.removeItem(storageKey);
+        setBody(stored);
+      }
+    } catch {
+      /* ignore */
+    }
   }, [convId, search, navigate]);
 
   if (!authLoading && !user) {

@@ -21,6 +21,63 @@ const storeGet = promisify<string, session.SessionData | null>(store.get.bind(st
 
 const userSockets = new Map<number, Set<WebSocket>>();
 
+/** Ref-count views of (userId, conversationId) for presence-based delivery. */
+const conversationFocusRefCounts = new Map<string, number>();
+
+const wsUserId = new WeakMap<WebSocket, number>();
+const wsFocusStack = new WeakMap<WebSocket, Array<{ convId: number }>>();
+
+function focusKey(userId: number, convId: number): string {
+  return `${userId}:${convId}`;
+}
+
+export function registerConversationFocus(userId: number, convId: number): void {
+  const k = focusKey(userId, convId);
+  conversationFocusRefCounts.set(k, (conversationFocusRefCounts.get(k) ?? 0) + 1);
+}
+
+export function unregisterConversationFocus(userId: number, convId: number): void {
+  const k = focusKey(userId, convId);
+  const next = (conversationFocusRefCounts.get(k) ?? 1) - 1;
+  if (next <= 0) conversationFocusRefCounts.delete(k);
+  else conversationFocusRefCounts.set(k, next);
+}
+
+/** True if user has this conversation open (WebSocket focus / thread visible). */
+export function isUserFocusedOnConversation(userId: number, convId: number): boolean {
+  return (conversationFocusRefCounts.get(focusKey(userId, convId)) ?? 0) > 0;
+}
+
+function pushConversationFocus(ws: WebSocket, userId: number, convId: number): void {
+  registerConversationFocus(userId, convId);
+  let stack = wsFocusStack.get(ws);
+  if (!stack) {
+    stack = [];
+    wsFocusStack.set(ws, stack);
+  }
+  stack.push({ convId });
+}
+
+function popConversationFocus(ws: WebSocket, userId: number, convId: number): void {
+  const stack = wsFocusStack.get(ws);
+  if (!stack?.length) {
+    unregisterConversationFocus(userId, convId);
+    return;
+  }
+  const idx = stack.map((x) => x.convId).lastIndexOf(convId);
+  if (idx >= 0) stack.splice(idx, 1);
+  unregisterConversationFocus(userId, convId);
+}
+
+function clearConversationFocusForSocket(ws: WebSocket, userId: number): void {
+  const stack = wsFocusStack.get(ws);
+  wsFocusStack.delete(ws);
+  if (!stack?.length) return;
+  for (const { convId } of stack) {
+    unregisterConversationFocus(userId, convId);
+  }
+}
+
 export function getSocketsForUser(userId: number): WebSocket[] {
   const set = userSockets.get(userId);
   return set ? Array.from(set) : [];
@@ -73,6 +130,7 @@ export function attachWebSocketServer(httpServer: HttpServer): void {
     }
 
     wss.handleUpgrade(req, socket, head, (ws) => {
+      wsUserId.set(ws, userId);
       register(userId, ws);
       wss.emit("connection", ws, req);
     });
@@ -80,11 +138,28 @@ export function attachWebSocketServer(httpServer: HttpServer): void {
 
   wss.on("connection", (ws) => {
     ws.on("message", (raw) => {
+      const uid = wsUserId.get(ws);
       // Heartbeat / ping handling — clients can send {type:"ping"}; we just echo {type:"pong"}.
       try {
-        const msg = JSON.parse(String(raw));
+        const msg = JSON.parse(String(raw)) as {
+          type?: string;
+          conversationId?: unknown;
+          active?: unknown;
+        };
         if (msg?.type === "ping") {
           ws.send(JSON.stringify({ type: "pong" }));
+          return;
+        }
+        if (
+          uid != null &&
+          msg?.type === "conversation:focus" &&
+          typeof msg.conversationId === "number" &&
+          Number.isInteger(msg.conversationId)
+        ) {
+          const convId = msg.conversationId;
+          const active = msg.active !== false;
+          if (active) pushConversationFocus(ws, uid, convId);
+          else popConversationFocus(ws, uid, convId);
         }
       } catch {
         /* ignore */
@@ -103,7 +178,9 @@ function register(userId: number, ws: WebSocket) {
   }
   set.add(ws);
   ws.on("close", () => {
+    clearConversationFocusForSocket(ws, userId);
     set!.delete(ws);
     if (set!.size === 0) userSockets.delete(userId);
+    wsUserId.delete(ws);
   });
 }

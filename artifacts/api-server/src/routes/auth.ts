@@ -24,10 +24,33 @@ import {
   sendPasswordResetEmail,
   sendVerificationCodeEmail,
 } from "../lib/email";
+import { logger } from "../lib/logger";
 import { ensureAppSettingsTable } from "../lib/ensure-app-settings-table";
 import { hasValidAdminSession } from "../middlewares/require-admin";
 
 const router: IRouter = Router();
+
+function normalizeAuthLoginBody(body: unknown): unknown {
+  if (!body || typeof body !== "object") return body;
+  const o = body as Record<string, unknown>;
+  return {
+    ...o,
+    email: typeof o.email === "string" ? o.email.trim() : o.email,
+    password: typeof o.password === "string" ? o.password.trim() : o.password,
+  };
+}
+
+/** Many clients only display `error`; include provider text so failures are not opaque. */
+function jsonMailProvider502(
+  details: string,
+  arabicSummary: string,
+): { error: string; details: string; code: "EMAIL_PROVIDER_ERROR" } {
+  return {
+    error: `${arabicSummary} — ${details}`,
+    details,
+    code: "EMAIL_PROVIDER_ERROR",
+  };
+}
 
 const signupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1h
@@ -37,9 +60,12 @@ const signupLimiter = rateLimit({
   message: { error: "تم تجاوز الحد المسموح، حاول لاحقاً" },
 });
 
+const isDevApi = process.env.NODE_ENV !== "production";
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15m
-  max: 10,
+  /** Behind Vite + cloudflared every client often shares one IP — keep prod strict, dev forgiving. */
+  max: isDevApi ? 300 : 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "محاولات كثيرة، انتظر قليلاً وحاول مجدداً" },
@@ -55,7 +81,7 @@ const verifyLimiter = rateLimit({
 
 const passwordResetLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 5,
+  max: isDevApi ? 200 : 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "محاولات كثيرة، حاول لاحقاً" },
@@ -264,10 +290,12 @@ router.post("/auth/signup", signupLimiter, async (req, res) => {
           console.error("Verification email send failed:", mailError);
           const details =
             mailError instanceof Error ? mailError.message : "Email provider error";
-          res.status(502).json({
-            error: "تعذر إرسال رمز التفعيل إلى البريد الإلكتروني",
-            details,
-          });
+          res.status(502).json(
+            jsonMailProvider502(
+              details,
+              "تعذر إرسال رمز التفعيل إلى البريد الإلكتروني",
+            ),
+          );
           return;
         }
 
@@ -307,10 +335,12 @@ router.post("/auth/signup", signupLimiter, async (req, res) => {
       console.error("Verification email send failed:", mailError);
       const details =
         mailError instanceof Error ? mailError.message : "Email provider error";
-      res.status(502).json({
-        error: "تعذر إرسال رمز التفعيل إلى البريد الإلكتروني",
-        details,
-      });
+      res.status(502).json(
+        jsonMailProvider502(
+          details,
+          "تعذر إرسال رمز التفعيل إلى البريد الإلكتروني",
+        ),
+      );
       return;
     }
 
@@ -328,7 +358,7 @@ router.post("/auth/signup", signupLimiter, async (req, res) => {
 });
 
 router.post("/auth/login", loginLimiter, async (req, res) => {
-  const parsed = AuthLoginBody.safeParse(req.body);
+  const parsed = AuthLoginBody.safeParse(normalizeAuthLoginBody(req.body));
 
   if (!parsed.success) {
     res.status(400).json({ error: "بيانات غير صحيحة" });
@@ -568,10 +598,12 @@ router.post("/auth/resend-verification", verifyLimiter, async (req, res) => {
     console.error("Verification email resend failed:", mailError);
     const details =
       mailError instanceof Error ? mailError.message : "Email provider error";
-    res.status(502).json({
-      error: "تعذر إرسال رمز التفعيل إلى البريد الإلكتروني",
-      details,
-    });
+    res.status(502).json(
+      jsonMailProvider502(
+        details,
+        "تعذر إرسال رمز التفعيل إلى البريد الإلكتروني",
+      ),
+    );
     return;
   }
   res.json({
@@ -606,17 +638,23 @@ router.post("/auth/forgot-password", passwordResetLimiter, async (req, res) => {
       passwordResetExpiresAt: resetExpiry(),
     })
     .where(eq(usersTable.id, user.id));
-  const url = buildResetPasswordUrl(token);
+  const url = buildResetPasswordUrl(token, req);
   try {
     await deliverPasswordResetLink(user.email, url);
   } catch (mailError) {
-    console.error("Password reset email send failed:", mailError);
     const details =
       mailError instanceof Error ? mailError.message : "Email provider error";
-    res.status(502).json({
-      error: "تعذر إرسال بريد إعادة التعيين",
-      details,
-    });
+    logger.warn(
+      {
+        route: "POST /auth/forgot-password",
+        httpStatus: 502,
+        mailErrorPreview: details.slice(0, 200),
+      },
+      "password reset email delivery failed",
+    );
+    res.status(502).json(
+      jsonMailProvider502(details, "تعذر إرسال بريد إعادة التعيين"),
+    );
     return;
   }
   res.json({ ok: true });

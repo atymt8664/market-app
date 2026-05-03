@@ -1235,6 +1235,7 @@ components:
         conversationId: { type: integer }
         senderId: { type: integer }
         body: { type: string }
+        deliveredAt: { type: string, format: date-time, nullable: true }
         readAt: { type: string, format: date-time, nullable: true }
         createdAt: { type: string, format: date-time }
 

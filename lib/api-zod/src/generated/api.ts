@@ -699,6 +699,7 @@ export const ListMessagesResponseItem = zod.object({
   conversationId: zod.number(),
   senderId: zod.number(),
   body: zod.string(),
+  deliveredAt: zod.coerce.date().nullish(),
   readAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
 });

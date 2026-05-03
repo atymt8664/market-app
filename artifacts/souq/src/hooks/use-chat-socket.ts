@@ -1,11 +1,23 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { getApiBaseUrl } from "@/lib/api-url";
 
 /** Used only for WebSocket (HTTP API stays same-origin via Vercel → Railway). */
 const PRODUCTION_RAILWAY_HTTP_ORIGIN = "https://workspaceapi-server-production-22f2.up.railway.app";
 
 export type ChatSocketEvent =
-  | { type: "message"; conversationId: number; message: { id: number; conversationId: number; senderId: number; body: string; createdAt: string; readAt: string | null } }
+  | {
+      type: "message";
+      conversationId: number;
+      message: {
+        id: number;
+        conversationId: number;
+        senderId: number;
+        body: string;
+        createdAt: string;
+        deliveredAt: string | null;
+        readAt: string | null;
+      };
+    }
   | { type: "pong" };
 
 export function buildWsUrl(): string {
@@ -37,7 +49,9 @@ export function buildWsUrl(): string {
   return `${proto}//${window.location.host}/api/ws`;
 }
 
-export function useChatSocket(onEvent: (e: ChatSocketEvent) => void): { send: (data: unknown) => void } {
+export function useChatSocket(onEvent: (e: ChatSocketEvent) => void): {
+  send: (data: unknown) => void;
+} {
   const handlerRef = useRef(onEvent);
   handlerRef.current = onEvent;
   const wsRef = useRef<WebSocket | null>(null);
@@ -96,12 +110,12 @@ export function useChatSocket(onEvent: (e: ChatSocketEvent) => void): { send: (d
     };
   }, []);
 
-  return {
-    send: (data: unknown) => {
-      const ws = wsRef.current;
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(typeof data === "string" ? data : JSON.stringify(data));
-      }
-    },
-  };
+  const send = useCallback((data: unknown) => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(typeof data === "string" ? data : JSON.stringify(data));
+    }
+  }, []);
+
+  return { send };
 }

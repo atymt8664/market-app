@@ -18,9 +18,11 @@ declare module "express-session" {
 
 const app: Express = express();
 const isProduction = process.env.NODE_ENV === "production";
-const sessionCookieSecure = isProduction;
-/** Cross-origin SPA (e.g. Vercel) calling API on another origin needs SameSite=None + Secure. */
-const sessionSameSite: "lax" | "none" = isProduction ? "none" : "lax";
+/** trycloudflare / HTTPS dev: SESSION_COOKIE_SECURE=1 → Secure + SameSite=None (required with Secure cross-context cookies). */
+const sessionCookieSecure =
+  isProduction || process.env["SESSION_COOKIE_SECURE"] === "1";
+const sessionSameSite: "lax" | "none" =
+  sessionCookieSecure ? "none" : "lax";
 
 app.use(
   pinoHttp({
@@ -75,6 +77,7 @@ app.use(
       httpOnly: true,
       secure: sessionCookieSecure,
       sameSite: sessionSameSite,
+      path: "/",
       maxAge: 1000 * 60 * 60 * 24 * 30,
     },
   }),

@@ -1,3 +1,4 @@
+import type { Request } from "express";
 import { Resend } from "resend";
 import { logger } from "./logger";
 
@@ -114,8 +115,26 @@ export function getOtpEmailTemplate(language: string, code: string): {
   };
 }
 
-export function buildResetPasswordUrl(token: string) {
-  const frontendUrl = getFrontendUrl();
+type RequestLike = Pick<Request, "get">;
+
+/** Prefer tunnel/public origin from proxy headers so reset links work on trycloudflare, not only localhost. */
+function publicFrontendBase(req?: RequestLike): string {
+  if (req) {
+    const xfProto = req.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const xfHost =
+      req.get("x-forwarded-host")?.split(",")[0]?.trim() || req.get("host");
+    if (xfHost) {
+      const proto =
+        xfProto ||
+        (xfHost.includes("trycloudflare.com") ? "https" : "http");
+      return normalizeAppUrl(`${proto}://${xfHost}`);
+    }
+  }
+  return getFrontendUrl();
+}
+
+export function buildResetPasswordUrl(token: string, req?: RequestLike) {
+  const frontendUrl = publicFrontendBase(req);
   return `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
 }
 
@@ -169,6 +188,14 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   });
 
   if (result.error) {
+    logger.warn(
+      {
+        kind: "resend_password_reset_error",
+        name: result.error.name,
+        message: result.error.message,
+      },
+      "Resend password reset email rejected",
+    );
     throw new Error(
       result.error.message || "فشل إرسال بريد إعادة تعيين كلمة المرور عبر Resend",
     );

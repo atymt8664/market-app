@@ -77,7 +77,7 @@ export default function Login() {
 
       toast({ title: "تم تسجيل الدخول بنجاح" });
       queryClient.setQueryData(getAuthMeQueryKey(), json);
-      await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
+      void queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
 
       const params = new URLSearchParams(window.location.search);
       navigate(params.get("redirect") || "/");

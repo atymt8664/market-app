@@ -11,6 +11,7 @@ export interface Message {
   conversationId: number;
   senderId: number;
   body: string;
+  deliveredAt?: Date | null;
   readAt?: Date | null;
   createdAt: Date;
 }

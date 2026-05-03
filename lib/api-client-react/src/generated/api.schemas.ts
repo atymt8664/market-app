@@ -225,6 +225,7 @@ export interface Message {
   conversationId: number;
   senderId: number;
   body: string;
+  deliveredAt?: string | null;
   readAt?: string | null;
   createdAt: string;
 }

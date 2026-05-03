@@ -92,6 +92,8 @@ const POST_CORE_SCHEMA_SQL = `
 
     CREATE UNIQUE INDEX IF NOT EXISTS conversations_ad_id_buyer_id_unique
       ON conversations(ad_id, buyer_id);
+
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ NULL;
     `;
 
 /**

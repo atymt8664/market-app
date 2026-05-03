@@ -6,6 +6,7 @@ import {
   useListMessages,
   getListMessagesQueryKey,
   useSendMessage,
+  type Message as ChatMessage,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -87,11 +88,17 @@ export default function MessageThread() {
     },
   });
 
-  useChatSocket((ev) => {
+  const { send: wsSend } = useChatSocket((ev) => {
     if (ev.type === "message" && ev.conversationId === convId) {
       queryClient.invalidateQueries({ queryKey: getListMessagesQueryKey(convId) });
     }
   });
+
+  useEffect(() => {
+    if (!user || !convId || !Number.isFinite(convId)) return;
+    wsSend({ type: "conversation:focus", conversationId: convId, active: true });
+    return () => wsSend({ type: "conversation:focus", conversationId: convId, active: false });
+  }, [convId, user?.id, wsSend]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -247,8 +254,8 @@ export default function MessageThread() {
         </div>
       </header>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-[820px] flex-1 px-4 pb-[236px] pt-0 md:px-6">
-        <div className="-mt-5 flex h-[48vh] min-h-0 w-full flex-col overflow-hidden rounded-3xl border border-primary/25 bg-zinc-950/75 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10">
+      <div className="mx-auto flex min-h-0 w-full max-w-[820px] flex-1 flex-col px-4 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+100px+8.75rem)] md:px-6">
+        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-primary/35 bg-card/80 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/15 dark:bg-zinc-950/75">
           <div
             ref={scrollRef}
             className="flex max-h-full min-h-0 flex-col items-start gap-2 overflow-y-auto px-3 pb-5 pt-0"
@@ -259,7 +266,7 @@ export default function MessageThread() {
                 <Skeleton className="h-10 w-1/2 self-end rounded-2xl bg-zinc-900/70" />
               </>
             ) : messages && messages.length > 0 ? (
-              messages.map((m, index) => {
+              messages.map((m: ChatMessage, index) => {
                 const mine = m.senderId === user!.id;
                 return (
                   <div
@@ -275,7 +282,23 @@ export default function MessageThread() {
                       animation: `messageIn 180ms ease ${index * 12}ms both`,
                     }}
                   >
-                    {renderMessageBody(m.body)}
+                    <div className="flex flex-col gap-0.5">
+                      {renderMessageBody(m.body)}
+                      {mine && (
+                        <div
+                          className="flex justify-end gap-0.5 text-[11px] leading-none tabular-nums"
+                          aria-hidden
+                        >
+                          {m.readAt ? (
+                            <span className="text-emerald-800">✓✓</span>
+                          ) : m.deliveredAt ? (
+                            <span className="text-zinc-800/75">✓✓</span>
+                          ) : (
+                            <span className="text-zinc-900/70">✓</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })

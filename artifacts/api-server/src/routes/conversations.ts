@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, conversationsTable, messagesTable, adsTable, usersTable } from "@workspace/db";
 import { and, asc, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
-import { broadcastToUser } from "../lib/realtime";
+import { broadcastToUser, isUserFocusedOnConversation } from "../lib/realtime";
 import { isPublicAdStatus } from "../lib/ad-visibility";
 
 const router: IRouter = Router();
@@ -13,6 +13,7 @@ function serializeMessage(m: typeof messagesTable.$inferSelect) {
     conversationId: m.conversationId,
     senderId: m.senderId,
     body: m.body,
+    deliveredAt: m.deliveredAt ? m.deliveredAt.toISOString() : null,
     readAt: m.readAt ? m.readAt.toISOString() : null,
     createdAt: m.createdAt.toISOString(),
   };
@@ -204,13 +205,17 @@ router.get("/conversations/:convId/messages", requireAuth, async (req, res) => {
     res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
     return;
   }
-  const rows = await db
-    .select()
-    .from(messagesTable)
-    .where(eq(messagesTable.conversationId, convId))
-    .orderBy(asc(messagesTable.createdAt))
-    .limit(200);
-  // Mark unread messages from other party as read.
+  // Recipient has opened the thread: mark incoming messages as delivered, then read.
+  await db
+    .update(messagesTable)
+    .set({ deliveredAt: new Date() })
+    .where(
+      and(
+        eq(messagesTable.conversationId, convId),
+        ne(messagesTable.senderId, userId),
+        isNull(messagesTable.deliveredAt),
+      ),
+    );
   await db
     .update(messagesTable)
     .set({ readAt: new Date() })
@@ -221,6 +226,12 @@ router.get("/conversations/:convId/messages", requireAuth, async (req, res) => {
         isNull(messagesTable.readAt),
       ),
     );
+  const rows = await db
+    .select()
+    .from(messagesTable)
+    .where(eq(messagesTable.conversationId, convId))
+    .orderBy(asc(messagesTable.createdAt))
+    .limit(200);
   res.json(rows.map(serializeMessage));
 });
 
@@ -242,9 +253,17 @@ router.post("/conversations/:convId/messages", requireAuth, async (req, res) => 
     return;
   }
   const { conv } = r;
+  const recipient = conv.buyerId === userId ? conv.sellerId : conv.buyerId;
+  const now = new Date();
+  const deliverToRecipient = isUserFocusedOnConversation(recipient, convId);
   const [created] = await db
     .insert(messagesTable)
-    .values({ conversationId: convId, senderId: userId, body })
+    .values({
+      conversationId: convId,
+      senderId: userId,
+      body,
+      ...(deliverToRecipient ? { deliveredAt: now } : {}),
+    })
     .returning();
   await db
     .update(conversationsTable)
@@ -256,7 +275,6 @@ router.post("/conversations/:convId/messages", requireAuth, async (req, res) => 
     .where(eq(conversationsTable.id, convId));
 
   const payload = { type: "message", conversationId: convId, message: serializeMessage(created!) };
-  const recipient = conv.buyerId === userId ? conv.sellerId : conv.buyerId;
   broadcastToUser(recipient, payload);
   // Echo to sender's other devices too.
   broadcastToUser(userId, payload);
@@ -272,6 +290,16 @@ router.post("/conversations/:convId/read", requireAuth, async (req, res) => {
     res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
     return;
   }
+  await db
+    .update(messagesTable)
+    .set({ deliveredAt: new Date() })
+    .where(
+      and(
+        eq(messagesTable.conversationId, convId),
+        ne(messagesTable.senderId, userId),
+        isNull(messagesTable.deliveredAt),
+      ),
+    );
   await db
     .update(messagesTable)
     .set({ readAt: new Date() })

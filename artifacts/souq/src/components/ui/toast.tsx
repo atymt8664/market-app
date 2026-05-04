@@ -5,6 +5,10 @@ import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/** كرت تنبيه / نجاح — نفس هوية authAlert وباقي الواجهة */
+const PREMIUM_TOAST_CARD =
+  "mx-auto w-full max-w-[min(100%,20rem)] rounded-2xl border border-primary/30 bg-zinc-950/95 p-4 pr-10 text-foreground shadow-[0_0_24px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12 backdrop-blur-sm sm:max-w-sm"
+
 const ToastProvider = ToastPrimitives.Provider
 
 const ToastViewport = React.forwardRef<
@@ -14,7 +18,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse items-center p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col sm:items-end md:max-w-[420px]",
       className
     )}
     {...props}
@@ -23,13 +27,23 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  [
+    "group pointer-events-auto relative flex w-full items-center justify-between gap-3 overflow-hidden transition-all",
+    "data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[swipe=end]:animate-out",
+    "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-300",
+    "data-[state=open]:slide-in-from-top-3 sm:data-[state=open]:slide-in-from-bottom-3",
+    "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-200",
+    "data-[state=closed]:slide-out-to-top-3 sm:data-[state=closed]:slide-out-to-bottom-3",
+  ].join(" "),
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground",
+        /** جميع التنبيهات غير الخطأ — كرت داكن + lime خفيف (يشمل نجاح تسجيل الدخول) */
+        default: PREMIUM_TOAST_CARD,
         destructive:
-          "destructive group border-destructive bg-destructive text-destructive-foreground",
+          "destructive group mx-auto w-full max-w-[min(100%,20rem)] rounded-2xl border border-destructive/90 bg-destructive p-4 pr-10 text-destructive-foreground shadow-lg sm:max-w-sm",
+        /** مطابق لـ default — للاستدعاء الصريح من الشريط السفلي */
+        authAlert: PREMIUM_TOAST_CARD,
       },
     },
     defaultVariants: {

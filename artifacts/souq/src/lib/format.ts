@@ -1,4 +1,9 @@
-import { formatDistanceToNow } from "date-fns";
+import {
+  format,
+  formatDistanceToNow,
+  isToday,
+  parseISO,
+} from "date-fns";
 import { ar, de, enUS } from "date-fns/locale";
 import { getLocale, t } from "@/i18n";
 
@@ -16,6 +21,22 @@ export function formatRelativeTime(dateString: string) {
       locale: getDateFnsLocale(),
     });
   } catch (e) {
+    return "";
+  }
+}
+
+/** Short timestamp for chat bubbles (locale-aware). */
+export function formatMessageTimestamp(
+  dateString: string,
+  locale: "ar" | "de" | "en",
+) {
+  const loc = locale === "de" ? de : locale === "en" ? enUS : ar;
+  try {
+    const d = parseISO(dateString);
+    const time = format(d, "p", { locale: loc });
+    if (isToday(d)) return time;
+    return `${format(d, "d MMM", { locale: loc })} · ${time}`;
+  } catch {
     return "";
   }
 }

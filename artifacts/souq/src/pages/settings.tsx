@@ -31,6 +31,25 @@ import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { getAccountVerificationStatus, isAccountVerified } from "@/lib/account-verification";
 import { APP_VERSION } from "@/lib/app-config";
+import {
+  SETTINGS_BACK_BUTTON,
+  SETTINGS_CARD,
+  SETTINGS_CARD_SHELL,
+  SETTINGS_HEADER_BAR,
+  SETTINGS_HEADER_INNER,
+  SETTINGS_ICON_TILE,
+  SETTINGS_ICON_TILE_DESTRUCTIVE,
+  SETTINGS_MAIN_COLUMN,
+  SETTINGS_PAGE_BG,
+  SETTINGS_PAGE_TITLE,
+  SETTINGS_SECTION_TITLE,
+} from "@/components/settings-shell";
+import {
+  appendReturnToQuery,
+  stashLegalExplicitReturn,
+  stashLegalNavigationReturn,
+  stashReturnTarget,
+} from "@/lib/return-navigation";
 
 interface RowProps {
   icon: React.ReactNode;
@@ -63,14 +82,10 @@ function Row({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 active:bg-muted transition-colors text-right border-b border-border/30 last:border-0 ${dividerClassName ?? ""} ${className ?? ""}`}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 transition-colors text-right border-b border-primary/10 last:border-0 hover:bg-primary/[0.04] active:bg-primary/[0.07] ${dividerClassName ?? ""} ${className ?? ""}`}
     >
       <div
-        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-          destructive
-            ? "bg-destructive/10 text-destructive"
-            : "bg-muted text-foreground"
-        } ${iconClassName ?? ""}`}
+        className={`${destructive ? SETTINGS_ICON_TILE_DESTRUCTIVE : SETTINGS_ICON_TILE} ${iconClassName ?? ""}`}
       >
         {icon}
       </div>
@@ -87,7 +102,7 @@ function Row({
         )}
       </div>
       {trailing ?? (
-        <ChevronLeft className="w-4 h-4 text-muted-foreground shrink-0" />
+        <ChevronLeft className="w-4 h-4 text-primary/45 shrink-0" />
       )}
     </button>
   );
@@ -107,13 +122,13 @@ function Section({
   cardClassName?: string;
 }) {
   return (
-    <section className={`mb-4 ${className ?? ""}`}>
+    <section className={`mb-5 ${className ?? ""}`}>
       {title && (
-        <h2 className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1 ${titleClassName ?? ""}`}>
+        <h2 className={`${SETTINGS_SECTION_TITLE} ${titleClassName ?? ""}`}>
           {title}
         </h2>
       )}
-      <div className={`bg-card rounded-xl border border-border overflow-hidden ${cardClassName ?? ""}`}>
+      <div className={`${SETTINGS_CARD_SHELL} overflow-hidden ${cardClassName ?? ""}`}>
         {children}
       </div>
     </section>
@@ -150,7 +165,13 @@ export default function Settings() {
     });
   };
 
-  const go = (path: string) => () => navigate(path);
+  const leaveSettings = (path: string) => () => {
+    const finalUrl = appendReturnToQuery(path, "/settings");
+    stashLegalNavigationReturn("/settings");
+    stashLegalExplicitReturn("/settings");
+    stashReturnTarget("/settings");
+    navigate(finalUrl);
+  };
   void toast;
   const verificationStatus = getAccountVerificationStatus(user);
 
@@ -158,29 +179,28 @@ export default function Settings() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-background pb-8"
+      className={`flex flex-col w-full ${SETTINGS_PAGE_BG} pb-10`}
     >
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
-        <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-4 flex items-center gap-3">
-          <Link href="/profile">
-            <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
-              <ArrowRight className="w-5 h-5" />
+      <header className={SETTINGS_HEADER_BAR} dir="rtl">
+        <div className={SETTINGS_HEADER_INNER}>
+          <h1 className={SETTINGS_PAGE_TITLE}>{t("settings.title")}</h1>
+          <Link href="/profile" className="shrink-0">
+            <button type="button" className={SETTINGS_BACK_BUTTON} aria-label={t("settings.title")}>
+              <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
             </button>
           </Link>
-          <h1 className="font-bold text-lg">{t("settings.title")}</h1>
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-5">
+      <div className={SETTINGS_MAIN_COLUMN}>
         {user && (
           <Section>
-            <div className="p-3 md:p-4">
-              <button
-                type="button"
-                onClick={go("/account/profile")}
-                className="w-full rounded-2xl border border-primary/20 bg-card/70 p-4 md:p-5 text-right shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)] transition-all hover:bg-card/80 active:scale-[0.995]"
-                dir={locale === "ar" ? "rtl" : "ltr"}
-              >
+            <button
+              type="button"
+              onClick={leaveSettings("/account/profile")}
+              className="w-full p-4 md:p-5 text-right transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
+              dir={locale === "ar" ? "rtl" : "ltr"}
+            >
                 <div className="flex items-center gap-3 md:gap-4">
                   <AvatarCircle
                     name={user.name || user.email}
@@ -201,89 +221,72 @@ export default function Settings() {
                       {user.email}
                     </div>
                   </div>
-                  <ChevronLeft className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <ChevronLeft className="w-4 h-4 text-primary/45 shrink-0" />
                 </div>
-              </button>
-            </div>
+            </button>
           </Section>
         )}
 
-        <Section
-          title={t("settings.section.account")}
-          className="mb-5"
-          titleClassName="mb-2.5 px-2 text-[11px] tracking-[0.08em]"
-          cardClassName="rounded-2xl border-primary/20 bg-card/70 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]"
-        >
+        <Section title={t("settings.section.account")}>
         <Row
           icon={<UserIcon className="w-4 h-4" />}
           label={t("settings.account.profile")}
           hint={t("settings.account.profile_hint")}
-          onClick={go("/account/profile")}
+          onClick={leaveSettings("/account/profile")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
           hintClassName="mt-0.5 text-[11px] md:text-xs text-muted-foreground/90"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         <Row
           icon={<Mail className="w-4 h-4" />}
           label={t("settings.account.email")}
           hint={user?.emailVerified ? t("settings.common.verified") : t("settings.common.unverified")}
-          onClick={go("/account/email")}
+          onClick={leaveSettings("/account/email")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
           hintClassName="mt-0.5 text-[11px] md:text-xs text-muted-foreground/90"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         <Row
           icon={<Shield className="w-4 h-4" />}
           label={t("settings.account.verification")}
           hint={t(`verification.status.${verificationStatus}`)}
-          onClick={go("/account/verification")}
+          onClick={leaveSettings("/account/verification")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
           hintClassName="mt-0.5 text-[11px] md:text-xs text-muted-foreground/90"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         <Row
           icon={<Lock className="w-4 h-4" />}
           label={t("settings.account.password")}
-          onClick={go("/account/password")}
+          onClick={leaveSettings("/account/password")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         <Row
           icon={<CreditCard className="w-4 h-4" />}
           label={t("settings.account.payments")}
           hint={t("settings.common.coming_soon")}
-          onClick={go("/account/payments")}
+          onClick={leaveSettings("/account/payments")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
           hintClassName="mt-0.5 text-[11px] md:text-xs text-muted-foreground/90"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         </Section>
 
-        <Section
-          title={t("settings.section.customization")}
-          className="mb-5"
-          titleClassName="mb-2.5 px-2 text-[11px] tracking-[0.08em]"
-          cardClassName="rounded-2xl border-primary/20 bg-card/70 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]"
-        >
+        <Section title={t("settings.section.customization")}>
         <Row
           icon={<Bell className="w-4 h-4" />}
           label={t("settings.customization.notifications")}
           hint={t("settings.notifications.placeholder")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
           hintClassName="mt-0.5 text-[11px] md:text-xs text-muted-foreground/90"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
           trailing={
             <Switch
               checked={false}
@@ -296,106 +299,90 @@ export default function Settings() {
           icon={<Globe className="w-4 h-4" />}
           label={t("settings.customization.language")}
           hint={locale === "ar" ? t("language.option.ar") : locale === "en" ? t("language.option.en") : t("language.option.de")}
-          onClick={go("/account/language")}
+          onClick={leaveSettings("/account/language")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
           hintClassName="mt-0.5 text-[11px] md:text-xs text-muted-foreground/90"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         </Section>
 
-        <Section
-          title={t("settings.section.privacy_security")}
-          className="mb-5"
-          titleClassName="mb-2.5 px-2 text-[11px] tracking-[0.08em]"
-          cardClassName="rounded-2xl border-primary/20 bg-card/70 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]"
-        >
+        <Section title={t("settings.section.privacy_security")}>
         <Row
           icon={<Shield className="w-4 h-4" />}
           label={t("settings.privacy.privacy")}
-          onClick={go("/account/privacy")}
+          onClick={leaveSettings("/account/privacy")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         <Row
           icon={<Lock className="w-4 h-4" />}
           label={t("settings.privacy.security")}
-          onClick={go("/account/security")}
+          onClick={leaveSettings("/account/security")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         </Section>
 
-        <Section
-          title={t("settings.section.about")}
-          className="mb-5"
-          titleClassName="mb-2.5 px-2 text-[11px] tracking-[0.08em]"
-          cardClassName="rounded-2xl border-primary/20 bg-card/70 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]"
-        >
+        <Section title={t("settings.section.about")}>
         <Row
           icon={<Star className="w-4 h-4" />}
           label={t("settings.about.rate")}
-          onClick={go("/account/rate")}
+          onClick={leaveSettings("/account/rate")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         <Row
           icon={<HelpCircle className="w-4 h-4" />}
           label={t("settings.about.help")}
-          onClick={go("/account/help")}
+          onClick={leaveSettings("/account/help")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         <Row
           icon={<Shield className="w-4 h-4" />}
           label={t("settings.about.terms")}
-          onClick={go("/terms")}
+          onClick={leaveSettings("/terms")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         <Row
           icon={<Lock className="w-4 h-4" />}
           label={t("settings.about.privacy_policy")}
-          onClick={go("/privacy")}
+          onClick={leaveSettings("/privacy")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         <Row
           icon={<Info className="w-4 h-4" />}
           label={t("settings.about.about_app")}
           hint={`${t("account_info.about.version_label")} ${APP_VERSION}`}
-          onClick={go("/account/about")}
+          onClick={leaveSettings("/account/about")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
-          iconClassName="h-10 w-10 rounded-xl bg-background/70 text-primary border border-primary/20"
           labelClassName="text-sm md:text-[15px] text-foreground"
           hintClassName="mt-0.5 text-[11px] md:text-xs text-muted-foreground/90"
-          dividerClassName="border-border/20"
+          dividerClassName="border-primary/10"
         />
         </Section>
 
         {user && (
-          <div className="pt-2 flex justify-center">
-            <Button
-              variant="outline"
-              onClick={handleLogout}
-              disabled={logoutMutation.isPending}
-              className="h-11 w-full max-w-[280px] rounded-xl border border-destructive/35 bg-destructive/10 px-5 text-sm font-semibold gap-2 text-destructive-foreground shadow-[0_0_0_1px_rgba(239,68,68,0.08),0_8px_18px_-14px_rgba(239,68,68,0.45)] hover:bg-destructive/15 hover:text-destructive-foreground"
-            >
-              <LogOut className="w-5 h-5" /> {t("settings.logout")}
-            </Button>
+          <div className="pt-4 flex justify-center">
+            <div className={`${SETTINGS_CARD} w-full max-w-[min(100%,320px)]`}>
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                disabled={logoutMutation.isPending}
+                className="h-11 w-full rounded-xl border border-destructive/35 bg-destructive/10 px-5 text-sm font-semibold gap-2 text-destructive-foreground shadow-[0_0_0_1px_rgba(239,68,68,0.08),0_8px_18px_-14px_rgba(239,68,68,0.45)] hover:bg-destructive/15 hover:text-destructive-foreground"
+              >
+                <LogOut className="w-5 h-5" /> {t("settings.logout")}
+              </Button>
+            </div>
           </div>
         )}
       </div>

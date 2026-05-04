@@ -2,7 +2,6 @@ import { Redirect, useLocation } from "wouter";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { AccountHeader } from "@/components/account-header";
-import { Button } from "@/components/ui/button";
 import { CheckCircle2, Mail, ShieldAlert } from "lucide-react";
 import { useAuthResendVerification } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -10,13 +9,25 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { t } from "@/i18n";
+import {
+  SETTINGS_ACTION_PANEL,
+  SETTINGS_CARD,
+  SETTINGS_CARD_COMPACT,
+  SETTINGS_DIALOG_ACTION_PANEL,
+  SETTINGS_DIALOG_CONTENT,
+  SETTINGS_ICON_TILE,
+  SETTINGS_INPUT,
+  SETTINGS_LABEL,
+  SETTINGS_MAIN_COLUMN,
+  SETTINGS_OUTLINE_BUTTON,
+  SETTINGS_PAGE_BG,
+  SETTINGS_PRIMARY_BUTTON,
+} from "@/components/settings-shell";
+import { cn } from "@/lib/utils";
 
 export default function AccountEmail() {
   const { user, isLoading } = useAuth();
@@ -85,8 +96,6 @@ export default function AccountEmail() {
 
     setIsSubmitting(true);
     try {
-      // NOTE: Backend endpoints for secure email change OTP flow are not available yet.
-      // We keep validation/UI flow ready and block the final action safely.
       await new Promise((resolve) => setTimeout(resolve, 400));
       setStep("verify");
       toast({
@@ -121,57 +130,71 @@ export default function AccountEmail() {
   };
 
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] bg-background pb-8">
+    <div className={`flex min-h-[100dvh] w-full flex-col ${SETTINGS_PAGE_BG} pb-8`}>
       <AccountHeader title={t("account_email.title")} />
-      <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-5">
-        <div className="rounded-2xl border border-primary/20 bg-card/70 p-4 md:p-5 flex flex-col gap-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]">
-          <div className="bg-card rounded-xl border border-border/70 p-4 flex items-start gap-3">
-            <div className="w-10 h-10 rounded-lg bg-background/70 border border-primary/20 text-primary flex items-center justify-center shrink-0">
-              <Mail className="w-5 h-5" />
+      <div className={`${SETTINGS_MAIN_COLUMN} py-5`} dir="rtl">
+        <div className={`${SETTINGS_CARD} flex flex-col gap-4`}>
+          <div
+            className={cn(
+              SETTINGS_CARD_COMPACT,
+              "flex items-start gap-3 border-primary/30 bg-zinc-950/70 p-4",
+            )}
+          >
+            <div className={SETTINGS_ICON_TILE}>
+              <Mail className="h-5 w-5" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs text-muted-foreground mb-1">{t("account_email.current_email")}</div>
-              <div className="font-medium truncate" dir="ltr">{user.email}</div>
-              <p className="mt-2 text-xs text-muted-foreground/95 leading-relaxed">
-                {t("account_email.helper")}
-              </p>
+            <div className="min-w-0 flex-1">
+              <div className={cn(SETTINGS_LABEL, "mb-1")}>{t("account_email.current_email")}</div>
+              <div className="truncate font-medium text-foreground" dir="ltr">
+                {user.email}
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-zinc-500">{t("account_email.helper")}</p>
             </div>
           </div>
 
-          <div className={`rounded-xl border p-4 flex items-start gap-3 ${verified ? "bg-primary/10 border-primary/30" : "bg-amber-500/5 border-amber-500/30"}`}>
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${verified ? "bg-primary/20 text-primary" : "bg-amber-500/15 text-amber-500"}`}>
-              {verified ? <CheckCircle2 className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
+          <div
+            className={cn(
+              SETTINGS_CARD_COMPACT,
+              "flex items-start gap-3 border p-4",
+              verified
+                ? "border-primary/35 bg-primary/[0.07]"
+                : "border-amber-500/35 bg-amber-500/[0.06]",
+            )}
+          >
+            <div
+              className={cn(
+                SETTINGS_ICON_TILE,
+                !verified && "border-amber-500/40 bg-amber-500/10 text-amber-400",
+              )}
+            >
+              {verified ? <CheckCircle2 className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold mb-1">
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 font-semibold text-foreground">
                 {verified ? t("account_email.verified") : t("account_email.unverified")}
               </div>
-              <div className="text-sm text-muted-foreground">
-                {verified
-                  ? t("account_email.verified_desc")
-                  : t("account_email.unverified_desc")}
+              <div className="text-sm text-zinc-500">
+                {verified ? t("account_email.verified_desc") : t("account_email.unverified_desc")}
               </div>
               {!verified && (
-                <Button
-                  onClick={handleResend}
-                  disabled={resend.isPending}
-                  className="mt-3 h-10 rounded-xl w-full sm:w-auto sm:min-w-[220px]"
-                >
-                  {resend.isPending ? t("account_email.resending") : t("account_email.resend_code")}
-                </Button>
+                <div className={`${SETTINGS_ACTION_PANEL} mt-3`}>
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={resend.isPending}
+                    className={SETTINGS_PRIMARY_BUTTON}
+                  >
+                    {resend.isPending ? t("account_email.resending") : t("account_email.resend_code")}
+                  </button>
+                </div>
               )}
             </div>
           </div>
 
-          <div className="pt-1">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setChangeOpen(true)}
-              className="h-11 rounded-xl w-full sm:w-auto sm:min-w-[220px] border-primary/30 bg-background/50 hover:bg-primary/10"
-            >
+          <div className={`${SETTINGS_ACTION_PANEL} pt-1`}>
+            <button type="button" onClick={() => setChangeOpen(true)} className={SETTINGS_OUTLINE_BUTTON}>
               {t("account_email.change_email")}
-            </Button>
+            </button>
           </div>
         </div>
       </div>
@@ -183,75 +206,96 @@ export default function AccountEmail() {
           if (!open) resetChangeForm();
         }}
       >
-        <DialogContent dir="rtl" className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("account_email.change_email")}</DialogTitle>
-            <DialogDescription>
-              {t("account_email.modal_desc")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="new-email">{t("account_email.new_email")}</Label>
-              <Input
-                id="new-email"
-                dir="ltr"
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                placeholder="name@example.com"
-                className="h-10 rounded-xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="current-password">{t("account_email.current_password")}</Label>
-              <Input
-                id="current-password"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="********"
-                className="h-10 rounded-xl"
-              />
-            </div>
-            {step === "verify" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="otp-code">{t("account_email.otp_label")}</Label>
-                <Input
-                  id="otp-code"
-                  dir="ltr"
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  placeholder="123456"
-                  className="h-10 rounded-xl"
-                  inputMode="numeric"
-                />
-              </div>
-            )}
+        <DialogContent
+          dir="rtl"
+          className={cn(
+            SETTINGS_DIALOG_CONTENT,
+            "flex max-h-[min(90dvh,100dvh-1.5rem)] flex-col gap-0 overflow-hidden p-0 text-right sm:max-w-md",
+            "[&>button.absolute]:right-4 [&>button.absolute]:top-4 [&>button.absolute]:h-9 [&>button.absolute]:w-9 [&>button.absolute]:rounded-lg [&>button.absolute]:border [&>button.absolute]:border-primary/35 [&>button.absolute]:text-primary [&>button.absolute]:opacity-100 hover:[&>button.absolute]:bg-primary/10",
+          )}
+        >
+          <div className="shrink-0 space-y-2 border-b border-primary/15 px-5 pb-4 pt-5">
+            <DialogHeader className="space-y-2 p-0 text-right">
+              <DialogTitle className="text-right text-lg font-bold leading-snug text-foreground">
+                {t("account_email.change_email")}
+              </DialogTitle>
+              <DialogDescription className="text-right text-sm leading-relaxed text-zinc-500">
+                {t("account_email.modal_desc")}
+              </DialogDescription>
+            </DialogHeader>
           </div>
 
-          <DialogFooter className="sm:justify-start">
-            {step === "request" ? (
-              <Button
-                type="button"
-                onClick={handleRequestOtp}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto"
-              >
-                {isSubmitting ? t("account_email.sending") : t("account_email.send_otp")}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={handleVerifyAndChange}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto"
-              >
-                {isSubmitting ? t("account_email.verifying") : t("account_email.confirm_update")}
-              </Button>
-            )}
-          </DialogFooter>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="new-email" className={SETTINGS_LABEL}>
+                  {t("account_email.new_email")}
+                </label>
+                <input
+                  id="new-email"
+                  dir="ltr"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className={cn(SETTINGS_INPUT, "text-left")}
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="current-password" className={SETTINGS_LABEL}>
+                  {t("account_email.current_password")}
+                </label>
+                <input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="********"
+                  className={SETTINGS_INPUT}
+                />
+              </div>
+              {step === "verify" && (
+                <div className="space-y-2">
+                  <label htmlFor="otp-code" className={SETTINGS_LABEL}>
+                    {t("account_email.otp_label")}
+                  </label>
+                  <input
+                    id="otp-code"
+                    dir="ltr"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    placeholder="123456"
+                    className={cn(SETTINGS_INPUT, "text-left")}
+                    inputMode="numeric"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="shrink-0 border-t border-primary/15 bg-[#0A0A0A]/98 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+            <div className={cn(SETTINGS_DIALOG_ACTION_PANEL, "mx-5 mb-1")}>
+              {step === "request" ? (
+                <button
+                  type="button"
+                  onClick={handleRequestOtp}
+                  disabled={isSubmitting}
+                  className={cn(SETTINGS_PRIMARY_BUTTON, "!min-h-11 py-2.5 text-sm")}
+                >
+                  {isSubmitting ? t("account_email.sending") : t("account_email.send_otp")}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleVerifyAndChange}
+                  disabled={isSubmitting}
+                  className={cn(SETTINGS_PRIMARY_BUTTON, "!min-h-11 py-2.5 text-sm")}
+                >
+                  {isSubmitting ? t("account_email.verifying") : t("account_email.confirm_update")}
+                </button>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -10,6 +10,7 @@ import {
   useListConversations,
   getListConversationsQueryKey,
 } from "@workspace/api-client-react";
+import { scrollPopstateGuard } from "@/components/scroll-restoration-guard";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,8 +21,8 @@ export function Layout({ children }: LayoutProps) {
   const isAdminPage = location.startsWith("/admin");
 
   return (
-    <div className="w-full min-h-[100svh] bg-background">
-      <div className="relative mx-auto w-full max-w-screen-2xl min-h-[100svh] overflow-x-hidden bg-background pb-[calc(64px+env(safe-area-inset-bottom,0px))] md:pb-[calc(72px+env(safe-area-inset-bottom,0px))]">
+    <div className="w-full min-h-[100svh] bg-[#0A0A0A]">
+      <div className="relative mx-auto w-full max-w-screen-2xl min-h-[100svh] overflow-x-hidden bg-[#0A0A0A] pb-[calc(64px+env(safe-area-inset-bottom,0px))] md:pb-[calc(72px+env(safe-area-inset-bottom,0px))]">
         {children}
 
         {!isAdminPage && <BottomNav />}
@@ -66,6 +67,7 @@ function BottomNav() {
     toast({
       title,
       description: descriptionMap[nextTarget] ?? t("bottom_nav.login_required_default"),
+      variant: "authAlert",
     });
   };
   const forceNavigate = (target: string) => {
@@ -75,6 +77,7 @@ function BottomNav() {
       const after = `${window.location.pathname}${window.location.search}`;
       if (after === before || after !== target) {
         window.history.pushState({}, "", target);
+        scrollPopstateGuard.skipNext = true;
         window.dispatchEvent(new PopStateEvent("popstate"));
       }
     }, 0);
@@ -155,134 +158,104 @@ function BottomNav() {
     location === "/favorites" ||
     (location === "/guest-welcome" && nextTarget === "/favorites");
 
+  const isCreateActive =
+    location.startsWith("/new") || location.startsWith("/create-ad");
+
   return (
     <nav className="pointer-events-none fixed bottom-0 left-0 right-0 z-40">
-      <div className="pointer-events-auto w-full border-t border-primary/25 bg-[#0A0A0A]/92 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md shadow-[0_-1px_0_rgba(163,230,53,0.08),0_-8px_28px_-12px_rgba(0,0,0,0.6)]">
+      <div className="pointer-events-auto w-full border-t border-primary/25 bg-[#0A0A0A]/94 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md shadow-[0_-1px_0_rgba(163,230,53,0.08),0_-12px_36px_-16px_rgba(0,0,0,0.65)]">
         <div
-          className="relative mx-auto flex h-[72px] max-w-screen-2xl items-center justify-between px-2 md:h-[78px] md:px-4 lg:px-8"
+          className="relative mx-auto flex max-w-screen-2xl items-stretch gap-1.5 px-2 py-2 md:gap-2 md:px-4 md:py-2.5 lg:px-8"
           dir="rtl"
         >
-        <NavItem
-          href="/"
-          icon={<Home className="h-5 w-5 md:h-6 md:w-6" />}
-          label={t("bottom_nav.home")}
-          isActive={location === "/"}
-        />
+          <NavItem
+            href="/"
+            icon={<Home className="h-5 w-5 md:h-6 md:w-6" />}
+            label={t("bottom_nav.home")}
+            isActive={location === "/"}
+          />
 
-        <button
-          type="button"
-          onClick={handleFavoritesClick}
-          className={cn(
-            "flex flex-1 flex-col items-center justify-center gap-1 transition-[transform,color] duration-200 active:scale-95",
-            isFavoritesActive ? "scale-[1.04] text-primary" : "text-zinc-400",
-          )}
-        >
-          <div
-            className={cn(
-              "relative transition-colors",
-              isFavoritesActive
-                ? "text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.32)]"
-                : "text-zinc-400",
-            )}
-          >
-            <Heart className="h-5 w-5 md:h-6 md:w-6" />
-            {isAuthenticated && favCount > 0 && (
-              <span
-                dir="ltr"
-                className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-zinc-950 bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
-              >
-                {favCount > 99 ? "99+" : favCount}
-              </span>
-            )}
-          </div>
-          <span
-            className={cn(
-              "text-[10px] font-medium transition-colors md:text-xs",
-              isFavoritesActive ? "text-primary" : "text-zinc-400",
-            )}
-          >
-            {t("bottom_nav.favorites")}
-          </span>
-        </button>
-
-        <div className="relative -top-4 flex flex-1 flex-col items-center justify-end md:-top-5">
-          <button
-            onClick={handleCreateClick}
-            className="flex h-[58px] w-[58px] items-center justify-center rounded-full border-4 border-[#0A0A0A]/90 bg-primary text-[#0A0A0A] shadow-[0_10px_24px_-10px_hsl(var(--primary)/0.7),0_0_18px_-8px_hsl(var(--primary)/0.6)] transition-[transform,box-shadow] duration-200 hover:scale-[1.03] hover:shadow-[0_12px_28px_-10px_hsl(var(--primary)/0.85),0_0_22px_-6px_hsl(var(--primary)/0.75)] active:scale-[0.98] md:h-[64px] md:w-[64px]"
-          >
-            <Plus className="h-8 w-8 md:h-9 md:w-9" strokeWidth={2.8} />
+          <button type="button" onClick={handleFavoritesClick} className="flex min-w-0 flex-1">
+            <BottomNavSlot isActive={isFavoritesActive}>
+              <div className="relative">
+                <Heart className="h-5 w-5 md:h-6 md:w-6" />
+                {isAuthenticated && favCount > 0 && (
+                  <span
+                    dir="ltr"
+                    className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-zinc-950 bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
+                  >
+                    {favCount > 99 ? "99+" : favCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-medium md:text-xs">{t("bottom_nav.favorites")}</span>
+            </BottomNavSlot>
           </button>
-          <span className="mt-1 text-[10px] font-medium text-primary md:text-xs">
-            {t("bottom_nav.post")}
-          </span>
-        </div>
 
-        <button
-          type="button"
-          onClick={handleMessagesClick}
-          className={cn(
-            "flex flex-1 flex-col items-center justify-center gap-1 transition-[transform,color] duration-200 active:scale-95",
-            isMessagesActive ? "scale-[1.04] text-primary" : "text-zinc-400",
-          )}
-        >
-          <div
-            className={cn(
-              "relative transition-colors",
-              isMessagesActive
-                ? "text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.32)]"
-                : "text-zinc-400",
-            )}
-          >
-            <MessageCircle className="h-5 w-5 md:h-6 md:w-6" />
-            {isAuthenticated && unreadTotal > 0 && (
-              <span
-                dir="ltr"
-                className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-zinc-950 bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
-              >
-                {unreadTotal > 99 ? "99+" : unreadTotal}
-              </span>
-            )}
-          </div>
-          <span
-            className={cn(
-              "text-[10px] font-medium transition-colors md:text-xs",
-              isMessagesActive ? "text-primary" : "text-zinc-400",
-            )}
-          >
-            {t("bottom_nav.messages")}
-          </span>
-        </button>
+          <button type="button" onClick={handleCreateClick} className="flex min-w-0 flex-1">
+            <BottomNavSlot isActive={isCreateActive} promote>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/50 bg-zinc-950/90 text-primary shadow-[0_0_16px_-10px_hsl(var(--primary)/0.38)] ring-1 ring-primary/25 md:h-10 md:w-10">
+                <Plus className="h-5 w-5 md:h-6 md:w-6" strokeWidth={2.5} />
+              </div>
+              <span className="text-[10px] font-medium md:text-xs">{t("bottom_nav.post")}</span>
+            </BottomNavSlot>
+          </button>
 
-        <button
-          type="button"
-          onClick={handleProfileClick}
-          className={cn(
-            "flex flex-1 flex-col items-center justify-center gap-1 transition-[transform,color] duration-200 active:scale-95",
-            isProfileActive ? "scale-[1.04] text-primary" : "text-zinc-400",
-          )}
-        >
-          <div
-            className={cn(
-              "transition-colors",
-              isProfileActive
-                ? "text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.32)]"
-                : "text-zinc-400",
-            )}
-          >
-            <User className="h-5 w-5 md:h-6 md:w-6" />
-          </div>
-          <span
-            className={cn(
-              "text-[10px] font-medium transition-colors md:text-xs",
-              isProfileActive ? "text-primary" : "text-zinc-400",
-            )}
-          >
-            {t("bottom_nav.account")}
-          </span>
-        </button>
+          <button type="button" onClick={handleMessagesClick} className="flex min-w-0 flex-1">
+            <BottomNavSlot isActive={isMessagesActive}>
+              <div className="relative">
+                <MessageCircle className="h-5 w-5 md:h-6 md:w-6" />
+                {isAuthenticated && unreadTotal > 0 && (
+                  <span
+                    dir="ltr"
+                    className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-zinc-950 bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
+                  >
+                    {unreadTotal > 99 ? "99+" : unreadTotal}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-medium md:text-xs">{t("bottom_nav.messages")}</span>
+            </BottomNavSlot>
+          </button>
+
+          <button type="button" onClick={handleProfileClick} className="flex min-w-0 flex-1">
+            <BottomNavSlot isActive={isProfileActive}>
+              <User className="h-5 w-5 md:h-6 md:w-6" />
+              <span className="text-[10px] font-medium md:text-xs">{t("bottom_nav.account")}</span>
+            </BottomNavSlot>
+          </button>
         </div>
       </div>
     </nav>
+  );
+}
+
+function BottomNavSlot({
+  isActive,
+  promote,
+  children,
+}: {
+  isActive: boolean;
+  /** Slightly stronger card + lime icons when inactive (مركز نشر) */
+  promote?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex h-full min-h-[52px] w-full flex-col items-center justify-center gap-1 rounded-xl border px-1 py-1.5 transition-all duration-200 md:min-h-[56px] md:py-2",
+        isActive
+          ? "border-primary/58 bg-zinc-900/95 text-primary shadow-[0_0_30px_-10px_hsl(var(--primary)/0.48)] ring-1 ring-primary/38 [&_svg]:text-primary [&_span]:font-semibold [&_span]:text-primary"
+          : cn(
+              "border-primary/30 bg-zinc-950/82 shadow-[0_0_22px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/16 hover:border-primary/45 hover:bg-zinc-900/92 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.28)] active:scale-[0.98]",
+              "[&_svg]:text-primary/58 [&_span]:text-primary/52",
+              promote &&
+                "border-primary/42 bg-zinc-950/88 ring-primary/22 [&_svg]:text-primary/85 [&_span]:text-primary/72",
+            ),
+      )}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -298,31 +271,11 @@ function NavItem({
   isActive: boolean;
 }) {
   return (
-    <Link
-      href={href}
-      className={cn(
-        "flex flex-1 flex-col items-center justify-center gap-1 transition-[transform,color] duration-200 active:scale-95",
-        isActive ? "scale-[1.04] text-primary" : "text-zinc-400",
-      )}
-    >
-      <div
-        className={cn(
-          "transition-colors",
-          isActive
-            ? "text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.32)]"
-            : "text-zinc-400",
-        )}
-      >
+    <Link href={href} className="flex min-w-0 flex-1">
+      <BottomNavSlot isActive={isActive}>
         {icon}
-      </div>
-      <span
-        className={cn(
-          "text-[10px] font-medium transition-colors md:text-xs",
-          isActive ? "text-primary" : "text-zinc-400",
-        )}
-      >
-        {label}
-      </span>
+        <span className="text-[10px] font-medium md:text-xs">{label}</span>
+      </BottomNavSlot>
     </Link>
   );
 }

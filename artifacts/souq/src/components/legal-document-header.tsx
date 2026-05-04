@@ -1,18 +1,32 @@
+import { useLayoutEffect } from "react";
 import { ArrowRight } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import {
   SETTINGS_BACK_BUTTON,
   SETTINGS_HEADER_BAR,
   SETTINGS_HEADER_INNER,
   SETTINGS_PAGE_TITLE,
 } from "@/components/settings-shell";
-import { navigateBackFromChild } from "@/lib/return-navigation";
+import {
+  getBrowserSearchRaw,
+  navigateBackFromLegalPage,
+  syncLegalExplicitFromCurrentUrl,
+} from "@/lib/return-navigation";
 
-export function AccountHeader({ title }: { title: string }) {
-  const [, navigate] = useLocation();
+type LegalDocumentHeaderProps = {
+  title: string;
+};
+
+export function LegalDocumentHeader({ title }: LegalDocumentHeaderProps) {
+  const [pathname, navigate] = useLocation();
+  const search = useSearch();
+
+  useLayoutEffect(() => {
+    syncLegalExplicitFromCurrentUrl();
+  }, [pathname, search]);
 
   const handleBack = () => {
-    navigateBackFromChild(navigate);
+    navigateBackFromLegalPage(navigate, getBrowserSearchRaw(), "/settings");
   };
 
   return (

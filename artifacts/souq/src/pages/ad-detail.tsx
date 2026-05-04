@@ -22,7 +22,6 @@ import {
   ThumbsUp,
   Star,
   Flag,
-  ChevronDown,
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,6 +29,9 @@ import { formatRelativeTime, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { CreateAdImageGallery } from "@/components/create-ad-image-gallery";
+import { getPublicAdUrl } from "@/lib/public-url";
+import { buildAdShareText } from "@/lib/share-text";
+import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { parseStoredAdDetails } from "@/lib/ad-stored-details";
 import { AD_SHIPPING_LABELS } from "@/lib/ad-meta-labels";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +41,7 @@ import { motion } from "framer-motion";
 import { BuyerSafetyNote } from "@/components/buyer-safety-note";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { AUTH_ACCENT_OUTLINE_BTN } from "@/lib/auth-page-styles";
 
 function normalizeAdDetailsRaw(raw: unknown): unknown {
   if (typeof raw === "string") {
@@ -217,20 +220,6 @@ function buildDeviceInfoRowsFromDetailsOnly(detailsUnknown: unknown): {
   return rows;
 }
 
-function buildAdPublicUrl(adId: number): string {
-  const basePath = import.meta.env.BASE_URL || "/";
-  const origin = window.location.origin;
-  const base =
-    basePath === "/"
-      ? `${origin}/`
-      : `${origin}${basePath.endsWith("/") ? basePath : `${basePath}/`}`;
-  try {
-    return new URL(`ad/${adId}`, base).href;
-  } catch {
-    return `${origin}/ad/${adId}`;
-  }
-}
-
 export default function AdDetail() {
   const params = useParams();
   const id = Number(params.id);
@@ -404,7 +393,7 @@ export default function AdDetail() {
         onSuccess: (data) => {
           const draft = t("ad_detail.message_draft", {
             title: ad.title,
-            url: buildAdPublicUrl(ad.id),
+            url: getPublicAdUrl(ad.id),
           });
           navigate(
             `/messages/${data.id}?draft=${encodeURIComponent(draft)}`,
@@ -436,50 +425,25 @@ export default function AdDetail() {
 
   const handleShare = async () => {
     if (!ad) return;
-    const url = buildAdPublicUrl(ad.id);
-    const isFreeAd = ad.priceType === "free";
-    const priceLine = isFreeAd
-      ? t("ad-card.free")
-      : `السعر: ${formatPrice(ad.price, ad.priceType)}`;
-    const descPlain = (ad.description ?? "").replace(/\s+/g, " ").trim();
-    const shortDesc =
-      descPlain.length > 120 ? `${descPlain.slice(0, 120)}…` : descPlain;
-    const brandLine = `${t("app.brand")} EU`;
-    const text = [
-      ad.title,
-      priceLine,
-      shortDesc || undefined,
-      `إعلان على ${brandLine}`,
+    const url = getPublicAdUrl(ad.id);
+    const text = buildAdShareText(ad, url);
+    const imageFile = await tryAdImageAsShareFile(ad.images?.[0]);
+    const outcome = await shareOrCopyLink({
+      title: ad.title,
+      text,
       url,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    try {
-      if (
-        typeof navigator !== "undefined" &&
-        typeof navigator.share === "function"
-      ) {
-        await navigator.share({ title: ad.title, text, url });
-        return;
-      }
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        toast({ title: t("ad_detail.link_copied") });
-        return;
-      }
-    } catch (err) {
-      const e = err as { name?: string };
-      if (e?.name === "AbortError") return;
-      try {
-        await navigator.clipboard.writeText(text);
-        toast({ title: t("ad_detail.link_copied") });
-      } catch {
-        toast({
-          title: t("ad_detail.copy_failed"),
-          description: t("ad_detail.copy_failed_desc"),
-          variant: "destructive",
-        });
-      }
+      imageFile,
+    });
+    if (outcome === "copied") {
+      toast({ title: t("share.link_copied") });
+      return;
+    }
+    if (outcome === "failed") {
+      toast({
+        title: t("ad_detail.copy_failed"),
+        description: t("ad_detail.copy_failed_desc"),
+        variant: "destructive",
+      });
     }
   };
 
@@ -564,10 +528,26 @@ export default function AdDetail() {
   const sellerProfileLinkBtn =
     "flex h-12 w-full items-center justify-center rounded-2xl border border-primary/32 bg-zinc-950/80 text-sm font-semibold text-foreground ring-1 ring-primary/8 transition-colors hover:border-primary/42 hover:bg-zinc-900/90 hover:ring-primary/12";
   const otherReason = t("ad_detail.report.opt_other");
+  const reportReasonOptions = [
+    t("ad_detail.report.opt_fraud"),
+    t("ad_detail.report.opt_duplicate"),
+    t("ad_detail.report.opt_wrong_info"),
+    t("ad_detail.report.opt_violation"),
+    t("ad_detail.report.opt_inappropriate"),
+    otherReason,
+  ];
   const reportDisabled =
     reporting ||
     !reason ||
     (reason === otherReason && !reportExtra.trim());
+
+  const reportReasonBtnClass = (active: boolean) =>
+    cn(
+      "w-full rounded-xl border px-3 py-2.5 text-right text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+      active
+        ? "border-primary/45 bg-zinc-900/95 ring-1 ring-primary/18 shadow-[0_0_14px_-10px_hsl(var(--primary)/0.2)]"
+        : "border-primary/25 bg-zinc-950/85 hover:border-primary/38 hover:bg-zinc-900/70",
+    );
 
   const descRaw = ad.description?.trim() ?? "";
   const descNeedsToggle =
@@ -654,7 +634,7 @@ export default function AdDetail() {
               </div>
             )}
             <div className="mt-3 flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <MapPin className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
               <span>{ad.city}</span>
               <span className="opacity-50">·</span>
               <span>{formatRelativeTime(ad.createdAt)}</span>
@@ -901,49 +881,36 @@ export default function AdDetail() {
                   </Link>
                 ) : null}
 
-                <div className="relative">
-                  <select
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    className={cn(
-                      sellerActionH,
-                      "w-full appearance-none border border-zinc-600/50 bg-zinc-950/90 py-2.5 ps-10 pe-3 text-right font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/25",
-                    )}
-                  >
-                    <option value="" disabled>
-                      {t("ad_detail.report.choose_reason")}
-                    </option>
-                    <option value={t("ad_detail.report.opt_fraud")}>
-                      {t("ad_detail.report.opt_fraud")}
-                    </option>
-                    <option value={t("ad_detail.report.opt_duplicate")}>
-                      {t("ad_detail.report.opt_duplicate")}
-                    </option>
-                    <option value={t("ad_detail.report.opt_wrong_info")}>
-                      {t("ad_detail.report.opt_wrong_info")}
-                    </option>
-                    <option value={t("ad_detail.report.opt_violation")}>
-                      {t("ad_detail.report.opt_violation")}
-                    </option>
-                    <option value={t("ad_detail.report.opt_inappropriate")}>
-                      {t("ad_detail.report.opt_inappropriate")}
-                    </option>
-                    <option value={otherReason}>{otherReason}</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {t("ad_detail.report.choose_reason")}
+                  </p>
+                  <div className="space-y-2">
+                    {reportReasonOptions.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setReason(opt)}
+                        className={reportReasonBtnClass(reason === opt)}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {reason === otherReason && (
                   <textarea
                     placeholder={t("ad_detail.report.details_placeholder")}
-                    className="min-h-[88px] w-full rounded-2xl border border-zinc-600/45 bg-zinc-950/90 p-3 text-right text-sm text-foreground placeholder:text-muted-foreground"
+                    className="min-h-[88px] w-full rounded-xl border border-primary/28 bg-zinc-950/90 p-3 text-right text-sm text-foreground shadow-inner ring-1 ring-primary/10 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     value={reportExtra}
                     onChange={(e) => setReportExtra(e.target.value)}
                   />
                 )}
 
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   title={
                     reportDisabled && !reporting && !reason
                       ? t("ad_detail.report.choose_reason")
@@ -955,11 +922,9 @@ export default function AdDetail() {
                         : undefined
                   }
                   className={cn(
-                    "flex w-full items-center justify-center gap-2 font-semibold transition-colors",
-                    sellerActionH,
-                    reportDisabled
-                      ? "cursor-not-allowed border border-zinc-700/60 bg-zinc-950/50 text-foreground/60 shadow-none hover:bg-zinc-950/55"
-                      : "border border-amber-500/35 bg-zinc-950/85 text-amber-200/95 shadow-none hover:bg-amber-950/20 hover:border-amber-500/45",
+                    AUTH_ACCENT_OUTLINE_BTN,
+                    "hover:bg-zinc-900",
+                    reportDisabled && "pointer-events-none opacity-50",
                   )}
                   onClick={() => {
                     if (!user) {
@@ -970,11 +935,11 @@ export default function AdDetail() {
                   }}
                   disabled={reportDisabled}
                 >
-                  <Flag className="h-4 w-4 shrink-0 text-amber-300/90" />
+                  <Flag className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
                   {reporting
                     ? t("ad_detail.sending")
                     : t("ad_detail.report.submit")}
-                </button>
+                </Button>
               </div>
             </div>
           </section>

@@ -13,11 +13,30 @@ import {
   Star,
   CheckCircle2,
 } from "lucide-react";
-import { Link, useRoute } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { useState } from "react";
 import { APP_VERSION } from "@/lib/app-config";
+import {
+  SETTINGS_ACTION_PANEL,
+  SETTINGS_CARD,
+  SETTINGS_CARD_COMPACT,
+  SETTINGS_FIELD,
+  SETTINGS_LABEL,
+  SETTINGS_MAIN_COLUMN,
+  SETTINGS_OUTLINE_BUTTON,
+  SETTINGS_PAGE_BG,
+  SETTINGS_PRIMARY_BUTTON,
+  SETTINGS_ROW_BUTTON,
+} from "@/components/settings-shell";
+import { cn } from "@/lib/utils";
+import {
+  appendReturnToQuery,
+  stashLegalExplicitReturn,
+  stashLegalNavigationReturn,
+  stashReturnTarget,
+} from "@/lib/return-navigation";
 
 const PAGE_META: Record<string, { titleKey: string; icon: React.ReactNode }> = {
   language: { titleKey: "language.title", icon: <Globe className="w-6 h-6" /> },
@@ -31,6 +50,7 @@ const PAGE_META: Record<string, { titleKey: string; icon: React.ReactNode }> = {
 
 export default function AccountInfoPage() {
   const { locale, setLocale } = useLocale();
+  const [, navigate] = useLocation();
   const [, params] = useRoute("/account/:slug");
   const slug = params?.slug ?? "";
   const page = PAGE_META[slug];
@@ -43,9 +63,9 @@ export default function AccountInfoPage() {
   const isLanguagePage = slug === "language";
   if (!page) {
     return (
-      <div className="flex flex-col w-full min-h-[100dvh] bg-background">
+      <div className={`flex flex-col w-full ${SETTINGS_PAGE_BG}`}>
         <AccountHeader title={t("account_info.not_found_title")} />
-        <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-6 text-center text-muted-foreground">
+        <div className={`${SETTINGS_MAIN_COLUMN} py-10 text-center text-muted-foreground`}>
           {t("account_info.not_found")}
         </div>
       </div>
@@ -63,10 +83,10 @@ export default function AccountInfoPage() {
           key={option.code}
           type="button"
           onClick={() => setLocale(option.code)}
-          className={`w-full rounded-xl border px-3 py-3 flex items-center justify-between transition ${
+          className={`${SETTINGS_ROW_BUTTON} flex items-center justify-between ${
             locale === option.code
-              ? "border-primary/40 bg-primary/10 text-foreground"
-              : "border-border/70 bg-background/40 text-foreground hover:bg-muted/40"
+              ? "border-primary/40 bg-primary/[0.12] text-foreground shadow-[0_0_0_1px_rgba(182,227,86,0.1)]"
+              : ""
           }`}
         >
           <span className="text-sm font-medium">{option.label}</span>
@@ -77,7 +97,7 @@ export default function AccountInfoPage() {
   );
   const paymentsBody = (
     <div className="space-y-3.5">
-      <section className="rounded-2xl border border-primary/20 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]">
+      <section className={SETTINGS_CARD}>
         <div className="flex items-start gap-3">
           <div className="h-10 w-10 shrink-0 rounded-xl border border-primary/20 bg-primary/10 text-primary flex items-center justify-center">
             <CreditCard className="h-5 w-5" />
@@ -92,7 +112,7 @@ export default function AccountInfoPage() {
           </div>
         </div>
       </section>
-      <section className="rounded-2xl border border-primary/20 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]">
+      <section className={SETTINGS_CARD}>
         <h3 className="text-sm md:text-base font-semibold text-foreground mb-3">{t("payments.features.title")}</h3>
         <div className="space-y-2">
           {[
@@ -101,7 +121,7 @@ export default function AccountInfoPage() {
             { icon: <ArrowUpCircle className="h-4 w-4" />, title: t("payments.features.top.title"), desc: t("payments.features.top.desc") },
             { icon: <BadgeDollarSign className="h-4 w-4" />, title: t("payments.features.packages.title"), desc: t("payments.features.packages.desc") },
           ].map((feature) => (
-            <div key={feature.title} className="rounded-xl border border-border/60 bg-background/40 px-3 py-2.5 flex items-start gap-3">
+            <div key={feature.title} className="rounded-xl border border-primary/12 bg-zinc-950/30 px-3 py-2.5 flex items-start gap-3">
               <div className="h-8 w-8 shrink-0 rounded-lg border border-primary/20 bg-primary/10 text-primary flex items-center justify-center">{feature.icon}</div>
               <div>
                 <p className="text-sm font-medium text-foreground">{feature.title}</p>
@@ -111,27 +131,27 @@ export default function AccountInfoPage() {
           ))}
         </div>
       </section>
-      <section className="rounded-2xl border border-primary/20 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]">
+      <section className={SETTINGS_CARD}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm md:text-base font-semibold text-foreground">{t("payments.methods.title")}</h3>
-          <span className="rounded-full border border-border/60 bg-background/50 px-2 py-0.5 text-[11px] text-muted-foreground">{t("common.coming_soon")}</span>
+          <span className="rounded-full border border-primary/20 bg-primary/[0.06] px-2 py-0.5 text-[11px] text-muted-foreground">{t("common.coming_soon")}</span>
         </div>
         <div className="space-y-2">
           {["Visa / Mastercard", "PayPal"].map((method) => (
-            <button key={method} type="button" disabled className="w-full rounded-xl border border-border/50 bg-background/30 px-3 py-2.5 text-right text-sm text-muted-foreground opacity-70 cursor-not-allowed">
+            <button key={method} type="button" disabled className="w-full rounded-xl border border-primary/10 bg-background/25 px-3 py-2.5 text-right text-sm text-muted-foreground opacity-70 cursor-not-allowed">
               {method}
             </button>
           ))}
         </div>
       </section>
-      <section className="rounded-2xl border border-primary/20 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]">
+      <section className={SETTINGS_CARD}>
         <h3 className="text-sm md:text-base font-semibold text-foreground mb-2">{t("payments.transactions.title")}</h3>
-        <div className="rounded-xl border border-dashed border-border/60 bg-background/35 px-4 py-6 text-center">
+        <div className="rounded-xl border border-dashed border-primary/15 bg-zinc-950/25 px-4 py-6 text-center">
           <p className="text-sm font-medium text-foreground">{t("payments.transactions.empty")}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t("payments.transactions.subtext")}</p>
         </div>
       </section>
-      <section className="rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/10 to-card/75 p-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]">
+      <section className={`${SETTINGS_CARD} bg-gradient-to-b from-primary/10 to-zinc-950/85`}>
         <h3 className="text-sm md:text-base font-semibold text-foreground mb-1">{t("payments.promo.title")}</h3>
         <p className="text-xs text-muted-foreground mb-3">{t("payments.promo.desc")}</p>
         <button type="button" disabled className="h-10 w-full sm:w-auto sm:min-w-[180px] rounded-xl border border-primary/30 bg-background/40 px-4 text-sm font-medium text-muted-foreground cursor-not-allowed opacity-75">
@@ -141,12 +161,17 @@ export default function AccountInfoPage() {
     </div>
   );
   const rateBody = (
-    <div className="space-y-3.5">
-      <>
-        <p>{t("account_info.rate.p1")}</p>
+    <div className="space-y-4">
+      <p className="leading-relaxed text-muted-foreground">{t("account_info.rate.p1")}</p>
+      <div
+        className={cn(
+          SETTINGS_CARD_COMPACT,
+          "space-y-4 border-primary/40 p-4 shadow-[0_0_22px_-14px_hsl(var(--primary)/0.18)] md:p-5",
+        )}
+      >
         <div>
-          <p className="mb-2 text-xs text-muted-foreground">{t("account_info.rate.select")}</p>
-          <div className="flex items-center gap-1.5">
+          <p className={`${SETTINGS_LABEL} mb-2 block`}>{t("account_info.rate.select")}</p>
+          <div className="flex flex-wrap items-center gap-2">
             {Array.from({ length: 5 }).map((_, i) => {
               const index = i + 1;
               const active = index <= rateValue;
@@ -160,10 +185,10 @@ export default function AccountInfoPage() {
                     setSubmitted(false);
                   }}
                   aria-label={t("account_info.rate.star_aria", { count: index })}
-                  className="h-9 w-9 rounded-full border border-border/60 bg-background/40 flex items-center justify-center hover:bg-muted/50 transition-colors"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/25 bg-zinc-950/80 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10 transition-colors hover:border-primary/40 hover:bg-zinc-900/90"
                 >
                   <Star
-                    className={`h-4 w-4 ${active ? "text-primary fill-primary" : "text-muted-foreground"}`}
+                    className={`h-[18px] w-[18px] ${active ? "fill-primary text-primary" : "text-zinc-500"}`}
                   />
                 </button>
               );
@@ -174,7 +199,7 @@ export default function AccountInfoPage() {
           ) : null}
         </div>
         <div>
-          <p className="mb-2 text-xs text-muted-foreground">{t("account_info.rate.feedback_optional")}</p>
+          <p className={`${SETTINGS_LABEL} mb-2 block`}>{t("account_info.rate.feedback_optional")}</p>
           <textarea
             value={feedback}
             onChange={(e) => {
@@ -182,9 +207,11 @@ export default function AccountInfoPage() {
               setSubmitted(false);
             }}
             placeholder={t("account_info.rate.feedback_placeholder")}
-            className="min-h-[100px] w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25"
+            className={`${SETTINGS_FIELD} min-h-[100px]`}
           />
         </div>
+      </div>
+      <div className={SETTINGS_ACTION_PANEL}>
         <button
           type="button"
           onClick={() => {
@@ -199,29 +226,37 @@ export default function AccountInfoPage() {
             setFeedback("");
             setSubmitted(true);
           }}
-          className="h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-black"
+          className={SETTINGS_PRIMARY_BUTTON}
         >
           {t("account_info.rate.submit")}
         </button>
-        {submitted ? (
-          <div className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-3">
-            <p className="text-sm font-medium text-foreground">
-              {t("account_info.rate.success_submitted")}
-            </p>
-            {lastSubmittedRating === 5 ? (
-              <button
-                type="button"
-                className="mt-2 h-9 rounded-xl border border-primary/30 bg-background/40 px-3 text-xs font-medium text-primary"
-              >
-                {t("account_info.rate.google_play_cta")}
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-        <p className="rounded-xl border border-primary/25 bg-primary/10 px-3 py-2 text-xs text-muted-foreground">
-          {t("account_info.rate.play_store_note")}
-        </p>
-      </>
+      </div>
+      {submitted ? (
+        <div
+          className={cn(
+            SETTINGS_CARD_COMPACT,
+            "border-primary/35 bg-primary/[0.07] p-4 text-foreground",
+          )}
+        >
+          <p className="text-sm font-medium">{t("account_info.rate.success_submitted")}</p>
+          {lastSubmittedRating === 5 ? (
+            <button
+              type="button"
+              className={cn(SETTINGS_OUTLINE_BUTTON, "mt-3 !min-h-10 w-full py-2 text-xs sm:w-auto")}
+            >
+              {t("account_info.rate.google_play_cta")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      <p
+        className={cn(
+          SETTINGS_CARD_COMPACT,
+          "border-primary/25 bg-zinc-950/60 px-3 py-2.5 text-xs leading-relaxed text-zinc-500",
+        )}
+      >
+        {t("account_info.rate.play_store_note")}
+      </p>
     </div>
   );
   const defaultBodyBySlug: Record<string, React.ReactNode> = {
@@ -254,18 +289,18 @@ export default function AccountInfoPage() {
     rate: rateBody,
     about: (
       <div className="space-y-3.5" dir={locale === "ar" ? "rtl" : "ltr"}>
-        <section className="rounded-2xl border border-primary/20 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]">
+        <section className={SETTINGS_CARD}>
           <h3 className="text-sm md:text-base font-semibold text-foreground mb-2">{t("account_info.about.app_name_label")}</h3>
           <p className="text-sm text-foreground">{t("account_info.about.app_name_value")}</p>
           <p className="mt-2 text-xs text-muted-foreground">{t("account_info.about.version_label")}: {APP_VERSION}</p>
         </section>
 
-        <section className="rounded-2xl border border-primary/20 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]">
+        <section className={SETTINGS_CARD}>
           <h3 className="text-sm md:text-base font-semibold text-foreground mb-2">{t("account_info.about.description_title")}</h3>
           <p className="text-sm text-muted-foreground">{t("account_info.about.description_body")}</p>
         </section>
 
-        <section className="rounded-2xl border border-primary/20 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]">
+        <section className={SETTINGS_CARD}>
           <h3 className="text-sm md:text-base font-semibold text-foreground mb-2">{t("account_info.about.offers_title")}</h3>
           <ul className="list-disc space-y-1.5 ps-5 text-sm text-muted-foreground">
             <li>{t("account_info.about.offers.post_ads")}</li>
@@ -276,59 +311,93 @@ export default function AccountInfoPage() {
           </ul>
         </section>
 
-        <section className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+        <section
+          className={`${SETTINGS_CARD_COMPACT} border-primary/40 bg-primary/[0.07] md:p-4`}
+        >
           <h3 className="text-sm md:text-base font-semibold text-foreground mb-1">{t("account_info.about.safety_title")}</h3>
           <p className="text-sm text-foreground/90">{t("account_info.about.safety_body")}</p>
         </section>
 
-        <section className="rounded-2xl border border-primary/20 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]">
+        <section className={SETTINGS_CARD}>
           <h3 className="text-sm md:text-base font-semibold text-foreground mb-2">{t("account_info.about.region_title")}</h3>
           <p className="text-sm text-muted-foreground">{t("account_info.about.region_value")}</p>
         </section>
 
-        <section className="rounded-2xl border border-primary/20 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]">
+        <section className={SETTINGS_CARD}>
           <h3 className="text-sm md:text-base font-semibold text-foreground mb-2">{t("account_info.about.contact_title")}</h3>
           <a href="mailto:souqarab.market@gmail.com" className="text-primary font-medium" dir="ltr">
             souqarab.market@gmail.com
           </a>
         </section>
 
-        <section className="rounded-2xl border border-primary/20 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]">
+        <section className={SETTINGS_CARD}>
           <h3 className="text-sm md:text-base font-semibold text-foreground mb-2">{t("account_info.about.quick_links_title")}</h3>
           <div className="space-y-2">
-            <Link href="/terms" className="block rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-sm hover:bg-muted/40 transition-colors">
+            <button
+              type="button"
+              className={SETTINGS_ROW_BUTTON}
+              onClick={() => {
+                const back = `/account/${slug}`;
+                stashLegalNavigationReturn(back);
+                stashLegalExplicitReturn(back);
+                stashReturnTarget(back);
+                navigate(appendReturnToQuery("/terms", back));
+              }}
+            >
               {t("account_info.about.quick_links.terms")}
-            </Link>
-            <Link href="/privacy" className="block rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-sm hover:bg-muted/40 transition-colors">
+            </button>
+            <button
+              type="button"
+              className={SETTINGS_ROW_BUTTON}
+              onClick={() => {
+                const back = `/account/${slug}`;
+                stashLegalNavigationReturn(back);
+                stashLegalExplicitReturn(back);
+                stashReturnTarget(back);
+                navigate(appendReturnToQuery("/privacy", back));
+              }}
+            >
               {t("account_info.about.quick_links.privacy")}
-            </Link>
-            <Link href="/account/help" className="block rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-sm hover:bg-muted/40 transition-colors">
+            </button>
+            <button
+              type="button"
+              className={SETTINGS_ROW_BUTTON}
+              onClick={() => {
+                const back = `/account/${slug}`;
+                stashLegalNavigationReturn(back);
+                stashLegalExplicitReturn(back);
+                stashReturnTarget(back);
+                navigate(appendReturnToQuery("/account/help", back));
+              }}
+            >
               {t("account_info.about.quick_links.help")}
-            </Link>
+            </button>
           </div>
         </section>
       </div>
     ),
   };
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] bg-background pb-8">
+    <div className={`flex flex-col w-full ${SETTINGS_PAGE_BG} pb-10`}>
       <AccountHeader title={t(page.titleKey)} />
-      <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-5">
+      <div className={`${SETTINGS_MAIN_COLUMN} pb-10`}>
         {isPaymentsPage ? (
-          <div className="text-sm leading-relaxed">{paymentsBody}</div>
+          <div className="text-sm leading-relaxed text-muted-foreground">{paymentsBody}</div>
         ) : isLanguagePage ? (
-          <div className="bg-card/70 rounded-2xl border border-border p-5">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+          <div className={SETTINGS_CARD}>
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-primary/35 bg-zinc-950/80 text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.2)]">
               {page.icon}
             </div>
-            <div className="text-sm leading-relaxed">{languageBody}</div>
+            <div className="text-sm leading-relaxed text-foreground">{languageBody}</div>
           </div>
         ) : (
-          <div className="bg-card/70 rounded-2xl border border-border p-5">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+          <div className={SETTINGS_CARD}>
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-primary/35 bg-zinc-950/80 text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.2)]">
               {page.icon}
             </div>
-            <div className="text-sm leading-relaxed">{defaultBodyBySlug[slug]}</div>
+            <div className="text-sm leading-relaxed text-muted-foreground [&_p]:text-muted-foreground [&_a]:text-primary">
+              {defaultBodyBySlug[slug]}
+            </div>
           </div>
         )}
       </div>

@@ -1,7 +1,18 @@
 import { Link, useSearch } from "wouter";
-import { UserPlus, LogIn } from "lucide-react";
+import { ArrowRight, LogIn, UserPlus } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  AUTH_ACCENT_GHOST_BTN,
+  AUTH_ACCENT_OUTLINE_BTN,
+  AUTH_BACK_BUTTON,
+  AUTH_CARD,
+  AUTH_CONTEXT_ALERT,
+  AUTH_HEADER,
+  AUTH_HERO_CARD,
+  AUTH_PAGE_BG,
+} from "@/lib/auth-page-styles";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 
@@ -20,50 +31,70 @@ export default function GuestWelcome() {
     "/profile": t("auth.guest.context.profile"),
   };
   const contextualTitle = t("auth.guest.sign_in_first");
-  const contextualText =
-    contextualDescription[nextRaw] ?? t("auth.guest.context.default");
+  const contextualText = contextualDescription[nextRaw] ?? t("auth.guest.context.default");
+  const dir = locale === "ar" ? "rtl" : "ltr";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex min-h-[100dvh] w-full flex-col bg-gradient-to-b from-background to-muted/30"
-      dir={locale === "ar" ? "rtl" : "ltr"}
+      className={AUTH_PAGE_BG}
+      dir={dir}
+      aria-label={t("auth.shared.welcome_brand")}
     >
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-8 px-5 pb-24 pt-10 sm:px-6">
-        <div className="flex flex-col items-center gap-5">
+      <header className={AUTH_HEADER}>
+        <Link href="/">
+          <button
+            type="button"
+            className={AUTH_BACK_BUTTON}
+            aria-label={locale === "ar" ? "رجوع" : "Back"}
+          >
+            <ArrowRight
+              className={cn("h-5 w-5", locale !== "ar" && "rotate-180")}
+              strokeWidth={2.25}
+            />
+          </button>
+        </Link>
+        <div className="min-w-0 flex-1" />
+      </header>
+
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pb-10 pt-6 md:px-5">
+        <div className="flex w-full max-w-md flex-col items-center gap-4">
           <div className="relative flex items-center justify-center">
-            <div className="absolute h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
-            <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-primary/25 bg-primary/10 shadow-xl">
-              <UserPlus className="h-10 w-10 text-primary" />
+            <div className="absolute h-36 w-36 rounded-full bg-primary/15 blur-3xl" />
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border border-primary/35 bg-zinc-950/80 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15">
+              <UserPlus className="h-11 w-11 text-primary" strokeWidth={2} />
             </div>
           </div>
-          <div className="space-y-2 text-center">
-            <h1 className="text-2xl font-bold">{t("auth.shared.welcome_brand")}</h1>
-            <p className="text-sm text-muted-foreground">
-              {t("auth.shared.welcome_desc")}
-            </p>
+          <div className={cn(AUTH_HERO_CARD, "w-full max-w-md space-y-1.5")}>
+            <p className="text-base font-bold text-foreground">{t("auth.shared.welcome_brand")}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">{t("auth.shared.welcome_desc")}</p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-background/80 p-5 shadow-xl backdrop-blur">
+        <div className={AUTH_CARD}>
           <div className="flex flex-col gap-3">
-            <div className="rounded-xl border border-border/70 bg-muted/30 p-3 text-right">
-              <p className="text-sm font-bold">{contextualTitle}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{contextualText}</p>
+            <div className={AUTH_CONTEXT_ALERT}>
+              <p className="text-sm font-semibold text-foreground">{contextualTitle}</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{contextualText}</p>
             </div>
             <Link href={loginHref} className="w-full">
-              <Button className="h-12 w-full text-base font-bold rounded-xl shadow-lg transition-all hover:scale-[1.01] gap-2">
-                <LogIn className="h-4 w-4" />
+              <Button
+                type="button"
+                variant="ghost"
+                className={cn(AUTH_ACCENT_OUTLINE_BTN, "inline-flex items-center justify-center gap-2 hover:bg-zinc-900")}
+              >
+                <LogIn className="h-4 w-4 shrink-0" />
                 {t("auth.login.submit")}
               </Button>
             </Link>
             <Link href={signupHref} className="w-full">
               <Button
-                variant="outline"
-                className="h-12 w-full text-base font-bold rounded-xl gap-2"
+                type="button"
+                variant="ghost"
+                className={cn(AUTH_ACCENT_GHOST_BTN, "inline-flex items-center justify-center gap-2 hover:bg-zinc-900/90")}
               >
-                <UserPlus className="h-4 w-4" />
+                <UserPlus className="h-4 w-4 shrink-0" />
                 {t("auth.signup.submit")}
               </Button>
             </Link>

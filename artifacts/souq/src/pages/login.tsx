@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLayoutEffect, useState } from "react";
+import { Link, useLocation, useSearch } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -19,6 +20,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api-url";
+import { LEGAL_EXPLICIT_RETURN_KEY, LEGAL_NAV_RETURN_KEY } from "@/lib/return-navigation";
+import { cn } from "@/lib/utils";
+import {
+  AUTH_ACCENT_OUTLINE_BTN,
+  AUTH_BACK_BUTTON,
+  AUTH_CARD,
+  AUTH_HEADER,
+  AUTH_HEADER_TITLE,
+  AUTH_HERO_CARD,
+  AUTH_INPUT,
+  AUTH_PAGE_BG,
+} from "@/lib/auth-page-styles";
 
 const schema = z.object({
   email: z.string().email("بريد إلكتروني غير صحيح"),
@@ -30,12 +43,42 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
+/** إرجاع مسار داخلي فقط، وتفادي loop نحو /login وروابط نسبية تُبقي المستخدم على شاشة الدخول */
+function resolvePostLoginRedirect(search: string): string {
+  const params = new URLSearchParams(search);
+  const raw = params.get("redirect");
+  if (raw == null || raw.trim() === "") return "/";
+  let path = raw.trim();
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    return "/";
+  }
+  if (path.startsWith("//")) return "/";
+  if (!path.startsWith("/")) return "/";
+  if (path === "/login" || path.startsWith("/login?")) return "/";
+  return path;
+}
+
+function isOnLoginPath(path: string): boolean {
+  return path === "/login" || path === "login" || /(^|\/)login$/.test(path);
+}
+
 export default function Login() {
-  const [, navigate] = useLocation();
+  const [locationPath, setLocation] = useLocation();
+  const search = useSearch();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /** إذا أصبح المستخدم مسجلاً (من الكاش أو بعد setQueryData) يجب مغادرة /login فوراً */
+  useLayoutEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+    if (!isOnLoginPath(locationPath)) return;
+    setLocation(resolvePostLoginRedirect(search), { replace: true });
+  }, [authLoading, isAuthenticated, locationPath, search, setLocation]);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -68,7 +111,7 @@ export default function Login() {
             description: "أدخل رمز التفعيل لإكمال الدخول",
           });
 
-          navigate(`/verify-email?${params.toString()}`);
+          setLocation(`/verify-email?${params.toString()}`);
           return;
         }
 
@@ -76,11 +119,17 @@ export default function Login() {
       }
 
       toast({ title: "تم تسجيل الدخول بنجاح" });
+      try {
+        sessionStorage.removeItem(LEGAL_EXPLICIT_RETURN_KEY);
+        sessionStorage.removeItem(LEGAL_NAV_RETURN_KEY);
+      } catch {
+        /* ignore */
+      }
       queryClient.setQueryData(getAuthMeQueryKey(), json);
       void queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
 
-      const params = new URLSearchParams(window.location.search);
-      navigate(params.get("redirect") || "/");
+      const next = resolvePostLoginRedirect(window.location.search);
+      setLocation(next, { replace: true });
 
     } catch (err: any) {
       setError(err.message || "فشل تسجيل الدخول");
@@ -93,58 +142,49 @@ export default function Login() {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-gradient-to-b from-background to-muted/30"
+      className={AUTH_PAGE_BG}
+      dir="rtl"
     >
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur border-b border-border p-4 flex items-center gap-4">
+      <header className={AUTH_HEADER}>
         <Link href="/">
-          <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
-            <ArrowRight className="w-5 h-5" />
+          <button type="button" className={AUTH_BACK_BUTTON} aria-label="رجوع">
+            <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
           </button>
         </Link>
-        <h1 className="font-bold text-lg">تسجيل الدخول</h1>
+        <h1 className={AUTH_HEADER_TITLE}>تسجيل الدخول</h1>
       </header>
 
-      {/* Content */}
-      <div className="flex flex-col gap-8 px-6 pt-10 pb-6">
-        {/* Icon + Title */}
-        <div className="flex flex-col items-center gap-5">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pb-8 pt-6 md:px-5">
+        <div className="flex flex-col items-center gap-4">
           <div className="relative flex items-center justify-center">
-            {/* Glow */}
-            <div className="absolute w-44 h-44 rounded-full bg-primary/20 blur-3xl"></div>
-
-            {/* Circle */}
-            <div className="relative w-28 h-28 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shadow-xl">
-              <LogIn className="w-12 h-12 text-primary" />
+            <div className="absolute h-36 w-36 rounded-full bg-primary/15 blur-3xl" />
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border border-primary/35 bg-zinc-950/80 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15">
+              <LogIn className="h-11 w-11 text-primary" strokeWidth={2} />
             </div>
           </div>
 
-          <div className="text-center space-y-1">
-            <h2 className="text-2xl font-bold">أهلاً بعودتك 👋</h2>
-            <p className="text-sm text-muted-foreground max-w-xs">
+          <div className={cn(AUTH_HERO_CARD, "w-full max-w-md space-y-1.5")}>
+            <h2 className="text-lg font-bold text-foreground md:text-xl">أهلاً بعودتك 👋</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
               سجّل الدخول لإدارة إعلاناتك ومتابعة المفضلة بسهولة
             </p>
           </div>
         </div>
 
-        {/* Form Card */}
-        <div className="bg-background/80 backdrop-blur border border-border rounded-2xl p-5 shadow-xl">
+        <div className={AUTH_CARD}>
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col gap-4"
-            >
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>البريد الإلكتروني</FormLabel>
+                    <FormLabel className="text-foreground">البريد الإلكتروني</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
                         dir="ltr"
-                        className="text-right"
+                        className={cn(AUTH_INPUT, "text-right")}
                         placeholder="name@email.com"
                         {...field}
                       />
@@ -159,13 +199,9 @@ export default function Login() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>كلمة المرور</FormLabel>
+                    <FormLabel className="text-foreground">كلمة المرور</FormLabel>
                     <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="••••••••"
-                        {...field}
-                      />
+                      <Input type="password" className={AUTH_INPUT} placeholder="••••••••" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -173,26 +209,23 @@ export default function Login() {
               />
 
               {error && (
-                <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-center">
+                <p className="rounded-xl border border-destructive/35 bg-destructive/10 p-3 text-center text-sm text-destructive ring-1 ring-destructive/20">
                   {error}
                 </p>
               )}
 
               <Button
                 type="submit"
-                className="h-14 text-base font-bold mt-2 rounded-xl shadow-lg hover:scale-[1.02] transition-all"
+                variant="ghost"
+                className={cn(AUTH_ACCENT_OUTLINE_BTN, "mt-1 hover:bg-zinc-900")}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  "تسجيل الدخول"
-                )}
+                {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "تسجيل الدخول"}
               </Button>
 
               <Link
                 href="/forgot-password"
-                className="text-center text-sm text-primary hover:underline"
+                className="text-center text-sm font-medium text-primary/90 hover:text-primary hover:underline"
               >
                 نسيت كلمة المرور؟
               </Link>
@@ -200,13 +233,9 @@ export default function Login() {
           </Form>
         </div>
 
-        {/* Signup */}
         <p className="text-center text-sm text-muted-foreground">
           ليس لديك حساب؟{" "}
-          <Link
-            href="/signup"
-            className="text-primary font-bold hover:underline"
-          >
+          <Link href="/signup" className="font-semibold text-primary hover:underline">
             إنشاء حساب جديد
           </Link>
         </p>

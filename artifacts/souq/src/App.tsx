@@ -47,7 +47,14 @@ import SupportHelpPage from "@/pages/support-help";
 import GuestWelcome from "@/pages/guest-welcome";
 import { hasSavedLocale, t, type Locale } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
-import { useLocation } from "wouter";
+import { RouteScrollRestoration } from "@/components/route-scroll-restoration";
+import { cn } from "@/lib/utils";
+import {
+  AUTH_ACCENT_OUTLINE_BTN,
+  AUTH_CARD,
+  AUTH_PAGE_BG,
+  AUTH_SELECT_ROW,
+} from "@/lib/auth-page-styles";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,16 +64,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-function ScrollToTopOnRouteChange() {
-  const [location] = useLocation();
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [location]);
-
-  return null;
-}
 
 function Router() {
   return (
@@ -137,26 +134,26 @@ function FirstLaunchLanguageGate({ onDone }: { onDone: () => void }) {
   ];
 
   return (
-    <div className="min-h-[100dvh] bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-2xl border border-primary/20 bg-card/70 p-5 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_12px_28px_-16px_rgba(182,227,86,0.35)]">
+    <div className={cn(AUTH_PAGE_BG, "items-center justify-center px-4 py-10")}>
+      <div className={cn(AUTH_CARD, "w-full max-w-md")}>
         <h1 className="text-lg font-bold text-foreground">{t("first_launch.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("first_launch.subtitle")}</p>
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-1.5">
           {options.map((option) => (
             <button
               key={option.code}
               type="button"
               onClick={() => setSelectedLocale(option.code)}
-              className={`w-full rounded-xl border px-3 py-3 text-sm font-medium text-start transition ${
-                option.code === selectedLocale
-                  ? "border-primary/40 bg-primary/10 text-foreground"
-                  : "border-border/70 bg-background/40 text-foreground hover:bg-muted/40"
-              }`}
+              className={cn(
+                AUTH_SELECT_ROW,
+                "py-3 text-start font-medium",
+                option.code === selectedLocale && "border-primary/40 bg-zinc-900/90 shadow-[0_0_14px_-10px_hsl(var(--primary)/0.25)]",
+              )}
             >
-              <span className="inline-flex items-center gap-2">
-                {option.label}
+              <span className="inline-flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                <span className="truncate">{option.label}</span>
                 {option.code === "ar" ? (
-                  <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
+                  <span className="shrink-0 rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                     {t("first_launch.recommended")}
                   </span>
                 ) : null}
@@ -170,11 +167,11 @@ function FirstLaunchLanguageGate({ onDone }: { onDone: () => void }) {
             setLocale(selectedLocale);
             onDone();
           }}
-          className="mt-4 h-11 w-full rounded-xl bg-primary text-black text-sm font-semibold shadow-[0_8px_18px_-12px_rgba(182,227,86,0.6)] hover:bg-primary/90"
+          className={cn(AUTH_ACCENT_OUTLINE_BTN, "mt-5 text-sm hover:bg-zinc-900")}
         >
           {t("first_launch.confirm")}
         </button>
-        <p className="mt-4 text-xs text-muted-foreground">{t("first_launch.note")}</p>
+        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{t("first_launch.note")}</p>
       </div>
     </div>
   );
@@ -194,7 +191,7 @@ function App() {
           <FirstLaunchLanguageGate onDone={() => setShowFirstLaunchSelector(false)} />
         ) : (
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <ScrollToTopOnRouteChange />
+            <RouteScrollRestoration />
             <Router />
           </WouterRouter>
         )}

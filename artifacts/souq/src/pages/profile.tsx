@@ -19,6 +19,7 @@ import {
   ThumbsUp,
   ArrowUp,
   Megaphone,
+  Users,
 } from "lucide-react";
 import { useState, useRef } from "react";
 import {
@@ -38,8 +39,17 @@ import { Button } from "@/components/ui/button";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
 import { AvatarCircle } from "@/components/avatar-circle";
 import { useToast } from "@/hooks/use-toast";
+import { useLocale } from "@/hooks/use-locale";
 import { t } from "@/i18n";
+import {
+  PROFILE_STATS_GRID,
+  ProfileStatTile,
+} from "@/components/profile-stat-tiles";
+import { ProfileStatsDetailSheet } from "@/components/profile-stats-detail-sheet";
 import { formatRelativeTime } from "@/lib/format";
+import { getPublicAdUrl, getPublicUserProfileUrl } from "@/lib/public-url";
+import { buildAdShareText, buildProfileShareText } from "@/lib/share-text";
+import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -64,7 +74,38 @@ import {
 const profileHeaderIconBtn =
   "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-card/90 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.18)] transition-colors hover:border-primary/75 hover:bg-card/95 active:opacity-90 disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
 
+/** نفس تعريفات كروت صفحة «نشر إعلان» (`create-ad.tsx` — adCardShell / adCardShellCompact) */
+const AD_CARD_SHELL =
+  "rounded-2xl border border-primary/40 bg-zinc-950/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10";
+
+/** أزرار إجراءات كرت الإعلان — mini-card موحّد مع هوية الكروت / الشريط السفلي */
+const PROFILE_AD_ACTION_SHELL =
+  "inline-flex min-h-10 w-full items-center justify-center rounded-xl border px-2 text-xs font-semibold shadow-[0_0_18px_-14px_hsl(var(--primary)/0.14)] ring-1 transition hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.22)] active:scale-[0.98] md:min-h-[2.5rem]";
+
+const profileAdActionSecondary = cn(
+  PROFILE_AD_ACTION_SHELL,
+  "border-primary/32 bg-zinc-950/82 text-primary ring-primary/12 hover:border-primary/45 hover:bg-zinc-900/92",
+);
+
+const profileAdActionPromote = cn(
+  PROFILE_AD_ACTION_SHELL,
+  "gap-1 border-primary/48 bg-zinc-950/90 font-bold text-primary shadow-[0_0_26px_-12px_hsl(var(--primary)/0.34)] ring-primary/22 hover:border-primary/58 hover:bg-zinc-900/95 hover:shadow-[0_0_30px_-10px_hsl(var(--primary)/0.4)]",
+);
+
+const profileAdActionDelete = cn(
+  PROFILE_AD_ACTION_SHELL,
+  "border-red-500/38 bg-red-950/[0.22] text-red-300 shadow-[0_0_18px_-14px_rgba(239,68,68,0.18)] ring-red-500/18 hover:border-red-500/48 hover:bg-red-950/35",
+);
+
+const PROFILE_TAB_LIST =
+  "h-auto w-full grid grid-cols-3 gap-1.5 rounded-xl border border-primary/32 bg-zinc-950/78 p-1.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12";
+
+const PROFILE_TAB_TRIGGER =
+  "rounded-lg border border-transparent bg-transparent px-2 py-2.5 text-xs font-semibold text-primary/55 transition-all md:text-sm data-[state=active]:border-primary/52 data-[state=active]:bg-zinc-900/95 data-[state=active]:text-primary data-[state=active]:shadow-[0_0_24px_-12px_hsl(var(--primary)/0.32)] data-[state=active]:ring-1 data-[state=active]:ring-primary/28 hover:border-primary/22 hover:bg-zinc-950/85 hover:text-primary/85";
+
 export default function Profile() {
+  const { locale } = useLocale();
+  const numberLocale = locale === "en" ? "en-US" : locale === "de" ? "de-DE" : "ar";
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -83,6 +124,9 @@ export default function Profile() {
     },
   });
   const [activeTab, setActiveTab] = useState("my-ads");
+  const [statsSheet, setStatsSheet] = useState<
+    null | "followers" | "following" | "views"
+  >(null);
   const [favorites] = useState<number[]>(() => {
     try {
       const raw = localStorage.getItem("favorites");
@@ -133,16 +177,21 @@ export default function Profile() {
   if (!user) return <Redirect to="/guest-welcome?redirect=/profile" />;
 
   const handleShare = async () => {
-    const url = window.location.origin;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: t("profile.share_title"), url });
-      } catch {
-        /* cancelled */
-      }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast({ title: t("profile.link_copied") });
+    const url = getPublicUserProfileUrl(user.id);
+    const text = buildProfileShareText(user.name, user.city, url);
+    const outcome = await shareOrCopyLink({
+      title: user.name,
+      text,
+      url,
+    });
+    if (outcome === "copied") {
+      toast({ title: t("share.link_copied") });
+    } else if (outcome === "failed") {
+      toast({
+        title: t("ad_detail.copy_failed"),
+        description: t("ad_detail.copy_failed_desc"),
+        variant: "destructive",
+      });
     }
   };
 
@@ -167,16 +216,23 @@ export default function Profile() {
   };
 
   const handleShareAd = async (ad: Ad) => {
-    const url = `${window.location.origin}/ad/${ad.id}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: ad.title, url });
-      } catch {
-        /* cancelled */
-      }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast({ title: t("profile.link_copied") });
+    const url = getPublicAdUrl(ad.id);
+    const text = buildAdShareText(ad, url);
+    const imageFile = await tryAdImageAsShareFile(ad.images?.[0]);
+    const outcome = await shareOrCopyLink({
+      title: ad.title,
+      text,
+      url,
+      imageFile,
+    });
+    if (outcome === "copied") {
+      toast({ title: t("share.link_copied") });
+    } else if (outcome === "failed") {
+      toast({
+        title: t("ad_detail.copy_failed"),
+        description: t("ad_detail.copy_failed_desc"),
+        variant: "destructive",
+      });
     }
   };
 
@@ -198,6 +254,7 @@ export default function Profile() {
 
   const adCount = user?.adCount ?? myAds?.length ?? 0;
   const followerCount = user?.followerCount ?? 0;
+  const followingCount = user?.followingCount ?? 0;
   const profileViews = user?.profileViews ?? 0;
   const memberSince = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString("ar", {
@@ -209,7 +266,7 @@ export default function Profile() {
   const favoriteAds = (allAds ?? []).filter((ad) => favorites.includes(ad.id));
 
   return (
-    <div className="flex w-full flex-col bg-black">
+    <div className="flex min-h-[100svh] w-full flex-col bg-[#0A0A0A]">
       <div className="mx-auto w-full max-w-screen-sm md:max-w-[760px] lg:max-w-[860px] px-3 md:px-6 py-3 md:py-5">
         <header className="pt-2 md:pt-5" dir="rtl">
           <div className="flex w-full items-start justify-between gap-3">
@@ -293,65 +350,52 @@ export default function Profile() {
         </header>
 
         <section className="mt-5 md:mt-6 px-0 md:px-1" dir="rtl">
-          <div className="grid grid-cols-3 gap-2 md:gap-3 text-center" dir="rtl">
-            <div className="min-w-0 rounded-2xl border border-white/[0.1] bg-[#111111] py-3.5 px-1 shadow-[0_0_12px_-8px_rgba(182,227,86,0.14)]">
-              <Megaphone
-                className="mx-auto mb-2 h-5 w-5 text-[#b6e356]"
-                strokeWidth={2.25}
-              />
-              <p className="text-lg md:text-xl font-bold tabular-nums text-foreground">
-                {adCount.toLocaleString("ar")}
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {t("profile.stats.ads")}
-              </p>
-            </div>
-            <div className="min-w-0 rounded-2xl border border-white/[0.1] bg-[#111111] py-3.5 px-1 shadow-[0_0_12px_-8px_rgba(182,227,86,0.14)]">
-              <Eye
-                className="mx-auto mb-2 h-5 w-5 text-[#b6e356]"
-                strokeWidth={2.25}
-              />
-              <p className="text-lg md:text-xl font-bold tabular-nums text-foreground">
-                {profileViews.toLocaleString("ar")}
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {t("profile.stats.views")}
-              </p>
-            </div>
-            <div className="min-w-0 rounded-2xl border border-white/[0.1] bg-[#111111] py-3.5 px-1 shadow-[0_0_12px_-8px_rgba(182,227,86,0.14)]">
-              <UserPlus
-                className="mx-auto mb-2 h-5 w-5 text-[#b6e356]"
-                strokeWidth={2.25}
-              />
-              <p className="text-lg md:text-xl font-bold tabular-nums text-foreground">
-                {followerCount.toLocaleString("ar")}
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {t("profile.stats.followers")}
-              </p>
-            </div>
+          <div className={PROFILE_STATS_GRID} dir="rtl">
+            <ProfileStatTile
+              icon={<Megaphone strokeWidth={2.25} />}
+              value={adCount}
+              label={t("profile.stats.ads")}
+              numberLocale={numberLocale}
+            />
+            <ProfileStatTile
+              icon={<UserPlus strokeWidth={2.25} />}
+              value={followerCount}
+              label={t("profile.stats.followers")}
+              numberLocale={numberLocale}
+              onClick={() => setStatsSheet("followers")}
+            />
+            <ProfileStatTile
+              icon={<Users strokeWidth={2.25} />}
+              value={followingCount}
+              label={t("profile.stats.following")}
+              numberLocale={numberLocale}
+              onClick={() => setStatsSheet("following")}
+            />
+            <ProfileStatTile
+              icon={<Eye strokeWidth={2.25} />}
+              value={profileViews}
+              label={t("profile.stats.views")}
+              numberLocale={numberLocale}
+              onClick={() => setStatsSheet("views")}
+            />
           </div>
         </section>
 
-        <section className="mt-5 md:mt-6 rounded-2xl border border-white/[0.08] bg-[#0e0e0e] p-2.5 md:p-4 shadow-[0_0_14px_-10px_rgba(182,227,86,0.12)]">
+        <section
+          className={cn(
+            AD_CARD_SHELL,
+            "mt-5 md:mt-6 p-2.5 md:p-4",
+          )}
+        >
           <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">
-            <TabsList className="h-auto w-full grid grid-cols-3 gap-1 rounded-2xl bg-black/40 p-1 border border-white/[0.06]">
-              <TabsTrigger
-                value="my-ads"
-                className="rounded-full text-xs md:text-sm py-2.5 data-[state=active]:bg-[#b6e356] data-[state=active]:text-black data-[state=active]:shadow-[0_0_10px_-4px_rgba(182,227,86,0.35)] data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent"
-              >
+            <TabsList className={PROFILE_TAB_LIST}>
+              <TabsTrigger value="my-ads" className={PROFILE_TAB_TRIGGER}>
                 {t("profile.tabs.my_ads")}
               </TabsTrigger>
-              <TabsTrigger
-                value="favorites"
-                className="rounded-full text-xs md:text-sm py-2.5 data-[state=active]:bg-[#b6e356] data-[state=active]:text-black data-[state=active]:shadow-[0_0_10px_-4px_rgba(182,227,86,0.35)] data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent"
-              >
+              <TabsTrigger value="favorites" className={PROFILE_TAB_TRIGGER}>
                 {t("profile.tabs.favorites")}
               </TabsTrigger>
-              <TabsTrigger
-                value="public"
-                className="rounded-full text-xs md:text-sm py-2.5 data-[state=active]:bg-[#b6e356] data-[state=active]:text-black data-[state=active]:shadow-[0_0_10px_-4px_rgba(182,227,86,0.35)] data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent"
-              >
+              <TabsTrigger value="public" className={PROFILE_TAB_TRIGGER}>
                 {t("profile.tabs.public")}
               </TabsTrigger>
             </TabsList>
@@ -365,7 +409,7 @@ export default function Profile() {
                   <h3 className="font-bold text-base mb-1">{t("profile.empty.first_ad_title")}</h3>
                   <p className="text-sm text-muted-foreground mb-4">{t("profile.empty.first_ad_subtitle")}</p>
                   <Link href="/new">
-                    <Button className="px-4 py-2 text-sm font-medium rounded-full bg-[#b6e356] text-black inline-flex items-center gap-2">
+                    <Button className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
                       <Plus className="w-4 h-4" />
                       {t("profile.empty.create_ad")}
                     </Button>
@@ -429,7 +473,8 @@ export default function Profile() {
             <TabsContent value="public" className="mt-3 md:mt-4">
               <div
                 className={cn(
-                  "rounded-2xl border border-primary/40 bg-card/80 p-4 text-right shadow-[0_0_14px_-10px_hsl(var(--primary)/0.14)] dark:bg-zinc-950/70 md:p-5",
+                  AD_CARD_SHELL,
+                  "p-4 text-right md:p-5",
                 )}
               >
                 <h3 className="text-base font-semibold leading-snug text-foreground md:text-lg">
@@ -476,13 +521,33 @@ export default function Profile() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <ProfileStatsDetailSheet
+        open={statsSheet !== null}
+        onOpenChange={(open) => !open && setStatsSheet(null)}
+        title={
+          statsSheet === "followers"
+            ? t("profile.stats.sheet.followers_title")
+            : statsSheet === "following"
+              ? t("profile.stats.sheet.following_title")
+              : statsSheet === "views"
+                ? t("profile.stats.sheet.views_title")
+                : ""
+        }
+      >
+        <p className="text-sm leading-relaxed">
+          {statsSheet === "views"
+            ? t("profile.stats.sheet.empty_views_list")
+            : t("profile.stats.sheet.empty_follow_list")}
+        </p>
+      </ProfileStatsDetailSheet>
+
       <Drawer open={!!actionAd} onOpenChange={(open) => !open && setActionAd(null)}>
         <DrawerContent className="rounded-t-2xl border-border bg-card/95">
           <DrawerHeader className="text-right">
             <DrawerTitle>{t("profile.actions.title")}</DrawerTitle>
             <DrawerDescription className="text-xs">{actionAd?.title}</DrawerDescription>
           </DrawerHeader>
-          <div className="px-3 pb-4 space-y-1.5" dir="rtl">
+          <div className="space-y-2 px-3 pb-4" dir="rtl">
             <button
               type="button"
               onClick={() => {
@@ -490,9 +555,12 @@ export default function Profile() {
                 navigate(`/edit/${actionAd.id}`);
                 setActionAd(null);
               }}
-              className="w-full min-h-12 rounded-xl border border-border bg-background/60 px-3 py-3 flex items-center justify-between text-sm font-medium"
+              className={cn(
+                profileAdActionSecondary,
+                "min-h-12 justify-between px-3 py-3 text-sm font-medium",
+              )}
             >
-              <Pencil className="w-4 h-4 text-primary" />
+              <Pencil className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
               <span>{t("profile.actions.edit")}</span>
             </button>
             <button
@@ -502,9 +570,12 @@ export default function Profile() {
                 await handleShareAd(actionAd);
                 setActionAd(null);
               }}
-              className="w-full min-h-12 rounded-xl border border-border bg-background/60 px-3 py-3 flex items-center justify-between text-sm font-medium"
+              className={cn(
+                profileAdActionSecondary,
+                "min-h-12 justify-between px-3 py-3 text-sm font-medium",
+              )}
             >
-              <Share2 className="w-4 h-4 text-primary" />
+              <Share2 className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
               <span>{t("profile.actions.share")}</span>
             </button>
             <button
@@ -513,9 +584,12 @@ export default function Profile() {
                 toast({ title: t("profile.actions.bumped") });
                 setActionAd(null);
               }}
-              className="w-full min-h-12 rounded-xl border border-border bg-background/60 px-3 py-3 flex items-center justify-between text-sm font-medium"
+              className={cn(
+                profileAdActionSecondary,
+                "min-h-12 justify-between px-3 py-3 text-sm font-medium",
+              )}
             >
-              <RefreshCw className="w-4 h-4 text-primary" />
+              <RefreshCw className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
               <span>{t("profile.actions.bump")}</span>
             </button>
             <button
@@ -525,9 +599,12 @@ export default function Profile() {
                 setAdToDelete(actionAd.id);
                 setActionAd(null);
               }}
-              className="w-full min-h-12 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-3 flex items-center justify-between text-sm font-medium text-destructive"
+              className={cn(
+                profileAdActionDelete,
+                "min-h-12 justify-between px-3 py-3 text-sm font-medium",
+              )}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="h-4 w-4 shrink-0" strokeWidth={2.25} />
               <span>{t("profile.actions.delete")}</span>
             </button>
           </div>
@@ -575,7 +652,10 @@ function ProfileDesktopAdCard({
 
   return (
     <article
-      className="rounded-2xl border border-border/70 bg-card/60 p-3 lg:p-3.5 shadow-sm hover:border-primary/25 transition-colors"
+      className={cn(
+        AD_CARD_SHELL,
+        "p-3 transition-colors hover:border-primary/45 lg:p-3.5",
+      )}
       dir="rtl"
     >
       <button type="button" onClick={onOpen} className="w-full text-right">
@@ -635,7 +715,7 @@ function ProfileDesktopAdCard({
               e.stopPropagation();
               onEdit?.();
             }}
-            className="h-9 rounded-full border border-border bg-transparent text-xs font-medium text-foreground hover:bg-muted/40"
+            className={profileAdActionSecondary}
           >
             {t("profile.card.edit")}
           </button>
@@ -646,7 +726,7 @@ function ProfileDesktopAdCard({
               e.stopPropagation();
               onDelete?.();
             }}
-            className="h-9 rounded-full border border-destructive/40 bg-destructive/10 text-xs font-medium text-destructive hover:bg-destructive/15"
+            className={profileAdActionDelete}
           >
             {t("profile.card.delete")}
           </button>
@@ -697,7 +777,10 @@ function ProfileMobileAdCard({
 
   return (
     <article
-      className="relative w-full rounded-2xl border border-border/70 bg-[#121212] p-3 shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-colors"
+      className={cn(
+        AD_CARD_SHELL,
+        "relative w-full p-3 transition-colors hover:border-primary/45",
+      )}
       onClick={onOpen}
       dir={direction}
     >
@@ -709,9 +792,9 @@ function ProfileMobileAdCard({
           e.stopPropagation();
           onOpenActions();
         }}
-        className="absolute left-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-border/70 bg-muted/55 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
+        className="absolute left-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-primary/35 bg-zinc-950/85 text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.18)] ring-1 ring-primary/14 transition-colors hover:border-primary/48 hover:bg-zinc-900/95 hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.26)]"
       >
-        <MoreVertical className="h-5 w-5" />
+        <MoreVertical className="h-5 w-5" strokeWidth={2.25} />
       </button>
 
       <div className="flex items-start gap-3 w-full">
@@ -773,7 +856,7 @@ function ProfileMobileAdCard({
             e.stopPropagation();
             onEdit();
           }}
-          className="h-10 rounded-full border border-border bg-transparent text-foreground text-xs font-medium"
+          className={profileAdActionSecondary}
         >
           {t("profile.card.edit")}
         </button>
@@ -784,7 +867,7 @@ function ProfileMobileAdCard({
             e.stopPropagation();
             onDelete();
           }}
-          className="h-10 rounded-full border border-border bg-transparent text-foreground text-xs font-medium"
+          className={profileAdActionDelete}
         >
           {t("profile.card.delete")}
         </button>
@@ -795,9 +878,9 @@ function ProfileMobileAdCard({
             e.stopPropagation();
             onPromote();
           }}
-          className="h-10 rounded-full bg-[#b6e356] text-black text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-[0_0_10px_-4px_rgba(182,227,86,0.35)]"
+          className={profileAdActionPromote}
         >
-          <ArrowUp className="w-3.5 h-3.5" />
+          <ArrowUp className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
           <span>{t("profile.card.promote")}</span>
         </button>
       </div>

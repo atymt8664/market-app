@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
-import { ArrowRight } from "lucide-react";
+import { useLayoutEffect, useState } from "react";
+import { useLocation, useSearch } from "wouter";
+import { ArrowRight, Ticket } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   createSupportTicket,
@@ -8,19 +8,60 @@ import {
   getMySupportTickets,
 } from "@/features/admin/api";
 import { useToast } from "@/hooks/use-toast";
+import {
+  SETTINGS_ACTION_PANEL,
+  SETTINGS_BACK_BUTTON,
+  SETTINGS_CARD,
+  SETTINGS_CARD_TITLE,
+  SETTINGS_FIELD,
+  SETTINGS_HEADER_BAR,
+  SETTINGS_HEADER_INNER,
+  SETTINGS_INPUT,
+  SETTINGS_LABEL,
+  SETTINGS_MAIN_COLUMN,
+  SETTINGS_MESSAGE_BUBBLE,
+  SETTINGS_PAGE_BG,
+  SETTINGS_PAGE_TITLE,
+  SETTINGS_PRIMARY_BUTTON,
+  SETTINGS_STATUS_BADGE,
+  SETTINGS_TICKET_ROW,
+  SETTINGS_TICKET_ROW_SELECTED,
+} from "@/components/settings-shell";
+import { SettingsSheetSelect } from "@/components/settings-sheet-select";
+import {
+  getBrowserSearchRaw,
+  navigateBackFromLegalPage,
+  syncLegalExplicitFromCurrentUrl,
+} from "@/lib/return-navigation";
 
-const CATEGORIES = [
-  { key: "general", label: "استفسار عام" },
-  { key: "login", label: "تسجيل الدخول" },
-  { key: "payment", label: "الدفع والفواتير" },
-  { key: "ad", label: "مشكلة إعلان" },
-  { key: "account", label: "الحساب والأمان" },
-  { key: "other", label: "أخرى" },
-];
+const CATEGORY_OPTIONS = [
+  { value: "general", label: "استفسار عام" },
+  { value: "login", label: "تسجيل الدخول" },
+  { value: "payment", label: "الدفع والفواتير" },
+  { value: "ad", label: "مشكلة إعلان" },
+  { value: "account", label: "الحساب والأمان" },
+  { value: "other", label: "أخرى" },
+] as const;
+
+function ticketStatusBadgeClass(status: string) {
+  const s = (status ?? "").toLowerCase();
+  if (/open|new|pending|progress|in_progress|قيد|جديد|مفتوح/i.test(s)) {
+    return `${SETTINGS_STATUS_BADGE} border-primary/45 bg-primary/15 text-primary`;
+  }
+  if (/close|resolved|done|complete|منجز|مغلق/i.test(s)) {
+    return `${SETTINGS_STATUS_BADGE} border-emerald-500/35 bg-emerald-500/10 text-emerald-300`;
+  }
+  return `${SETTINGS_STATUS_BADGE} border-primary/22 bg-zinc-950/90 text-zinc-200`;
+}
 
 export default function SupportHelpPage() {
-  const [, navigate] = useLocation();
+  const [pathname, navigate] = useLocation();
+  const search = useSearch();
   const { toast } = useToast();
+
+  useLayoutEffect(() => {
+    syncLegalExplicitFromCurrentUrl();
+  }, [pathname, search]);
   const [category, setCategory] = useState("general");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -70,19 +111,26 @@ export default function SupportHelpPage() {
   });
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background pb-6">
-      <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-background p-4">
-        <Link href="/settings">
-          <button className="rounded-full p-2 -mr-2 transition-all hover:bg-muted active:scale-95">
-            <ArrowRight className="h-5 w-5" />
+    <div className={`flex flex-col ${SETTINGS_PAGE_BG} pb-8`}>
+      <header className={SETTINGS_HEADER_BAR} dir="rtl">
+        <div className={SETTINGS_HEADER_INNER}>
+          <h1 className={SETTINGS_PAGE_TITLE}>المساعدة والدعم</h1>
+          <button
+            type="button"
+            onClick={() => {
+              navigateBackFromLegalPage(navigate, getBrowserSearchRaw(), "/settings");
+            }}
+            className={SETTINGS_BACK_BUTTON}
+            aria-label="رجوع"
+          >
+            <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
           </button>
-        </Link>
-        <h1 className="text-lg font-bold">المساعدة والدعم</h1>
+        </div>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold text-muted-foreground">إنشاء تذكرة دعم</h2>
+      <main className={`${SETTINGS_MAIN_COLUMN} flex-1 space-y-4 pb-10`} dir="rtl">
+        <div className={SETTINGS_CARD}>
+          <h2 className={`${SETTINGS_CARD_TITLE} mb-4`}>إنشاء تذكرة دعم</h2>
           <form
             className="space-y-3"
             onSubmit={(e) => {
@@ -96,66 +144,93 @@ export default function SupportHelpPage() {
               });
             }}
           >
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-            >
-              {CATEGORIES.map((item) => (
-                <option key={item.key} value={item.key}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-
-            <input
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="عنوان المشكلة"
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-              required
-            />
-
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="اكتب تفاصيل المشكلة..."
-              rows={5}
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-              required
-            />
-
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <input
-                value={relatedAdId}
-                onChange={(e) => setRelatedAdId(e.target.value)}
-                placeholder="رقم الإعلان (اختياري)"
-                inputMode="numeric"
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-              />
-              <input
-                value={relatedUserId}
-                onChange={(e) => setRelatedUserId(e.target.value)}
-                placeholder="رقم المستخدم (اختياري)"
-                inputMode="numeric"
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+            <div className="space-y-1.5">
+              <label htmlFor="ticket-category" className={SETTINGS_LABEL}>
+                نوع التذكرة
+              </label>
+              <SettingsSheetSelect
+                id="ticket-category"
+                aria-label="نوع التذكرة"
+                sheetTitle="نوع التذكرة"
+                value={category}
+                onValueChange={setCategory}
+                options={CATEGORY_OPTIONS}
+                leading={<Ticket className="h-4 w-4" aria-hidden />}
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={createMutation.isPending || !subject.trim() || !message.trim()}
-              className="w-full rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
-            >
-              {createMutation.isPending ? "جاري الإرسال..." : "إرسال التذكرة"}
-            </button>
+            <div className="space-y-1.5">
+              <label htmlFor="ticket-subject" className={SETTINGS_LABEL}>
+                عنوان المشكلة
+              </label>
+              <input
+                id="ticket-subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="عنوان المشكلة"
+                className={SETTINGS_INPUT}
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="ticket-message" className={SETTINGS_LABEL}>
+                التفاصيل
+              </label>
+              <textarea
+                id="ticket-message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="اكتب تفاصيل المشكلة..."
+                rows={5}
+                className={`${SETTINGS_FIELD} min-h-[120px] resize-y`}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="related-ad" className={SETTINGS_LABEL}>
+                  رقم الإعلان (اختياري)
+                </label>
+                <input
+                  id="related-ad"
+                  value={relatedAdId}
+                  onChange={(e) => setRelatedAdId(e.target.value)}
+                  placeholder="رقم الإعلان (اختياري)"
+                  inputMode="numeric"
+                  className={SETTINGS_INPUT}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="related-user" className={SETTINGS_LABEL}>
+                  رقم المستخدم (اختياري)
+                </label>
+                <input
+                  id="related-user"
+                  value={relatedUserId}
+                  onChange={(e) => setRelatedUserId(e.target.value)}
+                  placeholder="رقم المستخدم (اختياري)"
+                  inputMode="numeric"
+                  className={SETTINGS_INPUT}
+                />
+              </div>
+            </div>
+
+            <div className={SETTINGS_ACTION_PANEL}>
+              <button
+                type="submit"
+                disabled={createMutation.isPending || !subject.trim() || !message.trim()}
+                className={SETTINGS_PRIMARY_BUTTON}
+              >
+                {createMutation.isPending ? "جاري الإرسال..." : "إرسال التذكرة"}
+              </button>
+            </div>
           </form>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-            طلباتي
-          </h2>
+        <div className={SETTINGS_CARD}>
+          <h2 className={`${SETTINGS_CARD_TITLE} mb-4`}>طلباتي</h2>
           {myTicketsQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">جاري تحميل التذاكر...</p>
           ) : myTicketsQuery.isError ? (
@@ -171,17 +246,19 @@ export default function SupportHelpPage() {
                   key={ticket.id}
                   type="button"
                   onClick={() => setSelectedTicketId(ticket.id)}
-                  className={`w-full rounded-xl border px-3 py-2 text-right transition ${
-                    selectedTicketId === ticket.id
-                      ? "border-primary/50 bg-primary/5"
-                      : "border-border hover:bg-muted/50"
+                  className={`${SETTINGS_TICKET_ROW} ${
+                    selectedTicketId === ticket.id ? SETTINGS_TICKET_ROW_SELECTED : ""
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium">#{ticket.id} - {ticket.subject}</p>
-                    <span className="text-xs text-muted-foreground">{ticket.status}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="min-w-0 flex-1 font-medium text-foreground">
+                      #{ticket.id} - {ticket.subject}
+                    </p>
+                    <span className={ticketStatusBadgeClass(String(ticket.status))}>
+                      {ticket.status}
+                    </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="mt-2 text-xs text-zinc-500">
                     {ticket.category} •{" "}
                     {ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : "—"}
                   </p>
@@ -192,8 +269,8 @@ export default function SupportHelpPage() {
         </div>
 
         {selectedTicketId && (
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+          <div className={SETTINGS_CARD}>
+            <h3 className={`${SETTINGS_CARD_TITLE} mb-4`}>
               تفاصيل التذكرة #{selectedTicketId}
             </h3>
             {myMessagesQuery.isLoading ? (
@@ -205,7 +282,10 @@ export default function SupportHelpPage() {
             ) : (
               <div className="space-y-2">
                 {myMessagesQuery.data?.map((msg) => (
-                  <div key={msg.id} className="rounded-lg border border-border bg-background p-3 text-sm">
+                  <div
+                    key={msg.id}
+                    className={SETTINGS_MESSAGE_BUBBLE}
+                  >
                     <p className="text-xs text-muted-foreground">
                       {msg.adminId ? "فريق الدعم" : "أنت"} •{" "}
                       {msg.createdAt ? new Date(msg.createdAt).toLocaleString() : "—"}

@@ -1,30 +1,20 @@
-import { Link } from "wouter";
-import { ArrowUpRight, ArrowRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { LegalDocumentHeader } from "@/components/legal-document-header";
+import { SETTINGS_CARD, SETTINGS_MAIN_COLUMN, SETTINGS_PAGE_BG } from "@/components/settings-shell";
 
 export default function TermsPage() {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex min-h-[100dvh] w-full flex-col bg-gradient-to-b from-background to-muted/30"
+      className={`flex w-full flex-col ${SETTINGS_PAGE_BG}`}
       dir="rtl"
     >
-      <header className="sticky top-0 z-40 flex items-center gap-4 border-b border-border bg-background/90 p-4 backdrop-blur">
-        <Link href="/signup">
-          <button
-            type="button"
-            className="rounded-full p-2 -mr-2 transition-all hover:bg-muted active:scale-95"
-            aria-label="رجوع"
-          >
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </Link>
-        <h1 className="font-bold text-lg">الشروط والأحكام</h1>
-      </header>
+      <LegalDocumentHeader title="الشروط والأحكام" />
 
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-4 pb-10 pt-6 sm:px-6">
-        <div className="rounded-2xl border border-primary/20 bg-card/70 p-5 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_12px_28px_-16px_rgba(182,227,86,0.35)]">
+      <div className={`${SETTINGS_MAIN_COLUMN} flex-1 pb-10`}>
+        <div className={SETTINGS_CARD}>
           <h2 className="text-base font-semibold text-foreground">وصف استخدام التطبيق</h2>
           <p className="mt-2 text-sm leading-7 text-muted-foreground">
             منصة سوق العرب EU مخصصة لعرض الإعلانات والتواصل بين البائعين والمشترين بشكل آمن
@@ -33,7 +23,7 @@ export default function TermsPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-background/80 p-5 shadow-sm">
+        <div className={SETTINGS_CARD}>
           <h3 className="text-sm font-semibold text-foreground">مسؤولية المستخدم</h3>
           <p className="mt-2 text-sm leading-7 text-muted-foreground">
             المستخدم مسؤول بشكل كامل عن دقة بيانات الحساب، وصحة محتوى الإعلان، وسلامة التعامل
@@ -42,7 +32,7 @@ export default function TermsPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-background/80 p-5 shadow-sm">
+        <div className={SETTINGS_CARD}>
           <h3 className="text-sm font-semibold text-foreground">منع الاحتيال</h3>
           <p className="mt-2 text-sm leading-7 text-muted-foreground">
             يمنع منعًا باتًا أي سلوك احتيالي مثل انتحال الهوية، طلب تحويلات مشبوهة، أو بيع سلع
@@ -51,7 +41,7 @@ export default function TermsPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-background/80 p-5 shadow-sm">
+        <div className={SETTINGS_CARD}>
           <h3 className="text-sm font-semibold text-foreground">سياسة الإعلانات</h3>
           <p className="mt-2 text-sm leading-7 text-muted-foreground">
             يجب أن يكون الإعلان واضحًا، دقيقًا، وغير مخالف للأنظمة. يمنع نشر محتوى مسيء، مكرر،

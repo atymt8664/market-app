@@ -1,5 +1,5 @@
 import { Link, Redirect, useLocation, useParams, useSearch } from "wouter";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useGetConversation,
   getGetConversationQueryKey,
@@ -10,11 +10,22 @@ import {
 } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, Send } from "lucide-react";
+import { ArrowRight, Check, CheckCheck, Send } from "lucide-react";
 import { useChatSocket } from "@/hooks/use-chat-socket";
 import { useQueryClient } from "@tanstack/react-query";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
+import { formatMessageTimestamp, formatRelativeTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+/**
+ * فقاعات — نفس نظام الكروت الداكنة؛ الفرق الوحيد: زاوية الذيل + وهج lime أخف جدًا للمرسل.
+ */
+const CHAT_RECV_OUTER =
+  "relative overflow-hidden rounded-2xl rounded-bl-md border border-primary/15 bg-zinc-950/75 shadow-[0_4px_22px_-12px_rgba(0,0,0,0.42)] ring-1 ring-white/[0.06] backdrop-blur-[2px]";
+
+const CHAT_SENT_OUTER =
+  "relative overflow-hidden rounded-2xl rounded-br-md border border-primary/18 bg-zinc-950/75 shadow-[0_0_20px_-18px_hsl(var(--primary)/0.07),0_4px_22px_-12px_rgba(0,0,0,0.42)] ring-1 ring-primary/10 backdrop-blur-[2px]";
 
 const BUYER_QUICK_KEYS = [
   "message_thread.msg_qs_buyer_1",
@@ -74,6 +85,11 @@ export default function MessageThread() {
   const send = useSendMessage();
   const [body, setBody] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  /** عند false لا نفرض التمرير لأسفل عند وصول رسائل جديدة (المستخدم يقرأ للأعلى). */
+  const stickBottomRef = useRef(true);
+  const typingHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const otherUserIdRef = useRef<number | undefined>(undefined);
+  const [peerTyping, setPeerTyping] = useState(false);
 
   const { data: conv } = useGetConversation(convId, {
     query: {
@@ -88,9 +104,33 @@ export default function MessageThread() {
     },
   });
 
+  otherUserIdRef.current = conv?.otherId;
+
   const { send: wsSend } = useChatSocket((ev) => {
     if (ev.type === "message" && ev.conversationId === convId) {
       queryClient.invalidateQueries({ queryKey: getListMessagesQueryKey(convId) });
+      return;
+    }
+    if (
+      ev.type === "typing" &&
+      ev.conversationId === convId &&
+      otherUserIdRef.current != null &&
+      ev.userId === otherUserIdRef.current
+    ) {
+      if (ev.active) {
+        setPeerTyping(true);
+        if (typingHideRef.current) clearTimeout(typingHideRef.current);
+        typingHideRef.current = setTimeout(() => {
+          setPeerTyping(false);
+          typingHideRef.current = null;
+        }, 4500);
+      } else {
+        setPeerTyping(false);
+        if (typingHideRef.current) {
+          clearTimeout(typingHideRef.current);
+          typingHideRef.current = null;
+        }
+      }
     }
   });
 
@@ -101,10 +141,59 @@ export default function MessageThread() {
   }, [convId, user?.id, wsSend]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    setPeerTyping(false);
+    if (typingHideRef.current) {
+      clearTimeout(typingHideRef.current);
+      typingHideRef.current = null;
     }
-  }, [messages]);
+  }, [convId]);
+
+  useEffect(() => {
+    return () => {
+      if (typingHideRef.current) clearTimeout(typingHideRef.current);
+    };
+  }, []);
+
+  const scrollToBottom = useCallback((force: boolean) => {
+    if (force) stickBottomRef.current = true;
+    const el = scrollRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const threshold = 96;
+      const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+      stickBottomRef.current = dist < threshold;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!stickBottomRef.current) return;
+    scrollToBottom(false);
+  }, [messages, scrollToBottom]);
+
+  const peerActivityLabel = useMemo(() => {
+    if (!messages?.length || !conv || !user) return null;
+    let latestIso: string | null = null;
+    for (const m of messages) {
+      if (m.senderId !== conv.otherId) continue;
+      if (!latestIso || new Date(m.createdAt) > new Date(latestIso)) {
+        latestIso = m.createdAt;
+      }
+    }
+    if (!latestIso) return null;
+    const rel = formatRelativeTime(latestIso);
+    if (!rel) return null;
+    return t("message_thread.peer_last_message", { time: rel });
+  }, [messages, conv, user, locale]);
 
   useEffect(() => {
     if (!convId) return;
@@ -158,6 +247,7 @@ export default function MessageThread() {
       {
         onSuccess: () => {
           setBody("");
+          scrollToBottom(true);
           queryClient.invalidateQueries({ queryKey: getListMessagesQueryKey(convId) });
         },
       },
@@ -181,14 +271,28 @@ export default function MessageThread() {
 
   const renderMessageBody = (raw: string) => {
     const text = raw || "";
+    const linkTone =
+      "rounded-xl border border-primary/15 bg-black/35 px-2.5 py-2 text-[11px] text-primary underline underline-offset-2 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] ring-1 ring-primary/8";
     const linkRegex = /(https?:\/\/[^\s]+|\/ad\/\d+)/g;
     const parts = text.split(linkRegex).filter(Boolean);
     const hasLink = parts.some((p) => linkRegex.test(p));
     linkRegex.lastIndex = 0;
-    if (!hasLink) return <span>{text}</span>;
+    if (!hasLink) {
+      return (
+        <span
+          dir={dirRtl ? "rtl" : "ltr"}
+          className="block whitespace-pre-wrap break-words text-[14px] leading-relaxed text-zinc-100"
+        >
+          {text}
+        </span>
+      );
+    }
 
     return (
-      <div className="space-y-1.5">
+      <div
+        dir={dirRtl ? "rtl" : "ltr"}
+        className="space-y-1.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed text-zinc-100"
+      >
         {parts.map((part, idx) => {
           const isLink = /^(https?:\/\/[^\s]+|\/ad\/\d+)$/.test(part);
           if (!isLink) {
@@ -201,7 +305,7 @@ export default function MessageThread() {
               href={href}
               target={part.startsWith("http") ? "_blank" : undefined}
               rel={part.startsWith("http") ? "noreferrer" : undefined}
-              className="block rounded-lg border border-primary/30 bg-zinc-950/70 px-2.5 py-2 text-[11px] text-primary underline underline-offset-2"
+              className={`block ${linkTone}`}
               dir="ltr"
             >
               {part}
@@ -212,13 +316,36 @@ export default function MessageThread() {
     );
   };
 
+  const renderDeliveryIcon = (m: ChatMessage) => {
+    const iconClass = "h-2.5 w-2.5 shrink-0 stroke-[2.25]";
+    if (m.readAt) {
+      return (
+        <CheckCheck
+          className={`${iconClass} text-primary drop-shadow-[0_0_6px_hsl(var(--primary)/0.38)]`}
+          aria-hidden
+        />
+      );
+    }
+    if (m.deliveredAt) {
+      return (
+        <CheckCheck
+          className={`${iconClass} text-muted-foreground/85`}
+          aria-hidden
+        />
+      );
+    }
+    return (
+      <Check className={`${iconClass} text-muted-foreground/70`} aria-hidden />
+    );
+  };
+
   return (
     <div
       className="fixed inset-0 z-0 flex h-[100svh] w-full flex-col overflow-hidden bg-[#0A0A0A]"
       dir={dirRtl ? "rtl" : "ltr"}
     >
       <header className="sticky top-0 z-50 shrink-0 bg-[#0A0A0A]/95 px-4 pb-2 pt-3 backdrop-blur md:px-6">
-        <div className="mx-auto w-full max-w-[820px] rounded-2xl border border-primary/30 bg-gradient-to-b from-zinc-950/95 to-zinc-900/75 px-3 py-2.5 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12">
+        <div className="mx-auto w-full max-w-[820px] rounded-2xl border border-primary/35 bg-zinc-950/75 px-3 py-2.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.12),0_4px_20px_-12px_rgba(0,0,0,0.45)] ring-1 ring-primary/15 backdrop-blur-[2px]">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -241,6 +368,11 @@ export default function MessageThread() {
               <div className="truncate text-sm font-bold text-white">
                 {conv?.otherName || "..."}
               </div>
+              {peerActivityLabel ? (
+                <p className="truncate text-[11px] leading-snug text-muted-foreground">
+                  {peerActivityLabel}
+                </p>
+              ) : null}
               {conv && (
                 <Link
                   href={`/ad/${conv.adId}`}
@@ -262,8 +394,8 @@ export default function MessageThread() {
           >
             {isLoading ? (
               <>
-                <Skeleton className="h-10 w-2/3 self-start rounded-2xl bg-zinc-900/70" />
-                <Skeleton className="h-10 w-1/2 self-end rounded-2xl bg-zinc-900/70" />
+                <Skeleton className="h-[3.5rem] max-w-[75%] self-start rounded-2xl rounded-bl-md bg-zinc-900/70" />
+                <Skeleton className="h-[3.5rem] max-w-[75%] self-end rounded-2xl rounded-br-md bg-zinc-900/70" />
               </>
             ) : messages && messages.length > 0 ? (
               messages.map((m: ChatMessage, index) => {
@@ -271,33 +403,41 @@ export default function MessageThread() {
                 return (
                   <div
                     key={m.id}
-                    className={`max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-[0_6px_20px_-14px_rgba(0,0,0,0.8)] transition-all duration-300 ${
-                      mine
-                        ? "self-end rounded-br-md bg-primary text-zinc-950 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.6)]"
-                        : "self-start rounded-bl-md border border-primary/20 bg-[#111111] text-white"
-                    }`}
+                    className={cn(
+                      "min-w-0 max-w-[75%] transition-all duration-300 sm:max-w-[70%] md:max-w-[62%]",
+                      mine ? `self-end ${CHAT_SENT_OUTER}` : `self-start ${CHAT_RECV_OUTER}`,
+                    )}
                     style={{
                       opacity: 1,
                       transform: "translateY(0)",
                       animation: `messageIn 180ms ease ${index * 12}ms both`,
                     }}
                   >
-                    <div className="flex flex-col gap-0.5">
+                    <div
+                      className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.03] to-transparent"
+                      aria-hidden
+                    />
+                    <div className="relative z-[1] px-3 pb-2 pt-2.5 md:px-3.5 md:pb-2.5 md:pt-3">
                       {renderMessageBody(m.body)}
-                      {mine && (
-                        <div
-                          className="flex justify-end gap-0.5 text-[11px] leading-none tabular-nums"
-                          aria-hidden
+                      <div
+                        className={`mt-1.5 flex items-center gap-0.5 ${mine ? "justify-end" : "justify-start"}`}
+                        dir="ltr"
+                      >
+                        <time
+                          dateTime={m.createdAt}
+                          className="text-[10px] font-medium tabular-nums leading-none text-muted-foreground"
                         >
-                          {m.readAt ? (
-                            <span className="text-emerald-800">✓✓</span>
-                          ) : m.deliveredAt ? (
-                            <span className="text-zinc-800/75">✓✓</span>
-                          ) : (
-                            <span className="text-zinc-900/70">✓</span>
-                          )}
-                        </div>
-                      )}
+                          {formatMessageTimestamp(m.createdAt, locale)}
+                        </time>
+                        {mine && (
+                          <span
+                            className="inline-flex translate-y-[0.5px] items-center"
+                            aria-hidden
+                          >
+                            {renderDeliveryIcon(m)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -316,6 +456,26 @@ export default function MessageThread() {
         className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+100px)] left-0 right-0 z-50 border-t border-primary/20 bg-[#0A0A0A]/95 px-3 py-2 shadow-[0_-8px_20px_-12px_rgba(0,0,0,0.65)] backdrop-blur"
       >
         <div className="mx-auto flex w-full max-w-[820px] flex-col gap-2">
+          {peerTyping ? (
+            <div
+              className="flex items-center gap-2 rounded-lg border border-primary/15 bg-zinc-950/85 px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.12)]"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="flex gap-1" aria-hidden>
+                <span className="h-1 w-1 animate-pulse rounded-full bg-primary/80" />
+                <span
+                  className="h-1 w-1 animate-pulse rounded-full bg-primary/60"
+                  style={{ animationDelay: "120ms" }}
+                />
+                <span
+                  className="h-1 w-1 animate-pulse rounded-full bg-primary/45"
+                  style={{ animationDelay: "240ms" }}
+                />
+              </span>
+              <span>{t("message_thread.typing")}</span>
+            </div>
+          ) : null}
           {conv && (
             <div className="scrollbar-thin mb-2 flex gap-2 overflow-x-auto rounded-xl border border-primary/20 bg-zinc-950/75 px-2 py-2">
               {quickReplies.map((line) => (

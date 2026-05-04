@@ -18,6 +18,13 @@ export type ChatSocketEvent =
         readAt: string | null;
       };
     }
+  /** Reserved for future server broadcast — not emitted by API yet. */
+  | {
+      type: "typing";
+      conversationId: number;
+      userId: number;
+      active: boolean;
+    }
   | { type: "pong" };
 
 export function buildWsUrl(): string {

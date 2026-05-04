@@ -1,30 +1,20 @@
-import { Link } from "wouter";
-import { ArrowUpRight, ArrowRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { LegalDocumentHeader } from "@/components/legal-document-header";
+import { SETTINGS_CARD, SETTINGS_MAIN_COLUMN, SETTINGS_PAGE_BG } from "@/components/settings-shell";
 
 export default function PrivacyPage() {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex min-h-[100dvh] w-full flex-col bg-gradient-to-b from-background to-muted/30"
+      className={`flex w-full flex-col ${SETTINGS_PAGE_BG}`}
       dir="rtl"
     >
-      <header className="sticky top-0 z-40 flex items-center gap-4 border-b border-border bg-background/90 p-4 backdrop-blur">
-        <Link href="/signup">
-          <button
-            type="button"
-            className="rounded-full p-2 -mr-2 transition-all hover:bg-muted active:scale-95"
-            aria-label="رجوع"
-          >
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </Link>
-        <h1 className="font-bold text-lg">سياسة الخصوصية</h1>
-      </header>
+      <LegalDocumentHeader title="سياسة الخصوصية" />
 
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-4 pb-10 pt-6 sm:px-6">
-        <div className="rounded-2xl border border-primary/20 bg-card/70 p-5 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_12px_28px_-16px_rgba(182,227,86,0.35)]">
+      <div className={`${SETTINGS_MAIN_COLUMN} flex-1 pb-10`}>
+        <div className={SETTINGS_CARD}>
           <h2 className="text-base font-semibold text-foreground">ما البيانات التي نجمعها</h2>
           <p className="mt-2 text-sm leading-7 text-muted-foreground">
             نجمع البيانات الأساسية اللازمة لتشغيل الخدمة، مثل الاسم، البريد الإلكتروني، رقم
@@ -33,7 +23,7 @@ export default function PrivacyPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-background/80 p-5 shadow-sm">
+        <div className={SETTINGS_CARD}>
           <h3 className="text-sm font-semibold text-foreground">كيف نستخدم البيانات</h3>
           <p className="mt-2 text-sm leading-7 text-muted-foreground">
             نستخدم البيانات لتقديم خدمات المنصة، التحقق من الحسابات، تحسين البحث والإعلانات،
@@ -42,7 +32,7 @@ export default function PrivacyPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-background/80 p-5 shadow-sm">
+        <div className={SETTINGS_CARD}>
           <h3 className="text-sm font-semibold text-foreground">حماية البيانات</h3>
           <p className="mt-2 text-sm leading-7 text-muted-foreground">
             نطبق إجراءات حماية تقنية وتنظيمية مناسبة لتقليل مخاطر الوصول غير المصرح به أو التسريب
@@ -51,7 +41,7 @@ export default function PrivacyPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-background/80 p-5 shadow-sm">
+        <div className={SETTINGS_CARD}>
           <h3 className="text-sm font-semibold text-foreground">
             عدم مشاركة البيانات مع أطراف خارجية
           </h3>

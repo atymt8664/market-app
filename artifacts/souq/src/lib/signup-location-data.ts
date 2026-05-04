@@ -60,6 +60,14 @@ export const SIGNUP_COUNTRY_BY_CODE = Object.fromEntries(
   SIGNUP_COUNTRIES.map((country) => [country.code, country]),
 );
 
+/** علم Unicode من رمز ISO 3166-1 alpha-2 (مثل DE → 🇩🇪). */
+export function countryCodeToFlagEmoji(code: string): string {
+  const c = code.trim().toUpperCase();
+  if (c.length !== 2 || !/^[A-Z]{2}$/.test(c)) return "";
+  const BASE = 0x1f1e6 - 0x41;
+  return String.fromCodePoint(c.charCodeAt(0) + BASE, c.charCodeAt(1) + BASE);
+}
+
 const cityCache = new Map<string, string[]>();
 
 function normalizeCityName(name: string) {

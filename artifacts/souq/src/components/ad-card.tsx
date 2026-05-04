@@ -36,8 +36,15 @@ export interface AdCardProps {
 
 /** Title: exactly two line-heights — no vertical shift between cards */
 const TITLE_BOX = "h-[2.5rem] min-h-[2.5rem] max-h-[2.5rem] shrink-0";
+const TITLE_BOX_FAVORITES =
+  "h-[2.125rem] min-h-[2.125rem] max-h-[2.125rem] shrink-0";
 /** Price row + compact type badge below */
 const PRICE_BOX = "min-h-[2.2rem] shrink-0";
+const PRICE_BOX_COMPACT = "min-h-[2rem] shrink-0";
+
+/** صفحة المفضلة — نفس هوية كروت البروفايل / نشر إعلان، بحجم مدمج للموبايل */
+const FAVORITES_CARD_SHELL =
+  "rounded-2xl border border-primary/40 bg-zinc-950/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[border-color,box-shadow] duration-200 hover:border-primary/45 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.22)]";
 /** Location + time */
 const META_BOX = "h-[1.25rem] min-h-[1.25rem] max-h-[1.25rem] shrink-0";
 
@@ -48,7 +55,7 @@ function priceTypeBadgeText(type: Ad["priceType"]) {
   return t("ad-card.swap");
 }
 
-function PriceBlock({ ad }: { ad: Ad }) {
+function PriceBlock({ ad, compact }: { ad: Ad; compact?: boolean }) {
   const adWithDetails = ad as Ad & {
     details?: Record<string, unknown>;
   };
@@ -62,11 +69,27 @@ function PriceBlock({ ad }: { ad: Ad }) {
     : formatCurrencyAmount(ad.price, selectedCurrency, 0);
 
   return (
-    <div className={cn(PRICE_BOX, "flex w-full min-w-0 flex-col items-start justify-center gap-1")}>
-      <p className="min-w-0 truncate text-[15px] font-bold leading-none tabular-nums text-primary">
+    <div
+      className={cn(
+        compact ? PRICE_BOX_COMPACT : PRICE_BOX,
+        "flex w-full min-w-0 flex-col items-start justify-center gap-0.5",
+        compact && "gap-0",
+      )}
+    >
+      <p
+        className={cn(
+          "min-w-0 truncate font-bold leading-none tabular-nums text-primary",
+          compact ? "text-[13px]" : "text-[15px]",
+        )}
+      >
         {main}
       </p>
-      <span className="inline-flex rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
+      <span
+        className={cn(
+          "inline-flex rounded-full border border-primary/35 bg-primary/10 text-primary",
+          compact ? "px-1.5 py-0 text-[9px]" : "px-2 py-0.5 text-[10px]",
+        )}
+      >
         {priceTypeBadgeText(ad.priceType)}
       </span>
     </div>
@@ -136,11 +159,13 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
   };
 
   const hasImage = !!(ad.images && ad.images.length > 0 && ad.images[0]) && !imageFailed;
+  const favCompact = Boolean(favoritesList);
 
   return (
     <div
       className={cn(
-        "flex min-h-0 w-full flex-col gap-2 outline-none",
+        "flex min-h-0 w-full flex-col outline-none",
+        favCompact ? "gap-1" : "gap-2",
         featured ? "h-full" : "h-auto",
         featured &&
           "w-[148px] max-w-[148px] shrink-0 sm:w-[160px] sm:max-w-[160px] md:w-[172px] md:max-w-[172px]",
@@ -153,15 +178,27 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
       <motion.article
         whileTap={{ scale: 0.98 }}
         className={cn(
-          "group flex w-full flex-col overflow-hidden rounded-xl border border-border/45 bg-card text-start [contain:layout]",
+          "group flex w-full flex-col overflow-hidden text-start [contain:layout]",
+          favCompact
+            ? FAVORITES_CARD_SHELL
+            : [
+                "rounded-xl border border-border/45 bg-card",
+                "shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
+                "transition-[border-color,box-shadow] duration-200",
+                "hover:border-primary/25 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_2px_10px_rgba(0,0,0,0.45)]",
+              ].join(" "),
           featured ? "h-full min-h-0" : "h-auto",
-          "shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
-          "transition-[border-color,box-shadow] duration-200",
-          "hover:border-primary/25 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_2px_10px_rgba(0,0,0,0.45)]",
         )}
       >
-        {/* Image — aspect box; media + placeholder both absolute inset-0 → identical geometry */}
-        <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-muted/40">
+        {/* Image — صفحة المفضلة: ارتفاع ثابت أصغر؛ باقي الصفحات: aspect 4/3 */}
+        <div
+          className={cn(
+            "relative w-full shrink-0 overflow-hidden bg-muted/40",
+            favCompact
+              ? "h-[88px] sm:h-[96px] md:h-[104px]"
+              : "aspect-[4/3]",
+          )}
+        >
           {hasImage ? (
             <img
               src={ad.images[0]}
@@ -191,7 +228,10 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
             aria-label={
               isFavorite ? t("ad-card.remove_favorite") : t("ad-card.add_favorite")
             }
-            className="absolute end-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/45 shadow-sm backdrop-blur-[2px] transition-colors hover:bg-black/60 disabled:pointer-events-none disabled:opacity-70"
+            className={cn(
+              "absolute flex items-center justify-center rounded-full border border-primary/25 bg-black/50 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.15)] backdrop-blur-[2px] transition-colors hover:bg-black/65 disabled:pointer-events-none disabled:opacity-70",
+              favCompact ? "end-1 top-1 h-6 w-6" : "end-1.5 top-1.5 h-7 w-7",
+            )}
           >
             <motion.div
               animate={{ scale: isFavorite ? [1, 1.12, 1] : 1 }}
@@ -200,7 +240,8 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
               <Heart
                 strokeWidth={2.25}
                 className={cn(
-                  "h-3.5 w-3.5 transition-colors",
+                  "transition-colors",
+                  favCompact ? "h-3 w-3" : "h-3.5 w-3.5",
                   isFavorite
                     ? "fill-primary stroke-primary text-primary"
                     : "fill-transparent stroke-white text-white",
@@ -211,32 +252,52 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
         </div>
 
         {/* Body — fixed row heights + uniform gap + bottom padding (no layout shift) */}
-        <div className="flex shrink-0 flex-col gap-1.5 px-2 pb-2.5 pt-1.5">
+        <div
+          className={cn(
+            "flex shrink-0 flex-col",
+            favCompact ? "gap-1 px-1.5 pb-2 pt-1" : "gap-1.5 px-2 pb-2.5 pt-1.5",
+          )}
+        >
           <h3
             className={cn(
-              TITLE_BOX,
-              "break-words text-[13px] font-semibold leading-[1.25rem] text-foreground",
-              "line-clamp-2 overflow-hidden",
+              favCompact ? TITLE_BOX_FAVORITES : TITLE_BOX,
+              "break-words font-semibold text-foreground line-clamp-2 overflow-hidden",
+              favCompact
+                ? "text-[12px] leading-[1.06rem]"
+                : "text-[13px] leading-[1.25rem]",
             )}
           >
             {ad.title}
           </h3>
 
-          <PriceBlock ad={ad} />
+          <PriceBlock ad={ad} compact={favCompact} />
 
           {/* Engagement — equal thirds, fixed inner row height, vertically centered */}
-          <div className="shrink-0 border-t border-primary/15 pt-1.5 text-[10px] leading-none text-primary/60">
-            <div className="grid h-5 w-full grid-cols-3 items-center gap-x-0.5">
+          <div
+            className={cn(
+              "shrink-0 border-t border-primary/15 text-[10px] leading-none text-primary/60",
+              favCompact ? "pt-1" : "pt-1.5",
+            )}
+          >
+            <div
+              className={cn(
+                "grid w-full grid-cols-3 items-center gap-x-0.5",
+                favCompact ? "h-4" : "h-5",
+              )}
+            >
               <StatCell
-                icon={<Eye className="h-[11px] w-[11px]" strokeWidth={2} />}
+                compact={favCompact}
+                icon={<Eye className={favCompact ? "h-2.5 w-2.5" : "h-[11px] w-[11px]"} strokeWidth={2} />}
                 value={(ad.views ?? 0).toLocaleString(numberLocale)}
               />
               <StatCell
-                icon={<Star className="h-[11px] w-[11px]" strokeWidth={2} />}
+                compact={favCompact}
+                icon={<Star className={favCompact ? "h-2.5 w-2.5" : "h-[11px] w-[11px]"} strokeWidth={2} />}
                 value={(ad.favoriteCount ?? 0).toLocaleString(numberLocale)}
               />
               <StatCell
-                icon={<ThumbsUp className="h-[11px] w-[11px]" strokeWidth={2} />}
+                compact={favCompact}
+                icon={<ThumbsUp className={favCompact ? "h-2.5 w-2.5" : "h-[11px] w-[11px]"} strokeWidth={2} />}
                 value={(ad.likeCount ?? 0).toLocaleString(numberLocale)}
               />
             </div>
@@ -245,12 +306,16 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
           {/* Location + time */}
           <div
             className={cn(
-              META_BOX,
-              "flex w-full min-w-0 items-center gap-1 text-[10px] leading-none text-primary/55",
+              favCompact ? "h-[1.1rem] min-h-[1.1rem] max-h-[1.1rem]" : META_BOX,
+              "flex w-full min-w-0 items-center gap-0.5 text-[10px] leading-none text-primary/55",
+              favCompact && "text-[9px] text-primary/50",
             )}
           >
             <MapPin
-              className="h-[11px] w-[11px] shrink-0 text-primary/45"
+              className={cn(
+                "shrink-0 text-primary/45",
+                favCompact ? "h-2.5 w-2.5" : "h-[11px] w-[11px]",
+              )}
               strokeWidth={2}
               aria-hidden
             />
@@ -267,11 +332,11 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
         type="button"
         variant="outline"
         size="sm"
-        className="w-full shrink-0 gap-2 border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+        className="h-8 w-full shrink-0 gap-1.5 rounded-full border-primary/35 bg-zinc-950/85 px-3 text-[11px] font-medium text-primary shadow-[0_0_12px_-8px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 hover:border-primary/50 hover:bg-zinc-900/90 hover:text-primary"
         disabled={favMut.isPending || unfavMut.isPending}
         onClick={(e) => toggleFavorite(e)}
       >
-        <Heart className="h-4 w-4 fill-primary text-primary" strokeWidth={2} />
+        <Heart className="h-3.5 w-3.5 shrink-0 fill-primary text-primary" strokeWidth={2} />
         {t("ad-card.remove_favorite")}
       </Button>
     )}
@@ -279,9 +344,22 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
   );
 }
 
-function StatCell({ icon, value }: { icon: React.ReactNode; value: string }) {
+function StatCell({
+  icon,
+  value,
+  compact,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  compact?: boolean;
+}) {
   return (
-    <span className="flex min-h-0 min-w-0 w-full items-center justify-center gap-1 text-primary/65 [&_svg]:text-primary/50">
+    <span
+      className={cn(
+        "flex min-h-0 min-w-0 w-full items-center justify-center gap-0.5 text-primary/65 [&_svg]:text-primary/50",
+        compact && "text-[9px] text-primary/60",
+      )}
+    >
       <span className="shrink-0 [&_svg]:block">{icon}</span>
       <span className="min-w-0 truncate text-center tabular-nums">{value}</span>
     </span>
@@ -291,30 +369,61 @@ function StatCell({ icon, value }: { icon: React.ReactNode; value: string }) {
 export function AdCardSkeleton({
   featured,
   variant: _variant,
+  favoritesList,
 }: {
   featured?: boolean;
   variant?: "default" | "grid";
+  favoritesList?: boolean;
 }) {
+  const compact = Boolean(favoritesList);
   return (
     <div
       className={cn(
-        "flex w-full flex-col overflow-hidden rounded-xl border border-border/45 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
+        "flex w-full flex-col overflow-hidden",
+        compact
+          ? FAVORITES_CARD_SHELL
+          : "rounded-xl border border-border/45 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
         featured ? "h-full" : "h-auto",
         featured &&
           "w-[148px] max-w-[148px] shrink-0 sm:w-[160px] sm:max-w-[160px] md:w-[172px] md:max-w-[172px]",
       )}
     >
-      <Skeleton className="aspect-[4/3] w-full shrink-0 rounded-none bg-muted/40" />
-      <div className="flex flex-col gap-1.5 px-2 pb-2.5 pt-1.5">
-        <Skeleton className="h-[2.5rem] w-full rounded-md bg-muted/50" />
-        <Skeleton className="h-[1.5rem] w-2/5 rounded-md bg-muted/50" />
-        <div className="grid h-5 grid-cols-3 items-center gap-x-0.5 border-t border-border/35 pt-1.5">
-          <Skeleton className="mx-auto h-3 w-10 rounded bg-muted/45" />
-          <Skeleton className="mx-auto h-3 w-10 rounded bg-muted/45" />
-          <Skeleton className="mx-auto h-3 w-10 rounded bg-muted/45" />
+      <Skeleton
+        className={cn(
+          "w-full shrink-0 rounded-none bg-muted/40",
+          compact ? "h-[88px] sm:h-[96px] md:h-[104px]" : "aspect-[4/3]",
+        )}
+      />
+      <div
+        className={cn(
+          "flex flex-col",
+          compact ? "gap-1 px-1.5 pb-2 pt-1" : "gap-1.5 px-2 pb-2.5 pt-1.5",
+        )}
+      >
+        <Skeleton
+          className={cn(
+            "w-full rounded-md bg-muted/50",
+            compact ? "h-[2.125rem]" : "h-[2.5rem]",
+          )}
+        />
+        <Skeleton className={cn("rounded-md bg-muted/50", compact ? "h-3.5 w-2/5" : "h-[1.5rem] w-2/5")} />
+        <div
+          className={cn(
+            "grid grid-cols-3 items-center gap-x-0.5 border-t border-primary/15",
+            compact ? "h-4 pt-1" : "h-5 border-border/35 pt-1.5",
+          )}
+        >
+          <Skeleton className="mx-auto h-2.5 w-8 rounded bg-muted/45" />
+          <Skeleton className="mx-auto h-2.5 w-8 rounded bg-muted/45" />
+          <Skeleton className="mx-auto h-2.5 w-8 rounded bg-muted/45" />
         </div>
-        <Skeleton className="h-[1.25rem] w-full rounded bg-muted/40" />
+        <Skeleton className={cn("w-full rounded bg-muted/40", compact ? "h-3" : "h-[1.25rem]")} />
       </div>
+      {compact ? (
+        <div className="px-0 pb-0.5 pt-0">
+          <Skeleton className="h-8 w-full rounded-full bg-muted/40" />
+        </div>
+      ) : null}
     </div>
   );
 }

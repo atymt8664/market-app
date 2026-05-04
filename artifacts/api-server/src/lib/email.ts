@@ -12,9 +12,7 @@ function normalizeAppUrl(rawUrl: string | undefined) {
 }
 
 function getFrontendUrl() {
-  const frontend = process.env["FRONTEND_URL"];
-  const app = process.env["APP_URL"];
-  return normalizeAppUrl(frontend || app);
+  return normalizeAppUrl(process.env["FRONTEND_URL"]);
 }
 const fromAddress = process.env["EMAIL_FROM"] || defaultFromAddress;
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -134,8 +132,9 @@ function publicFrontendBase(req?: RequestLike): string {
 }
 
 export function buildResetPasswordUrl(token: string, req?: RequestLike) {
-  const frontendUrl = publicFrontendBase(req);
-  return `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+  void req;
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  return resetUrl;
 }
 
 export async function sendVerificationCodeEmail(email: string, code: string) {

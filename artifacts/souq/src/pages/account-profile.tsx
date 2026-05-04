@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { AccountHeader } from "@/components/account-header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { CitySelect } from "@/components/city-select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthUpdateProfile, getAuthMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Redirect } from "wouter";
 import { t } from "@/i18n";
+import {
+  SETTINGS_ACTION_PANEL,
+  SETTINGS_CARD,
+  SETTINGS_DROPDOWN_TRIGGER,
+  SETTINGS_INPUT,
+  SETTINGS_LABEL,
+  SETTINGS_MAIN_COLUMN,
+  SETTINGS_PAGE_BG,
+  SETTINGS_PRIMARY_BUTTON,
+} from "@/components/settings-shell";
+import { cn } from "@/lib/utils";
 
 export default function AccountProfile() {
   const { user, isLoading } = useAuth();
@@ -52,59 +60,55 @@ export default function AccountProfile() {
   };
 
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] bg-background pb-8">
+    <div className={`flex min-h-[100dvh] w-full flex-col ${SETTINGS_PAGE_BG} pb-8`}>
       <AccountHeader title={t("account_profile.title")} />
-      <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-5">
-        <form
-          onSubmit={onSubmit}
-          className="rounded-2xl border border-primary/20 bg-card/70 p-4 md:p-5 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]"
-          dir="rtl"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+      <div className={`${SETTINGS_MAIN_COLUMN} py-5`}>
+        <form onSubmit={onSubmit} className={SETTINGS_CARD} dir="rtl">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="name" className="text-xs md:text-sm text-muted-foreground/95">
+              <label htmlFor="name" className={SETTINGS_LABEL}>
                 {t("account_profile.name")}
-              </Label>
-              <Input
+              </label>
+              <input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
                 minLength={2}
-                className="h-11 rounded-xl border-border/70 bg-background/70 px-3.5 focus-visible:ring-1 focus-visible:ring-primary/45"
+                className={SETTINGS_INPUT}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="phone" className="text-xs md:text-sm text-muted-foreground/95">
+              <label htmlFor="phone" className={SETTINGS_LABEL}>
                 {t("account_profile.phone")}
-              </Label>
-              <Input
+              </label>
+              <input
                 id="phone"
                 dir="ltr"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 required
                 minLength={5}
-                className="h-11 rounded-xl border-border/70 bg-background/70 px-3.5 focus-visible:ring-1 focus-visible:ring-primary/45"
+                className={cn(SETTINGS_INPUT, "text-left")}
               />
             </div>
           </div>
           <div className="mt-4 flex flex-col gap-2">
-            <Label className="text-xs md:text-sm text-muted-foreground/95">{t("account_profile.city")}</Label>
+            <span className={SETTINGS_LABEL}>{t("account_profile.city")}</span>
             <CitySelect
               value={city}
               onChange={setCity}
-              className="h-11 rounded-xl border-border/70 bg-background/70 px-3.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/45 hover:bg-background/75"
+              className={cn(SETTINGS_DROPDOWN_TRIGGER, "h-auto min-h-[3rem] py-3")}
             />
           </div>
-          <div className="mt-6">
-            <Button
+          <div className={`${SETTINGS_ACTION_PANEL} mt-6`}>
+            <button
               type="submit"
               disabled={updateMutation.isPending}
-              className="h-11 w-full sm:w-auto sm:min-w-[200px] rounded-xl bg-primary text-black text-sm font-semibold shadow-[0_8px_18px_-12px_rgba(182,227,86,0.6)] hover:bg-primary/90"
+              className={SETTINGS_PRIMARY_BUTTON}
             >
               {updateMutation.isPending ? t("account_profile.saving") : t("account_profile.save")}
-            </Button>
+            </button>
           </div>
         </form>
       </div>

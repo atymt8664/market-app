@@ -2,13 +2,22 @@ import { useState } from "react";
 import { Redirect } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { AccountHeader } from "@/components/account-header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthChangePassword } from "@workspace/api-client-react";
 import { Eye, EyeOff } from "lucide-react";
 import { t } from "@/i18n";
+import {
+  SETTINGS_ACTION_PANEL,
+  SETTINGS_CARD,
+  SETTINGS_INPUT,
+  SETTINGS_INPUT_ICON_BUTTON,
+  SETTINGS_INPUT_ICON_CLASS,
+  SETTINGS_LABEL,
+  SETTINGS_MAIN_COLUMN,
+  SETTINGS_PAGE_BG,
+  SETTINGS_PRIMARY_BUTTON,
+} from "@/components/settings-shell";
+import { cn } from "@/lib/utils";
 
 export default function AccountPassword() {
   const { user, isLoading } = useAuth();
@@ -69,68 +78,74 @@ export default function AccountPassword() {
   };
 
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] bg-background pb-8">
+    <div className={`flex min-h-[100dvh] w-full flex-col ${SETTINGS_PAGE_BG} pb-8`}>
       <AccountHeader title={t("account_password.title")} />
-      <div className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-5">
-        <form
-          onSubmit={onSubmit}
-          className="rounded-2xl border border-primary/20 bg-card/70 p-4 md:p-5 flex flex-col gap-4 shadow-[0_0_0_1px_rgba(182,227,86,0.05),0_8px_20px_-14px_rgba(182,227,86,0.35)]"
-          dir="rtl"
-        >
+      <div className={`${SETTINGS_MAIN_COLUMN} py-5`}>
+        <form onSubmit={onSubmit} className={`${SETTINGS_CARD} flex flex-col gap-5`} dir="rtl">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="current" className="text-xs md:text-sm text-muted-foreground/95">
+            <label htmlFor="current" className={SETTINGS_LABEL}>
               {t("account_password.current")}
-            </Label>
+            </label>
             <div className="relative">
-              <Input
+              <input
                 id="current"
                 type={showCurrent ? "text" : "password"}
                 value={current}
                 onChange={(e) => setCurrent(e.target.value)}
                 required
-                className="h-11 rounded-xl border-border/70 bg-background/70 px-3.5 pl-11 focus-visible:ring-1 focus-visible:ring-primary/45"
+                className={cn(SETTINGS_INPUT, "pl-11")}
               />
               <button
                 type="button"
                 onClick={() => setShowCurrent((v) => !v)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={showCurrent ? t("account_password.hide_current") : t("account_password.show_current")}
+                className={SETTINGS_INPUT_ICON_BUTTON}
+                aria-label={
+                  showCurrent ? t("account_password.hide_current") : t("account_password.show_current")
+                }
               >
-                {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showCurrent ? (
+                  <EyeOff className={SETTINGS_INPUT_ICON_CLASS} strokeWidth={2.25} />
+                ) : (
+                  <Eye className={SETTINGS_INPUT_ICON_CLASS} strokeWidth={2.25} />
+                )}
               </button>
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="next" className="text-xs md:text-sm text-muted-foreground/95">
+            <label htmlFor="next" className={SETTINGS_LABEL}>
               {t("account_password.new")}
-            </Label>
+            </label>
             <div className="relative">
-              <Input
+              <input
                 id="next"
                 type={showNext ? "text" : "password"}
                 value={next}
                 onChange={(e) => setNext(e.target.value)}
                 required
                 minLength={8}
-                className="h-11 rounded-xl border-border/70 bg-background/70 px-3.5 pl-11 focus-visible:ring-1 focus-visible:ring-primary/45"
+                className={cn(SETTINGS_INPUT, "pl-11")}
               />
               <button
                 type="button"
                 onClick={() => setShowNext((v) => !v)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className={SETTINGS_INPUT_ICON_BUTTON}
                 aria-label={showNext ? t("account_password.hide_new") : t("account_password.show_new")}
               >
-                {showNext ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showNext ? (
+                  <EyeOff className={SETTINGS_INPUT_ICON_CLASS} strokeWidth={2.25} />
+                ) : (
+                  <Eye className={SETTINGS_INPUT_ICON_CLASS} strokeWidth={2.25} />
+                )}
               </button>
             </div>
             <div className="mt-0.5 space-y-1 text-xs">
-              <p className={hasMinLength ? "text-primary" : "text-muted-foreground"}>
+              <p className={hasMinLength ? "text-primary" : "text-zinc-500"}>
                 {hasMinLength ? "✓" : "•"} {t("account_password.rule_min")}
               </p>
-              <p className={hasUppercase ? "text-primary" : "text-muted-foreground"}>
+              <p className={hasUppercase ? "text-primary" : "text-zinc-500"}>
                 {hasUppercase ? "✓" : "•"} {t("account_password.rule_upper")}
               </p>
-              <p className={hasNumber ? "text-primary" : "text-muted-foreground"}>
+              <p className={hasNumber ? "text-primary" : "text-zinc-500"}>
                 {hasNumber ? "✓" : "•"} {t("account_password.rule_number")}
               </p>
               {next.length > 0 && !isStrong && (
@@ -139,40 +154,46 @@ export default function AccountPassword() {
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="confirm" className="text-xs md:text-sm text-muted-foreground/95">
+            <label htmlFor="confirm" className={SETTINGS_LABEL}>
               {t("account_password.confirm")}
-            </Label>
+            </label>
             <div className="relative">
-              <Input
+              <input
                 id="confirm"
                 type={showConfirm ? "text" : "password"}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 required
                 minLength={8}
-                className="h-11 rounded-xl border-border/70 bg-background/70 px-3.5 pl-11 focus-visible:ring-1 focus-visible:ring-primary/45"
+                className={cn(SETTINGS_INPUT, "pl-11")}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm((v) => !v)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={showConfirm ? t("account_password.hide_confirm") : t("account_password.show_confirm")}
+                className={SETTINGS_INPUT_ICON_BUTTON}
+                aria-label={
+                  showConfirm ? t("account_password.hide_confirm") : t("account_password.show_confirm")
+                }
               >
-                {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showConfirm ? (
+                  <EyeOff className={SETTINGS_INPUT_ICON_CLASS} strokeWidth={2.25} />
+                ) : (
+                  <Eye className={SETTINGS_INPUT_ICON_CLASS} strokeWidth={2.25} />
+                )}
               </button>
             </div>
             {confirmMismatch && (
               <p className="text-xs text-destructive">{t("account_password.mismatch_inline")}</p>
             )}
           </div>
-          <div className="pt-2">
-            <Button
+          <div className={`${SETTINGS_ACTION_PANEL} pt-2`}>
+            <button
               type="submit"
               disabled={change.isPending || !isStrong || confirmMismatch}
-              className="h-11 w-full sm:w-auto sm:min-w-[220px] rounded-xl bg-primary text-black text-sm font-semibold shadow-[0_8px_18px_-12px_rgba(182,227,86,0.6)] hover:bg-primary/90"
+              className={SETTINGS_PRIMARY_BUTTON}
             >
               {change.isPending ? t("account_password.saving") : t("account_password.update")}
-            </Button>
+            </button>
           </div>
         </form>
       </div>

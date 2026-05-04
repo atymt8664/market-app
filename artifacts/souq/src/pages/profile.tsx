@@ -28,8 +28,8 @@ import {
   getListMyAdsQueryKey,
   useAuthUpdateProfile,
   getAuthMeQueryKey,
-  useListAds,
-  getListAdsQueryKey,
+  useListFavoriteAds,
+  getListFavoriteAdsQueryKey,
   type Ad,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -127,18 +127,14 @@ export default function Profile() {
   const [statsSheet, setStatsSheet] = useState<
     null | "followers" | "following" | "views"
   >(null);
-  const [favorites] = useState<number[]>(() => {
-    try {
-      const raw = localStorage.getItem("favorites");
-      return raw ? (JSON.parse(raw) as number[]) : [];
-    } catch {
-      return [];
-    }
+  const { data: favoriteAdsData, isLoading: favoritesLoading } = useListFavoriteAds({
+    query: {
+      queryKey: getListFavoriteAdsQueryKey(),
+      enabled: !!user,
+      retry: false,
+    },
   });
-  const { data: allAds } = useListAds(
-    {},
-    { query: { queryKey: getListAdsQueryKey({}), enabled: favorites.length > 0 } },
-  );
+  const favoriteAds = Array.isArray(favoriteAdsData) ? favoriteAdsData : [];
 
   const { uploadFile, isUploading } = useUpload({
     onSuccess: (response) => {
@@ -263,7 +259,6 @@ export default function Profile() {
       })
     : null;
   const avatarBusy = isUploading || updateProfile.isPending;
-  const favoriteAds = (allAds ?? []).filter((ad) => favorites.includes(ad.id));
 
   return (
     <div className="flex min-h-[100svh] w-full flex-col bg-[#0A0A0A]">
@@ -452,14 +447,20 @@ export default function Profile() {
             </TabsContent>
 
             <TabsContent value="favorites" className="mt-3 md:mt-4">
-              {favoriteAds.length === 0 ? (
+              {favoritesLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <AdCardSkeleton key={i} favoritesList />
+                  ))}
+                </div>
+              ) : favoriteAds.length === 0 ? (
                 <div className="py-12 text-center text-sm text-muted-foreground">{t("profile.favorites.empty")}</div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                   {favoriteAds.map((ad) => (
                     <div key={ad.id}>
                       <div className="md:hidden">
-                        <AdCard ad={ad} />
+                        <AdCard ad={ad} favoritesList />
                       </div>
                       <div className="hidden md:block">
                         <ProfileDesktopAdCard ad={ad} onOpen={() => navigate(`/ad/${ad.id}`)} />

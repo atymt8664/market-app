@@ -29,6 +29,9 @@ import {
 } from "@/components/settings-shell";
 import { cn } from "@/lib/utils";
 
+const CHANGE_EMAIL_DISABLED_MSG =
+  "ميزة تغيير البريد الإلكتروني غير متاحة حالياً";
+
 export default function AccountEmail() {
   const { user, isLoading } = useAuth();
   const [, navigate] = useLocation();
@@ -45,7 +48,6 @@ export default function AccountEmail() {
   if (!user) return null;
 
   const verified = user.emailVerified;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const handleResend = () => {
     resend.mutate(
@@ -67,66 +69,13 @@ export default function AccountEmail() {
     setIsSubmitting(false);
   };
 
-  const handleRequestOtp = async () => {
-    const email = newEmail.trim().toLowerCase();
-    if (!emailRegex.test(email)) {
-      toast({
-        title: t("account_email.invalid_email"),
-        description: t("account_email.invalid_email_desc"),
-        variant: "destructive",
-      });
-      return;
-    }
-    if (email === user.email.toLowerCase()) {
-      toast({
-        title: t("account_email.same_email"),
-        description: t("account_email.same_email_desc"),
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!currentPassword.trim()) {
-      toast({
-        title: t("account_email.password_required"),
-        description: t("account_email.password_required_desc"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      setStep("verify");
-      toast({
-        title: t("account_email.next_step"),
-        description: t("account_email.next_step_desc"),
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  /** Change-email flow disabled until backend is ready — modal handlers kept for future use. */
+  const handleRequestOtp = () => {
+    toast({ title: CHANGE_EMAIL_DISABLED_MSG });
   };
 
-  const handleVerifyAndChange = async () => {
-    if (!otpCode.trim()) {
-      toast({
-        title: t("account_email.otp_required"),
-        description: t("account_email.otp_required_desc"),
-        variant: "destructive",
-      });
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      toast({
-        title: t("account_email.unavailable"),
-        description: t("account_email.unavailable_desc"),
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleVerifyAndChange = () => {
+    toast({ title: CHANGE_EMAIL_DISABLED_MSG });
   };
 
   return (
@@ -191,8 +140,13 @@ export default function AccountEmail() {
             </div>
           </div>
 
-          <div className={`${SETTINGS_ACTION_PANEL} pt-1`}>
-            <button type="button" onClick={() => setChangeOpen(true)} className={SETTINGS_OUTLINE_BUTTON}>
+          <div className={`${SETTINGS_ACTION_PANEL} flex flex-col gap-3 pt-1`}>
+            <p className="text-center text-xs leading-relaxed text-zinc-500">{CHANGE_EMAIL_DISABLED_MSG}</p>
+            <button
+              type="button"
+              onClick={() => toast({ title: CHANGE_EMAIL_DISABLED_MSG })}
+              className={cn(SETTINGS_OUTLINE_BUTTON, "opacity-80")}
+            >
               {t("account_email.change_email")}
             </button>
           </div>

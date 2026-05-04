@@ -22,9 +22,24 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
+import { cn } from "@/lib/utils";
+import {
+  SETTINGS_ACTION_PANEL,
+  SETTINGS_CARD,
+  SETTINGS_HEADER_BAR,
+  SETTINGS_HEADER_INNER,
+  SETTINGS_INPUT,
+  SETTINGS_INPUT_ICON_BUTTON,
+  SETTINGS_INPUT_ICON_CLASS,
+  SETTINGS_LABEL,
+  SETTINGS_MAIN_COLUMN,
+  SETTINGS_PAGE_BG,
+  SETTINGS_PAGE_TITLE,
+  SETTINGS_PRIMARY_BUTTON,
+  SETTINGS_BACK_BUTTON,
+} from "@/components/settings-shell";
 
 const schema = z
   .object({
@@ -103,76 +118,111 @@ export default function ResetPassword() {
     );
   };
 
+  const dir = locale === "ar" ? "rtl" : "ltr";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex min-h-[100dvh] w-full flex-col bg-gradient-to-b from-background to-muted/30"
-      dir={locale === "ar" ? "rtl" : "ltr"}
+      className={`flex min-h-[100dvh] w-full flex-col ${SETTINGS_PAGE_BG}`}
+      dir={dir}
     >
-      <header className="sticky top-0 z-40 flex items-center gap-4 border-b border-border bg-background/80 p-4 backdrop-blur">
-        <Link href="/login">
-          <button
-            type="button"
-            className="rounded-full p-2 -mr-2 transition-all hover:bg-muted active:scale-95"
-          >
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </Link>
-        <h1 className="font-bold text-lg">{t("auth.reset.title")}</h1>
+      <header className={SETTINGS_HEADER_BAR}>
+        <div className={SETTINGS_HEADER_INNER}>
+          <h1 className={SETTINGS_PAGE_TITLE}>{t("auth.reset.title")}</h1>
+          <Link href="/login">
+            <button
+              type="button"
+              className={SETTINGS_BACK_BUTTON}
+              aria-label={locale === "ar" ? "رجوع" : "Back"}
+            >
+              <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
+            </button>
+          </Link>
+        </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-5 pb-8 pt-10 sm:px-6">
-        <div className="flex flex-col items-center gap-5">
-          <div className="relative flex items-center justify-center">
-            <div className="absolute h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
-            <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-primary/25 bg-primary/10 shadow-xl">
-              <KeyRound className="h-10 w-10 text-primary" />
-            </div>
-          </div>
-          <div className="space-y-1 text-center">
-            <h2 className="text-2xl font-bold">{t("auth.reset.heading")}</h2>
-            <p className="text-sm text-muted-foreground">
-              {t("auth.reset.subheading")}
-            </p>
-          </div>
-        </div>
-
+      <div
+        className={cn(
+          SETTINGS_MAIN_COLUMN,
+          "flex flex-1 flex-col justify-center gap-6 py-10 md:py-14",
+        )}
+      >
         {done ? (
-          <div className="rounded-2xl border border-border bg-background/80 p-5 shadow-xl backdrop-blur">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <CheckCircle2 className="h-10 w-10 text-primary" />
-              <h3 className="font-bold">{t("auth.reset.success_title")}</h3>
-              <p className="text-sm text-muted-foreground">
-                {t("auth.reset.success_desc")}
-              </p>
+          <div
+            className={cn(
+              SETTINGS_CARD,
+              "mx-auto w-full max-w-md shadow-[0_0_40px_-14px_hsl(var(--primary)/0.28)]",
+            )}
+          >
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="relative flex items-center justify-center">
+                <div className="absolute h-28 w-28 rounded-full bg-primary/15 blur-2xl" />
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/40 bg-zinc-950/90 shadow-[0_0_24px_-10px_hsl(var(--primary)/0.35)] ring-1 ring-primary/20">
+                  <CheckCircle2 className="h-8 w-8 text-primary" strokeWidth={2.25} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-foreground">
+                  {t("auth.reset.success_title")}
+                </h3>
+                <p className="text-sm text-zinc-400">{t("auth.reset.success_desc")}</p>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-border bg-background/80 p-5 shadow-xl backdrop-blur">
+          <div
+            className={cn(
+              SETTINGS_CARD,
+              "mx-auto w-full max-w-md shadow-[0_0_40px_-14px_hsl(var(--primary)/0.28)]",
+            )}
+          >
+            <div className="mb-6 flex flex-col items-center gap-4 text-center">
+              <div className="relative flex items-center justify-center">
+                <div className="absolute h-32 w-32 rounded-full bg-primary/12 blur-3xl" />
+                <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-primary/40 bg-zinc-950/90 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.32)] ring-1 ring-primary/22">
+                  <KeyRound className="h-9 w-9 text-primary" strokeWidth={2.25} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <h2 className="text-xl font-bold text-foreground md:text-2xl">
+                  {t("auth.reset.heading")}
+                </h2>
+                <p className="text-sm text-zinc-400">{t("auth.reset.subheading")}</p>
+              </div>
+            </div>
+
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="flex flex-col gap-4"
+                className="flex flex-col gap-5"
               >
                 <FormField
                   control={form.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("auth.reset.new_password")}</FormLabel>
+                      <FormLabel className={SETTINGS_LABEL}>
+                        {t("auth.reset.new_password")}
+                      </FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
                             type={showPassword ? "text" : "password"}
                             placeholder="••••••••"
-                            className="pr-11"
+                            className={cn(
+                              SETTINGS_INPUT,
+                              dir === "rtl" ? "pl-11" : "pr-11",
+                            )}
                             {...field}
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword((prev) => !prev)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            className={cn(
+                              SETTINGS_INPUT_ICON_BUTTON,
+                              dir === "rtl" ? "left-3" : "right-3 left-auto",
+                            )}
                             aria-label={
                               showPassword
                                 ? t("auth.aria.hide_password")
@@ -180,14 +230,18 @@ export default function ResetPassword() {
                             }
                           >
                             {showPassword ? (
-                              <EyeOff className="h-4 w-4" />
+                              <EyeOff className={SETTINGS_INPUT_ICON_CLASS} strokeWidth={2.25} />
                             ) : (
-                              <Eye className="h-4 w-4" />
+                              <Eye className={SETTINGS_INPUT_ICON_CLASS} strokeWidth={2.25} />
                             )}
                           </button>
                         </div>
                       </FormControl>
-                      <FormMessage>{form.formState.errors.password?.message ? t(String(form.formState.errors.password.message)) : ""}</FormMessage>
+                      <FormMessage>
+                        {form.formState.errors.password?.message
+                          ? t(String(form.formState.errors.password.message))
+                          : ""}
+                      </FormMessage>
                     </FormItem>
                   )}
                 />
@@ -196,13 +250,18 @@ export default function ResetPassword() {
                   name="confirm"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("auth.fields.confirm_password")}</FormLabel>
+                      <FormLabel className={SETTINGS_LABEL}>
+                        {t("auth.fields.confirm_password")}
+                      </FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
                             type={showConfirmPassword ? "text" : "password"}
                             placeholder="••••••••"
-                            className="pr-11"
+                            className={cn(
+                              SETTINGS_INPUT,
+                              dir === "rtl" ? "pl-11" : "pr-11",
+                            )}
                             {...field}
                           />
                           <button
@@ -210,7 +269,10 @@ export default function ResetPassword() {
                             onClick={() =>
                               setShowConfirmPassword((prev) => !prev)
                             }
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            className={cn(
+                              SETTINGS_INPUT_ICON_BUTTON,
+                              dir === "rtl" ? "left-3" : "right-3 left-auto",
+                            )}
                             aria-label={
                               showConfirmPassword
                                 ? t("auth.aria.hide_confirm_password")
@@ -218,33 +280,42 @@ export default function ResetPassword() {
                             }
                           >
                             {showConfirmPassword ? (
-                              <EyeOff className="h-4 w-4" />
+                              <EyeOff className={SETTINGS_INPUT_ICON_CLASS} strokeWidth={2.25} />
                             ) : (
-                              <Eye className="h-4 w-4" />
+                              <Eye className={SETTINGS_INPUT_ICON_CLASS} strokeWidth={2.25} />
                             )}
                           </button>
                         </div>
                       </FormControl>
-                      <FormMessage>{form.formState.errors.confirm?.message ? t(String(form.formState.errors.confirm.message)) : ""}</FormMessage>
+                      <FormMessage>
+                        {form.formState.errors.confirm?.message
+                          ? t(String(form.formState.errors.confirm.message))
+                          : ""}
+                      </FormMessage>
                     </FormItem>
                   )}
                 />
                 {error && (
-                  <p className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-center text-sm text-destructive">
-                    {error}
+                  <p
+                    className="rounded-xl border border-destructive/35 bg-destructive/10 px-3 py-2.5 text-center text-sm text-destructive ring-1 ring-destructive/20"
+                    dir={dir}
+                  >
+                    {error.startsWith("auth.") ? t(error) : error}
                   </p>
                 )}
-                <Button
-                  type="submit"
-                  className="mt-2 h-12 rounded-xl text-base font-bold shadow-lg transition-all hover:scale-[1.01]"
-                  disabled={mut.isPending || !token}
-                >
-                  {mut.isPending ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    t("auth.reset.submit")
-                  )}
-                </Button>
+                <div className={`${SETTINGS_ACTION_PANEL} pt-1`}>
+                  <button
+                    type="submit"
+                    disabled={mut.isPending || !token}
+                    className={cn(SETTINGS_PRIMARY_BUTTON, "rounded-xl")}
+                  >
+                    {mut.isPending ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      t("auth.reset.submit")
+                    )}
+                  </button>
+                </div>
               </form>
             </Form>
           </div>

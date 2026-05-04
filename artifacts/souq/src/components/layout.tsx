@@ -19,13 +19,18 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const isAdminPage = location.startsWith("/admin");
+  const hideBottomNav =
+    location.startsWith("/reset-password") ||
+    location.startsWith("/login") ||
+    location.startsWith("/signup") ||
+    location.startsWith("/forgot-password");
 
   return (
     <div className="w-full min-h-[100svh] bg-[#0A0A0A]">
       <div className="relative mx-auto w-full max-w-screen-2xl min-h-[100svh] overflow-x-hidden bg-[#0A0A0A] pb-[calc(64px+env(safe-area-inset-bottom,0px))] md:pb-[calc(72px+env(safe-area-inset-bottom,0px))]">
         {children}
 
-        {!isAdminPage && <BottomNav />}
+        {!isAdminPage && !hideBottomNav && <BottomNav />}
       </div>
     </div>
   );

@@ -7,6 +7,8 @@ import helmet from "helmet";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { createCorsOriginHandler } from "./lib/cors-allowlist";
+import { getSessionSecret } from "./lib/session-secret";
 
 declare module "express-session" {
   interface SessionData {
@@ -44,7 +46,12 @@ app.use(
   }),
 );
 
-app.use(cors({ origin: true, credentials: true }));
+app.use(
+  cors({
+    origin: createCorsOriginHandler(isProduction),
+    credentials: true,
+  }),
+);
 app.use(
   helmet({
     contentSecurityPolicy: false,
@@ -70,13 +77,13 @@ app.use(
       tableName: "user_sessions",
       createTableIfMissing: true,
     }),
-    secret: process.env["SESSION_SECRET"] || "dev-secret-change-me",
+    secret: getSessionSecret(),
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: sessionCookieSecure,
+      sameSite: sessionSameSite,
       path: "/",
       maxAge: 1000 * 60 * 60 * 24 * 30,
     },

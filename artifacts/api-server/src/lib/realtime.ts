@@ -7,12 +7,13 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { pool } from "@workspace/db";
 import { logger } from "./logger";
+import { getSessionSecret } from "./session-secret";
 
 const PgStore = connectPgSimple(session);
 const store = new PgStore({ pool, tableName: "user_sessions" });
 
 const SESSION_COOKIE = "souq.sid";
-const SESSION_SECRET = process.env["SESSION_SECRET"] || "dev-secret-change-me";
+const SESSION_SECRET = getSessionSecret();
 
 const cookieParserMw = cookie(SESSION_SECRET);
 const cookieParserAsync: (req: IncomingMessage, res: object, cb: () => void) => void = cookieParserMw as never;

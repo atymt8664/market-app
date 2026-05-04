@@ -1,9 +1,23 @@
-import { Router, type IRouter, type Response } from "express";
+import {
+  Router,
+  type IRouter,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import OpenAI from "openai";
 import { ImproveDescriptionBody, SuggestPriceBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
+
+function requireUserAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session?.userId) {
+    res.status(401).json({ error: "يرجى تسجيل الدخول" });
+    return;
+  }
+  next();
+}
 
 /** Non-empty key from integration-specific or standard OpenAI env names. */
 function resolveOpenAiApiKey(): string | undefined {
@@ -43,7 +57,7 @@ function aiUnavailable(res: Response) {
   });
 }
 
-router.post("/ai/improve-description", async (req, res) => {
+router.post("/ai/improve-description", requireUserAuth, async (req, res) => {
   const body = ImproveDescriptionBody.parse(req.body);
   if (!openai) {
     aiUnavailable(res);
@@ -73,7 +87,7 @@ router.post("/ai/improve-description", async (req, res) => {
   }
 });
 
-router.post("/ai/suggest-price", async (req, res) => {
+router.post("/ai/suggest-price", requireUserAuth, async (req, res) => {
   const body = SuggestPriceBody.parse(req.body);
   if (!openai) {
     aiUnavailable(res);

@@ -184,8 +184,9 @@ function expiryDate() {
   return new Date(Date.now() + 30 * 60 * 1000); // 30 min
 }
 
+/** Password reset link: valid for 1 hour until consumed (token cleared on success). */
 function resetExpiry() {
-  return new Date(Date.now() + 60 * 60 * 1000); // 60 min
+  return new Date(Date.now() + 60 * 60 * 1000);
 }
 
 async function deliverVerificationCode(email: string, code: string) {
@@ -631,13 +632,15 @@ router.post("/auth/forgot-password", passwordResetLimiter, async (req, res) => {
     return;
   }
   const token = generateToken();
+  const hashedToken = hashToken(token);
   await db
     .update(usersTable)
     .set({
-      passwordResetToken: hashToken(token),
+      passwordResetToken: hashedToken,
       passwordResetExpiresAt: resetExpiry(),
     })
     .where(eq(usersTable.id, user.id));
+  // Email contains the raw token; DB stores SHA-256 only.
   const url = buildResetPasswordUrl(token, req);
   try {
     await deliverPasswordResetLink(user.email, url);
@@ -676,24 +679,10 @@ router.post("/auth/reset-password", passwordResetLimiter, async (req, res) => {
     });
     return;
   }
-  const rows = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.passwordResetToken, hashToken(token)))
-    .limit(1);
-  const user = rows[0];
-  if (
-    !user ||
-    !user.passwordResetExpiresAt ||
-    user.passwordResetExpiresAt.getTime() < Date.now()
-  ) {
-    res
-      .status(400)
-      .json({ error: "رابط إعادة التعيين غير صالح أو منتهي الصلاحية" });
-    return;
-  }
+  const INVALID_RESET = "رابط إعادة التعيين غير صالح أو منتهي";
+  const hashedToken = hashToken(token);
   const passwordHash = await bcrypt.hash(password, 10);
-  await db
+  const updated = await db
     .update(usersTable)
     .set({
       passwordHash,
@@ -705,7 +694,17 @@ router.post("/auth/reset-password", passwordResetLimiter, async (req, res) => {
       verificationCode: null,
       verificationExpiresAt: null,
     })
-    .where(eq(usersTable.id, user.id));
+    .where(
+      and(
+        eq(usersTable.passwordResetToken, hashedToken),
+        sql`${usersTable.passwordResetExpiresAt} > NOW()`,
+      ),
+    )
+    .returning({ id: usersTable.id });
+  if (updated.length === 0) {
+    res.status(400).json({ error: INVALID_RESET });
+    return;
+  }
   res.json({ ok: true });
 });
 

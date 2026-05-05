@@ -27,6 +27,5 @@ export interface CreateAdInput {
   city: string;
   sellerName: string;
   sellerPhone: string;
-  details?: Record<string, unknown>;
   images?: string[];
 }

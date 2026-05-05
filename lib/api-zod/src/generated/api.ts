@@ -66,7 +66,6 @@ export const ListAdsQueryParams = zod.object({
   city: zod.coerce.string().optional(),
   minPrice: zod.coerce.number().optional(),
   maxPrice: zod.coerce.number().optional(),
-  userId: zod.coerce.number().optional(),
   type: zod.enum(["offer", "request"]).optional(),
   limit: zod.coerce.number().default(listAdsQueryLimitDefault),
 });
@@ -86,7 +85,6 @@ export const ListAdsResponseItem = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
-  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -118,7 +116,6 @@ export const CreateAdBody = zod.object({
   city: zod.string(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
-  details: zod.record(zod.string(), zod.unknown()).optional(),
   images: zod.array(zod.string()).optional(),
 });
 
@@ -140,7 +137,6 @@ export const ListFeaturedAdsResponseItem = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
-  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -170,7 +166,6 @@ export const ListRecommendedAdsResponseItem = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
-  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -223,7 +218,6 @@ export const ListMyAdsResponseItem = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
-  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -253,7 +247,6 @@ export const ListFavoriteAdsResponseItem = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
-  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -284,7 +277,6 @@ export const GetAdResponse = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
-  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -319,7 +311,6 @@ export const UpdateAdBody = zod.object({
   city: zod.string(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
-  details: zod.record(zod.string(), zod.unknown()).optional(),
   images: zod.array(zod.string()).optional(),
 });
 
@@ -338,7 +329,6 @@ export const UpdateAdResponse = zod.object({
   subcategoryName: zod.string().nullish(),
   sellerName: zod.string(),
   sellerPhone: zod.string(),
-  details: zod.record(zod.string(), zod.unknown()).optional(),
   featured: zod.boolean().optional(),
   views: zod.number(),
   likeCount: zod.number(),
@@ -540,10 +530,6 @@ export const GetUserProfileResponse = zod.object({
   followingCount: zod.number(),
   profileViews: zod.number(),
   adCount: zod.number(),
-  activeAdCount: zod.number().optional(),
-  totalAdViews: zod.number().optional(),
-  totalLikes: zod.number().optional(),
-  totalFavorites: zod.number().optional(),
 });
 
 export const RecordProfileViewParams = zod.object({
@@ -683,6 +669,10 @@ export const GetConversationResponse = zod.object({
   adId: zod.number(),
   adTitle: zod.string(),
   adImage: zod.string().nullish(),
+  adAvailable: zod
+    .boolean()
+    .optional()
+    .describe("False if the linked ad row was removed (e.g. deleted)."),
   adPrice: zod.number().nullish(),
   adPriceType: zod.string().nullish(),
   otherId: zod.number(),
@@ -699,6 +689,8 @@ export const ListMessagesResponseItem = zod.object({
   conversationId: zod.number(),
   senderId: zod.number(),
   body: zod.string(),
+  messageType: zod.enum(["text", "image"]),
+  imageUrl: zod.string().nullish(),
   deliveredAt: zod.coerce.date().nullish(),
   readAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
@@ -711,12 +703,44 @@ export const SendMessageParams = zod.object({
 
 export const sendMessageBodyBodyMax = 2000;
 
-export const SendMessageBody = zod.object({
-  body: zod.string().min(1).max(sendMessageBodyBodyMax),
-});
+export const SendMessageBody = zod
+  .object({
+    body: zod.string().max(sendMessageBodyBodyMax).optional(),
+    imageUrl: zod.string().nullish(),
+  })
+  .describe(
+    "Send either a text message (`body` non-empty) or an image message (`imageUrl` set to a URL returned from POST \/conversations\/{convId}\/messages\/upload-image). Optional caption with image.\n"
+  );
 
 export const MarkConversationReadParams = zod.object({
   convId: zod.coerce.number(),
+});
+
+/**
+ * @summary Hide conversation from inbox for the current user only
+ */
+export const HideConversationForMeParams = zod.object({
+  convId: zod.coerce.number(),
+});
+
+export const HideConversationForMeResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Hide messages in this thread for the current user only (other party still sees them)
+ */
+export const HideMessagesForMeParams = zod.object({
+  convId: zod.coerce.number(),
+});
+
+export const HideMessagesForMeBody = zod.object({
+  messageIds: zod.array(zod.number()).min(1),
+});
+
+export const HideMessagesForMeResponse = zod.object({
+  ok: zod.boolean(),
+  hiddenCount: zod.number(),
 });
 
 export const authChangePasswordBodyNewPasswordMin = 6;

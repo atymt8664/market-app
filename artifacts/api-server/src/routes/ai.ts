@@ -38,7 +38,13 @@ function createOpenAiClient(): OpenAI | null {
   const apiKey = resolveOpenAiApiKey();
   if (!apiKey) return null;
   const baseURL = resolveOpenAiBaseUrl();
-  return new OpenAI(baseURL ? { apiKey, baseURL } : { apiKey });
+  return new OpenAI({
+    apiKey,
+    ...(baseURL ? { baseURL } : {}),
+    /** Avoid long hangs when the model/network stalls in local dev. */
+    timeout: 45_000,
+    maxRetries: 0,
+  });
 }
 
 const openai = createOpenAiClient();

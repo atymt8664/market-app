@@ -4,6 +4,7 @@ export * from "./ads";
 export * from "./cities";
 export * from "./admin-activity-logs";
 export * from "./messages";
+export * from "./chat-privacy";
 export * from "./reports";
 export * from "./user-sessions";
 export * from "./support";

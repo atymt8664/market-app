@@ -828,6 +828,7 @@ router.get("/admin/reports", requireAdmin, async (_req, res) => {
       reporterEmail: usersTable.email,
       targetUserId: reportsTable.targetUserId,
       targetAdId: reportsTable.targetAdId,
+      relatedConversationId: reportsTable.relatedConversationId,
       reason: reportsTable.reason,
       description: reportsTable.description,
       status: reportsTable.status,
@@ -840,7 +841,13 @@ router.get("/admin/reports", requireAdmin, async (_req, res) => {
   return res.json(
     reports.map((report) => ({
       ...report,
-      targetType: report.targetAdId ? "ad" : report.targetUserId ? "user" : "unknown",
+      targetType: report.targetAdId
+        ? "ad"
+        : report.targetUserId
+          ? "user"
+          : report.relatedConversationId
+            ? "conversation"
+            : "unknown",
       createdAt: report.createdAt ? report.createdAt.toISOString() : null,
     })),
   );
@@ -864,6 +871,7 @@ router.patch("/admin/reports/:id/status", requireAdmin, async (req, res) => {
       status: reportsTable.status,
       targetAdId: reportsTable.targetAdId,
       targetUserId: reportsTable.targetUserId,
+      relatedConversationId: reportsTable.relatedConversationId,
     })
     .from(reportsTable)
     .where(eq(reportsTable.id, id))
@@ -896,8 +904,15 @@ router.patch("/admin/reports/:id/status", requireAdmin, async (req, res) => {
     details: {
       fromStatus: before.status,
       toStatus: status,
-      targetType: before.targetAdId ? "ad" : before.targetUserId ? "user" : "unknown",
-      targetId: before.targetAdId ?? before.targetUserId ?? null,
+      targetType: before.targetAdId
+        ? "ad"
+        : before.targetUserId
+          ? "user"
+          : before.relatedConversationId
+            ? "conversation"
+            : "unknown",
+      targetId:
+        before.targetAdId ?? before.targetUserId ?? before.relatedConversationId ?? null,
     },
   });
 

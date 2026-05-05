@@ -48,6 +48,10 @@ export const messagesTable = pgTable("messages", {
   conversationId: integer("conversation_id").notNull().references(() => conversationsTable.id, { onDelete: "cascade" }),
   senderId: integer("sender_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   body: text("body").notNull(),
+  /** `text` (default) or `image` (see imageUrl). */
+  messageType: text("message_type").notNull().default("text"),
+  /** Public Supabase Storage URL for chat images when messageType is `image`. */
+  imageUrl: text("image_url"),
   /** Set when the recipient's client receives the message (in-thread/focus or first sync). */
   deliveredAt: timestamp("delivered_at", { withTimezone: true }),
   readAt: timestamp("read_at", { withTimezone: true }),

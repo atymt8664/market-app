@@ -541,3 +541,117 @@ export async function uploadAvatarImageForUser(
   throw lastError ?? new Error("Avatar upload failed");
 }
 
+const CHAT_IMAGE_EXT_BY_MIME: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+};
+
+function extensionForChatImage(mimetype: string): string | null {
+  const t = (mimetype || "").toLowerCase().split(";")[0]!.trim();
+  return CHAT_IMAGE_EXT_BY_MIME[t] ?? null;
+}
+
+/**
+ * True if `imageUrl` is a public URL for an object under `chat/{userId}/` in the configured uploads bucket.
+ * يتحقق من المسار (pathname) وليس من سلسلة URL كاملة — يتفادى فشل المطابقة بين localhost و127.0.0.1 واختلاف الشرطة.
+ */
+export function isTrustedChatImagePublicUrlForUser(imageUrl: string, userId: number): boolean {
+  const raw = imageUrl.trim();
+  if (!raw) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return false;
+  }
+  const expectedPathPrefix = `/storage/v1/object/public/${UPLOADS_BUCKET}/chat/${userId}/`;
+  if (!parsed.pathname.startsWith(expectedPathPrefix)) {
+    return false;
+  }
+  const rawProject = (process.env["SUPABASE_URL"] || "").trim();
+  if (!rawProject) {
+    return true;
+  }
+  let expectedHost: string;
+  try {
+    expectedHost = new URL(normalizeSupabaseProjectUrl(rawProject)).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  const actualHost = parsed.hostname.toLowerCase();
+  if (actualHost === expectedHost) {
+    return true;
+  }
+  const loopback = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+  return loopback.has(actualHost) && loopback.has(expectedHost);
+}
+
+export async function uploadChatImageForUser(
+  userId: number,
+  file: { buffer: Buffer; mimetype: string },
+): Promise<string> {
+  const ext = extensionForChatImage(file.mimetype);
+  if (!ext) {
+    throw new Error("نوع الصورة غير مدعوم");
+  }
+  if (!file.buffer?.length) {
+    throw new Error("ملف الصورة فارغ أو تالف");
+  }
+
+  const supabase = getSupabaseStorageClient();
+  await ensureUploadsBucketExists(supabase);
+
+  const objectPath = `chat/${userId}/${crypto.randomUUID()}.${ext}`;
+  let lastError: Error | null = null;
+  let triedBucketRecovery = false;
+
+  for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt += 1) {
+    const { error } = await supabase.storage.from(UPLOADS_BUCKET).upload(objectPath, file.buffer, {
+      contentType: file.mimetype || `image/${ext}`,
+      upsert: false,
+    });
+
+    if (!error) {
+      uploadsBucketEnsured = true;
+      const { data } = supabase.storage.from(UPLOADS_BUCKET).getPublicUrl(objectPath);
+      return data.publicUrl;
+    }
+
+    logger.error(
+      {
+        step: "upload",
+        bucket: UPLOADS_BUCKET,
+        objectPath,
+        supabaseErrorMessageFull: error.message,
+        supabaseErrorStatusCode: (error as { statusCode?: string }).statusCode,
+      },
+      "Supabase storage upload failed for chat image",
+    );
+
+    const errMsg = error.message || "";
+    if (isLikelySupabaseConnectionFailure(errMsg)) {
+      throw new SupabaseStorageConnectionError("upload", errMsg);
+    }
+
+    if (isBucketMissingMessage(errMsg) && !triedBucketRecovery) {
+      triedBucketRecovery = true;
+      await tryCreateUploadsBucket(supabase);
+      attempt -= 1;
+      continue;
+    }
+
+    if (isBucketMissingMessage(errMsg) && triedBucketRecovery) {
+      throw new SupabaseStorageBucketNotFoundError("upload", errMsg);
+    }
+
+    lastError = new Error(error.message || "Chat image upload failed");
+    if (attempt < MAX_UPLOAD_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, attempt * 250));
+    }
+  }
+
+  throw lastError ?? new Error("Chat image upload failed");
+}
+

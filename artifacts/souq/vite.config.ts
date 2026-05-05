@@ -80,7 +80,8 @@ export default defineConfig({
   server: {
     port,
     strictPort: true,
-    host: "0.0.0.0",
+    /** `true` exposes LAN like 0.0.0.0; avoids some Windows bind quirks vs a raw 0.0.0.0 string. */
+    host: true,
     /**
      * Do not hardcode a LAN IP here — it breaks HMR/WebSocket when the PC IP changes or when
      * using trycloudflare (client must use the same host as the page: tunnel hostname + wss).
@@ -109,7 +110,7 @@ export default defineConfig({
   },
   preview: {
     port,
-    host: "0.0.0.0",
+    host: true,
     allowedHosts: true,
   },
 });

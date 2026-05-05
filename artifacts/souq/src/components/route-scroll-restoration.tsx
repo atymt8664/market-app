@@ -113,10 +113,20 @@ export function RouteScrollRestoration() {
     const onVisibility = () => {
       if (document.visibilityState === "hidden") flushScrollPosition();
     };
-    window.addEventListener("pointerdown", flushScrollPosition, true);
+    const onPointerDown = (e: PointerEvent) => {
+      const el = e.target;
+      if (
+        el instanceof Element &&
+        el.closest("[data-chat-scroll]")
+      ) {
+        return;
+      }
+      flushScrollPosition();
+    };
+    window.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      window.removeEventListener("pointerdown", flushScrollPosition, true);
+      window.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);

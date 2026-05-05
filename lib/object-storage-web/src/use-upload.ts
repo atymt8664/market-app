@@ -15,6 +15,9 @@ declare global {
   }
 }
 
+/** Bound how long browser waits for API multipart uploads (local proxy / slow disk). */
+const API_UPLOAD_FETCH_MS = 120_000;
+
 /** Same rules as souq `getApiBaseUrl` / `apiUrl`: absolute URL when `VITE_API_BASE_URL` is set. */
 function resolveApiFetchUrl(path: string): string {
   const raw = import.meta.env.VITE_API_BASE_URL;
@@ -207,6 +210,7 @@ export function useUpload(options: UseUploadOptions = {}) {
             method: "POST",
             body: formData,
             credentials: "include",
+            signal: AbortSignal.timeout(API_UPLOAD_FETCH_MS),
           });
           const payload = (await res.json().catch(() => ({}))) as {
             error?: string;
@@ -264,6 +268,7 @@ export function useUpload(options: UseUploadOptions = {}) {
             method: "POST",
             body: formData,
             credentials: "include",
+            signal: AbortSignal.timeout(API_UPLOAD_FETCH_MS),
           });
           const payload = (await res.json().catch(() => ({}))) as {
             error?: string;

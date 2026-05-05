@@ -11,6 +11,8 @@ export interface ConversationDetail {
   adId: number;
   adTitle: string;
   adImage?: string | null;
+  /** False if the linked ad row was removed (e.g. deleted). */
+  adAvailable?: boolean;
   adPrice?: number | null;
   adPriceType?: string | null;
   otherId: number;

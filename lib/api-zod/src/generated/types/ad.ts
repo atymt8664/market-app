@@ -23,7 +23,6 @@ export interface Ad {
   subcategoryName?: string | null;
   sellerName: string;
   sellerPhone: string;
-  details?: Record<string, unknown>;
   featured?: boolean;
   views: number;
   likeCount: number;

@@ -189,7 +189,8 @@ export type AdminReport = {
   reporterEmail: string | null;
   targetUserId: number | null;
   targetAdId: number | null;
-  targetType: "ad" | "user" | "unknown";
+  relatedConversationId?: number | null;
+  targetType: "ad" | "user" | "conversation" | "unknown";
   reason: string;
   description: string | null;
   status: "pending" | "in_review" | "resolved" | "rejected" | "ignored" | string;

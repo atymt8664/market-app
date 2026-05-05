@@ -45,6 +45,10 @@ import {
   PROFILE_STATS_GRID,
   ProfileStatTile,
 } from "@/components/profile-stat-tiles";
+import {
+  SETTINGS_DIALOG_CONTENT,
+  SETTINGS_OUTLINE_BUTTON,
+} from "@/components/settings-shell";
 import { ProfileStatsDetailSheet } from "@/components/profile-stats-detail-sheet";
 import { formatRelativeTime } from "@/lib/format";
 import { getPublicAdUrl, getPublicUserProfileUrl } from "@/lib/public-url";
@@ -170,7 +174,7 @@ export default function Profile() {
     );
   }
 
-  if (!user) return <Redirect to="/guest-welcome?redirect=/profile" />;
+  if (!authLoading && !user) return <Redirect to="/guest-welcome?redirect=/profile" />;
 
   const handleShare = async () => {
     const url = getPublicUserProfileUrl(user.id);
@@ -404,8 +408,8 @@ export default function Profile() {
                   <h3 className="font-bold text-base mb-1">{t("profile.empty.first_ad_title")}</h3>
                   <p className="text-sm text-muted-foreground mb-4">{t("profile.empty.first_ad_subtitle")}</p>
                   <Link href="/new">
-                    <Button className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-                      <Plus className="w-4 h-4" />
+                    <Button className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-primary/50 bg-zinc-950/92 px-5 py-2.5 text-sm font-semibold text-primary shadow-[0_0_18px_-10px_hsl(var(--primary)/0.32)] ring-1 ring-primary/18 transition-colors hover:border-primary/65 hover:bg-zinc-900/95 hover:shadow-[0_0_24px_-10px_hsl(var(--primary)/0.42)] active:scale-[0.98]">
+                      <Plus className="w-4 h-4 text-primary" />
                       {t("profile.empty.create_ad")}
                     </Button>
                   </Link>
@@ -503,21 +507,37 @@ export default function Profile() {
         open={adToDelete !== null}
         onOpenChange={(open) => !open && setAdToDelete(null)}
       >
-        <AlertDialogContent dir="rtl" className="text-right">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("profile.delete_dialog.title")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("profile.delete_dialog.description")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse">
+        <AlertDialogContent
+          dir="rtl"
+          className={cn(
+            SETTINGS_DIALOG_CONTENT,
+            "!p-0 gap-0 overflow-hidden text-right sm:max-w-md",
+          )}
+        >
+          <div className="border-b border-primary/20 px-5 py-4">
+            <AlertDialogHeader className="space-y-1.5 text-right">
+              <AlertDialogTitle className="text-right text-base font-bold text-foreground">
+                {t("profile.delete_dialog.title")}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-right text-sm leading-relaxed text-zinc-400">
+                {t("profile.delete_dialog.description")}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+          </div>
+          <AlertDialogFooter className="flex flex-col-reverse gap-2 border-t border-primary/20 bg-[#0A0A0A]/98 p-4 sm:flex-row sm:justify-stretch sm:gap-3">
+            <AlertDialogCancel
+              className={cn(SETTINGS_OUTLINE_BUTTON, "m-0 mt-0 w-full sm:flex-1")}
+            >
+              {t("profile.cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={cn(
+                "m-0 inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-red-500/45 bg-red-950/40 px-4 text-sm font-semibold text-red-100 shadow-[0_0_22px_-12px_rgba(239,68,68,0.35)] ring-1 ring-red-500/22 transition-colors hover:border-red-500/58 hover:bg-red-950/55 sm:flex-1",
+              )}
             >
               {t("profile.delete")}
             </AlertDialogAction>
-            <AlertDialogCancel>{t("profile.cancel")}</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -535,11 +555,15 @@ export default function Profile() {
                 : ""
         }
       >
-        <p className="text-sm leading-relaxed">
-          {statsSheet === "views"
-            ? t("profile.stats.sheet.empty_views_list")
-            : t("profile.stats.sheet.empty_follow_list")}
-        </p>
+        <div className="rounded-2xl border border-primary/30 bg-zinc-950/85 p-4 shadow-[0_0_16px_-10px_hsl(var(--primary)/0.18)] ring-1 ring-primary/12">
+          <p className="text-sm leading-relaxed text-zinc-200">
+            {statsSheet === "followers"
+              ? t("profile.stats.sheet.followers_unavailable")
+              : statsSheet === "following"
+                ? t("profile.stats.sheet.following_unavailable")
+                : t("profile.stats.sheet.views_unavailable")}
+          </p>
+        </div>
       </ProfileStatsDetailSheet>
 
       <Drawer open={!!actionAd} onOpenChange={(open) => !open && setActionAd(null)}>
@@ -615,6 +639,25 @@ export default function Profile() {
   );
 }
 
+/** شارة حالة المراجعة لإعلانات المستخدم — لا تظهر للـ approved في السوق العام */
+function ProfileAdStatusRibbon({ status }: { status?: string }) {
+  if (status === "pending") {
+    return (
+      <span className="pointer-events-none absolute right-2 top-2 z-[5] inline-flex max-w-[calc(100%-1rem)] rounded-full border border-amber-500/45 bg-amber-950/92 px-2 py-0.5 text-[10px] font-semibold leading-tight text-amber-100 shadow-[0_0_14px_-4px_rgba(245,158,11,0.45)] ring-1 ring-amber-500/25">
+        قيد المراجعة
+      </span>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <span className="pointer-events-none absolute right-2 top-2 z-[5] inline-flex max-w-[calc(100%-1rem)] rounded-full border border-red-500/40 bg-red-950/90 px-2 py-0.5 text-[10px] font-semibold leading-tight text-red-100 shadow-[0_0_14px_-4px_rgba(239,68,68,0.35)] ring-1 ring-red-500/22">
+        مرفوض
+      </span>
+    );
+  }
+  return null;
+}
+
 function ProfileDesktopAdCard({
   ad,
   onOpen,
@@ -660,7 +703,8 @@ function ProfileDesktopAdCard({
       dir="rtl"
     >
       <button type="button" onClick={onOpen} className="w-full text-right">
-        <div className="w-full aspect-[16/10] rounded-xl overflow-hidden bg-muted">
+        <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-muted">
+          <ProfileAdStatusRibbon status={ad.status} />
           {ad.images?.[0] ? (
             <img src={ad.images[0]} alt={ad.title} className="w-full h-full object-cover" loading="lazy" />
           ) : (
@@ -805,6 +849,7 @@ function ProfileMobileAdCard({
             isRtl ? "order-1" : "order-2",
           )}
         >
+          <ProfileAdStatusRibbon status={ad.status} />
           {imageSrc ? (
             <img src={imageSrc} alt={ad.title} className="w-full h-full object-cover" loading="lazy" />
           ) : (

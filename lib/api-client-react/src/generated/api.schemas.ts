@@ -154,8 +154,6 @@ export interface Ad {
   sellerName: string;
   sellerPhone: string;
   featured?: boolean;
-  /** Moderation state from API (`pending`, `approved`, `rejected`, `hidden`). */
-  status?: string;
   views: number;
   likeCount: number;
   favoriteCount: number;
@@ -213,6 +211,8 @@ export interface ConversationDetail {
   adId: number;
   adTitle: string;
   adImage?: string | null;
+  /** False if the linked ad row was removed (e.g. deleted). */
+  adAvailable?: boolean;
   adPrice?: number | null;
   adPriceType?: string | null;
   otherId: number;
@@ -220,11 +220,21 @@ export interface ConversationDetail {
   isSeller: boolean;
 }
 
+export type MessageMessageType =
+  (typeof MessageMessageType)[keyof typeof MessageMessageType];
+
+export const MessageMessageType = {
+  text: "text",
+  image: "image",
+} as const;
+
 export interface Message {
   id: number;
   conversationId: number;
   senderId: number;
   body: string;
+  messageType: MessageMessageType;
+  imageUrl?: string | null;
   deliveredAt?: string | null;
   readAt?: string | null;
   createdAt: string;
@@ -299,7 +309,6 @@ export type ListAdsParams = {
   city?: string;
   minPrice?: number;
   maxPrice?: number;
-  userId?: number;
   type?: ListAdsType;
   limit?: number;
 };
@@ -315,12 +324,28 @@ export type StartConversationBody = {
   adId: number;
 };
 
+/**
+ * Send either a text message (`body` non-empty) or an image message (`imageUrl` set to a URL returned from POST /conversations/{convId}/messages/upload-image). Optional caption with image.
+
+ */
 export type SendMessageBody = {
-  /**
-   * @minLength 1
-   * @maxLength 2000
-   */
-  body: string;
+  /** @maxLength 2000 */
+  body?: string;
+  imageUrl?: string | null;
+};
+
+export type HideConversationForMe200 = {
+  ok: boolean;
+};
+
+export type HideMessagesForMeBody = {
+  /** @minItems 1 */
+  messageIds: number[];
+};
+
+export type HideMessagesForMe200 = {
+  ok: boolean;
+  hiddenCount: number;
 };
 
 export type AuthChangePassword200 = {

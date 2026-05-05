@@ -199,6 +199,12 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+
+  /** الشات: التمرير العمودي هنا فقط؛ overscroll لا يُسلسل للمستند فيحمي سكرول القائمة ويسمح بـ pull-to-refresh من خارج المنطقة */
+  [data-chat-scroll] {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 
 @layer utilities {

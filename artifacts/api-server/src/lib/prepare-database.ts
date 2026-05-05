@@ -94,6 +94,25 @@ const POST_CORE_SCHEMA_SQL = `
       ON conversations(ad_id, buyer_id);
 
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ NULL;
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type TEXT NOT NULL DEFAULT 'text';
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS image_url TEXT NULL;
+
+    ALTER TABLE reports ADD COLUMN IF NOT EXISTS related_conversation_id INTEGER NULL
+      REFERENCES conversations(id) ON DELETE SET NULL;
+
+    CREATE TABLE IF NOT EXISTS message_hides (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+      PRIMARY KEY (user_id, message_id)
+    );
+    CREATE INDEX IF NOT EXISTS message_hides_user_idx ON message_hides(user_id);
+
+    CREATE TABLE IF NOT EXISTS conversation_hides (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      PRIMARY KEY (user_id, conversation_id)
+    );
+    CREATE INDEX IF NOT EXISTS conversation_hides_user_idx ON conversation_hides(user_id);
     `;
 
 /**

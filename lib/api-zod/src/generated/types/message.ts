@@ -5,12 +5,15 @@
  * Souq Al Arab Germany API
  * OpenAPI spec version: 0.1.0
  */
+import type { MessageMessageType } from "./messageMessageType";
 
 export interface Message {
   id: number;
   conversationId: number;
   senderId: number;
   body: string;
+  messageType: MessageMessageType;
+  imageUrl?: string | null;
   deliveredAt?: Date | null;
   readAt?: Date | null;
   createdAt: Date;

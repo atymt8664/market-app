@@ -1,4 +1,5 @@
 import { Link, Redirect } from "wouter";
+import { useMemo, useState } from "react";
 import {
   useListConversations,
   getListConversationsQueryKey,
@@ -11,7 +12,14 @@ import { useChatSocket } from "@/hooks/use-chat-socket";
 import { useQueryClient } from "@tanstack/react-query";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
-
+import { apiUrl } from "@/lib/api-url";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from "@/components/ui/sheet";
 const emptyCardShell =
   "rounded-2xl border border-primary/40 bg-card/80 p-8 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/15 dark:bg-zinc-950/70 md:p-10";
 
@@ -27,6 +35,49 @@ export default function Messages() {
       enabled: !!user,
     },
   });
+  type HiddenConversation = NonNullable<typeof conversations>[number];
+  const [hiddenOpen, setHiddenOpen] = useState(false);
+  const [hiddenLoading, setHiddenLoading] = useState(false);
+  const [hiddenRows, setHiddenRows] = useState<HiddenConversation[]>([]);
+  const [unhidingId, setUnhidingId] = useState<number | null>(null);
+
+  const visibleRows = useMemo(() => conversations ?? [], [conversations]);
+
+  const loadHiddenConversations = async () => {
+    setHiddenLoading(true);
+    try {
+      const res = await fetch(apiUrl("/api/conversations/hidden"), {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        setHiddenRows([]);
+        return;
+      }
+      const data = (await res.json()) as HiddenConversation[];
+      setHiddenRows(Array.isArray(data) ? data : []);
+    } catch {
+      setHiddenRows([]);
+    } finally {
+      setHiddenLoading(false);
+    }
+  };
+
+  const unhideConversation = async (convId: number) => {
+    setUnhidingId(convId);
+    try {
+      const res = await fetch(apiUrl(`/api/conversations/${convId}/unhide-for-me`), {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) return;
+      setHiddenRows((prev) => prev.filter((row) => row.id !== convId));
+      await queryClient.invalidateQueries({
+        queryKey: getListConversationsQueryKey(),
+      });
+    } finally {
+      setUnhidingId(null);
+    }
+  };
 
   useChatSocket((ev) => {
     if (ev.type === "message") {
@@ -44,10 +95,18 @@ export default function Messages() {
         className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]"
         dir="rtl"
       >
-        <div className="mx-auto w-full max-w-[820px] px-4 py-3.5 md:px-6">
-          <h1 className="text-right text-lg font-bold text-foreground">
-            {t("messages.title")}
-          </h1>
+        <div className="mx-auto flex w-full max-w-[820px] items-center justify-between gap-3 px-4 py-3.5 md:px-6">
+          <h1 className="text-right text-lg font-bold text-foreground">{t("messages.title")}</h1>
+          <button
+            type="button"
+            onClick={() => {
+              setHiddenOpen(true);
+              void loadHiddenConversations();
+            }}
+            className="inline-flex shrink-0 items-center rounded-xl border border-primary/35 bg-zinc-950/85 px-3 py-1.5 text-[12px] font-semibold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 transition-colors hover:border-primary/52 hover:bg-zinc-900/95"
+          >
+            {t("messages.hidden_open")}
+          </button>
         </div>
       </header>
 
@@ -61,9 +120,9 @@ export default function Messages() {
               />
             ))}
           </div>
-        ) : conversations && conversations.length > 0 ? (
+        ) : visibleRows && visibleRows.length > 0 ? (
           <ul className="flex w-full flex-col gap-2.5">
-            {conversations.map((c) => (
+            {visibleRows.map((c) => (
               <li key={c.id}>
                 <Link
                   href={`/messages/${c.id}`}
@@ -137,6 +196,94 @@ export default function Messages() {
           </div>
         )}
       </div>
+
+      <Sheet
+        open={hiddenOpen}
+        onOpenChange={(next) => {
+          setHiddenOpen(next);
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          hideClose
+          className="flex max-h-[min(90dvh,720px)] flex-col gap-0 rounded-t-2xl border-x-0 border-b-0 border-t border-primary/35 bg-[#0A0A0A] p-0 shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.55)] ring-1 ring-primary/20 sm:mx-auto sm:max-w-lg"
+        >
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-primary/20 px-4 pb-3 pt-4">
+            <SheetTitle className="m-0 flex-1 text-center text-base font-semibold text-white">
+              {t("messages.hidden_title")}
+            </SheetTitle>
+            <SheetClose asChild>
+              <button
+                type="button"
+                aria-label={t("messages.hidden_close")}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-zinc-950/90 text-primary transition-colors hover:border-primary/65 hover:bg-zinc-900"
+              >
+                ✕
+              </button>
+            </SheetClose>
+          </div>
+          <SheetDescription className="sr-only">{t("messages.hidden_title")}</SheetDescription>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+            {hiddenLoading ? (
+              <div className="flex flex-col gap-2.5">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton
+                    key={i}
+                    className="h-24 w-full rounded-2xl border border-primary/15 bg-zinc-900/80"
+                  />
+                ))}
+              </div>
+            ) : hiddenRows.length > 0 ? (
+              <ul className="flex flex-col gap-2.5">
+                {hiddenRows.map((c) => (
+                  <li
+                    key={c.id}
+                    className="rounded-2xl border border-primary/30 bg-zinc-950/85 p-3.5 shadow-[0_0_16px_-10px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10"
+                  >
+                    <div className="flex items-center gap-3" dir="rtl">
+                      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/20 bg-zinc-900">
+                        {c.adImage ? (
+                          <img src={c.adImage} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-primary/70">
+                            <MessageCircle className="h-4 w-4" strokeWidth={2} />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1 text-right">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="truncate font-semibold">
+                            {c.otherName || t("messages.user")}
+                          </span>
+                          <span className="shrink-0 text-[11px] text-primary/75 tabular-nums">
+                            {formatRelativeTime(c.lastMessageAt)}
+                          </span>
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">{c.adTitle}</div>
+                        <div className="truncate text-sm text-muted-foreground">
+                          {c.lastMessagePreview || t("messages.start_chat")}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={unhidingId === c.id}
+                      onClick={() => void unhideConversation(c.id)}
+                      className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-primary/40 bg-primary/12 py-2 text-sm font-semibold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.3)] transition-colors hover:bg-primary/18 disabled:opacity-45"
+                    >
+                      {unhidingId === c.id ? "…" : t("messages.hidden_unhide")}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="flex w-full flex-col items-center justify-center py-12 text-sm text-zinc-500">
+                {t("messages.hidden_empty")}
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

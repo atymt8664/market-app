@@ -1,31 +1,69 @@
 import { Link, Redirect, useLocation, useParams, useSearch } from "wouter";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   useGetConversation,
   getGetConversationQueryKey,
   useListMessages,
   getListMessagesQueryKey,
   useSendMessage,
+  useHideMessagesForMe,
   type Message as ChatMessage,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, Check, CheckCheck, Send } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  CheckCheck,
+  ImagePlus,
+  Loader2,
+  Send,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useChatSocket } from "@/hooks/use-chat-socket";
 import { useQueryClient } from "@tanstack/react-query";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { formatMessageTimestamp, formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/api-url";
+import { useToast } from "@/hooks/use-toast";
+import { ChatThreadOverflowMenu } from "@/components/chat-thread-overflow-menu";
+import {
+  CHAT_MENU_TIP_SEEN_KEY,
+  MESSAGE_SELECTION_TIP_SEEN_KEY,
+  QUICK_REPLIES_TIP_SEEN_KEY,
+  readSeenFlag,
+  setSeenFlag,
+} from "@/lib/chat-tips-seen";
 
 /**
- * فقاعات — نفس نظام الكروت الداكنة؛ الفرق الوحيد: زاوية الذيل + وهج lime أخف جدًا للمرسل.
+ * فقاعات — بدون isolate/overflow-hidden التي مع backdrop-blur على الأسلاف تسبب على WebKit اختفاء النص (stacking/compositing).
  */
-const CHAT_RECV_OUTER =
-  "relative overflow-hidden rounded-2xl rounded-bl-md border border-primary/15 bg-zinc-950/75 shadow-[0_4px_22px_-12px_rgba(0,0,0,0.42)] ring-1 ring-white/[0.06] backdrop-blur-[2px]";
+const CHAT_BUBBLE_BASE =
+  "relative overflow-visible rounded-2xl border border-primary/35 bg-[#0A0A0A] shadow-[0_0_26px_-14px_hsl(var(--primary)/0.22),0_4px_22px_-12px_rgba(0,0,0,0.42)] ring-1 ring-primary/15";
 
-const CHAT_SENT_OUTER =
-  "relative overflow-hidden rounded-2xl rounded-br-md border border-primary/18 bg-zinc-950/75 shadow-[0_0_20px_-18px_hsl(var(--primary)/0.07),0_4px_22px_-12px_rgba(0,0,0,0.42)] ring-1 ring-primary/10 backdrop-blur-[2px]";
+const CHAT_RECV_OUTER = `${CHAT_BUBBLE_BASE} rounded-bl-md`;
+
+const CHAT_SENT_OUTER = `${CHAT_BUBBLE_BASE} rounded-br-md`;
+
+const QUICK_REPLY_CHIP =
+  "max-w-[240px] shrink-0 truncate whitespace-nowrap rounded-2xl border border-primary/35 bg-[#0A0A0A] px-3.5 py-2.5 text-[13px] font-medium text-white shadow-[0_0_22px_-14px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 transition-[transform,box-shadow,border-color] duration-200 hover:border-primary/55 hover:shadow-[0_0_28px_-12px_hsl(var(--primary)/0.28)] active:scale-[0.98]";
+
+const QUICK_REPLY_ROW =
+  "scrollbar-thin flex gap-2 overflow-x-auto rounded-2xl border border-primary/32 bg-[#0A0A0A] p-2.5 shadow-[0_0_24px_-16px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12";
+
+/** بطاقات تلميحات أول مرة فقط — لا تُستخدم على فقاعات الرسائل. */
+const CHAT_TIP_CARD =
+  "rounded-2xl border border-primary/35 bg-[#0A0A0A] text-[12px] leading-relaxed text-zinc-200 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12";
 
 const BUYER_QUICK_KEYS = [
   "message_thread.msg_qs_buyer_1",
@@ -52,12 +90,83 @@ const BUYER_QUICK_REPLIES_AR = [
   "هل يوجد شحن؟",
 ] as const;
 
+/** دمج رسالة واردة في القائمة دون إعادة كتابة الحقول */
+function mergeMessagesIntoList(
+  prev: ChatMessage[] | undefined,
+  incoming: ChatMessage,
+): ChatMessage[] {
+  const list = prev ?? [];
+  const idx = list.findIndex((m) => m.id === incoming.id);
+  if (idx >= 0) {
+    const next = [...list];
+    next[idx] = { ...next[idx], ...incoming };
+    return next;
+  }
+  return [...list, incoming].sort(
+    (a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+}
+
 const SELLER_QUICK_REPLIES_AR = [
   "نعم، المنتج متوفر",
   "السعر قابل للتفاوض بشكل بسيط",
   "يمكن الاستلام في [المدينة]",
   "الشحن متاح",
 ] as const;
+
+/** http(s) and in-app ad paths — safe split; text nodes rendered by React (escaped). */
+const LINK_SPLIT_RE = /https?:\/\/[^\s<>"']+|\/ad\/\d+\b/gi;
+
+function splitMessageSegments(text: string): Array<{ kind: "text" | "link"; value: string }> {
+  const re = new RegExp(LINK_SPLIT_RE.source, LINK_SPLIT_RE.flags);
+  const out: Array<{ kind: "text" | "link"; value: string }> = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) {
+      out.push({ kind: "text", value: text.slice(last, m.index) });
+    }
+    out.push({ kind: "link", value: m[0] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) {
+    out.push({ kind: "text", value: text.slice(last) });
+  }
+  if (out.length === 0) {
+    out.push({ kind: "text", value: text });
+  }
+  return out;
+}
+
+async function postChatImageUpload(convId: number, file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append("image", file);
+  const res = await fetch(apiUrl(`/api/conversations/${convId}/messages/upload-image`), {
+    method: "POST",
+    body: fd,
+    credentials: "include",
+  });
+  const data: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const msg =
+      data &&
+      typeof data === "object" &&
+      "error" in data &&
+      typeof (data as { error: unknown }).error === "string"
+        ? (data as { error: string }).error
+        : `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  if (!data || typeof data !== "object" || !("imageUrl" in data)) {
+    throw new Error("Invalid upload response");
+  }
+  const url = (data as { imageUrl: unknown }).imageUrl;
+  if (typeof url !== "string" || !url.trim()) {
+    throw new Error("Invalid upload response");
+  }
+  return url.trim();
+}
 
 function messageDraftStorageKey(convId: number) {
   return `souq:message-draft:${convId}`;
@@ -80,40 +189,99 @@ export default function MessageThread() {
   const [, navigate] = useLocation();
   const search = useSearch();
   const { locale } = useLocale();
-  const convId = Number(params.id);
+  const rawConvParam = params.id;
+  const conversationId =
+    rawConvParam != null && rawConvParam !== ""
+      ? Number(rawConvParam)
+      : Number.NaN;
+  const conversationOk =
+    Number.isFinite(conversationId) && conversationId > 0;
+  /** استخدم للاستعلام فقط بعد التحقق — يمنع مفاتيح خاطئة ومزامنة pending الخاطئة */
+  const convIdForQuery = conversationOk ? conversationId : 0;
+
   const queryClient = useQueryClient();
   const send = useSendMessage();
+  const { toast } = useToast();
   const [body, setBody] = useState("");
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  /** عند false لا نفرض التمرير لأسفل عند وصول رسائل جديدة (المستخدم يقرأ للأعلى). */
-  const stickBottomRef = useRef(true);
+  const initialScrollDoneRef = useRef(false);
   const typingHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const otherUserIdRef = useRef<number | undefined>(undefined);
   const [peerTyping, setPeerTyping] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const lpTimerRef = useRef<number | null>(null);
+  const longPressConsumedRef = useRef(false);
+  const hideMessagesForMe = useHideMessagesForMe();
+  const [menuTipSeen, setMenuTipSeen] = useState<boolean>(() =>
+    readSeenFlag(CHAT_MENU_TIP_SEEN_KEY),
+  );
+  const [selectionTipSeen, setSelectionTipSeen] = useState<boolean>(() =>
+    readSeenFlag(MESSAGE_SELECTION_TIP_SEEN_KEY),
+  );
+  const [quickTipSeen, setQuickTipSeen] = useState<boolean>(() =>
+    readSeenFlag(QUICK_REPLIES_TIP_SEEN_KEY),
+  );
 
-  const { data: conv } = useGetConversation(convId, {
+  const pendingImagePreviewUrl = useMemo(() => {
+    if (!pendingImageFile) return null;
+    return URL.createObjectURL(pendingImageFile);
+  }, [pendingImageFile]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
+    };
+  }, [pendingImagePreviewUrl]);
+
+  const messagesQueryEnabled = !!user && conversationOk;
+
+  const { data: conv } = useGetConversation(convIdForQuery, {
     query: {
-      queryKey: getGetConversationQueryKey(convId),
-      enabled: !!user && !!convId,
+      queryKey: getGetConversationQueryKey(convIdForQuery),
+      enabled: messagesQueryEnabled,
     },
   });
-  const { data: messages, isLoading } = useListMessages(convId, {
+  const {
+    data: messagesRaw,
+    isPending,
+    isError,
+    refetch,
+  } = useListMessages(convIdForQuery, {
     query: {
-      queryKey: getListMessagesQueryKey(convId),
-      enabled: !!user && !!convId,
+      queryKey: getListMessagesQueryKey(convIdForQuery),
+      enabled: messagesQueryEnabled,
+      staleTime: 60_000,
+      gcTime: 30 * 60_000,
     },
   });
+
+  /** يضمن عدم اعتبار الاستجابة غير المصفوفية «لا رسائل» بدل كشف الخطأ */
+  const messages = useMemo((): ChatMessage[] | undefined => {
+    if (messagesRaw == null) return undefined;
+    if (Array.isArray(messagesRaw)) {
+      return messagesRaw as ChatMessage[];
+    }
+    return [];
+  }, [messagesRaw]);
 
   otherUserIdRef.current = conv?.otherId;
 
   const { send: wsSend } = useChatSocket((ev) => {
-    if (ev.type === "message" && ev.conversationId === convId) {
-      queryClient.invalidateQueries({ queryKey: getListMessagesQueryKey(convId) });
+    if (!conversationOk) return;
+    if (ev.type === "message" && ev.conversationId === conversationId) {
+      queryClient.setQueryData<ChatMessage[]>(
+        getListMessagesQueryKey(convIdForQuery),
+        (old) => mergeMessagesIntoList(old, ev.message as ChatMessage),
+      );
       return;
     }
     if (
       ev.type === "typing" &&
-      ev.conversationId === convId &&
+      ev.conversationId === conversationId &&
       otherUserIdRef.current != null &&
       ev.userId === otherUserIdRef.current
     ) {
@@ -135,10 +303,19 @@ export default function MessageThread() {
   });
 
   useEffect(() => {
-    if (!user || !convId || !Number.isFinite(convId)) return;
-    wsSend({ type: "conversation:focus", conversationId: convId, active: true });
-    return () => wsSend({ type: "conversation:focus", conversationId: convId, active: false });
-  }, [convId, user?.id, wsSend]);
+    if (!user || !conversationOk) return;
+    wsSend({
+      type: "conversation:focus",
+      conversationId: conversationId,
+      active: true,
+    });
+    return () =>
+      wsSend({
+        type: "conversation:focus",
+        conversationId: conversationId,
+        active: false,
+      });
+  }, [conversationId, conversationOk, user?.id, wsSend]);
 
   useEffect(() => {
     setPeerTyping(false);
@@ -146,16 +323,99 @@ export default function MessageThread() {
       clearTimeout(typingHideRef.current);
       typingHideRef.current = null;
     }
-  }, [convId]);
+  }, [conversationId]);
+
+  useEffect(() => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }, [conversationId]);
+
+  const clearLongPressTimer = useCallback(() => {
+    if (lpTimerRef.current != null) {
+      window.clearTimeout(lpTimerRef.current);
+      lpTimerRef.current = null;
+    }
+  }, []);
+
+  const exitSelectMode = useCallback(() => {
+    clearLongPressTimer();
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }, [clearLongPressTimer]);
+
+  const enterSelectWith = useCallback((id: number) => {
+    setSelectMode(true);
+    setSelectedIds(new Set([id]));
+  }, []);
+
+  const toggleSelected = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const onMessagePointerDown = (m: ChatMessage, e: React.PointerEvent) => {
+    if (selectMode) return;
+    if ((e.target as HTMLElement).closest("a")) return;
+    clearLongPressTimer();
+    lpTimerRef.current = window.setTimeout(() => {
+      lpTimerRef.current = null;
+      longPressConsumedRef.current = true;
+      enterSelectWith(m.id);
+    }, 480);
+  };
+
+  const onMessagePointerEnd = () => {
+    clearLongPressTimer();
+  };
+
+  const onMessageClick = (m: ChatMessage, e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("a")) return;
+    if (longPressConsumedRef.current) {
+      longPressConsumedRef.current = false;
+      return;
+    }
+    if (selectMode) {
+      e.preventDefault();
+      toggleSelected(m.id);
+      return;
+    }
+    enterSelectWith(m.id);
+  };
+
+  const onDeleteSelectedForMe = () => {
+    if (!selectedIds.size || !conversationOk) return;
+    hideMessagesForMe.mutate(
+      { convId: conversationId, data: { messageIds: [...selectedIds] } },
+      {
+        onSuccess: () => {
+          exitSelectMode();
+          void queryClient.invalidateQueries({
+            queryKey: getListMessagesQueryKey(convIdForQuery),
+          });
+        },
+        onError: (err: unknown) => {
+          toast({
+            title: t("message_thread.delete_for_me_failed"),
+            description: err instanceof Error && err.message ? err.message : undefined,
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
 
   useEffect(() => {
     return () => {
       if (typingHideRef.current) clearTimeout(typingHideRef.current);
+      if (lpTimerRef.current != null) window.clearTimeout(lpTimerRef.current);
     };
   }, []);
 
-  const scrollToBottom = useCallback((force: boolean) => {
-    if (force) stickBottomRef.current = true;
+  const scrollToBottom = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     requestAnimationFrame(() => {
@@ -163,22 +423,16 @@ export default function MessageThread() {
     });
   }, []);
 
+  /** مرة واحدة عند فتح المحادثة بعد وصول الرسائل — لا نربط التمرير بتغيّر messages بعد ذلك */
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const threshold = 96;
-      const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
-      stickBottomRef.current = dist < threshold;
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
+    initialScrollDoneRef.current = false;
+  }, [conversationId]);
 
-  useEffect(() => {
-    if (!stickBottomRef.current) return;
-    scrollToBottom(false);
-  }, [messages, scrollToBottom]);
+  useLayoutEffect(() => {
+    if (!conversationOk || !messages?.length || initialScrollDoneRef.current) return;
+    initialScrollDoneRef.current = true;
+    scrollToBottom();
+  }, [conversationOk, messages, conversationId, scrollToBottom]);
 
   const peerActivityLabel = useMemo(() => {
     if (!messages?.length || !conv || !user) return null;
@@ -196,13 +450,13 @@ export default function MessageThread() {
   }, [messages, conv, user, locale]);
 
   useEffect(() => {
-    if (!convId) return;
+    if (!conversationOk) return;
     const qs = resolveSearchString(search);
     const paramsQs = new URLSearchParams(
       qs.startsWith("?") ? qs.slice(1) : qs,
     );
     const draftFromUrl = paramsQs.get("draft");
-    const storageKey = messageDraftStorageKey(convId);
+    const storageKey = messageDraftStorageKey(conversationId);
 
     if (draftFromUrl) {
       try {
@@ -211,7 +465,7 @@ export default function MessageThread() {
         /* ignore quota / private mode */
       }
       setBody(draftFromUrl);
-      navigate(`/messages/${convId}`, { replace: true });
+      navigate(`/messages/${conversationId}`, { replace: true });
       return;
     }
 
@@ -224,35 +478,147 @@ export default function MessageThread() {
     } catch {
       /* ignore */
     }
-  }, [convId, search, navigate]);
+  }, [conversationOk, conversationId, search, navigate]);
 
-  if (!authLoading && !user) {
+  if (authLoading) {
+    return (
+      <div
+        className="fixed inset-0 z-0 flex h-[100svh] w-full items-center justify-center bg-[#0A0A0A]"
+        dir={locale === "ar" ? "rtl" : "ltr"}
+      >
+        <Skeleton className="h-12 w-48 rounded-xl bg-zinc-900/70" />
+      </div>
+    );
+  }
+
+  if (!user) {
     const qs =
       typeof window !== "undefined" && window.location.search
         ? window.location.search
         : "";
     return (
       <Redirect
-        to={`/guest-welcome?redirect=${encodeURIComponent(`/messages/${convId}${qs}`)}`}
+        to={`/guest-welcome?redirect=${encodeURIComponent(`/messages/${rawConvParam ?? ""}${qs}`)}`}
       />
     );
   }
 
+  if (!conversationOk) {
+    return (
+      <div
+        className="fixed inset-0 z-30 flex h-[100svh] w-full flex-col items-center justify-center gap-4 bg-[#0A0A0A] p-6 text-center"
+        dir={locale === "ar" ? "rtl" : "ltr"}
+      >
+        <p className="max-w-sm text-sm text-zinc-300">
+          {t("message_thread.invalid_conversation")}
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate("/messages")}
+          className="rounded-full border border-primary/40 bg-primary/15 px-6 py-2 text-sm font-medium text-primary hover:bg-primary/25"
+        >
+          {t("message_thread.back_to_inbox")}
+        </button>
+      </div>
+    );
+  }
+
+  const hasStoredMessages = Boolean(messages && messages.length > 0);
+  /** skeleton فقط أثناء أول جلب بدون أي صفوف — إذا وصلت مصفوفة (حتى فارغة) من النجاح لا نعيد وضع skeleton */
+  const showMessagesSkeleton =
+    messagesQueryEnabled &&
+    isPending &&
+    messages == null &&
+    !isError;
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!conversationOk) return;
     const trimmed = body.trim();
-    if (!trimmed) return;
+    if (!trimmed && !pendingImageFile) return;
+
+    const onSuccess = (newMsg: ChatMessage) => {
+      setBody("");
+      setPendingImageFile(null);
+      scrollToBottom();
+      queryClient.setQueryData<ChatMessage[]>(
+        getListMessagesQueryKey(convIdForQuery),
+        (old) => mergeMessagesIntoList(old, newMsg),
+      );
+    };
+
+    if (pendingImageFile) {
+      void (async () => {
+        setUploadBusy(true);
+        try {
+          const imageUrl = await postChatImageUpload(conversationId, pendingImageFile);
+          send.mutate(
+            {
+              convId: conversationId,
+              data: {
+                imageUrl,
+                ...(trimmed ? { body: trimmed } : {}),
+              },
+            },
+            {
+              onSuccess,
+              onError: (err) => {
+                toast({
+                  title:
+                    err instanceof Error && err.message
+                      ? err.message
+                      : t("message_thread.image_upload_failed"),
+                  variant: "destructive",
+                });
+              },
+              onSettled: () => setUploadBusy(false),
+            },
+          );
+        } catch (err) {
+          setUploadBusy(false);
+          toast({
+            title:
+              err instanceof Error && err.message
+                ? err.message
+                : t("message_thread.image_upload_failed"),
+            variant: "destructive",
+          });
+        }
+      })();
+      return;
+    }
+
     send.mutate(
-      { convId, data: { body: trimmed } },
+      { convId: conversationId, data: { body: trimmed } },
       {
-        onSuccess: () => {
-          setBody("");
-          scrollToBottom(true);
-          queryClient.invalidateQueries({ queryKey: getListMessagesQueryKey(convId) });
-        },
+        onSuccess,
       },
     );
   };
+
+  const onImageSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      toast({
+        title: t("message_thread.image_upload_failed"),
+        variant: "destructive",
+      });
+      return;
+    }
+    if (f.size > 5 * 1024 * 1024) {
+      toast({
+        title: t("message_thread.image_upload_failed"),
+        variant: "destructive",
+      });
+      return;
+    }
+    setPendingImageFile(f);
+  };
+
+  const busy = send.isPending || uploadBusy;
+  const canSend = Boolean(body.trim() || pendingImageFile);
 
   const quickKeys = conv?.isSeller ? SELLER_QUICK_KEYS : BUYER_QUICK_KEYS;
   const dirRtl = locale === "ar";
@@ -269,49 +635,56 @@ export default function MessageThread() {
     : BUYER_QUICK_REPLIES_AR;
   const quickReplies = dirRtl ? [...quickRepliesAr] : quickKeys.map((key) => t(key));
 
-  const renderMessageBody = (raw: string) => {
+  const dismissMenuTip = () => {
+    setSeenFlag(CHAT_MENU_TIP_SEEN_KEY);
+    setMenuTipSeen(true);
+  };
+  const dismissSelectionTip = () => {
+    setSeenFlag(MESSAGE_SELECTION_TIP_SEEN_KEY);
+    setSelectionTipSeen(true);
+  };
+  const dismissQuickTip = () => {
+    setSeenFlag(QUICK_REPLIES_TIP_SEEN_KEY);
+    setQuickTipSeen(true);
+  };
+
+  const renderRichText = (raw: string) => {
     const text = raw || "";
-    const linkTone =
-      "rounded-xl border border-primary/15 bg-black/35 px-2.5 py-2 text-[11px] text-primary underline underline-offset-2 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] ring-1 ring-primary/8";
-    const linkRegex = /(https?:\/\/[^\s]+|\/ad\/\d+)/g;
-    const parts = text.split(linkRegex).filter(Boolean);
-    const hasLink = parts.some((p) => linkRegex.test(p));
-    linkRegex.lastIndex = 0;
+    const segments = splitMessageSegments(text);
+    const hasLink = segments.some((s) => s.kind === "link");
+    const linkClass =
+      "break-all font-medium text-primary underline decoration-primary/45 underline-offset-[3px] [overflow-wrap:anywhere]";
     if (!hasLink) {
       return (
         <span
           dir={dirRtl ? "rtl" : "ltr"}
-          className="block whitespace-pre-wrap break-words text-[14px] leading-relaxed text-zinc-100"
+          className="block whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white opacity-100 [overflow-wrap:anywhere] [-webkit-text-fill-color:#ffffff] [text-rendering:optimizeLegibility]"
         >
           {text}
         </span>
       );
     }
-
     return (
       <div
         dir={dirRtl ? "rtl" : "ltr"}
-        className="space-y-1.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed text-zinc-100"
+        className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white opacity-100 [overflow-wrap:anywhere] [-webkit-text-fill-color:#ffffff] [text-rendering:optimizeLegibility]"
       >
-        {parts.map((part, idx) => {
-          const isLink = /^(https?:\/\/[^\s]+|\/ad\/\d+)$/.test(part);
-          if (!isLink) {
-            return <p key={`${part}-${idx}`}>{part}</p>;
-          }
-          const href = part.startsWith("/ad/") ? part : part;
-          return (
+        {segments.map((seg, idx) =>
+          seg.kind === "text" ? (
+            <span key={`t-${idx}`}>{seg.value}</span>
+          ) : (
             <a
-              key={`${part}-${idx}`}
-              href={href}
-              target={part.startsWith("http") ? "_blank" : undefined}
-              rel={part.startsWith("http") ? "noreferrer" : undefined}
-              className={`block ${linkTone}`}
-              dir="ltr"
+              key={`l-${idx}`}
+              href={seg.value}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={linkClass}
+              dir={seg.value.startsWith("http") ? "ltr" : undefined}
             >
-              {part}
+              {seg.value}
             </a>
-          );
-        })}
+          ),
+        )}
       </div>
     );
   };
@@ -341,102 +714,268 @@ export default function MessageThread() {
 
   return (
     <div
-      className="fixed inset-0 z-0 flex h-[100svh] w-full flex-col overflow-hidden bg-[#0A0A0A]"
+      className="flex min-h-[100dvh] w-full flex-col bg-[#0A0A0A]"
+      style={{ height: "100dvh" }}
       dir={dirRtl ? "rtl" : "ltr"}
     >
-      <header className="sticky top-0 z-50 shrink-0 bg-[#0A0A0A]/95 px-4 pb-2 pt-3 backdrop-blur md:px-6">
-        <div className="mx-auto w-full max-w-[820px] rounded-2xl border border-primary/35 bg-zinc-950/75 px-3 py-2.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.12),0_4px_20px_-12px_rgba(0,0,0,0.45)] ring-1 ring-primary/15 backdrop-blur-[2px]">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => navigate("/messages")}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/60 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 hover:bg-zinc-900/90 active:opacity-90"
-            >
-              <ArrowRight className="h-5 w-5" />
-            </button>
-            {conv?.adImage ? (
-              <Link
-                href={`/ad/${conv.adId}`}
-                className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-zinc-900"
+      <header className="shrink-0 bg-[#0A0A0A] px-4 pb-2 pt-3 md:px-6">
+        <div className="mx-auto w-full max-w-[820px] rounded-2xl border border-primary/35 bg-zinc-950 px-3 py-2.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.12),0_4px_20px_-12px_rgba(0,0,0,0.45)] ring-1 ring-primary/15">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectMode) exitSelectMode();
+                  else navigate("/messages");
+                }}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/60 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 hover:bg-zinc-900/90 active:opacity-90"
               >
-                <img src={conv.adImage} alt="" className="h-full w-full object-cover" />
-              </Link>
-            ) : (
-              <div className="h-11 w-11 shrink-0 rounded-xl border border-primary/25 bg-zinc-900" />
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-bold text-white">
-                {conv?.otherName || "..."}
-              </div>
-              {peerActivityLabel ? (
-                <p className="truncate text-[11px] leading-snug text-muted-foreground">
-                  {peerActivityLabel}
-                </p>
-              ) : null}
-              {conv && (
+                <ArrowRight className="h-5 w-5" />
+              </button>
+              {conv?.adImage && conv?.adAvailable !== false ? (
                 <Link
                   href={`/ad/${conv.adId}`}
-                  className="block truncate text-xs text-zinc-400 hover:text-primary"
+                  className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-zinc-900"
                 >
-                  {conv.adTitle}
+                  <img src={conv.adImage} alt="" className="h-full w-full object-cover" />
                 </Link>
+              ) : (
+                <div
+                  className="h-11 w-11 shrink-0 rounded-xl border border-primary/25 bg-zinc-900"
+                  title={
+                    conv?.adAvailable === false
+                      ? t("message_thread.menu_ad_unavailable")
+                      : undefined
+                  }
+                />
               )}
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-bold text-white">
+                  {conv?.otherName || "..."}
+                </div>
+                {peerActivityLabel ? (
+                  <p className="truncate text-[11px] leading-snug text-muted-foreground">
+                    {peerActivityLabel}
+                  </p>
+                ) : null}
+                {conv &&
+                  (conv.adAvailable !== false ? (
+                    <Link
+                      href={`/ad/${conv.adId}`}
+                      className="block truncate text-xs text-zinc-400 hover:text-primary"
+                    >
+                      {conv.adTitle}
+                    </Link>
+                  ) : (
+                    <span
+                      className="block truncate text-xs text-zinc-500"
+                      title={t("message_thread.menu_ad_unavailable")}
+                    >
+                      {conv.adTitle || t("message_thread.menu_ad_unavailable")}
+                    </span>
+                  ))}
+              </div>
             </div>
+            {conv ? (
+              <div className="relative">
+                {!menuTipSeen ? (
+                  <aside
+                    className="absolute -bottom-[4.55rem] end-0 z-30 w-[min(18.5rem,74vw)]"
+                    dir={dirRtl ? "rtl" : "ltr"}
+                  >
+                    <div className={`${CHAT_TIP_CARD} p-2.5`}>
+                      <div className="mb-1 flex items-start justify-between gap-2">
+                        <span className="text-[11px] font-semibold text-primary">⋮</span>
+                        <button
+                          type="button"
+                          onClick={dismissMenuTip}
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-primary/35 bg-zinc-950 text-primary hover:bg-zinc-900"
+                          aria-label={t("message_thread.tip_close")}
+                        >
+                          <X className="h-3 w-3" aria-hidden />
+                        </button>
+                      </div>
+                      <p className="text-[11px] leading-snug text-zinc-300">
+                        {t("message_thread.tip_menu")}
+                      </p>
+                    </div>
+                  </aside>
+                ) : null}
+                <ChatThreadOverflowMenu
+                  conversationId={conversationId}
+                  otherUserId={conv.otherId}
+                  adId={conv.adId}
+                  adAvailable={conv.adAvailable !== false}
+                  dirRtl={dirRtl}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
       </header>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-[820px] flex-1 flex-col px-4 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+100px+8.75rem)] md:px-6">
-        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-primary/35 bg-card/80 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/15 dark:bg-zinc-950/75">
-          <div
-            ref={scrollRef}
-            className="flex max-h-full min-h-0 flex-col items-start gap-2 overflow-y-auto px-3 pb-5 pt-0"
-          >
-            {isLoading ? (
+      {conversationOk && !selectionTipSeen ? (
+        <aside
+          className="mx-auto w-full max-w-[820px] shrink-0 px-4 pb-1.5 pt-0 md:px-6"
+          dir={dirRtl ? "rtl" : "ltr"}
+          aria-label={t("message_thread.tip_selection_click")}
+        >
+          <div className={`${CHAT_TIP_CARD} p-2.5`}>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-[11px] leading-snug text-zinc-300">
+                {t("message_thread.tip_selection_click")}
+              </p>
+              <button
+                type="button"
+                onClick={dismissSelectionTip}
+                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-primary/35 bg-zinc-950 text-primary hover:bg-zinc-900"
+                aria-label={t("message_thread.tip_close")}
+              >
+                <X className="h-3 w-3" aria-hidden />
+              </button>
+            </div>
+          </div>
+        </aside>
+      ) : null}
+
+      <div className="mx-auto flex min-h-0 w-full max-w-[820px] flex-1 flex-col px-4 pt-2 md:px-6">
+        <div
+          ref={scrollRef}
+          data-chat-scroll
+          className="flex min-h-0 flex-1 touch-pan-y flex-col items-start gap-2 overflow-y-auto px-3 pb-3 pt-2"
+        >
+            {isError && hasStoredMessages ? (
+              <div className="sticky top-0 z-10 mb-1 flex w-full flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/35 bg-amber-950 px-3 py-2 text-[12px] text-amber-100">
+                <span className="min-w-0 flex-1">
+                  {t("message_thread.messages_sync_failed")}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void refetch()}
+                  className="shrink-0 rounded-full border border-amber-500/50 bg-amber-950/60 px-3 py-1 text-[11px] font-medium text-amber-50 hover:bg-amber-900/70"
+                >
+                  {t("message_thread.retry")}
+                </button>
+              </div>
+            ) : null}
+            {showMessagesSkeleton ? (
               <>
                 <Skeleton className="h-[3.5rem] max-w-[75%] self-start rounded-2xl rounded-bl-md bg-zinc-900/70" />
                 <Skeleton className="h-[3.5rem] max-w-[75%] self-end rounded-2xl rounded-br-md bg-zinc-900/70" />
               </>
-            ) : messages && messages.length > 0 ? (
-              messages.map((m: ChatMessage, index) => {
+            ) : isError && !hasStoredMessages ? (
+              <div className="flex w-full flex-col items-center justify-center gap-3 py-14 text-center">
+                <p className="max-w-sm text-sm text-red-300">
+                  {t("message_thread.messages_load_error")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void refetch()}
+                  className="rounded-full border border-primary/40 bg-primary/15 px-5 py-2 text-sm font-medium text-primary hover:bg-primary/25"
+                >
+                  {t("message_thread.retry")}
+                </button>
+              </div>
+            ) : hasStoredMessages ? (
+              (messages ?? []).map((m: ChatMessage) => {
                 const mine = m.senderId === user!.id;
+                const plain = m.body ?? "";
+                const msgKind = m.messageType === "image" ? "image" : "text";
+                const isImageMsg = msgKind === "image" && Boolean(m.imageUrl);
+                const showText = plain.trim().length > 0;
+                const showBubbleContent = isImageMsg || showText;
+                const isSelected = selectedIds.has(m.id);
                 return (
                   <div
                     key={m.id}
                     className={cn(
-                      "min-w-0 max-w-[75%] transition-all duration-300 sm:max-w-[70%] md:max-w-[62%]",
-                      mine ? `self-end ${CHAT_SENT_OUTER}` : `self-start ${CHAT_RECV_OUTER}`,
+                      "flex min-w-0 max-w-[min(100%,85%)] items-end gap-2 sm:max-w-[80%] md:max-w-[72%]",
+                      mine ? "flex-row-reverse self-end" : "flex-row self-start",
                     )}
-                    style={{
-                      opacity: 1,
-                      transform: "translateY(0)",
-                      animation: `messageIn 180ms ease ${index * 12}ms both`,
-                    }}
                   >
-                    <div
-                      className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.03] to-transparent"
-                      aria-hidden
-                    />
-                    <div className="relative z-[1] px-3 pb-2 pt-2.5 md:px-3.5 md:pb-2.5 md:pt-3">
-                      {renderMessageBody(m.body)}
-                      <div
-                        className={`mt-1.5 flex items-center gap-0.5 ${mine ? "justify-end" : "justify-start"}`}
-                        dir="ltr"
-                      >
-                        <time
-                          dateTime={m.createdAt}
-                          className="text-[10px] font-medium tabular-nums leading-none text-muted-foreground"
-                        >
-                          {formatMessageTimestamp(m.createdAt, locale)}
-                        </time>
-                        {mine && (
-                          <span
-                            className="inline-flex translate-y-[0.5px] items-center"
-                            aria-hidden
-                          >
-                            {renderDeliveryIcon(m)}
-                          </span>
+                    {selectMode ? (
+                      <span
+                        className={cn(
+                          "mb-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                          isSelected
+                            ? "border-primary bg-primary/20 text-primary shadow-[0_0_12px_-6px_hsl(var(--primary)/0.45)]"
+                            : "border-zinc-500 bg-[#0A0A0A] text-transparent",
                         )}
+                        aria-hidden
+                      >
+                        <Check className="h-3.5 w-3.5 stroke-[3]" />
+                      </span>
+                    ) : null}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onPointerDown={(e) => onMessagePointerDown(m, e)}
+                      onPointerUp={onMessagePointerEnd}
+                      onPointerCancel={onMessagePointerEnd}
+                      onPointerLeave={onMessagePointerEnd}
+                      onClick={(e) => onMessageClick(m, e)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          if (!selectMode) enterSelectWith(m.id);
+                          else toggleSelected(m.id);
+                        }
+                      }}
+                      className={cn(
+                        "min-w-0 max-w-[min(100%,280px)] sm:max-w-[min(100%,300px)] md:max-w-[min(100%,320px)] touch-manipulation",
+                        selectMode ? "cursor-pointer" : "cursor-default",
+                        mine ? CHAT_SENT_OUTER : CHAT_RECV_OUTER,
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "relative z-[2] px-3 pb-2 pt-2.5 md:px-3.5 md:pb-2.5 md:pt-3",
+                          selectMode && "pointer-events-none",
+                        )}
+                      >
+                        {!showBubbleContent ? (
+                          <span className="text-sm text-zinc-400" aria-hidden>
+                            —
+                          </span>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            {isImageMsg && m.imageUrl ? (
+                              <a
+                                href={m.imageUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                              >
+                                <img
+                                  src={m.imageUrl}
+                                  alt=""
+                                  className="max-h-64 w-full max-w-[min(100%,280px)] rounded-xl border border-primary/35 object-cover shadow-[0_0_22px_-12px_hsl(var(--primary)/0.45)] ring-1 ring-primary/20 sm:max-w-[300px]"
+                                  loading="lazy"
+                                />
+                              </a>
+                            ) : null}
+                            {showText ? renderRichText(plain) : null}
+                          </div>
+                        )}
+                        <div
+                          className={`mt-1.5 flex items-center gap-0.5 ${mine ? "justify-end" : "justify-start"}`}
+                          dir="ltr"
+                        >
+                          <time
+                            dateTime={m.createdAt}
+                            className="text-[10px] font-medium tabular-nums leading-none text-muted-foreground"
+                          >
+                            {formatMessageTimestamp(m.createdAt, locale)}
+                          </time>
+                          {mine && (
+                            <span
+                              className="inline-flex translate-y-[0.5px] items-center"
+                              aria-hidden
+                            >
+                              {renderDeliveryIcon(m)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -447,18 +986,47 @@ export default function MessageThread() {
                 {t("message_thread.empty_hint")}
               </div>
             )}
-          </div>
-
         </div>
+        {selectMode ? (
+        <div
+          className="flex w-full shrink-0 items-center justify-between gap-3 border-t border-primary/28 bg-[#0A0A0A] py-3 shadow-[0_-6px_28px_-10px_rgba(0,0,0,0.55)]"
+          dir={dirRtl ? "rtl" : "ltr"}
+        >
+          <p className="min-w-0 text-sm font-medium text-zinc-200">
+            {t("message_thread.select_count", { count: selectedIds.size })}
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => exitSelectMode()}
+              className="rounded-xl border border-primary/35 bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_0_16px_-12px_hsl(var(--primary)/0.15)] ring-1 ring-primary/10 transition-colors hover:border-primary/55 hover:bg-zinc-900"
+            >
+              {t("message_thread.select_cancel")}
+            </button>
+            <button
+              type="button"
+              disabled={!selectedIds.size || hideMessagesForMe.isPending}
+              onClick={() => onDeleteSelectedForMe()}
+              className="inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-950/35 px-4 py-2.5 text-sm font-bold text-red-100 shadow-[0_0_18px_-12px_rgba(239,68,68,0.35)] transition-colors hover:border-red-500/55 hover:bg-red-950/50 disabled:pointer-events-none disabled:opacity-40"
+            >
+              <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+              {hideMessagesForMe.isPending ? "…" : t("message_thread.select_delete")}
+            </button>
+          </div>
+        </div>
+      ) : null}
       </div>
       <form
         onSubmit={handleSend}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+100px)] left-0 right-0 z-50 border-t border-primary/20 bg-[#0A0A0A]/95 px-3 py-2 shadow-[0_-8px_20px_-12px_rgba(0,0,0,0.65)] backdrop-blur"
+        className={cn(
+          "sticky bottom-0 z-50 w-full shrink-0 border-t border-primary/20 bg-[#0A0A0A] px-3 pt-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_20px_-12px_rgba(0,0,0,0.65)]",
+          selectMode && "pointer-events-none opacity-40",
+        )}
       >
         <div className="mx-auto flex w-full max-w-[820px] flex-col gap-2">
           {peerTyping ? (
             <div
-              className="flex items-center gap-2 rounded-lg border border-primary/15 bg-zinc-950/85 px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.12)]"
+              className="flex items-center gap-2 rounded-lg border border-primary/15 bg-zinc-950 px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.12)]"
               role="status"
               aria-live="polite"
             >
@@ -476,19 +1044,67 @@ export default function MessageThread() {
               <span>{t("message_thread.typing")}</span>
             </div>
           ) : null}
-          {conv && (
-            <div className="scrollbar-thin mb-2 flex gap-2 overflow-x-auto rounded-xl border border-primary/20 bg-zinc-950/75 px-2 py-2">
-              {quickReplies.map((line) => (
-                <button
-                  key={`fixed-${line}`}
-                  type="button"
-                  onClick={() => appendQuick(line)}
-                  className="max-w-[240px] shrink-0 truncate whitespace-nowrap rounded-full border border-primary/30 bg-zinc-950/75 px-4 py-2 text-[13px] font-medium text-white shadow-[0_0_14px_-12px_hsl(var(--primary)/0.22)] transition-all duration-200 hover:border-primary/55 hover:bg-primary/15 active:scale-[0.97] active:border-primary/60"
-                >
-                  {line}
-                </button>
-              ))}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            className="sr-only"
+            aria-hidden
+            tabIndex={-1}
+            onChange={onImageSelected}
+          />
+          {pendingImagePreviewUrl ? (
+            <div className="flex items-center gap-2 rounded-xl border border-primary/25 bg-zinc-950 p-2 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.14)]">
+              <img
+                src={pendingImagePreviewUrl}
+                alt=""
+                className="h-14 w-14 shrink-0 rounded-lg border border-primary/30 object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => setPendingImageFile(null)}
+                className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-primary/35 bg-zinc-900 px-3 text-[12px] font-medium text-primary hover:bg-primary/10"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+                {t("message_thread.remove_image")}
+              </button>
             </div>
+          ) : null}
+          {conv && (
+            <>
+              {!quickTipSeen ? (
+                <div
+                  className={`${CHAT_TIP_CARD} mb-1.5 p-2.5`}
+                  dir={dirRtl ? "rtl" : "ltr"}
+                >
+                  <p className="mb-1 text-[11px] leading-snug text-zinc-300">
+                    {t("message_thread.tip_quick_reply")}
+                  </p>
+                  <p className="mb-2 text-[11px] font-semibold text-primary">
+                    {t("message_thread.tip_swipe_arrows")}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={dismissQuickTip}
+                    className="w-full rounded-lg border border-primary/40 bg-primary/10 py-1.5 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/16"
+                  >
+                    {t("message_thread.tip_ok")}
+                  </button>
+                </div>
+              ) : null}
+              <div className={QUICK_REPLY_ROW}>
+                {quickReplies.map((line) => (
+                  <button
+                    key={`fixed-${line}`}
+                    type="button"
+                    onClick={() => appendQuick(line)}
+                    className={QUICK_REPLY_CHIP}
+                  >
+                    {line}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
           <div className="flex items-end gap-2">
           <div className="flex flex-1 items-end gap-2 rounded-full border border-primary/20 bg-[rgba(0,0,0,0.6)] px-3 py-2 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.24)]">
@@ -507,22 +1123,33 @@ export default function MessageThread() {
             />
           </div>
           <button
+            type="button"
+            disabled={busy}
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-zinc-950 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.35)] transition-[transform,box-shadow] hover:border-primary/65 hover:bg-zinc-900 active:scale-[0.98] disabled:opacity-50"
+            aria-label={t("message_thread.attach_image")}
+          >
+            {uploadBusy ? (
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+            ) : (
+              <ImagePlus className="h-5 w-5" aria-hidden />
+            )}
+          </button>
+          <button
             type="submit"
-            disabled={send.isPending || !body.trim()}
+            disabled={busy || !canSend}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-black shadow-[0_0_16px_-8px_hsl(var(--primary)/0.52)] transition-[transform,box-shadow] hover:shadow-[0_0_20px_-8px_hsl(var(--primary)/0.62)] active:scale-[0.98] disabled:opacity-50"
             aria-label={t("message_thread.send")}
           >
-            <Send className="h-5 w-5" />
+            {send.isPending ? (
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+            ) : (
+              <Send className="h-5 w-5" aria-hidden />
+            )}
           </button>
           </div>
         </div>
       </form>
-      <style>{`
-        @keyframes messageIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   );
 }

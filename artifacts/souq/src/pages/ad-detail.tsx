@@ -12,6 +12,8 @@ import { apiUrl } from "@/lib/api-url";
 import { Link, useLocation, useParams } from "wouter";
 import {
   ArrowRight,
+  Check,
+  ChevronDown,
   MapPin,
   Share2,
   Heart,
@@ -42,6 +44,12 @@ import { BuyerSafetyNote } from "@/components/buyer-safety-note";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { AUTH_ACCENT_OUTLINE_BTN } from "@/lib/auth-page-styles";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 function normalizeAdDetailsRaw(raw: unknown): unknown {
   if (typeof raw === "string") {
@@ -238,6 +246,7 @@ export default function AdDetail() {
   const [reporting, setReporting] = useState(false);
   const [reason, setReason] = useState("");
   const [reportExtra, setReportExtra] = useState("");
+  const [reportReasonOpen, setReportReasonOpen] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
 
   const recordView = useRecordAdView();
@@ -518,9 +527,9 @@ export default function AdDetail() {
   const floatingHeaderBtn =
     "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-card/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
   const sellerActionH = "h-12 rounded-2xl text-sm font-semibold";
-  /** كرت داخلي داخل «معلومات البائع» — أغمق قليلًا مع حد خفيف */
+  /** كرت داخلي داخل «معلومات البائع» — نفس روح كروت الشات. */
   const sellerInnerShell =
-    "rounded-2xl border border-zinc-700/45 bg-zinc-950/85 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] ring-1 ring-white/[0.05] md:p-5";
+    "rounded-2xl border border-primary/35 bg-[#0A0A0A] p-4 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12 md:p-5";
   /** صف رقم الهاتف — حدود lime خفيفة أوضح للتفاعل */
   const sellerPhoneRow =
     "flex h-12 w-full items-center gap-3 rounded-xl border border-primary/35 bg-black/55 px-3.5 ring-1 ring-primary/10 transition-colors hover:border-primary/45 hover:ring-primary/15 dark:bg-black/50";
@@ -541,13 +550,7 @@ export default function AdDetail() {
     !reason ||
     (reason === otherReason && !reportExtra.trim());
 
-  const reportReasonBtnClass = (active: boolean) =>
-    cn(
-      "w-full rounded-xl border px-3 py-2.5 text-right text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
-      active
-        ? "border-primary/45 bg-zinc-900/95 ring-1 ring-primary/18 shadow-[0_0_14px_-10px_hsl(var(--primary)/0.2)]"
-        : "border-primary/25 bg-zinc-950/85 hover:border-primary/38 hover:bg-zinc-900/70",
-    );
+  const reportReasonValue = reason || "";
 
   const descRaw = ad.description?.trim() ?? "";
   const descNeedsToggle =
@@ -801,27 +804,37 @@ export default function AdDetail() {
               {t("ad_detail.seller_info")}
             </h3>
 
-            <div className={cn(sellerInnerShell, "space-y-3.5")}>
-              <div className="flex items-center gap-3 text-right">
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-primary-foreground shadow-[0_0_14px_-5px_hsl(var(--primary)/0.38)]"
-                  aria-hidden
-                >
-                  {(ad.sellerName || "?").charAt(0).toUpperCase()}
+            <div className="space-y-3.5">
+              <div className={cn(sellerInnerShell, "space-y-3")}>
+                <div className="flex items-center gap-3 text-right">
+                  <div
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-primary-foreground shadow-[0_0_14px_-5px_hsl(var(--primary)/0.38)]"
+                    aria-hidden
+                  >
+                    {(ad.sellerName || "?").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col items-stretch gap-1">
+                    <p className="truncate text-base font-bold leading-tight text-foreground">
+                      {ad.sellerName}
+                    </p>
+                    <p className="text-xs leading-snug text-muted-foreground">
+                      {ad.userId
+                        ? t("ad_detail.view_profile_and_ads")
+                        : t("ad_detail.member")}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex min-w-0 flex-1 flex-col items-stretch gap-1">
-                  <p className="truncate text-base font-bold leading-tight text-foreground">
-                    {ad.sellerName}
-                  </p>
-                  <p className="text-xs leading-snug text-muted-foreground">
-                    {ad.userId
-                      ? t("ad_detail.view_profile_and_ads")
-                      : t("ad_detail.member")}
-                  </p>
-                </div>
+                {ad.userId ? (
+                  <Link
+                    href={`/users/${ad.userId}`}
+                    className={sellerProfileLinkBtn}
+                  >
+                    {t("ad_detail.view_profile")}
+                  </Link>
+                ) : null}
               </div>
 
-              <div className="flex flex-col gap-2.5">
+              <div className={cn(sellerInnerShell, "flex flex-col gap-2.5")}>
                 <Button
                   type="button"
                   variant="outline"
@@ -872,75 +885,71 @@ export default function AdDetail() {
                   />
                 </button>
 
-                {ad.userId ? (
-                  <Link
-                    href={`/users/${ad.userId}`}
-                    className={sellerProfileLinkBtn}
-                  >
-                    {t("ad_detail.view_profile")}
-                  </Link>
-                ) : null}
+              </div>
 
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">
+              <div className={cn(sellerInnerShell, "space-y-2.5")}>
+                <div className="rounded-xl border border-primary/30 bg-zinc-950/90 p-3 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10">
+                  <p className="mb-1.5 block text-xs font-medium text-muted-foreground">
                     {t("ad_detail.report.choose_reason")}
                   </p>
-                  <div className="space-y-2">
-                    {reportReasonOptions.map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => setReason(opt)}
-                        className={reportReasonBtnClass(reason === opt)}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReportReasonOpen(true)}
+                    className="flex h-11 w-full items-center justify-between rounded-xl border border-primary/35 bg-[#0A0A0A] px-3 text-right text-sm text-foreground outline-none ring-1 ring-primary/10 transition-colors hover:border-primary/48 hover:bg-zinc-900/90 focus-visible:ring-2 focus-visible:ring-primary/25"
+                  >
+                    <ChevronDown className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                    <span className="truncate text-right">
+                      {reportReasonValue || t("ad_detail.report.choose_reason")}
+                    </span>
+                  </button>
                 </div>
 
-                {reason === otherReason && (
+                <div className="rounded-xl border border-primary/30 bg-zinc-950/90 p-2.5 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    title={
+                      reportDisabled && !reporting && !reason
+                        ? t("ad_detail.report.choose_reason")
+                        : reportDisabled &&
+                            !reporting &&
+                            reason === otherReason &&
+                            !reportExtra.trim()
+                          ? t("ad_detail.report.details_placeholder")
+                          : undefined
+                    }
+                    className={cn(
+                      AUTH_ACCENT_OUTLINE_BTN,
+                      "w-full hover:bg-zinc-900",
+                      reportDisabled && "pointer-events-none opacity-50",
+                    )}
+                    onClick={() => {
+                      if (!user) {
+                        navigate(`/login?redirect=/ad/${id}`);
+                        return;
+                      }
+                      void handleReport();
+                    }}
+                    disabled={reportDisabled}
+                  >
+                    <Flag className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
+                    {reporting
+                      ? t("ad_detail.sending")
+                      : t("ad_detail.report.submit")}
+                  </Button>
+                </div>
+              </div>
+
+              {reason === otherReason && (
+                <div className={sellerInnerShell}>
                   <textarea
                     placeholder={t("ad_detail.report.details_placeholder")}
                     className="min-h-[88px] w-full rounded-xl border border-primary/28 bg-zinc-950/90 p-3 text-right text-sm text-foreground shadow-inner ring-1 ring-primary/10 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     value={reportExtra}
                     onChange={(e) => setReportExtra(e.target.value)}
                   />
-                )}
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  title={
-                    reportDisabled && !reporting && !reason
-                      ? t("ad_detail.report.choose_reason")
-                      : reportDisabled &&
-                          !reporting &&
-                          reason === otherReason &&
-                          !reportExtra.trim()
-                        ? t("ad_detail.report.details_placeholder")
-                        : undefined
-                  }
-                  className={cn(
-                    AUTH_ACCENT_OUTLINE_BTN,
-                    "hover:bg-zinc-900",
-                    reportDisabled && "pointer-events-none opacity-50",
-                  )}
-                  onClick={() => {
-                    if (!user) {
-                      navigate(`/login?redirect=/ad/${id}`);
-                      return;
-                    }
-                    void handleReport();
-                  }}
-                  disabled={reportDisabled}
-                >
-                  <Flag className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
-                  {reporting
-                    ? t("ad_detail.sending")
-                    : t("ad_detail.report.submit")}
-                </Button>
-              </div>
+                </div>
+              )}
             </div>
           </section>
 
@@ -950,6 +959,67 @@ export default function AdDetail() {
           />
         </div>
       </div>
+
+      <Sheet open={reportReasonOpen} onOpenChange={setReportReasonOpen}>
+        <SheetContent
+          side="bottom"
+          hideClose
+          className="flex max-h-[min(86dvh,680px)] flex-col gap-0 rounded-t-2xl border-x-0 border-b-0 border-t border-primary/35 bg-[#0A0A0A] p-0 shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.55)] ring-1 ring-primary/20 sm:mx-auto sm:max-w-lg"
+        >
+          <div className="flex items-center justify-between border-b border-primary/20 px-4 pb-3 pt-4">
+            <SheetTitle className="text-base font-semibold text-white">
+              {t("ad_detail.report.choose_reason")}
+            </SheetTitle>
+            <button
+              type="button"
+              onClick={() => setReportReasonOpen(false)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-primary/45 bg-zinc-950/90 text-primary hover:border-primary/65 hover:bg-zinc-900"
+              aria-label={t("common.cancel")}
+            >
+              <ArrowRight className="h-4 w-4 rotate-180" aria-hidden />
+            </button>
+          </div>
+          <SheetDescription className="sr-only">
+            {t("ad_detail.report.choose_reason")}
+          </SheetDescription>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+            <div className="flex flex-col gap-2.5">
+              {reportReasonOptions.map((opt) => {
+                const selected = reason === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => {
+                      setReason(opt);
+                      setReportReasonOpen(false);
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-right text-sm font-medium transition-colors",
+                      selected
+                        ? "border-primary/55 bg-primary/12 text-primary shadow-[0_0_18px_-10px_hsl(var(--primary)/0.35)] ring-1 ring-primary/22"
+                        : "border-primary/30 bg-zinc-950/90 text-white shadow-[0_0_16px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 hover:border-primary/45 hover:bg-zinc-900/95",
+                    )}
+                  >
+                    <span>{opt}</span>
+                    <span
+                      className={cn(
+                        "inline-flex h-5 w-5 items-center justify-center rounded-full border",
+                        selected
+                          ? "border-primary/70 bg-primary/20 text-primary"
+                          : "border-zinc-600 bg-[#0A0A0A] text-transparent",
+                      )}
+                      aria-hidden
+                    >
+                      <Check className="h-3.5 w-3.5 stroke-[3]" />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </motion.div>
   );
 }

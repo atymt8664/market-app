@@ -214,7 +214,13 @@ export default function AdminReportsPage() {
                     >
                       <td className="px-2 py-3">{report.id}</td>
                       <td className="px-2 py-3">
-                        {report.targetType === "ad" ? `إعلان #${report.targetAdId}` : report.targetType === "user" ? `مستخدم #${report.targetUserId}` : "غير محدد"}
+                        {report.targetType === "ad"
+                          ? `إعلان #${report.targetAdId}`
+                          : report.targetType === "user"
+                            ? `مستخدم #${report.targetUserId}`
+                            : report.targetType === "conversation"
+                              ? `محادثة #${report.relatedConversationId ?? "—"}`
+                              : "غير محدد"}
                       </td>
                       <td className="px-2 py-3">{report.reason}</td>
                       <td className="px-2 py-3">
@@ -300,6 +306,7 @@ export default function AdminReportsPage() {
                 <p><span className="text-slate-400">الحالة:</span> {statusLabel(selectedReport.status)}</p>
                 <p><span className="text-slate-400">رقم الإعلان:</span> {selectedReport.targetAdId || "—"}</p>
                 <p><span className="text-slate-400">رقم المستخدم:</span> {selectedReport.targetUserId || "—"}</p>
+                <p><span className="text-slate-400">رقم المحادثة:</span> {selectedReport.relatedConversationId || "—"}</p>
                 <p><span className="text-slate-400">المبلغ:</span> {selectedReport.reporterName || "—"}</p>
                 <p><span className="text-slate-400">البريد:</span> {selectedReport.reporterEmail || "—"}</p>
                 <p><span className="text-slate-400">التاريخ:</span> {selectedReport.createdAt ? new Date(selectedReport.createdAt).toLocaleString() : "—"}</p>

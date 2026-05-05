@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, reportsTable, usersTable, adsTable } from "@workspace/db";
+import { db, reportsTable, usersTable, adsTable, conversationsTable } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireAdmin } from "../middlewares/require-admin";
@@ -14,7 +14,14 @@ router.post("/", requireAuth, async (req, res) => {
   try {
     const reporterId = (req.session as any).userId;
 
-    const { targetUserId, targetAdId, reason, description } = req.body;
+    const {
+      targetUserId,
+      targetAdId,
+      reason,
+      description,
+      conversationId,
+      reportConversation,
+    } = req.body;
 
     if (!reporterId) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -24,8 +31,44 @@ router.post("/", requireAuth, async (req, res) => {
       return res.status(400).json({ message: "Reason is required" });
     }
 
+    const reportConversationOnly = reportConversation === true;
+
     const hasUserTarget = Number.isInteger(targetUserId) && Number(targetUserId) > 0;
     const hasAdTarget = Number.isInteger(targetAdId) && Number(targetAdId) > 0;
+
+    if (reportConversationOnly) {
+      if (conversationId === undefined || conversationId === null || conversationId === "") {
+        return res.status(400).json({ message: "conversationId is required for conversation reports" });
+      }
+      const cid = Number(conversationId);
+      if (!Number.isInteger(cid) || cid <= 0) {
+        return res.status(400).json({ message: "Invalid conversation id" });
+      }
+      const convRows = await db
+        .select()
+        .from(conversationsTable)
+        .where(eq(conversationsTable.id, cid))
+        .limit(1);
+      const conv = convRows[0];
+      if (!conv) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      if (conv.buyerId !== reporterId && conv.sellerId !== reporterId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const report = await db
+        .insert(reportsTable)
+        .values({
+          reporterId,
+          targetUserId: null,
+          targetAdId: null,
+          relatedConversationId: cid,
+          reason,
+          description: description ?? null,
+        })
+        .returning();
+      return res.json(report[0]);
+    }
 
     if (!hasUserTarget && !hasAdTarget) {
       return res.status(400).json({
@@ -39,12 +82,41 @@ router.post("/", requireAuth, async (req, res) => {
       });
     }
 
+    let relatedConversationId: number | null = null;
+    if (conversationId !== undefined && conversationId !== null && conversationId !== "") {
+      const cid = Number(conversationId);
+      if (!Number.isInteger(cid) || cid <= 0) {
+        return res.status(400).json({ message: "Invalid conversation id" });
+      }
+      const convRows = await db
+        .select()
+        .from(conversationsTable)
+        .where(eq(conversationsTable.id, cid))
+        .limit(1);
+      const conv = convRows[0];
+      if (!conv) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      if (conv.buyerId !== reporterId && conv.sellerId !== reporterId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      if (hasUserTarget) {
+        const uid = Number(targetUserId);
+        const otherId = conv.buyerId === reporterId ? conv.sellerId : conv.buyerId;
+        if (uid !== otherId) {
+          return res.status(400).json({ message: "User target must be the other participant" });
+        }
+      }
+      relatedConversationId = cid;
+    }
+
     const report = await db
       .insert(reportsTable)
       .values({
         reporterId,
         targetUserId: hasUserTarget ? Number(targetUserId) : null,
         targetAdId: hasAdTarget ? Number(targetAdId) : null,
+        relatedConversationId,
         reason,
         description: description ?? null,
       })
@@ -68,6 +140,7 @@ router.get("/admin", requireAdmin, async (_req, res) => {
       reporterEmail: usersTable.email,
       targetUserId: reportsTable.targetUserId,
       targetAdId: reportsTable.targetAdId,
+      relatedConversationId: reportsTable.relatedConversationId,
       reason: reportsTable.reason,
       description: reportsTable.description,
       status: reportsTable.status,
@@ -80,7 +153,14 @@ router.get("/admin", requireAdmin, async (_req, res) => {
   return res.json(
     reports.map((report) => ({
       ...report,
-      targetType: report.targetAdId ? "ad" : report.targetUserId ? "user" : "unknown",
+      relatedConversationId: report.relatedConversationId ?? null,
+      targetType: report.targetAdId
+        ? "ad"
+        : report.targetUserId
+          ? "user"
+          : report.relatedConversationId
+            ? "conversation"
+            : "unknown",
       createdAt: report.createdAt ? report.createdAt.toISOString() : null,
     })),
   );

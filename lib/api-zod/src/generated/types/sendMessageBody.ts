@@ -6,10 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * Send either a text message (`body` non-empty) or an image message (`imageUrl` set to a URL returned from POST /conversations/{convId}/messages/upload-image). Optional caption with image.
+
+ */
 export type SendMessageBody = {
-  /**
-   * @minLength 1
-   * @maxLength 2000
-   */
-  body: string;
+  /** @maxLength 2000 */
+  body?: string;
+  imageUrl?: string | null;
 };

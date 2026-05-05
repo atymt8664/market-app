@@ -13,6 +13,8 @@ export type ChatSocketEvent =
         conversationId: number;
         senderId: number;
         body: string;
+        messageType?: "text" | "image";
+        imageUrl?: string | null;
         createdAt: string;
         deliveredAt: string | null;
         readAt: string | null;

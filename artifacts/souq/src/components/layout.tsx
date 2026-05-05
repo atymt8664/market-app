@@ -19,15 +19,29 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const isAdminPage = location.startsWith("/admin");
+  /** محادثة `/messages/:id` — fullscreen مثل واتساب: لا BottomNav ولا padding سفلي للشريط */
+  const isMessageThreadRoute = /^\/messages\/\d+/.test(location);
   const hideBottomNav =
     location.startsWith("/reset-password") ||
     location.startsWith("/login") ||
     location.startsWith("/signup") ||
-    location.startsWith("/forgot-password");
+    location.startsWith("/forgot-password") ||
+    isMessageThreadRoute;
 
   return (
     <div className="w-full min-h-[100svh] bg-[#0A0A0A]">
-      <div className="relative mx-auto w-full max-w-screen-2xl min-h-[100svh] overflow-x-hidden bg-[#0A0A0A] pb-[calc(64px+env(safe-area-inset-bottom,0px))] md:pb-[calc(72px+env(safe-area-inset-bottom,0px))]">
+      {/*
+        لا نفرض overflow:hidden على html/body من هنا — ذلك يمنع pull-to-refresh.
+        تمرير الشات محصور في [data-chat-scroll] (انظر index.css).
+      */}
+      <div
+        className={cn(
+          "relative mx-auto w-full max-w-screen-2xl min-h-[100svh] overflow-x-hidden bg-[#0A0A0A]",
+          isMessageThreadRoute
+            ? "pb-0"
+            : "pb-[calc(64px+env(safe-area-inset-bottom,0px))] md:pb-[calc(72px+env(safe-area-inset-bottom,0px))]",
+        )}
+      >
         {children}
 
         {!isAdminPage && !hideBottomNav && <BottomNav />}

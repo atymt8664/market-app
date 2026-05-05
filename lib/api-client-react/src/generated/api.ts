@@ -33,6 +33,9 @@ import type {
   ForgotPasswordInput,
   ForgotPasswordResponse,
   HealthStatus,
+  HideConversationForMe200,
+  HideMessagesForMe200,
+  HideMessagesForMeBody,
   ImproveDescription200,
   ImproveDescriptionBody,
   ListAdsParams,
@@ -3130,6 +3133,180 @@ export const useMarkConversationRead = <
   TContext
 > => {
   return useMutation(getMarkConversationReadMutationOptions(options));
+};
+
+/**
+ * @summary Hide conversation from inbox for the current user only
+ */
+export const getHideConversationForMeUrl = (convId: number) => {
+  return `/api/conversations/${convId}/hide-for-me`;
+};
+
+export const hideConversationForMe = async (
+  convId: number,
+  options?: RequestInit
+): Promise<HideConversationForMe200> => {
+  return customFetch<HideConversationForMe200>(
+    getHideConversationForMeUrl(convId),
+    {
+      ...options,
+      method: "POST",
+    }
+  );
+};
+
+export const getHideConversationForMeMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof hideConversationForMe>>,
+    TError,
+    { convId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof hideConversationForMe>>,
+  TError,
+  { convId: number },
+  TContext
+> => {
+  const mutationKey = ["hideConversationForMe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof hideConversationForMe>>,
+    { convId: number }
+  > = props => {
+    const { convId } = props ?? {};
+
+    return hideConversationForMe(convId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type HideConversationForMeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof hideConversationForMe>>
+>;
+
+export type HideConversationForMeMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Hide conversation from inbox for the current user only
+ */
+export const useHideConversationForMe = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof hideConversationForMe>>,
+    TError,
+    { convId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof hideConversationForMe>>,
+  TError,
+  { convId: number },
+  TContext
+> => {
+  return useMutation(getHideConversationForMeMutationOptions(options));
+};
+
+/**
+ * @summary Hide messages in this thread for the current user only (other party still sees them)
+ */
+export const getHideMessagesForMeUrl = (convId: number) => {
+  return `/api/conversations/${convId}/messages/hide-for-me`;
+};
+
+export const hideMessagesForMe = async (
+  convId: number,
+  hideMessagesForMeBody: HideMessagesForMeBody,
+  options?: RequestInit
+): Promise<HideMessagesForMe200> => {
+  return customFetch<HideMessagesForMe200>(getHideMessagesForMeUrl(convId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(hideMessagesForMeBody),
+  });
+};
+
+export const getHideMessagesForMeMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof hideMessagesForMe>>,
+    TError,
+    { convId: number; data: BodyType<HideMessagesForMeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof hideMessagesForMe>>,
+  TError,
+  { convId: number; data: BodyType<HideMessagesForMeBody> },
+  TContext
+> => {
+  const mutationKey = ["hideMessagesForMe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof hideMessagesForMe>>,
+    { convId: number; data: BodyType<HideMessagesForMeBody> }
+  > = props => {
+    const { convId, data } = props ?? {};
+
+    return hideMessagesForMe(convId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type HideMessagesForMeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof hideMessagesForMe>>
+>;
+export type HideMessagesForMeMutationBody = BodyType<HideMessagesForMeBody>;
+export type HideMessagesForMeMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Hide messages in this thread for the current user only (other party still sees them)
+ */
+export const useHideMessagesForMe = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof hideMessagesForMe>>,
+    TError,
+    { convId: number; data: BodyType<HideMessagesForMeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof hideMessagesForMe>>,
+  TError,
+  { convId: number; data: BodyType<HideMessagesForMeBody> },
+  TContext
+> => {
+  return useMutation(getHideMessagesForMeMutationOptions(options));
 };
 
 export const getAuthChangePasswordUrl = () => {

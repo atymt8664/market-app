@@ -10,6 +10,7 @@ import {
   getGetAdQueryKey,
   getListMyAdsQueryKey,
   getListRecommendedAdsQueryKey,
+  ApiError,
 } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -62,6 +63,7 @@ import {
   parseStoredAdDetails,
 } from "@/lib/ad-stored-details";
 import { cn } from "@/lib/utils";
+import { SETTINGS_PRIMARY_BUTTON } from "@/components/settings-shell";
 
 /** هوية dark/lime — نفس روح ad-detail / profile */
 const adCardShell =
@@ -643,8 +645,14 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   });
   const createAdMutation = useCreateAd();
   const updateAdMutation = useUpdateAd();
-  const improveDescMutation = useImproveDescription();
-  const suggestPriceMutation = useSuggestPrice();
+  const improveDescMutation = useImproveDescription({
+    mutation: { retry: 0 },
+    request: { signal: AbortSignal.timeout(55_000) },
+  });
+  const suggestPriceMutation = useSuggestPrice({
+    mutation: { retry: 0 },
+    request: { signal: AbortSignal.timeout(55_000) },
+  });
 
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [selectedCatId, setSelectedCatId] = useState<number | null>(null);
@@ -1030,7 +1038,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             await invalidate();
             toast({
               title: "تم تحديث الإعلان",
-              className: "bg-primary text-primary-foreground border-primary",
             });
             navigate("/profile");
           },
@@ -1046,9 +1053,8 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           onSuccess: async () => {
             await invalidate();
             toast({
-              title: "تم نشر الإعلان بنجاح",
-              description: "إعلانك أصبح مرئياً في السوق الآن",
-              className: "bg-primary text-primary-foreground border-primary",
+              title: "تم إرسال إعلانك للمراجعة",
+              description: "سيظهر في السوق بعد موافقة الإدارة",
             });
             navigate("/");
           },
@@ -1208,13 +1214,48 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               : "تم استخدام تحسين مؤقت لأن الخدمة أعادت نصًا غير محسّن",
           });
         },
-        onError: () => {
+        onError: (err) => {
+          const aborted =
+            err instanceof Error &&
+            (err.name === "AbortError" ||
+              /aborted|timeout|timed out/i.test(err.message));
+          if (aborted) {
+            toast({
+              title: "انتهت مهلة الطلب",
+              description: "تأكد أن الـ API يعمل محليًا ثم أعد المحاولة.",
+              variant: "destructive",
+            });
+            return;
+          }
+          if (err instanceof ApiError && err.status === 503) {
+            const detail =
+              typeof err.data === "object" &&
+              err.data !== null &&
+              "message" in err.data &&
+              typeof (err.data as { message?: unknown }).message === "string"
+                ? (err.data as { message: string }).message
+                : err.message;
+            toast({
+              title: "الذكاء الاصطناعي غير مفعّل على الخادم",
+              description: detail,
+              variant: "destructive",
+            });
+            return;
+          }
+          if (err instanceof ApiError && err.status === 502) {
+            toast({
+              title: "فشل طلب الذكاء الاصطناعي",
+              description: err.message,
+              variant: "destructive",
+            });
+            return;
+          }
           form.setValue("description", fallbackImproved, {
             shouldValidate: true,
           });
           toast({
             title: "تم تحسين الوصف مبدئيًا",
-            description: "تم استخدام تحسين مؤقت لحين توفر خدمة الذكاء الاصطناعي",
+            description: "تم استخدام تحسين مؤقت لحين يعمل الاتصال بالخادم.",
           });
         },
       },
@@ -1255,7 +1296,42 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           form.setValue("priceType", "negotiable");
           toast({ title: "تم اقتراح السعر", description: res.reasoning });
         },
-        onError: () => {
+        onError: (err) => {
+          const aborted =
+            err instanceof Error &&
+            (err.name === "AbortError" ||
+              /aborted|timeout|timed out/i.test(err.message));
+          if (aborted) {
+            toast({
+              title: "انتهت مهلة الطلب",
+              description: "تأكد أن الـ API يعمل محليًا ثم أعد المحاولة.",
+              variant: "destructive",
+            });
+            return;
+          }
+          if (err instanceof ApiError && err.status === 503) {
+            const detail =
+              typeof err.data === "object" &&
+              err.data !== null &&
+              "message" in err.data &&
+              typeof (err.data as { message?: unknown }).message === "string"
+                ? (err.data as { message: string }).message
+                : err.message;
+            toast({
+              title: "الذكاء الاصطناعي غير مفعّل على الخادم",
+              description: detail,
+              variant: "destructive",
+            });
+            return;
+          }
+          if (err instanceof ApiError && err.status === 502) {
+            toast({
+              title: "فشل طلب الذكاء الاصطناعي",
+              description: err.message,
+              variant: "destructive",
+            });
+            return;
+          }
           form.setValue("price", mockPrice, { shouldValidate: true });
           form.setValue("priceType", "negotiable");
           toast({
@@ -1888,9 +1964,12 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   </button>
                 </div>
                 <div className="border-t border-primary/20 p-4">
-                  <Button
+                  <button
                     type="button"
-                    className="h-11 w-full rounded-xl"
+                    className={cn(
+                      SETTINGS_PRIMARY_BUTTON,
+                      "!min-h-11 rounded-xl py-2.5 text-sm",
+                    )}
                     onClick={() => {
                       setPickupOnly(tempPickupOnly);
                       setShippingIds(tempPickupOnly ? [] : tempShippingIds);
@@ -1898,7 +1977,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     }}
                   >
                     تأكيد
-                  </Button>
+                  </button>
                 </div>
               </SheetContent>
             </Sheet>

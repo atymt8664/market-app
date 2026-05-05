@@ -14,7 +14,6 @@ export type ListAdsParams = {
   city?: string;
   minPrice?: number;
   maxPrice?: number;
-  userId?: number;
   type?: ListAdsType;
   limit?: number;
 };

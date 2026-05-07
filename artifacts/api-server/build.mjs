@@ -29,6 +29,9 @@ async function buildAll() {
     // - use path traversal to read files (e.g. @google-cloud/secret-manager loads sibling .proto files)
     external: [
       "*.node",
+      // Bundled express-session breaks Set-Cookie (session row is stored; browser never gets souq.sid).
+      "express-session",
+      "connect-pg-simple",
       "sharp",
       "better-sqlite3",
       "sqlite3",

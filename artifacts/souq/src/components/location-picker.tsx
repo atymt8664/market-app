@@ -31,7 +31,11 @@ const CITY_RESULTS_CAP = 120;
 
 type Step = 1 | 2;
 
-export function LocationPicker() {
+export function LocationPicker({
+  triggerClassName,
+}: {
+  triggerClassName?: string;
+} = {}) {
   const { locale } = useLocale();
   const isAr = locale === "ar";
   const { city, countryCode, setCity, displayLabel } = useSelectedCity();
@@ -101,13 +105,14 @@ export function LocationPicker() {
         onClick={() => setOpen(true)}
         aria-label={t("location_picker.aria")}
         className={cn(
-          "flex max-w-[min(100%,12rem)] items-center gap-1.5 rounded-xl border border-dashed border-primary/25 bg-primary/5 px-2.5 py-1.5 text-xs font-medium text-primary transition-all active:scale-[0.98]",
+          "flex max-w-[min(100%,12rem)] items-center gap-1 rounded-2xl border border-dashed border-primary/30 bg-primary/[0.06] px-2 py-1.5 text-[11px] font-semibold text-primary shadow-[0_0_12px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/10 transition-all active:scale-[0.98]",
+          triggerClassName,
           displayLabel && "border-primary/35 bg-primary/[0.08]",
         )}
       >
-        <MapPin className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+        <MapPin className="h-3 w-3 shrink-0 opacity-85" aria-hidden />
         <span className="min-w-0 truncate">{triggerLabel}</span>
-        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+        <ChevronDown className="h-3 w-3 shrink-0 opacity-75" aria-hidden />
       </button>
 
       <Sheet open={open} onOpenChange={setOpen}>

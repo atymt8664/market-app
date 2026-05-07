@@ -13,6 +13,7 @@ import {
   SETTINGS_DROPDOWN_TRIGGER,
   SETTINGS_INPUT,
   SETTINGS_LABEL,
+  SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
   SETTINGS_PRIMARY_BUTTON,
@@ -60,7 +61,7 @@ export default function AccountProfile() {
   };
 
   return (
-    <div className={`flex min-h-[100dvh] w-full flex-col ${SETTINGS_PAGE_BG} pb-8`}>
+    <div className={`flex min-h-[100dvh] w-full flex-col ${SETTINGS_PAGE_BG} ${SETTINGS_IMMERSIVE_BOTTOM}`}>
       <AccountHeader title={t("account_profile.title")} />
       <div className={`${SETTINGS_MAIN_COLUMN} py-5`}>
         <form onSubmit={onSubmit} className={SETTINGS_CARD} dir="rtl">

@@ -15,6 +15,7 @@ import {
   SETTINGS_CARD,
   SETTINGS_CARD_COMPACT,
   SETTINGS_CARD_TITLE,
+  SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
   SETTINGS_PRIMARY_BUTTON,
@@ -41,7 +42,7 @@ export default function AccountVerification() {
     >
       <AccountHeader title={t("verification.page_title")} />
 
-      <div className={`${SETTINGS_MAIN_COLUMN} flex-1 pb-10 pt-2`}>
+      <div className={`${SETTINGS_MAIN_COLUMN} flex-1 pt-2 ${SETTINGS_IMMERSIVE_BOTTOM}`}>
         <section className={SETTINGS_CARD}>
           <h2 className={SETTINGS_CARD_TITLE}>{t("verification.benefits_title")}</h2>
           <p className="mt-2 text-sm leading-7 text-zinc-500">{t("verification.benefits_body")}</p>

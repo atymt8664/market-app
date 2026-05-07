@@ -10,7 +10,6 @@ import {
   MapPin,
   UserCheck,
   Heart,
-  Camera,
   Loader2,
   Clock,
   User as UserIcon,
@@ -50,6 +49,10 @@ import {
   SETTINGS_OUTLINE_BUTTON,
 } from "@/components/settings-shell";
 import { ProfileStatsDetailSheet } from "@/components/profile-stats-detail-sheet";
+import {
+  ProfileAvatarPreviewDialog,
+  ProfileAvatarCameraBadge,
+} from "@/components/profile-avatar-preview-dialog";
 import { formatRelativeTime } from "@/lib/format";
 import { getPublicAdUrl, getPublicUserProfileUrl } from "@/lib/public-url";
 import { buildAdShareText, buildProfileShareText } from "@/lib/share-text";
@@ -119,6 +122,8 @@ export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [adToDelete, setAdToDelete] = useState<number | null>(null);
   const [actionAd, setActionAd] = useState<Ad | null>(null);
+  const [avatarRemoveOpen, setAvatarRemoveOpen] = useState(false);
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
 
   const { data: myAds, isLoading: adsLoading } = useListMyAds({
     query: {
@@ -141,25 +146,10 @@ export default function Profile() {
   const favoriteAds = Array.isArray(favoriteAdsData) ? favoriteAdsData : [];
 
   const { uploadFile, isUploading } = useUpload({
-    onSuccess: (response) => {
-      const url = response.publicUrl;
-      updateProfile.mutate(
-        { data: { avatarUrl: url } },
-        {
-          onSuccess: () => {
-            queryClient.invalidateQueries({
-              queryKey: getAuthMeQueryKey(),
-            });
-            toast({ title: t("profile.image_updated") });
-          },
-          onError: () => {
-            toast({
-              title: t("profile.image_update_failed"),
-              variant: "destructive",
-            });
-          },
-        },
-      );
+    /** Upload endpoint already persists `avatarUrl`; only refresh session — PATCH rejects Supabase public URLs. */
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
+      toast({ title: t("profile.image_updated") });
     },
     onError: () => {
       toast({ title: t("profile.image_upload_failed"), variant: "destructive" });
@@ -174,7 +164,7 @@ export default function Profile() {
     );
   }
 
-  if (!authLoading && !user) return <Redirect to="/guest-welcome?redirect=/profile" />;
+  if (!user) return <Redirect to="/guest-welcome?redirect=/profile" />;
 
   const handleShare = async () => {
     const url = getPublicUserProfileUrl(user.id);
@@ -252,6 +242,25 @@ export default function Profile() {
     e.target.value = "";
   };
 
+  const handleConfirmRemoveAvatar = () => {
+    updateProfile.mutate(
+      { data: { avatarUrl: null } },
+      {
+        onSuccess: async () => {
+          await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
+          toast({ title: t("profile.avatar_removed") });
+          setAvatarRemoveOpen(false);
+        },
+        onError: () => {
+          toast({
+            title: t("profile.avatar_remove_failed"),
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
   const adCount = user?.adCount ?? myAds?.length ?? 0;
   const followerCount = user?.followerCount ?? 0;
   const followingCount = user?.followingCount ?? 0;
@@ -274,8 +283,18 @@ export default function Profile() {
                 {t("profile.title")}
               </span>
               <div className="relative shrink-0">
-                <div
-                  className="rounded-full p-[3px] shadow-[0_0_16px_-4px_rgba(182,227,86,0.28)]"
+                <button
+                  type="button"
+                  disabled={avatarBusy}
+                  onClick={() =>
+                    user.avatarUrl ? setAvatarPreviewOpen(true) : handleAvatarPick()
+                  }
+                  aria-label={
+                    user.avatarUrl
+                      ? t("profile.avatar_preview.open")
+                      : t("profile.change_avatar")
+                  }
+                  className="rounded-full p-[3px] shadow-[0_0_16px_-4px_rgba(182,227,86,0.28)] transition-[opacity,transform] hover:opacity-95 active:scale-[0.99] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
                   style={{
                     background:
                       "linear-gradient(145deg, rgba(182,227,86,0.5), rgba(182,227,86,0.08))",
@@ -284,20 +303,14 @@ export default function Profile() {
                   <div className="rounded-full bg-black p-[2px]">
                     <AvatarCircle name={user.name} src={user.avatarUrl} size={80} />
                   </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAvatarPick}
-                  disabled={avatarBusy}
-                  aria-label={t("profile.change_avatar")}
-                  className="absolute -bottom-0.5 -left-0.5 flex h-8 w-8 items-center justify-center rounded-full border-2 border-black bg-[#b6e356] text-black shadow-[0_0_8px_-1px_rgba(182,227,86,0.4)] disabled:opacity-60"
-                >
-                  {avatarBusy ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Camera className="h-3.5 w-3.5" />
-                  )}
                 </button>
+                {!user.avatarUrl ? (
+                  <ProfileAvatarCameraBadge
+                    onClick={handleAvatarPick}
+                    disabled={avatarBusy}
+                    busy={avatarBusy}
+                  />
+                ) : null}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -502,6 +515,53 @@ export default function Profile() {
           </Tabs>
         </section>
       </div>
+
+      <ProfileAvatarPreviewDialog
+        open={avatarPreviewOpen}
+        onOpenChange={setAvatarPreviewOpen}
+        name={user.name}
+        avatarUrl={user.avatarUrl}
+        canManage
+        busy={avatarBusy}
+        onEdit={handleAvatarPick}
+        onDelete={() => setAvatarRemoveOpen(true)}
+      />
+
+      <AlertDialog open={avatarRemoveOpen} onOpenChange={setAvatarRemoveOpen}>
+        <AlertDialogContent
+          dir="rtl"
+          className={cn(
+            SETTINGS_DIALOG_CONTENT,
+            "!p-0 gap-0 overflow-hidden text-right sm:max-w-md",
+          )}
+        >
+          <div className="border-b border-primary/20 px-5 py-4">
+            <AlertDialogHeader className="space-y-1.5 text-right">
+              <AlertDialogTitle className="text-right text-base font-bold text-foreground">
+                {t("profile.avatar_remove_dialog.title")}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-right text-sm leading-relaxed text-zinc-400">
+                {t("profile.avatar_remove_dialog.description")}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+          </div>
+          <AlertDialogFooter className="flex flex-col-reverse gap-2 border-t border-primary/20 bg-[#0A0A0A]/98 p-4 sm:flex-row sm:justify-stretch sm:gap-3">
+            <AlertDialogCancel
+              className={cn(SETTINGS_OUTLINE_BUTTON, "m-0 mt-0 w-full sm:flex-1")}
+            >
+              {t("profile.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmRemoveAvatar}
+              className={cn(
+                "m-0 inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-red-500/45 bg-red-950/40 px-4 text-sm font-semibold text-red-100 shadow-[0_0_22px_-12px_rgba(239,68,68,0.35)] ring-1 ring-red-500/22 transition-colors hover:border-red-500/58 hover:bg-red-950/55 sm:flex-1",
+              )}
+            >
+              {t("profile.avatar_remove_dialog.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={adToDelete !== null}

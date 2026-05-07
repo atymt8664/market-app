@@ -11,7 +11,18 @@ export type DashboardReport = {
   status: string;
   createdAt: string | null;
   reporterName: string | null;
+  reporterAvatarUrl?: string | null;
   targetAdId: number | null;
+  targetUserId?: number | null;
+  /** عنوان الإعلان عند وجود `targetAdId` */
+  targetAdTitle?: string | null;
+  targetAdSellerName?: string | null;
+  /** صاحب الإعلان من جدول المستخدمين عند الربط بـ `ads.user_id` */
+  targetAdOwnerAvatarUrl?: string | null;
+  targetAdOwnerName?: string | null;
+  /** المستخدم المستهدف مباشرة من البلاغ (`target_user_id`) */
+  targetProfileName?: string | null;
+  targetProfileAvatarUrl?: string | null;
 };
 
 export type DashboardSupportTicket = {
@@ -59,6 +70,8 @@ export type AdminDashboardResponse = {
     reportsNew: number;
     supportOpen: number;
     adsPublishedToday: number;
+    /** إجمالي الإعلانات ذات featured=true (جميع الحالات؛ الظهور العام يشترط approved) */
+    featuredAdsCount?: number;
   };
   statusCounts?: {
     ads: Record<string, number>;
@@ -187,6 +200,7 @@ export type AdminReport = {
   reporterId: number;
   reporterName: string | null;
   reporterEmail: string | null;
+  reporterAvatarUrl?: string | null;
   targetUserId: number | null;
   targetAdId: number | null;
   relatedConversationId?: number | null;
@@ -195,6 +209,14 @@ export type AdminReport = {
   description: string | null;
   status: "pending" | "in_review" | "resolved" | "rejected" | "ignored" | string;
   createdAt: string | null;
+  /** عند الإبلاغ عن إعلان */
+  targetAdTitle?: string | null;
+  targetAdSellerName?: string | null;
+  targetAdOwnerAvatarUrl?: string | null;
+  targetAdOwnerName?: string | null;
+  /** عند الإبلاغ عن مستخدم */
+  targetProfileName?: string | null;
+  targetProfileAvatarUrl?: string | null;
 };
 
 export type AdminSupportTicket = {
@@ -202,6 +224,7 @@ export type AdminSupportTicket = {
   userId: number;
   userName: string | null;
   userEmail: string | null;
+  userAvatarUrl?: string | null;
   category: string;
   subject: string;
   status: "open" | "pending" | "resolved" | "closed" | string;
@@ -258,6 +281,7 @@ export type AdminUser = {
   id: number;
   name: string;
   email: string;
+  avatarUrl?: string | null;
   status: "active" | "banned";
   createdAt: string | null;
 };

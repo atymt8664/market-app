@@ -22,6 +22,7 @@ import {
   SETTINGS_ICON_TILE,
   SETTINGS_INPUT,
   SETTINGS_LABEL,
+  SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_MAIN_COLUMN,
   SETTINGS_OUTLINE_BUTTON,
   SETTINGS_PAGE_BG,
@@ -79,7 +80,7 @@ export default function AccountEmail() {
   };
 
   return (
-    <div className={`flex min-h-[100dvh] w-full flex-col ${SETTINGS_PAGE_BG} pb-8`}>
+    <div className={`flex min-h-[100dvh] w-full flex-col ${SETTINGS_PAGE_BG} ${SETTINGS_IMMERSIVE_BOTTOM}`}>
       <AccountHeader title={t("account_email.title")} />
       <div className={`${SETTINGS_MAIN_COLUMN} py-5`} dir="rtl">
         <div className={`${SETTINGS_CARD} flex flex-col gap-4`}>

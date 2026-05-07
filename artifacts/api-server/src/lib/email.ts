@@ -3,7 +3,7 @@ import { Resend } from "resend";
 import { logger } from "./logger";
 
 const defaultAppUrl = "http://localhost:5173";
-const defaultFromAddress = "Souq Arab EU <souqarab.market@gmail.com>";
+const defaultFromAddress = "Souq Arab EU <no-reply@souq-arab.com>";
 const resendFromAddress = "Souq Arab EU <onboarding@resend.dev>";
 
 function normalizeAppUrl(rawUrl: string | undefined) {
@@ -12,7 +12,21 @@ function normalizeAppUrl(rawUrl: string | undefined) {
 }
 
 function getFrontendUrl() {
-  return normalizeAppUrl(process.env["FRONTEND_URL"]);
+  const raw =
+    process.env["FRONTEND_URL"]?.trim() ||
+    process.env["APP_URL"]?.trim();
+  return normalizeAppUrl(raw || undefined);
+}
+
+/** Base URL for outbound password-reset links (explicit env wins; else proxy/tunnel headers or dev default). */
+function resolveResetPasswordBase(req?: RequestLike): string {
+  const explicit =
+    process.env["FRONTEND_URL"]?.trim() ||
+    process.env["APP_URL"]?.trim();
+  if (explicit) {
+    return normalizeAppUrl(explicit);
+  }
+  return publicFrontendBase(req);
 }
 const fromAddress = process.env["EMAIL_FROM"] || defaultFromAddress;
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -132,9 +146,8 @@ function publicFrontendBase(req?: RequestLike): string {
 }
 
 export function buildResetPasswordUrl(token: string, req?: RequestLike) {
-  void req;
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-  return resetUrl;
+  const base = resolveResetPasswordBase(req);
+  return `${base}/reset-password?token=${encodeURIComponent(token)}`;
 }
 
 export async function sendVerificationCodeEmail(email: string, code: string) {

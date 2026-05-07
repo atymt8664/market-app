@@ -23,6 +23,13 @@ export const SETTINGS_CARD_COMPACT =
 
 export const SETTINGS_PAGE_BG = "min-h-[100svh] w-full bg-[#0A0A0A]";
 
+/**
+ * Bottom padding for settings / legal / account subtrees when the main BottomNav is hidden.
+ * Respects safe-area so content clears the home indicator without reserving nav height.
+ */
+export const SETTINGS_IMMERSIVE_BOTTOM =
+  "pb-[max(2rem,env(safe-area-inset-bottom,0px))]";
+
 /** `create-ad.tsx` sticky header */
 export const SETTINGS_HEADER_BAR =
   "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]";

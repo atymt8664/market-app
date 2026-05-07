@@ -23,6 +23,7 @@ import {
   SETTINGS_CARD,
   SETTINGS_CARD_COMPACT,
   SETTINGS_FIELD,
+  SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_LABEL,
   SETTINGS_MAIN_COLUMN,
   SETTINGS_OUTLINE_BUTTON,
@@ -63,7 +64,7 @@ export default function AccountInfoPage() {
   const isLanguagePage = slug === "language";
   if (!page) {
     return (
-      <div className={`flex flex-col w-full ${SETTINGS_PAGE_BG}`}>
+      <div className={`flex flex-col w-full ${SETTINGS_PAGE_BG} ${SETTINGS_IMMERSIVE_BOTTOM}`}>
         <AccountHeader title={t("account_info.not_found_title")} />
         <div className={`${SETTINGS_MAIN_COLUMN} py-10 text-center text-muted-foreground`}>
           {t("account_info.not_found")}
@@ -162,7 +163,11 @@ export default function AccountInfoPage() {
   );
   const rateBody = (
     <div className="space-y-4">
-      <p className="leading-relaxed text-muted-foreground">{t("account_info.rate.p1")}</p>
+      <p className="leading-relaxed text-muted-foreground">
+        {t("account_info.rate.p1_before")}
+        <span className="font-bold text-primary">EU</span>
+        {t("account_info.rate.p1_after")}
+      </p>
       <div
         className={cn(
           SETTINGS_CARD_COMPACT,
@@ -283,7 +288,7 @@ export default function AccountInfoPage() {
     help: (
       <>
         <p className="mb-3">{t("account_info.help.p1")}</p>
-        <a href="mailto:support@souq-arab.de" className="text-primary font-medium" dir="ltr">support@souq-arab.de</a>
+        <a href="mailto:souqarab.market@gmail.com" className="text-primary font-medium" dir="ltr">souqarab.market@gmail.com</a>
       </>
     ),
     rate: rateBody,
@@ -378,9 +383,9 @@ export default function AccountInfoPage() {
     ),
   };
   return (
-    <div className={`flex flex-col w-full ${SETTINGS_PAGE_BG} pb-10`}>
+    <div className={`flex flex-col w-full ${SETTINGS_PAGE_BG} ${SETTINGS_IMMERSIVE_BOTTOM}`}>
       <AccountHeader title={t(page.titleKey)} />
-      <div className={`${SETTINGS_MAIN_COLUMN} pb-10`}>
+      <div className={SETTINGS_MAIN_COLUMN}>
         {isPaymentsPage ? (
           <div className="text-sm leading-relaxed text-muted-foreground">{paymentsBody}</div>
         ) : isLanguagePage ? (

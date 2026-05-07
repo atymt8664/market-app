@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api-url";
+import { SETTINGS_IMMERSIVE_BOTTOM } from "@/components/settings-shell";
 
 export default function VerifyEmail() {
   const [, navigate] = useLocation();
+  const search = useSearch();
   const { toast } = useToast();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -13,7 +15,24 @@ export default function VerifyEmail() {
 
   const readJson = async (res: Response) => {
     const text = await res.text();
-    return text ? JSON.parse(text) : {};
+    try {
+      return text ? JSON.parse(text) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const resolveVerificationEmail = () => {
+    try {
+      const fromQuery = new URLSearchParams(search).get("email")?.trim();
+      if (fromQuery) {
+        localStorage.setItem("email", fromQuery);
+        return fromQuery;
+      }
+    } catch {
+      // ignore malformed query params and fall back to local storage
+    }
+    return localStorage.getItem("email")?.trim() ?? "";
   };
 
   const handleVerify = async () => {
@@ -29,7 +48,7 @@ export default function VerifyEmail() {
     try {
       setLoading(true);
 
-      const email = localStorage.getItem("email");
+      const email = resolveVerificationEmail();
       if (!email) throw new Error("ما في إيميل محفوظ، ارجع سجل من جديد");
 
       const res = await fetch(apiUrl("/api/auth/verify-email"), {
@@ -68,7 +87,7 @@ export default function VerifyEmail() {
     try {
       setResending(true);
 
-      const email = localStorage.getItem("email");
+      const email = resolveVerificationEmail();
       if (!email) throw new Error("ما في إيميل محفوظ");
 
       const res = await fetch(apiUrl("/api/auth/resend-verification"), {
@@ -100,7 +119,9 @@ export default function VerifyEmail() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background px-6">
+    <div
+      className={`min-h-[100dvh] flex flex-col items-center justify-center bg-background px-6 ${SETTINGS_IMMERSIVE_BOTTOM}`}
+    >
       <h1 className="text-xl font-bold mb-2">أدخل رمز التفعيل</h1>
 
       <p className="text-sm text-muted-foreground mb-6 text-center">

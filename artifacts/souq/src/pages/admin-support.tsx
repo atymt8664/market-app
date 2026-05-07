@@ -1,12 +1,32 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
+import {
+  ExternalLink,
+  Headphones,
+  Loader2,
+  Megaphone,
+  MessageSquare,
+  Search,
+  Send,
+  User,
+} from "lucide-react";
 import {
   adminLogout,
   replyAdminSupportTicket,
   updateAdminSupportTicket,
 } from "@/features/admin/api";
+import {
+  ADMIN_ROW_ACTION_BASE,
+  ADMIN_TABLE_ROW,
+  BTN_FIX,
+  BTN_MODAL_GHOST,
+  BTN_SEARCH,
+  CARD_SHELL,
+  SURFACE_TABLE_WRAP,
+  adminPillBtn,
+} from "@/features/admin/admin-interaction-classes";
 import { AdminShell } from "@/features/admin/components/admin-shell";
 import {
   useAdminDashboard,
@@ -16,6 +36,20 @@ import {
 } from "@/features/admin/hooks";
 import type { AdminSupportTicket } from "@/features/admin/types";
 import { useToast } from "@/hooks/use-toast";
+import { apiUrl } from "@/lib/api-url";
+import { AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
+import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 const STATUS_OPTIONS = [
   { key: "all", label: "الكل" },
@@ -23,7 +57,20 @@ const STATUS_OPTIONS = [
   { key: "pending", label: "قيد المعالجة" },
   { key: "resolved", label: "تم الحل" },
   { key: "closed", label: "مغلقة" },
-];
+] as const;
+
+function mediaSrc(url: string | null | undefined): string | undefined {
+  if (!url?.trim()) return undefined;
+  const u = url.trim();
+  if (/^https?:\/\//i.test(u)) return u;
+  return apiUrl(u.startsWith("/") ? u : `/${u}`);
+}
+
+function initials(name: string | null | undefined) {
+  if (!name?.trim()) return "?";
+  const parts = name.trim().split(/\s+/).slice(0, 2);
+  return parts.map((p) => p[0]).join("").slice(0, 2);
+}
 
 function priorityLabel(priority: string) {
   if (priority === "low") return "منخفضة";
@@ -41,6 +88,45 @@ function statusLabel(status: string) {
   return status;
 }
 
+function categoryLabel(category: string) {
+  const map: Record<string, string> = {
+    general: "عام",
+    login: "تسجيل الدخول",
+    ad: "إعلان",
+    payment: "دفع",
+    account: "الحساب",
+    other: "أخرى",
+  };
+  return map[category] ?? category;
+}
+
+function statusBadgeClass(status: string) {
+  if (status === "open") return "border-amber-500/45 bg-amber-500/15 text-amber-200";
+  if (status === "pending") return "border-primary/45 bg-primary/15 text-primary";
+  if (status === "resolved") return "border-emerald-500/45 bg-emerald-500/15 text-emerald-200";
+  if (status === "closed") return "border-zinc-600 bg-zinc-800/80 text-zinc-300";
+  return "border-zinc-600 bg-zinc-900/70 text-zinc-300";
+}
+
+function priorityBadgeClass(priority: string) {
+  if (priority === "urgent") return "border-red-500/45 bg-red-950/35 text-red-200";
+  if (priority === "high") return "border-orange-500/45 bg-orange-950/30 text-orange-200";
+  if (priority === "normal") return "border-primary/35 bg-primary/10 text-primary";
+  return "border-zinc-600 bg-zinc-800/70 text-zinc-300";
+}
+
+function formatTicketDate(iso: string | null) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" });
+  } catch {
+    return iso;
+  }
+}
+
+const inputClass =
+  "w-full rounded-2xl border border-primary/30 bg-zinc-900/90 px-4 py-2.5 text-sm text-foreground outline-none ring-1 ring-primary/5 transition placeholder:text-muted-foreground focus:border-primary/55 focus:ring-2 focus:ring-primary/25";
+
 export default function AdminSupportPage() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
@@ -52,24 +138,38 @@ export default function AdminSupportPage() {
   const [status, setStatus] = useState("all");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [selectedTicket, setSelectedTicket] = useState<AdminSupportTicket | null>(
-    null,
-  );
+  const [selectedTicket, setSelectedTicket] = useState<AdminSupportTicket | null>(null);
   const [reply, setReply] = useState("");
+  const [pendingCloseConfirm, setPendingCloseConfirm] = useState(false);
 
   const ticketsQuery = useAdminSupportTickets({ status, q: search });
   const messagesQuery = useAdminSupportMessages(selectedTicket?.id ?? null);
 
   const visibleTickets = useMemo(() => ticketsQuery.data ?? [], [ticketsQuery.data]);
 
-  const refresh = async () => {
+  const mergeTicketFromCache = useCallback(
+    (ticketId: number) => {
+      const list = queryClient.getQueryData<AdminSupportTicket[]>([
+        "admin",
+        "support",
+        "tickets",
+        status,
+        search,
+      ]);
+      return list?.find((t) => t.id === ticketId);
+    },
+    [queryClient, status, search],
+  );
+
+  const refresh = async (messageTicketId?: number | null) => {
+    await queryClient.invalidateQueries({ queryKey: ["admin", "support", "tickets"] });
     await queryClient.invalidateQueries({
-      queryKey: ["admin", "support", "tickets"],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["admin", "support", "messages", selectedTicket?.id ?? null],
+      queryKey: ["admin", "support", "messages", messageTicketId ?? selectedTicket?.id ?? null],
     });
     await queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+    await queryClient.refetchQueries({
+      queryKey: ["admin", "support", "tickets", status, search],
+    });
   };
 
   const patchMutation = useMutation({
@@ -83,8 +183,16 @@ export default function AdminSupportPage() {
         priority?: "low" | "normal" | "high" | "urgent";
       };
     }) => updateAdminSupportTicket(id, payload),
-    onSuccess: async () => {
-      await refresh();
+    onSuccess: async (_, variables) => {
+      setSelectedTicket((prev) =>
+        prev && prev.id === variables.id ? { ...prev, ...variables.payload } : prev,
+      );
+      await refresh(variables.id);
+      setSelectedTicket((prev) => {
+        if (!prev || prev.id !== variables.id) return prev;
+        const fromCache = mergeTicketFromCache(variables.id);
+        return fromCache ? { ...prev, ...fromCache } : prev;
+      });
       toast({
         title: "تم تحديث التذكرة",
         description: "تم حفظ التغييرات بنجاح",
@@ -102,9 +210,20 @@ export default function AdminSupportPage() {
   const replyMutation = useMutation({
     mutationFn: ({ id, message }: { id: number; message: string }) =>
       replyAdminSupportTicket(id, message),
-    onSuccess: async () => {
+    onSuccess: async (_, variables) => {
       setReply("");
-      await refresh();
+      setSelectedTicket((prev) =>
+        prev && prev.id === variables.id ? { ...prev, status: "pending" } : prev,
+      );
+      await refresh(variables.id);
+      await queryClient.invalidateQueries({
+        queryKey: ["admin", "support", "messages", variables.id],
+      });
+      setSelectedTicket((prev) => {
+        if (!prev || prev.id !== variables.id) return prev;
+        const fromCache = mergeTicketFromCache(variables.id);
+        return fromCache ? { ...prev, ...fromCache } : prev;
+      });
       toast({
         title: "تم إرسال الرد",
         description: "تم نشر الرد على التذكرة",
@@ -124,75 +243,137 @@ export default function AdminSupportPage() {
     navigate("/admin-login");
   };
 
+  const closeTicketModal = useCallback(() => {
+    setSelectedTicket(null);
+    setReply("");
+    setPendingCloseConfirm(false);
+  }, []);
+
+  const sortedMessages = useMemo(() => {
+    const arr = [...(messagesQuery.data ?? [])];
+    arr.sort(
+      (a, b) =>
+        new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime(),
+    );
+    return arr;
+  }, [messagesQuery.data]);
+
+  const initialMessageText = sortedMessages[0]?.message ?? null;
+
+  useEffect(() => {
+    if (!selectedTicket) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeTicketModal();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedTicket, closeTicketModal]);
+
+  const actionPending = patchMutation.isPending || replyMutation.isPending;
+
+  const confirmCloseTicket = () => {
+    if (!selectedTicket) return;
+    patchMutation.mutate(
+      { id: selectedTicket.id, payload: { status: "closed" } },
+      { onSettled: () => setPendingCloseConfirm(false) },
+    );
+  };
+
   if (meQuery.isLoading) {
     return (
-      <div className="min-h-screen bg-[#070b16] text-slate-200 flex items-center justify-center">
-        جاري التحميل...
+      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] text-muted-foreground" dir="rtl">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
       </div>
     );
   }
 
   return (
     <AdminShell activeKey="support" onLogout={handleLogout}>
-      <div className="space-y-4">
-        <header className="rounded-2xl border border-slate-800 bg-[#0d1324] px-5 py-4">
-          <h1 className="text-2xl font-semibold">الدعم والمساعدة</h1>
-          <p className="text-sm text-slate-400">
-            إدارة تذاكر المستخدمين والرد على الاستفسارات
-          </p>
+      <div className="space-y-6" dir="rtl">
+        <header
+          className={cn(
+            "flex flex-col gap-4 rounded-2xl border border-primary/40 bg-zinc-950/75 px-5 py-5 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 sm:flex-row sm:items-center sm:justify-between",
+          )}
+        >
+          <div className="space-y-1 text-right">
+            <h1 className={cn(AUTH_HEADER_TITLE, "text-2xl md:text-[1.65rem]")}>الدعم والمساعدة</h1>
+            <p className="text-sm text-muted-foreground">إدارة تذاكر المستخدمين والرد على الاستفسارات</p>
+          </div>
+          <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-zinc-900/90 px-3 py-1.5 text-xs text-muted-foreground ring-1 ring-primary/10">
+            <Headphones className="h-3.5 w-3.5 text-primary" aria-hidden />
+            {visibleTickets.length.toLocaleString("ar-EG")} تذكرة في العرض
+          </span>
         </header>
 
-        <section className="rounded-2xl border border-slate-800 bg-[#0d1324] p-4">
-          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
-              <p className="text-xs text-slate-400">مفتوحة</p>
-              <p className="mt-1 text-xl font-semibold text-amber-300">{Number(supportStatusCounts.open ?? 0)}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
-              <p className="text-xs text-slate-400">قيد المعالجة</p>
-              <p className="mt-1 text-xl font-semibold text-blue-300">{Number(supportStatusCounts.pending ?? 0)}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
-              <p className="text-xs text-slate-400">تم الحل</p>
-              <p className="mt-1 text-xl font-semibold text-emerald-300">{Number(supportStatusCounts.resolved ?? 0)}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-3">
-              <p className="text-xs text-slate-400">مغلقة</p>
-              <p className="mt-1 text-xl font-semibold text-slate-200">{Number(supportStatusCounts.closed ?? 0)}</p>
-            </div>
+        <section className={cn(CARD_SHELL, "p-4 sm:p-5")}>
+          <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {(
+              [
+                ["open", "مفتوحة", supportStatusCounts.open],
+                ["pending", "قيد المعالجة", supportStatusCounts.pending],
+                ["resolved", "تم الحل", supportStatusCounts.resolved],
+                ["closed", "مغلقة", supportStatusCounts.closed],
+              ] as const
+            ).map(([key, label, count]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setStatus(key)}
+                className={cn(
+                  BTN_FIX,
+                  "rounded-2xl border p-3 text-right transition-all duration-150 ease-out active:scale-[0.98]",
+                  "hover:border-primary/45 hover:shadow-[0_0_18px_-10px_hsl(var(--primary)/0.18)]",
+                  status === key
+                    ? "border-primary/45 bg-primary/10 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15"
+                    : "border-primary/20 bg-zinc-900/50 ring-1 ring-primary/5",
+                )}
+              >
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p
+                  className={cn(
+                    "mt-1 text-xl font-semibold tabular-nums",
+                    key === "open" && "text-amber-200",
+                    key === "pending" && "text-primary",
+                    key === "resolved" && "text-emerald-200",
+                    key === "closed" && "text-zinc-200",
+                  )}
+                >
+                  {Number(count ?? 0).toLocaleString("ar-EG")}
+                </p>
+              </button>
+            ))}
           </div>
-          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+
+          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <form
-              className="flex w-full max-w-xl gap-2"
+              className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-center"
               onSubmit={(e) => {
                 e.preventDefault();
                 setSearch(searchInput.trim());
               }}
             >
-              <input
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="ابحث بالمستخدم أو العنوان أو النوع..."
-                className="w-full rounded-xl border border-slate-700 bg-[#0a1020] px-4 py-2 text-sm outline-none focus:border-indigo-400"
-              />
-              <button
-                type="submit"
-                className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white"
-              >
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="ابحث بالمستخدم أو العنوان أو النوع..."
+                  className={cn(inputClass, "pr-10")}
+                  aria-label="بحث في التذاكر"
+                />
+              </div>
+              <Button type="submit" className={BTN_SEARCH}>
                 بحث
-              </button>
+              </Button>
             </form>
+
             <div className="flex flex-wrap gap-2">
               {STATUS_OPTIONS.map((item) => (
                 <button
                   key={item.key}
                   type="button"
                   onClick={() => setStatus(item.key)}
-                  className={`rounded-lg px-3 py-1 text-sm ${
-                    status === item.key
-                      ? "bg-indigo-500/20 text-indigo-200"
-                      : "bg-[#0a1020] text-slate-300 hover:bg-slate-800"
-                  }`}
+                  className={adminPillBtn(status === item.key)}
                 >
                   {item.label}
                 </button>
@@ -201,30 +382,31 @@ export default function AdminSupportPage() {
           </div>
 
           {ticketsQuery.isLoading ? (
-            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-8 text-center text-slate-300">
+            <div className="flex items-center justify-center gap-2 rounded-2xl border border-primary/25 bg-zinc-900/40 py-12 text-muted-foreground ring-1 ring-primary/10">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
               جاري تحميل التذاكر...
             </div>
           ) : ticketsQuery.isError ? (
-            <div className="rounded-xl border border-red-700/40 bg-red-950/20 p-8 text-center text-red-200">
+            <div className="rounded-2xl border border-red-500/35 bg-red-950/25 px-4 py-10 text-center text-sm text-red-200 ring-1 ring-red-500/20">
               تعذر تحميل التذاكر. حاول مرة أخرى.
             </div>
           ) : visibleTickets.length === 0 ? (
-            <div className="rounded-xl border border-slate-800 bg-[#0a1020] p-8 text-center text-slate-300">
+            <div className="rounded-2xl border border-dashed border-primary/30 bg-zinc-900/40 py-12 text-center text-sm text-muted-foreground">
               لا توجد تذاكر وفق عوامل البحث الحالية.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1100px] text-sm">
-                <thead className="text-slate-400">
-                  <tr className="border-b border-slate-800">
-                    <th className="px-2 py-2 text-right">رقم التذكرة</th>
-                    <th className="px-2 py-2 text-right">المستخدم</th>
-                    <th className="px-2 py-2 text-right">النوع</th>
-                    <th className="px-2 py-2 text-right">العنوان</th>
-                    <th className="px-2 py-2 text-right">الحالة</th>
-                    <th className="px-2 py-2 text-right">الأولوية</th>
-                    <th className="px-2 py-2 text-right">التاريخ</th>
-                    <th className="px-2 py-2 text-right">الإجراءات</th>
+            <div className={SURFACE_TABLE_WRAP}>
+              <table className="w-full min-w-[1080px] text-sm">
+                <thead className="border-b border-primary/25 bg-zinc-900/50 text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-3 text-right font-medium">#</th>
+                    <th className="px-3 py-3 text-right font-medium">المستخدم</th>
+                    <th className="px-3 py-3 text-right font-medium">النوع</th>
+                    <th className="px-3 py-3 text-right font-medium">العنوان</th>
+                    <th className="px-3 py-3 text-right font-medium">الحالة</th>
+                    <th className="px-3 py-3 text-right font-medium">الأولوية</th>
+                    <th className="px-3 py-3 text-right font-medium">التاريخ</th>
+                    <th className="px-3 py-3 text-center font-medium">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -232,26 +414,58 @@ export default function AdminSupportPage() {
                     <tr
                       key={ticket.id}
                       onClick={() => setSelectedTicket(ticket)}
-                      className="cursor-pointer border-b border-slate-900/70 transition hover:bg-slate-900/60"
+                      className={cn("cursor-pointer last:border-0", ADMIN_TABLE_ROW)}
                     >
-                      <td className="px-2 py-3">{ticket.id}</td>
-                      <td className="px-2 py-3">
-                        <p>{ticket.userName || "?"}</p>
-                        <p className="text-xs text-slate-400">{ticket.userEmail || "?"}</p>
+                      <td className="px-3 py-3 align-middle tabular-nums text-muted-foreground">{ticket.id}</td>
+                      <td className="px-3 py-3 align-middle">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-9 w-9 shrink-0 border border-primary/25 ring-1 ring-primary/10">
+                            <AvatarImage src={mediaSrc(ticket.userAvatarUrl)} alt="" className="object-cover" />
+                            <AvatarFallback className="bg-zinc-800 text-[10px] font-semibold text-primary">
+                              {initials(ticket.userName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 text-right">
+                            <p className="line-clamp-1 font-medium text-foreground">{ticket.userName || "—"}</p>
+                            <p className="text-[11px] text-muted-foreground">{ticket.userEmail || "—"}</p>
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-2 py-3">{ticket.category}</td>
-                      <td className="px-2 py-3">{ticket.subject}</td>
-                      <td className="px-2 py-3">{statusLabel(ticket.status)}</td>
-                      <td className="px-2 py-3">{priorityLabel(ticket.priority)}</td>
-                      <td className="px-2 py-3">
-                        {ticket.createdAt
-                          ? new Date(ticket.createdAt).toLocaleString()
-                          : "?"}
+                      <td className="px-3 py-3 align-middle">{categoryLabel(ticket.category)}</td>
+                      <td className="max-w-[220px] px-3 py-3 align-middle">
+                        <p className="line-clamp-2 font-medium text-foreground">{ticket.subject}</p>
                       </td>
-                      <td className="px-2 py-3">
+                      <td className="px-3 py-3 align-middle">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                            statusBadgeClass(ticket.status),
+                          )}
+                        >
+                          {statusLabel(ticket.status)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 align-middle">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                            priorityBadgeClass(ticket.priority),
+                          )}
+                        >
+                          {priorityLabel(ticket.priority)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 align-middle whitespace-nowrap text-[13px] text-muted-foreground">
+                        {formatTicketDate(ticket.createdAt)}
+                      </td>
+                      <td className="px-3 py-3 align-middle" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
-                          className="rounded-lg bg-slate-700 px-2 py-1 text-xs text-white"
+                          onClick={() => setSelectedTicket(ticket)}
+                          className={cn(
+                            ADMIN_ROW_ACTION_BASE,
+                            "border-primary/40 bg-primary/10 text-primary hover:border-primary/55 hover:bg-primary/18",
+                          )}
                         >
                           التفاصيل
                         </button>
@@ -267,101 +481,234 @@ export default function AdminSupportPage() {
 
       {selectedTicket &&
         createPortal(
-          <div className="fixed inset-0 z-50 bg-black/60">
-            <button
-              type="button"
-              onClick={() => setSelectedTicket(null)}
-              className="absolute inset-0 h-full w-full cursor-default"
-            />
-            <div className="absolute inset-y-0 right-0 w-full max-w-xl overflow-y-auto border-l border-slate-800 bg-[#0d1324] p-5 shadow-2xl">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">تفاصيل #{selectedTicket.id}</h2>
+          <div
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4 backdrop-blur-[2px]"
+            onClick={() => closeTicketModal()}
+            role="presentation"
+          >
+            <div
+              className={cn(
+                CARD_SHELL,
+                "max-h-[92vh] w-full max-w-2xl overflow-y-auto p-5 shadow-[0_0_40px_-16px_hsl(var(--primary)/0.45)]",
+              )}
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="admin-support-detail-title"
+              dir="rtl"
+            >
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h2 id="admin-support-detail-title" className="text-xl font-semibold text-foreground">
+                    تذكرة #{selectedTicket.id}
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {formatTicketDate(selectedTicket.createdAt)}
+                    {selectedTicket.updatedAt ? (
+                      <span className="mr-2 text-[13px]">
+                        · آخر تحديث: {formatTicketDate(selectedTicket.updatedAt)}
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setSelectedTicket(null)}
-                  className="rounded-lg bg-slate-700 px-3 py-1 text-sm"
+                  onClick={() => closeTicketModal()}
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), BTN_MODAL_GHOST, "shrink-0")}
                 >
                   إغلاق
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-                <p><span className="text-slate-400">المستخدم:</span> {selectedTicket.userName || "?"}</p>
-                <p><span className="text-slate-400">البريد:</span> {selectedTicket.userEmail || "?"}</p>
-                <p><span className="text-slate-400">النوع:</span> {selectedTicket.category}</p>
-                <p><span className="text-slate-400">الحالة:</span> {statusLabel(selectedTicket.status)}</p>
-                <p><span className="text-slate-400">الأولوية:</span> {priorityLabel(selectedTicket.priority)}</p>
-                <p><span className="text-slate-400">رقم الإعلان:</span> {selectedTicket.relatedAdId || "?"}</p>
-                <p><span className="text-slate-400">رقم المستخدم:</span> {selectedTicket.relatedUserId || "?"}</p>
-                <p><span className="text-slate-400">التاريخ:</span> {selectedTicket.createdAt ? new Date(selectedTicket.createdAt).toLocaleString() : "?"}</p>
+              <div className={cn(CARD_SHELL, "mb-4 p-4")}>
+                <p className="mb-3 text-xs font-medium text-muted-foreground">المستخدم</p>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-14 w-14 border border-primary/30 ring-1 ring-primary/10">
+                    <AvatarImage src={mediaSrc(selectedTicket.userAvatarUrl)} alt="" className="object-cover" />
+                    <AvatarFallback className="bg-zinc-800 text-lg font-semibold text-primary">
+                      {initials(selectedTicket.userName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground">{selectedTicket.userName || "—"}</p>
+                    <p className="break-all text-sm text-muted-foreground">{selectedTicket.userEmail || "—"}</p>
+                    <p className="text-[11px] text-muted-foreground">معرّف المستخدم: {selectedTicket.userId}</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-4 rounded-xl border border-slate-800 bg-[#0a1020] p-3">
-                <p className="mb-2 text-xs text-slate-400">العنوان</p>
-                <p className="text-sm">{selectedTicket.subject}</p>
+              <div className="mb-4 flex flex-wrap gap-2">
+                <span
+                  className={cn(
+                    "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
+                    statusBadgeClass(selectedTicket.status),
+                  )}
+                >
+                  {statusLabel(selectedTicket.status)}
+                </span>
+                <span
+                  className={cn(
+                    "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
+                    priorityBadgeClass(selectedTicket.priority),
+                  )}
+                >
+                  أولوية: {priorityLabel(selectedTicket.priority)}
+                </span>
+                <span className="inline-flex rounded-full border border-primary/25 bg-zinc-900/60 px-2.5 py-1 text-xs text-muted-foreground">
+                  النوع: {categoryLabel(selectedTicket.category)}
+                </span>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                {(["open", "pending", "resolved", "closed"] as const).map((item) => (
+              <div className="mb-4 rounded-2xl border border-primary/25 bg-zinc-900/50 p-4 ring-1 ring-primary/10">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">عنوان الطلب</p>
+                <p className="text-sm font-medium text-foreground">{selectedTicket.subject}</p>
+              </div>
+
+              <div className="mb-4 rounded-2xl border border-primary/25 bg-zinc-900/50 p-4 ring-1 ring-primary/10">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">محتوى الطلب (أول رسالة)</p>
+                {messagesQuery.isLoading ? (
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    جاري تحميل المحتوى...
+                  </p>
+                ) : messagesQuery.isError ? (
+                  <p className="text-sm text-red-300">تعذر تحميل نص الطلب من الرسائل</p>
+                ) : initialMessageText ? (
+                  <p className="text-sm leading-relaxed text-foreground">{initialMessageText}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">لا توجد رسائل مسجّلة لهذه التذكرة بعد.</p>
+                )}
+              </div>
+
+              <div className="mb-4 flex flex-wrap gap-2 border-t border-primary/15 pt-4">
+                <p className="w-full text-xs font-medium text-muted-foreground">تغيير الحالة</p>
+                {(["open", "pending", "resolved"] as const).map((item) => (
                   <button
                     key={item}
                     type="button"
-                    disabled={patchMutation.isPending || replyMutation.isPending}
+                    disabled={actionPending || selectedTicket.status === item}
                     onClick={() =>
                       patchMutation.mutate({
                         id: selectedTicket.id,
                         payload: { status: item },
                       })
                     }
-                    className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-60"
+                    className={cn(
+                      ADMIN_ROW_ACTION_BASE,
+                      item === "open" && "border-amber-500/45 bg-amber-600/12 text-amber-100",
+                      item === "pending" && "border-primary/40 bg-primary/10 text-primary",
+                      item === "resolved" && "border-emerald-500/45 bg-emerald-600/15 text-emerald-200",
+                    )}
                   >
-                    {item === "open"
-                      ? "مفتوحة"
-                      : item === "pending"
-                        ? "قيد المعالجة"
-                        : item === "resolved"
-                          ? "تم الحل"
-                          : "مغلقة"}
+                    {item === "open" ? "مفتوحة" : item === "pending" ? "قيد المعالجة" : "تم الحل"}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  disabled={actionPending || selectedTicket.status === "closed"}
+                  onClick={() => setPendingCloseConfirm(true)}
+                  className={cn(
+                    ADMIN_ROW_ACTION_BASE,
+                    "border-zinc-600 bg-zinc-800/90 text-zinc-200 hover:border-red-500/40 hover:bg-red-950/30 hover:text-red-200",
+                  )}
+                >
+                  إغلاق التذكرة
+                </button>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="mb-4 flex flex-wrap gap-2">
+                <p className="w-full text-xs font-medium text-muted-foreground">الأولوية</p>
                 {(["low", "normal", "high", "urgent"] as const).map((item) => (
                   <button
                     key={item}
                     type="button"
-                    disabled={patchMutation.isPending || replyMutation.isPending}
+                    disabled={actionPending || selectedTicket.priority === item}
                     onClick={() =>
                       patchMutation.mutate({
                         id: selectedTicket.id,
                         payload: { priority: item },
                       })
                     }
-                    className="rounded-lg bg-amber-600 px-3 py-2 text-sm text-white disabled:opacity-60"
+                    className={cn(ADMIN_ROW_ACTION_BASE, "border-primary/25 bg-zinc-900/70 text-foreground hover:border-primary/40")}
                   >
-                    أولوية {priorityLabel(item)}
+                    {priorityLabel(item)}
                   </button>
                 ))}
               </div>
 
-              <div className="mt-4 rounded-xl border border-slate-800 bg-[#0a1020] p-3">
-                <p className="mb-2 text-xs text-slate-400">الردود</p>
+              <div className="mb-4 flex flex-wrap gap-2 border-t border-primary/15 pt-4">
+                {selectedTicket.relatedAdId ? (
+                  <>
+                    <a
+                      href={`/ad/${selectedTicket.relatedAdId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(buttonVariants({ variant: "outline", size: "sm" }), BTN_MODAL_GHOST)}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                      صفحة الإعلان
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/admin/ads?focusId=${selectedTicket.relatedAdId}`)}
+                      className={cn(buttonVariants({ variant: "outline", size: "sm" }), BTN_MODAL_GHOST)}
+                    >
+                      <Megaphone className="h-3.5 w-3.5" aria-hidden />
+                      في لوحة الإعلانات
+                    </button>
+                  </>
+                ) : null}
+                {selectedTicket.relatedUserId ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/admin/users/${selectedTicket.relatedUserId}`)}
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), BTN_MODAL_GHOST)}
+                  >
+                    <User className="h-3.5 w-3.5" aria-hidden />
+                    مستخدم مرتبط #{selectedTicket.relatedUserId}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => navigate(`/admin/users/${selectedTicket.userId}`)}
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), BTN_MODAL_GHOST)}
+                >
+                  <User className="h-3.5 w-3.5" aria-hidden />
+                  صفحة المستخدم (صاحب التذكرة)
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-primary/25 bg-zinc-900/40 p-4 ring-1 ring-primary/10">
+                <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <MessageSquare className="h-4 w-4 text-primary" aria-hidden />
+                  المحادثة
+                </p>
                 {messagesQuery.isLoading ? (
-                  <p className="text-sm text-slate-400">جاري تحميل الرسائل...</p>
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    جاري تحميل الرسائل...
+                  </p>
                 ) : messagesQuery.isError ? (
                   <p className="text-sm text-red-300">تعذر تحميل الرسائل</p>
-                ) : (messagesQuery.data ?? []).length === 0 ? (
-                  <p className="text-sm text-slate-400">لا توجد رسائل بعد</p>
+                ) : sortedMessages.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">لا توجد رسائل بعد</p>
                 ) : (
-                  <div className="space-y-2">
-                    {messagesQuery.data?.map((msg) => (
-                      <div key={msg.id} className="rounded-lg border border-slate-700 bg-slate-900/40 p-2 text-sm">
-                        <p className="text-xs text-slate-400">
-                          {msg.adminId ? "المدير" : "المستخدم"} •{" "}
-                          {msg.createdAt ? new Date(msg.createdAt).toLocaleString() : "?"}
+                  <div className="max-h-64 space-y-2 overflow-y-auto">
+                    {sortedMessages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={cn(
+                          "rounded-xl border p-3 text-sm ring-1",
+                          msg.adminId
+                            ? "border-primary/35 bg-primary/10 ring-primary/15"
+                            : "border-primary/20 bg-zinc-900/70 ring-primary/5",
+                        )}
+                      >
+                        <p className="text-[11px] text-muted-foreground">
+                          {msg.adminId ? "الإدارة" : "المستخدم"} ·{" "}
+                          {formatTicketDate(msg.createdAt)}
                         </p>
-                        <p className="mt-1">{msg.message}</p>
+                        <p className="mt-1 whitespace-pre-wrap leading-relaxed text-foreground">{msg.message}</p>
                       </div>
                     ))}
                   </div>
@@ -369,7 +716,7 @@ export default function AdminSupportPage() {
               </div>
 
               <form
-                className="mt-3 flex gap-2"
+                className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end"
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (!reply.trim()) return;
@@ -382,21 +729,70 @@ export default function AdminSupportPage() {
                 <input
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
-                  placeholder="اكتب ردك هنا..."
-                  className="w-full rounded-xl border border-slate-700 bg-[#0a1020] px-3 py-2 text-sm outline-none focus:border-indigo-400"
+                  placeholder="اكتب رد الإدارة هنا..."
+                  className={cn(inputClass, "flex-1")}
+                  aria-label="رد على التذكرة"
                 />
                 <button
                   type="submit"
                   disabled={replyMutation.isPending || !reply.trim()}
-                  className="rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white disabled:opacity-60"
+                  className={cn(buttonVariants(), BTN_SEARCH, "shrink-0 sm:min-w-[7rem]")}
                 >
-                  {replyMutation.isPending ? "..." : "الرد"}
+                  {replyMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" aria-hidden />
+                      إرسال
+                    </>
+                  )}
                 </button>
               </form>
             </div>
           </div>,
           document.body,
         )}
+
+      <AlertDialog open={pendingCloseConfirm} onOpenChange={setPendingCloseConfirm}>
+        <AlertDialogContent
+          dir="rtl"
+          className="z-[100] max-w-md rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
+        >
+          <AlertDialogHeader className="space-y-2 text-right sm:text-right">
+            <AlertDialogTitle className="text-lg font-semibold text-foreground">تأكيد إغلاق التذكرة</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
+              سيتم وضع التذكرة في حالة «مغلقة». يمكنك فتحها لاحقاً بتغيير الحالة إذا لزم.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-row-reverse flex-wrap gap-2 sm:flex-row-reverse sm:justify-start sm:gap-2 sm:space-x-0">
+            <AlertDialogCancel
+              className={cn(
+                buttonVariants({ variant: "outline", size: "default" }),
+                BTN_MODAL_GHOST,
+                "mt-0 bg-zinc-900/80 hover:bg-zinc-900",
+              )}
+            >
+              إلغاء
+            </AlertDialogCancel>
+            <button
+              type="button"
+              disabled={patchMutation.isPending}
+              title={patchMutation.isPending ? "جاري المعالجة..." : undefined}
+              className={cn(
+                buttonVariants({ variant: "destructive", size: "default" }),
+                BTN_FIX,
+                "inline-flex gap-2 rounded-2xl border-red-500/50 shadow-[0_0_18px_-10px_rgba(220,38,38,0.35)]",
+              )}
+              onClick={() => confirmCloseTicket()}
+            >
+              {patchMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : null}
+              إغلاق التذكرة
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminShell>
   );
 }

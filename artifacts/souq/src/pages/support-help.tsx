@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { ArrowRight, Ticket } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -16,6 +16,7 @@ import {
   SETTINGS_FIELD,
   SETTINGS_HEADER_BAR,
   SETTINGS_HEADER_INNER,
+  SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_INPUT,
   SETTINGS_LABEL,
   SETTINGS_MAIN_COLUMN,
@@ -69,6 +70,15 @@ export default function SupportHelpPage() {
   const [relatedUserId, setRelatedUserId] = useState("");
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
 
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const tid = params.get("ticket");
+    if (tid && /^\d+$/.test(tid)) {
+      const id = Number.parseInt(tid, 10);
+      if (Number.isInteger(id) && id > 0) setSelectedTicketId(id);
+    }
+  }, [search]);
+
   const parseOptionalId = (value: string): number | null => {
     const trimmed = value.trim();
     if (!trimmed) return null;
@@ -111,7 +121,7 @@ export default function SupportHelpPage() {
   });
 
   return (
-    <div className={`flex flex-col ${SETTINGS_PAGE_BG} pb-8`}>
+    <div className={`flex flex-col ${SETTINGS_PAGE_BG}`}>
       <header className={SETTINGS_HEADER_BAR} dir="rtl">
         <div className={SETTINGS_HEADER_INNER}>
           <h1 className={SETTINGS_PAGE_TITLE}>المساعدة والدعم</h1>
@@ -128,7 +138,7 @@ export default function SupportHelpPage() {
         </div>
       </header>
 
-      <main className={`${SETTINGS_MAIN_COLUMN} flex-1 space-y-4 pb-10`} dir="rtl">
+      <main className={`${SETTINGS_MAIN_COLUMN} flex-1 space-y-4 ${SETTINGS_IMMERSIVE_BOTTOM}`} dir="rtl">
         <div className={SETTINGS_CARD}>
           <h2 className={`${SETTINGS_CARD_TITLE} mb-4`}>إنشاء تذكرة دعم</h2>
           <form

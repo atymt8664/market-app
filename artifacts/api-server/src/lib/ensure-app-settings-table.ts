@@ -10,8 +10,8 @@ export async function ensureAppSettingsTable() {
         create table if not exists app_settings (
           id integer primary key default 1,
           app_name text not null default 'سوق العرب EU',
-          app_version text not null default '2.0.0',
-          support_email text not null default 'support@souq-arab.eu',
+          app_version text not null default '1.0.0',
+          support_email text not null default 'souqarab.market@gmail.com',
           require_ad_approval boolean not null default true,
           reports_enabled boolean not null default true,
           support_enabled boolean not null default true,
@@ -37,7 +37,7 @@ export async function ensureAppSettingsTable() {
           terms_path,
           privacy_path
         )
-        values (1, 'سوق العرب EU', '2.0.0', 'support@souq-arab.eu', true, true, true, '/terms', '/privacy')
+        values (1, 'سوق العرب EU', '1.0.0', 'souqarab.market@gmail.com', true, true, true, '/terms', '/privacy')
         on conflict (id) do nothing
       `);
       await db.execute(sql`
@@ -53,21 +53,23 @@ export async function ensureAppSettingsTable() {
       `);
       await db.execute(sql`
         update app_settings
-        set app_version = '2.0.0'
+        set app_version = '1.0.0'
         where id = 1
           and (
             app_version is null
             or trim(app_version) = ''
             or app_version like 'admin-%'
+            or app_version like '2.%'
           )
       `);
       await db.execute(sql`
         update app_settings
-        set support_email = 'support@souq-arab.eu'
+        set support_email = 'souqarab.market@gmail.com'
         where id = 1
           and (
             support_email is null
             or trim(support_email) = ''
+            or lower(trim(support_email)) = 'support@souq-arab.eu'
           )
       `);
       await db.execute(sql`

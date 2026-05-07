@@ -11,12 +11,15 @@ import {
   usersTable,
 } from "@workspace/db";
 import { and, asc, count, desc, eq, gte, ilike, inArray, or, sql } from "drizzle-orm";
-import { boolean, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { alias, boolean, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { ensureAdminLogsReady, getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
 import { ensureCategoryAdminColumns } from "../lib/ensure-category-admin-columns";
 import { ensureCityAdminColumns } from "../lib/ensure-city-admin-columns";
 import { ensureAppSettingsTable } from "../lib/ensure-app-settings-table";
-import { requireAdmin } from "../middlewares/require-admin";
+import { requireAdmin, requireAdminCsrf } from "../middlewares/require-admin";
+import { getSessionClearCookieOptions, SESSION_COOKIE_NAME } from "../lib/session-cookie";
+import { createNotification } from "../lib/create-notification";
+import { logger } from "../lib/logger";
 
 const router = Router();
 const citiesTable = pgTable("cities", {
@@ -102,8 +105,8 @@ function normalizePathLike(input: unknown, fallback: string): string {
 
 const SETTINGS_DEFAULTS = {
   appName: "سوق العرب EU",
-  appVersion: "2.0.0",
-  supportEmail: "support@souq-arab.eu",
+  appVersion: "1.0.0",
+  supportEmail: "souqarab.market@gmail.com",
   termsPath: "/terms",
   privacyPath: "/privacy",
 } as const;
@@ -140,6 +143,31 @@ function validateStrongPassword(password: string): boolean {
   );
 }
 
+function reportStatusNotificationPayload(status: string): { type: string; title: string; body: string } | null {
+  if (status === "in_review" || status === "reviewing") {
+    return {
+      type: "report.reviewing",
+      title: "تحديث حالة البلاغ",
+      body: "بلاغك قيد المراجعة",
+    };
+  }
+  if (status === "resolved") {
+    return {
+      type: "report.resolved",
+      title: "تحديث حالة البلاغ",
+      body: "تم حل بلاغك",
+    };
+  }
+  if (status === "ignored" || status === "dismissed" || status === "rejected") {
+    return {
+      type: "report.ignored",
+      title: "تحديث حالة البلاغ",
+      body: "تمت مراجعة بلاغك ولم يتم اتخاذ إجراء إضافي",
+    };
+  }
+  return null;
+}
+
 router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
   const [usersTotal] = await db.select({ c: count() }).from(usersTable);
   const [adsTotal] = await db.select({ c: count() }).from(adsTable);
@@ -148,17 +176,32 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
     .select({ c: sql<number>`coalesce(sum(${adsTable.views}), 0)::int` })
     .from(adsTable);
 
+  const reportReporter = alias(usersTable, "dashboard_report_reporter");
+  const reportAdOwner = alias(usersTable, "dashboard_report_ad_owner");
+  const reportTargetUser = alias(usersTable, "dashboard_report_target_user");
+
   const latestReports = await db
     .select({
       id: reportsTable.id,
       reason: reportsTable.reason,
       status: reportsTable.status,
       createdAt: reportsTable.createdAt,
-      reporterName: usersTable.name,
+      reporterName: reportReporter.name,
+      reporterAvatarUrl: reportReporter.avatarUrl,
       targetAdId: reportsTable.targetAdId,
+      targetUserId: reportsTable.targetUserId,
+      targetAdTitle: adsTable.title,
+      targetAdSellerName: adsTable.sellerName,
+      targetAdOwnerAvatarUrl: reportAdOwner.avatarUrl,
+      targetAdOwnerName: reportAdOwner.name,
+      targetProfileName: reportTargetUser.name,
+      targetProfileAvatarUrl: reportTargetUser.avatarUrl,
     })
     .from(reportsTable)
-    .leftJoin(usersTable, eq(usersTable.id, reportsTable.reporterId))
+    .leftJoin(reportReporter, eq(reportReporter.id, reportsTable.reporterId))
+    .leftJoin(adsTable, eq(adsTable.id, reportsTable.targetAdId))
+    .leftJoin(reportAdOwner, eq(reportAdOwner.id, adsTable.userId))
+    .leftJoin(reportTargetUser, eq(reportTargetUser.id, reportsTable.targetUserId))
     .orderBy(desc(reportsTable.createdAt))
     .limit(8);
 
@@ -228,6 +271,7 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
     newUsersTodayRow,
     publishedTodayAdsRow,
     newReportsRow,
+    featuredAdsCountRow,
     adsStatusCounts,
     reportsStatusCounts,
     supportStatusCounts,
@@ -268,6 +312,11 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
         .select({ value: count(reportsTable.id) })
         .from(reportsTable)
         .where(eq(reportsTable.status, "pending"))
+        .then((rows) => rows[0]),
+      db
+        .select({ value: count(adsTable.id) })
+        .from(adsTable)
+        .where(eq(adsTable.featured, true))
         .then((rows) => rows[0]),
       db
         .select({ status: adsTable.status, value: count(adsTable.id) })
@@ -349,6 +398,7 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
       reportsNew: Number(newReportsRow?.value ?? 0),
       supportOpen: Number(openSupportRow?.value ?? 0),
       adsPublishedToday: Number(publishedTodayAdsRow?.value ?? 0),
+      featuredAdsCount: Number(featuredAdsCountRow?.value ?? 0),
     },
     statusCounts: {
       ads: toStatusMap(adsStatusCounts, ["pending", "approved", "rejected", "hidden"]),
@@ -674,7 +724,7 @@ router.get("/admin/settings", requireAdmin, async (_req, res) => {
   });
 });
 
-router.patch("/admin/settings", requireAdmin, async (req, res) => {
+router.patch("/admin/settings", requireAdmin, requireAdminCsrf, async (req, res) => {
   const appName = normalizeAppName(req.body?.appName);
   const appVersion = normalizeAppVersion(req.body?.appVersion);
   const supportEmail = normalizeSupportEmail(req.body?.supportEmail);
@@ -747,7 +797,7 @@ router.patch("/admin/settings", requireAdmin, async (req, res) => {
   });
 });
 
-router.post("/admin/change-password", requireAdmin, async (req, res) => {
+router.post("/admin/change-password", requireAdmin, requireAdminCsrf, async (req, res) => {
   const body = req.body as {
     currentPassword?: unknown;
     newPassword?: unknown;
@@ -811,7 +861,7 @@ router.post("/admin/change-password", requireAdmin, async (req, res) => {
 
   await new Promise<void>((resolve) => {
     req.session.destroy(() => {
-      res.clearCookie("souq.sid");
+      res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
       res.json({ ok: true, reauthRequired: true });
       resolve();
     });
@@ -820,12 +870,17 @@ router.post("/admin/change-password", requireAdmin, async (req, res) => {
 });
 
 router.get("/admin/reports", requireAdmin, async (_req, res) => {
+  const reportReporter = alias(usersTable, "admin_reports_list_reporter");
+  const reportAdOwner = alias(usersTable, "admin_reports_list_ad_owner");
+  const reportTargetUser = alias(usersTable, "admin_reports_list_target_user");
+
   const reports = await db
     .select({
       id: reportsTable.id,
       reporterId: reportsTable.reporterId,
-      reporterName: usersTable.name,
-      reporterEmail: usersTable.email,
+      reporterName: reportReporter.name,
+      reporterEmail: reportReporter.email,
+      reporterAvatarUrl: reportReporter.avatarUrl,
       targetUserId: reportsTable.targetUserId,
       targetAdId: reportsTable.targetAdId,
       relatedConversationId: reportsTable.relatedConversationId,
@@ -833,9 +888,18 @@ router.get("/admin/reports", requireAdmin, async (_req, res) => {
       description: reportsTable.description,
       status: reportsTable.status,
       createdAt: reportsTable.createdAt,
+      targetAdTitle: adsTable.title,
+      targetAdSellerName: adsTable.sellerName,
+      targetAdOwnerAvatarUrl: reportAdOwner.avatarUrl,
+      targetAdOwnerName: reportAdOwner.name,
+      targetProfileName: reportTargetUser.name,
+      targetProfileAvatarUrl: reportTargetUser.avatarUrl,
     })
     .from(reportsTable)
-    .leftJoin(usersTable, eq(usersTable.id, reportsTable.reporterId))
+    .leftJoin(reportReporter, eq(reportReporter.id, reportsTable.reporterId))
+    .leftJoin(adsTable, eq(adsTable.id, reportsTable.targetAdId))
+    .leftJoin(reportAdOwner, eq(reportAdOwner.id, adsTable.userId))
+    .leftJoin(reportTargetUser, eq(reportTargetUser.id, reportsTable.targetUserId))
     .orderBy(desc(reportsTable.createdAt));
 
   return res.json(
@@ -853,7 +917,7 @@ router.get("/admin/reports", requireAdmin, async (_req, res) => {
   );
 });
 
-router.patch("/admin/reports/:id/status", requireAdmin, async (req, res) => {
+router.patch("/admin/reports/:id/status", requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid report id" });
@@ -868,6 +932,7 @@ router.patch("/admin/reports/:id/status", requireAdmin, async (req, res) => {
   const [before] = await db
     .select({
       id: reportsTable.id,
+      reporterId: reportsTable.reporterId,
       status: reportsTable.status,
       targetAdId: reportsTable.targetAdId,
       targetUserId: reportsTable.targetUserId,
@@ -916,6 +981,35 @@ router.patch("/admin/reports/:id/status", requireAdmin, async (req, res) => {
     },
   });
 
+  const payload = reportStatusNotificationPayload(status);
+  if (payload && before.reporterId) {
+    try {
+      await createNotification({
+        userId: before.reporterId,
+        type: payload.type,
+        title: payload.title,
+        body: payload.body,
+        entityType: "report",
+        entityId: id,
+        metadata: {
+          reportId: id,
+          fromStatus: before.status,
+          toStatus: status,
+          targetType: before.targetAdId
+            ? "ad"
+            : before.targetUserId
+              ? "user"
+              : before.relatedConversationId
+                ? "conversation"
+                : "unknown",
+          targetId: before.targetAdId ?? before.targetUserId ?? before.relatedConversationId ?? null,
+        },
+      });
+    } catch (err) {
+      logger.warn({ err, reportId: id, status }, "createNotification failed (admin report status)");
+    }
+  }
+
   return res.json(updated[0]);
 });
 
@@ -928,6 +1022,7 @@ router.get("/admin/users", requireAdmin, async (req, res) => {
       id: usersTable.id,
       name: usersTable.name,
       email: usersTable.email,
+      avatarUrl: usersTable.avatarUrl,
       isBanned: usersTable.isBanned,
       createdAt: usersTable.createdAt,
     })
@@ -954,6 +1049,7 @@ router.get("/admin/users", requireAdmin, async (req, res) => {
       id: row.id,
       name: row.name,
       email: row.email,
+      avatarUrl: row.avatarUrl,
       status: row.isBanned ? "banned" : "active",
       createdAt: row.createdAt ? row.createdAt.toISOString() : null,
     })),
@@ -1075,7 +1171,7 @@ router.get("/admin/users/:id", requireAdmin, async (req, res) => {
   });
 });
 
-router.patch("/admin/users/:id", requireAdmin, async (req, res) => {
+router.patch("/admin/users/:id", requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid user id" });
@@ -1107,6 +1203,10 @@ router.patch("/admin/users/:id", requireAdmin, async (req, res) => {
       isBanned: usersTable.isBanned,
       createdAt: usersTable.createdAt,
     });
+
+  if (status === "banned") {
+    await db.execute(sql`delete from user_sessions where sess::jsonb->>'userId' = ${String(id)}`);
+  }
 
   await logAdminActivity({
     action: status === "banned" ? "user.block" : "user.unblock",
@@ -1279,7 +1379,7 @@ router.get("/admin/categories", requireAdmin, async (req, res) => {
   );
 });
 
-router.post("/admin/categories", requireAdmin, async (req, res) => {
+router.post("/admin/categories", requireAdmin, requireAdminCsrf, async (req, res) => {
   const type = String(req.body?.type || "category").trim().toLowerCase();
   const name = String(req.body?.name || "").trim();
   if (!name) {
@@ -1363,7 +1463,7 @@ router.post("/admin/categories", requireAdmin, async (req, res) => {
   }
 });
 
-router.patch("/admin/categories/:id", requireAdmin, async (req, res) => {
+router.patch("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid id" });
@@ -1476,7 +1576,7 @@ router.patch("/admin/categories/:id", requireAdmin, async (req, res) => {
   }
 });
 
-router.delete("/admin/categories/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid id" });
@@ -1600,7 +1700,7 @@ router.get("/admin/cities", requireAdmin, async (req, res) => {
   });
 });
 
-router.post("/admin/cities", requireAdmin, async (req, res) => {
+router.post("/admin/cities", requireAdmin, requireAdminCsrf, async (req, res) => {
   const name = String(req.body?.name || "").trim();
   const countryCode = String(req.body?.countryCode || "")
     .trim()
@@ -1674,7 +1774,7 @@ router.post("/admin/cities", requireAdmin, async (req, res) => {
   });
 });
 
-router.patch("/admin/cities/:id", requireAdmin, async (req, res) => {
+router.patch("/admin/cities/:id", requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid city id" });

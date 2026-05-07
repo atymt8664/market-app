@@ -260,10 +260,6 @@ export function useUpload(options: UseUploadOptions = {}) {
           const formData = new FormData();
           formData.append("image", file);
           const avatarUrl = resolveApiFetchUrl("/api/users/upload-avatar");
-          console.log("[use-upload] POST upload-avatar", {
-            path: "/api/users/upload-avatar",
-            resolved: avatarUrl.startsWith("http"),
-          });
           const res = await fetch(avatarUrl, {
             method: "POST",
             body: formData,

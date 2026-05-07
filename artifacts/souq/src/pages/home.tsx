@@ -11,11 +11,13 @@ import { Search, ChevronLeft, X } from "lucide-react";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
 import { CategoryIcon } from "@/components/category-icon";
 import { LocationPicker } from "@/components/location-picker";
+import { NotificationBell } from "@/components/notification-bell";
 import { Input } from "@/components/ui/input";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useAuth } from "@/hooks/use-auth";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
@@ -31,6 +33,8 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const { city } = useSelectedCity();
+  const { user, isLoading: authLoading } = useAuth();
+  const reserveBellSlot = Boolean(user && !authLoading);
   const [locationHintDismissed, setLocationHintDismissed] = useLocalStorage(
     "location_filter_hint_dismissed",
     false,
@@ -67,6 +71,11 @@ export default function Home() {
     }
   };
 
+  const brandFull = t("app.brand");
+  const brandEuMatch = brandFull.match(/^(.*)\sEU$/);
+  const brandMain = brandEuMatch?.[1]?.trimEnd() ?? brandFull;
+  const brandHasEuSuffix = Boolean(brandEuMatch);
+
   return (
     <div className="flex min-h-0 w-full flex-col bg-[#0A0A0A]">
       {/* App header: brand + location filter + search */}
@@ -74,23 +83,37 @@ export default function Home() {
         className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]"
         dir={isRtl ? "rtl" : "ltr"}
       >
-        <div className="mx-auto flex w-full max-w-screen-xl flex-col gap-2.5 px-4 py-3 md:gap-3 md:px-6 md:py-3.5 lg:px-8">
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="min-w-0 flex-1 text-lg font-bold leading-none tracking-tight text-foreground">
-              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                <span>{t("app.brand")}</span>
-                <span className="inline-flex shrink-0 items-center rounded-md bg-primary/15 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-primary">
-                  EU
-                </span>
-              </span>
-            </h1>
-            <div className="flex shrink-0 items-center ps-1">
-              <LocationPicker />
+        <div className="mx-auto flex w-full max-w-screen-xl flex-col gap-2 overflow-x-hidden px-3 py-2 md:gap-2 md:px-6 md:py-2.5 lg:px-8">
+          <div className="flex min-h-9 w-full min-w-0 items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <h1
+                dir={isRtl ? "rtl" : "ltr"}
+                className="min-w-0 flex-1 truncate text-lg font-bold leading-snug tracking-tight text-foreground sm:text-xl"
+              >
+                {brandHasEuSuffix ? (
+                  <>
+                    <span className="text-foreground">{brandMain}</span>{" "}
+                    <span className="font-bold text-primary">EU</span>
+                  </>
+                ) : (
+                  brandFull
+                )}
+              </h1>
+              <div className="shrink-0 flex items-center gap-1.5">
+                <LocationPicker
+                  triggerClassName={cn(
+                    "h-8 max-w-[9.25rem] justify-center gap-1 rounded-2xl border border-solid border-primary/40 bg-zinc-950/90 px-2 py-0 text-[11px] leading-none",
+                    "shadow-[0_0_14px_-10px_hsl(var(--primary)/0.38)] ring-1 ring-primary/14",
+                    "sm:max-w-[10.5rem]",
+                  )}
+                />
+                {reserveBellSlot ? <NotificationBell /> : null}
+              </div>
             </div>
           </div>
 
           {!locationHintDismissed ? (
-            <div className="flex items-start gap-2 rounded-2xl border border-primary/30 bg-zinc-950/75 px-3 py-2.5 text-xs leading-relaxed text-zinc-400 ring-1 ring-primary/10 transition-colors">
+            <div className="flex items-start gap-1.5 rounded-2xl border border-primary/28 bg-zinc-950/75 px-2.5 py-2 text-[11px] leading-snug text-zinc-400 ring-1 ring-primary/10 transition-colors">
               <span className="min-w-0 flex-1">
                 {t("home.location_hint_prefix")}{" "}
                 <span className="font-medium text-foreground/85">{t("home.location_picker")}</span>{" "}
@@ -99,16 +122,16 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setLocationHintDismissed(true)}
-                className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                className="shrink-0 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
                 aria-label={t("home.hide_hint")}
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
           ) : null}
 
           <div
-            className="flex items-center gap-2 rounded-2xl border border-primary/30 bg-zinc-950/70 px-3 py-2.5 ring-1 ring-primary/10 transition-colors focus-within:border-primary/45 focus-within:ring-primary/15"
+            className="flex items-center rounded-2xl border border-primary/30 bg-zinc-950/75 px-2.5 py-1.5 ring-1 ring-primary/10 transition-colors focus-within:border-primary/45 focus-within:ring-primary/15"
             role="search"
           >
             <form
@@ -117,7 +140,7 @@ export default function Home() {
             >
               <label className="sr-only">{t("home.search_label")}</label>
               <Search
-                className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground opacity-90"
                 aria-hidden
               />
               <Input
@@ -125,7 +148,7 @@ export default function Home() {
                 enterKeyHint="search"
                 autoComplete="off"
                 placeholder={t("home.search_placeholder")}
-                className="h-8 w-full border-0 bg-transparent pr-9 pl-1 text-sm leading-tight text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="h-7 w-full border-0 bg-transparent py-0 pr-8 pl-0.5 text-[13px] leading-tight text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />

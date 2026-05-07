@@ -13,5 +13,13 @@ export function apiUrl(path: string): string {
   const base = getApiBaseUrl();
   const p = path.startsWith("/") ? path : `/${path}`;
   if (!base) return p;
-  return `${base}${p}`;
+  const baseNorm = base.replace(/\/+$/, "");
+  if (!baseNorm) return p;
+  if (baseNorm.endsWith("/api")) {
+    if (p === "/api") return baseNorm;
+    if (p.startsWith("/api/")) {
+      return `${baseNorm}${p.slice(4)}`;
+    }
+  }
+  return `${baseNorm}${p}`;
 }

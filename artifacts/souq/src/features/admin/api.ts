@@ -14,6 +14,25 @@ import type {
 } from "./types";
 import { apiUrl } from "@/lib/api-url";
 
+let adminCsrfToken: string | null = null;
+
+function rememberAdminCsrfToken(token: unknown) {
+  if (typeof token === "string" && token.trim().length >= 32) {
+    adminCsrfToken = token.trim();
+  }
+}
+
+function getAdminMutationHeaders(extra?: HeadersInit): Headers {
+  const headers = new Headers(extra ?? {});
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (adminCsrfToken) {
+    headers.set("X-CSRF-Token", adminCsrfToken);
+  }
+  return headers;
+}
+
 async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(apiUrl(path), {
     credentials: "include",
@@ -23,11 +42,70 @@ async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
   if (!res.ok) {
     throw new Error(`Request failed (${res.status})`);
   }
-  return res.json() as Promise<T>;
+  const data = (await res.json()) as T;
+  if (path === "/api/admin/me") {
+    const payload = data as { csrfToken?: unknown };
+    rememberAdminCsrfToken(payload?.csrfToken);
+  }
+  return data;
 }
 
 export function getAdminMe(signal?: AbortSignal) {
   return apiGet<{ isAdmin: boolean }>("/api/admin/me", signal);
+}
+
+export type AdminAppSettings = {
+  appName: string;
+  appVersion: string;
+  supportEmail: string;
+  requireAdApproval: boolean;
+  reportsEnabled: boolean;
+  supportEnabled: boolean;
+  termsPath: string;
+  privacyPath: string;
+  updatedAt: string | null;
+  updatedByAdminId: number | null;
+};
+
+export function getAdminSettings(signal?: AbortSignal) {
+  return apiGet<AdminAppSettings>("/api/admin/settings", signal);
+}
+
+type ChangeAdminPasswordResponseBody = {
+  ok?: boolean;
+  reauthRequired?: boolean;
+  error?: string;
+};
+
+export async function changeAdminPassword(payload: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<{ ok: boolean; reauthRequired?: boolean }> {
+  const res = await fetch(apiUrl("/api/admin/change-password"), {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    headers: getAdminMutationHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const text = await res.text();
+  let parsed: ChangeAdminPasswordResponseBody | null = null;
+  try {
+    parsed = text ? (JSON.parse(text) as ChangeAdminPasswordResponseBody) : null;
+  } catch {
+    parsed = null;
+  }
+  if (!res.ok) {
+    const msg =
+      typeof parsed?.error === "string" && parsed.error.trim()
+        ? parsed.error
+        : text?.slice(0, 500)?.trim() || "فشل تغيير كلمة المرور";
+    throw new Error(msg);
+  }
+  return {
+    ok: parsed?.ok ?? true,
+    reauthRequired: parsed?.reauthRequired ?? true,
+  };
 }
 
 export function getAdminDashboard(signal?: AbortSignal) {
@@ -38,16 +116,56 @@ export async function adminLogout() {
   const res = await fetch(apiUrl("/api/admin-logout"), {
     method: "POST",
     credentials: "include",
+    headers: getAdminMutationHeaders(),
   });
   if (!res.ok) throw new Error("Logout failed");
+  adminCsrfToken = null;
 }
 
-export async function getAdminAds(params: { status?: string; q?: string }) {
+export async function getAdminAds(params: {
+  status?: string;
+  q?: string;
+  /** فلتر featured من الخادم: all | true | false */
+  featured?: "all" | "true" | "false";
+}) {
   const search = new URLSearchParams();
   if (params.status && params.status !== "all") search.set("status", params.status);
   if (params.q?.trim()) search.set("q", params.q.trim());
+  if (params.featured === "true") search.set("featured", "true");
+  if (params.featured === "false") search.set("featured", "false");
   const qs = search.toString();
   return apiGet<AdminAd[]>(`/api/admin/ads${qs ? `?${qs}` : ""}`);
+}
+
+export async function patchAdminAdFeatured(id: number, featured: boolean) {
+  const res = await fetch(apiUrl(`/api/admin/ads/${id}/featured`), {
+    method: "PATCH",
+    credentials: "include",
+    cache: "no-store",
+    headers: getAdminMutationHeaders(),
+    body: JSON.stringify({ featured }),
+  });
+  const text = await res.text();
+  let parsed: unknown = null;
+  try {
+    parsed = text ? JSON.parse(text) : null;
+  } catch {
+    parsed = null;
+  }
+  if (!res.ok) {
+    const errBody = parsed as { error?: string } | null;
+    const msg =
+      typeof errBody?.error === "string" && errBody.error.trim()
+        ? errBody.error
+        : text?.trim() || "فشل تحديث التمييز";
+    throw new Error(msg);
+  }
+  return (parsed ?? {}) as {
+    ok: boolean;
+    id: number;
+    featured: boolean;
+    status: string;
+  };
 }
 
 export async function updateAdminAdStatus(
@@ -58,7 +176,7 @@ export async function updateAdminAdStatus(
     method: "PATCH",
     credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: getAdminMutationHeaders(),
     body: JSON.stringify({ status }),
   });
   if (!res.ok) {
@@ -72,6 +190,7 @@ export async function deleteAdminAd(id: number) {
     method: "DELETE",
     credentials: "include",
     cache: "no-store",
+    headers: getAdminMutationHeaders(),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -91,7 +210,7 @@ export async function updateAdminReportStatus(
     method: "PATCH",
     credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: getAdminMutationHeaders(),
     body: JSON.stringify({ status }),
   });
   if (!res.ok) {
@@ -105,7 +224,7 @@ export async function moderateReportedAd(id: number, action: "hide" | "delete") 
     method: "POST",
     credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: getAdminMutationHeaders(),
     body: JSON.stringify({ action }),
   });
   if (!res.ok) {
@@ -186,7 +305,7 @@ export async function updateAdminSupportTicket(
     method: "PATCH",
     credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: getAdminMutationHeaders(),
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -200,7 +319,7 @@ export async function replyAdminSupportTicket(id: number, message: string) {
     method: "POST",
     credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: getAdminMutationHeaders(),
     body: JSON.stringify({ message }),
   });
   if (!res.ok) {
@@ -229,7 +348,7 @@ export async function updateAdminUserStatus(
     method: "PATCH",
     credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: getAdminMutationHeaders(),
     body: JSON.stringify({ status }),
   });
   if (!res.ok) {
@@ -287,7 +406,7 @@ export async function createAdminCategory(payload: {
     method: "POST",
     credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: getAdminMutationHeaders(),
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error((await res.text()) || "Create category failed");
@@ -311,7 +430,7 @@ export async function updateAdminCategory(
     method: "PATCH",
     credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: getAdminMutationHeaders(),
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error((await res.text()) || "Update category failed");
@@ -323,6 +442,7 @@ export async function deleteAdminCategory(id: number, type: "category" | "subcat
     method: "DELETE",
     credentials: "include",
     cache: "no-store",
+    headers: getAdminMutationHeaders(),
   });
   if (!res.ok) throw new Error((await res.text()) || "Delete category failed");
 }
@@ -351,7 +471,7 @@ export async function createAdminCity(payload: {
     method: "POST",
     credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: getAdminMutationHeaders(),
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error((await res.text()) || "Create city failed");
@@ -371,7 +491,7 @@ export async function updateAdminCity(
     method: "PATCH",
     credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: getAdminMutationHeaders(),
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error((await res.text()) || "Update city failed");

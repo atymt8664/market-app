@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { requireAuth } from "../middlewares/require-auth";
 import { Readable } from "stream";
 import multer from "multer";
 import {
@@ -25,23 +26,14 @@ const upload = multer({
   },
 });
 
-function requireAuth(req: Request, res: Response): number | null {
-  if (!req.session.userId) {
-    res.status(401).json({ error: "يرجى تسجيل الدخول" });
-    return null;
-  }
-  return req.session.userId;
-}
-
 const getMissingConfigResponse = (error: MissingObjectStorageConfigError) => ({
   error: "Object storage is not configured",
   code: "OBJECT_STORAGE_NOT_CONFIGURED",
   missingEnvVar: error.missingEnvVar,
 });
 
-router.post("/storage/uploads/ad-images", upload.array("images", 10), async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+router.post("/storage/uploads/ad-images", upload.array("images", 10), requireAuth, async (req: Request, res: Response) => {
+  const userId = req.session.userId!;
 
   const files = (req.files as Express.Multer.File[] | undefined) ?? [];
   if (files.length === 0) {
@@ -243,9 +235,8 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
  * These are served from a separate path from /public-objects and can optionally
  * be protected with authentication or ACL checks based on the use case.
  */
-router.get("/storage/objects/*path", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+router.get("/storage/objects/*path", requireAuth, async (req: Request, res: Response) => {
+  const userId = req.session.userId!;
 
   try {
     const raw = req.params.path;

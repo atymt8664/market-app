@@ -1,9 +1,23 @@
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Shield, ShieldOff } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { adminLogout, updateAdminUserStatus } from "@/features/admin/api";
+import { ADMIN_ROW_ACTION_BASE, BTN_FIX, BTN_MODAL_GHOST } from "@/features/admin/admin-interaction-classes";
 import { AdminShell } from "@/features/admin/components/admin-shell";
 import { useAdminUserDetails, useRequireAdmin } from "@/features/admin/hooks";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export default function AdminUserDetailsPage() {
   const [, navigate] = useLocation();
@@ -13,6 +27,7 @@ export default function AdminUserDetailsPage() {
   const detailsQuery = useAdminUserDetails(Number.isInteger(userId) && userId > 0 ? userId : null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [pendingBan, setPendingBan] = useState<{ id: number; name: string } | null>(null);
 
   const statusMutation = useMutation({
     mutationFn: ({ id, nextStatus }: { id: number; nextStatus: "active" | "banned" }) =>
@@ -34,6 +49,16 @@ export default function AdminUserDetailsPage() {
   const handleLogout = async () => {
     await adminLogout();
     navigate("/admin-login");
+  };
+
+  const actionPending = statusMutation.isPending;
+
+  const confirmBan = () => {
+    if (!pendingBan) return;
+    statusMutation.mutate(
+      { id: pendingBan.id, nextStatus: "banned" },
+      { onSettled: () => setPendingBan(null) },
+    );
   };
 
   if (meQuery.isLoading || detailsQuery.isLoading) {
@@ -77,23 +102,43 @@ export default function AdminUserDetailsPage() {
               >
                 رجوع
               </button>
-              <button
-                type="button"
-                onClick={() =>
-                  statusMutation.mutate({
-                    id: details.user.id,
-                    nextStatus: details.user.status === "banned" ? "active" : "banned",
-                  })
-                }
-                disabled={statusMutation.isPending}
-                className={`rounded-lg px-3 py-1.5 text-sm text-white disabled:opacity-60 ${
-                  details.user.status === "banned"
-                    ? "bg-emerald-600 hover:bg-emerald-500"
-                    : "bg-amber-600 hover:bg-amber-500"
-                }`}
-              >
-                {details.user.status === "banned" ? "فك الحظر" : "حظر"}
-              </button>
+              {details.user.status === "banned" ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    statusMutation.mutate({
+                      id: details.user.id,
+                      nextStatus: "active",
+                    })
+                  }
+                  disabled={actionPending}
+                  className={cn(
+                    ADMIN_ROW_ACTION_BASE,
+                    "border-emerald-500/45 bg-emerald-600/15 text-emerald-200",
+                  )}
+                >
+                  <ShieldOff className="h-3.5 w-3.5" aria-hidden />
+                  فك الحظر
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPendingBan({
+                      id: details.user.id,
+                      name: details.user.name,
+                    })
+                  }
+                  disabled={actionPending}
+                  className={cn(
+                    ADMIN_ROW_ACTION_BASE,
+                    "border-amber-500/45 bg-amber-600/12 text-amber-100",
+                  )}
+                >
+                  <Shield className="h-3.5 w-3.5" aria-hidden />
+                  حظر
+                </button>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-800 bg-[#0a1020] p-4 text-sm sm:grid-cols-2">
@@ -185,6 +230,46 @@ export default function AdminUserDetailsPage() {
           )}
         </section>
       </div>
+
+      <AlertDialog open={pendingBan !== null} onOpenChange={(o) => !o && setPendingBan(null)}>
+        <AlertDialogContent
+          dir="rtl"
+          className="z-[100] max-w-md rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
+        >
+          <AlertDialogHeader className="text-right sm:text-right">
+            <AlertDialogTitle className="text-lg font-semibold text-foreground">تأكيد حظر المستخدم</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
+              {pendingBan ? (
+                <>
+                  هل تريد حظر «{pendingBan.name}» (#{pendingBan.id})؟ لن يتمكن من استخدام الحساب بالشكل المعتاد حتى يتم
+                  فك الحظر.
+                </>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-row-reverse flex-wrap gap-2 sm:flex-row-reverse sm:justify-start sm:gap-2 sm:space-x-0">
+            <AlertDialogCancel
+              className={cn(buttonVariants({ variant: "outline", size: "default" }), BTN_MODAL_GHOST, "mt-0")}
+            >
+              إلغاء
+            </AlertDialogCancel>
+            <button
+              type="button"
+              disabled={actionPending || !pendingBan}
+              title={actionPending ? "جاري تنفيذ العملية…" : undefined}
+              className={cn(
+                buttonVariants({ variant: "destructive", size: "default" }),
+                BTN_FIX,
+                "cursor-pointer rounded-xl transition-all duration-150 ease-out hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
+              )}
+              onClick={() => confirmBan()}
+            >
+              {actionPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+              تأكيد الحظر
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminShell>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -25,7 +25,10 @@ import {
   useRecordProfileView,
   useListAds,
   getListAdsQueryKey,
+  useAuthUpdateProfile,
+  getAuthMeQueryKey,
 } from "@workspace/api-client-react";
+import { useUpload } from "@workspace/object-storage-web";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -37,9 +40,11 @@ import {
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -60,6 +65,14 @@ import {
   ProfileStatTile,
 } from "@/components/profile-stat-tiles";
 import { ProfileStatsDetailSheet } from "@/components/profile-stats-detail-sheet";
+import {
+  ProfileAvatarPreviewDialog,
+  ProfileAvatarCameraBadge,
+} from "@/components/profile-avatar-preview-dialog";
+import {
+  SETTINGS_DIALOG_CONTENT,
+  SETTINGS_OUTLINE_BUTTON,
+} from "@/components/settings-shell";
 
 const USER_PROFILE_MORE_HINT_KEY = "souq.hint.userProfileMoreMenu.v1";
 
@@ -124,7 +137,7 @@ export default function UserProfile() {
   const queryClient = useQueryClient();
 
   const profileKey = getGetUserProfileQueryKey(userId);
-  const { data: profile, isLoading } = useGetUserProfile(userId, {
+  const { data: profile, isLoading, isError } = useGetUserProfile(userId, {
     query: { queryKey: profileKey, enabled: profileQueryEnabled },
   });
 
@@ -164,6 +177,24 @@ export default function UserProfile() {
   const [statsSheet, setStatsSheet] = useState<
     null | "followers" | "following" | "views"
   >(null);
+  const updateProfile = useAuthUpdateProfile();
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
+  const [avatarRemoveOpen, setAvatarRemoveOpen] = useState(false);
+
+  const { uploadFile, isUploading } = useUpload({
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
+      await queryClient.invalidateQueries({ queryKey: profileKey });
+      toast({ title: t("profile.image_updated") });
+    },
+    onError: () => {
+      toast({
+        title: t("profile.image_upload_failed"),
+        variant: "destructive",
+      });
+    },
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -296,6 +327,46 @@ export default function UserProfile() {
     else unfollowMut.mutate({ userId }, { onSuccess, onError });
   };
 
+  if (!profileQueryEnabled) {
+    return (
+      <div
+        dir="rtl"
+        className="flex min-h-[100dvh] w-full flex-col items-center justify-center bg-[#0A0A0A] px-4 text-center"
+      >
+        <p className="text-sm text-muted-foreground">الملف الشخصي غير موجود</p>
+        <Button
+          type="button"
+          className="mt-4"
+          variant="outline"
+          onClick={() => navigate("/")}
+        >
+          العودة للرئيسية
+        </Button>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div
+        dir="rtl"
+        className="flex min-h-[100dvh] w-full flex-col items-center justify-center bg-[#0A0A0A] px-4 text-center"
+      >
+        <p className="text-sm text-muted-foreground">
+          تعذر تحميل الملف الشخصي. حاول مرة أخرى.
+        </p>
+        <Button
+          type="button"
+          className="mt-4"
+          variant="outline"
+          onClick={() => navigate("/")}
+        >
+          العودة للرئيسية
+        </Button>
+      </div>
+    );
+  }
+
   if (isLoading || !profile) {
     return (
       <div
@@ -309,6 +380,46 @@ export default function UserProfile() {
 
   const isPending = followMut.isPending || unfollowMut.isPending;
   const isSelfProfile = profile.isSelf;
+
+  const avatarBusy =
+    isSelfProfile && (isUploading || updateProfile.isPending);
+
+  const handleAvatarPick = () => avatarFileInputRef.current?.click();
+
+  const onAvatarFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !me?.id) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: t("profile.not_an_image"), variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: t("profile.image_too_large"), variant: "destructive" });
+      return;
+    }
+    uploadFile(file, { folder: "avatars", userId: me.id, fileExtension: "jpg" });
+    e.target.value = "";
+  };
+
+  const handleConfirmRemoveAvatar = () => {
+    updateProfile.mutate(
+      { data: { avatarUrl: null } },
+      {
+        onSuccess: async () => {
+          await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
+          await queryClient.invalidateQueries({ queryKey: profileKey });
+          toast({ title: t("profile.avatar_removed") });
+          setAvatarRemoveOpen(false);
+        },
+        onError: () => {
+          toast({
+            title: t("profile.avatar_remove_failed"),
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
 
   return (
     <motion.div
@@ -386,8 +497,46 @@ export default function UserProfile() {
         <section className={cn(deviceInfoShell, "space-y-4")}>
           <div className={cn(sellerInnerShell, "space-y-4")}>
             <div className="flex items-center gap-4">
-              <div className="shrink-0 ring-2 ring-primary/25 ring-offset-2 ring-offset-zinc-950 rounded-full">
-                <AvatarCircle name={profile.name} src={profile.avatarUrl} size={84} />
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  disabled={isSelfProfile ? avatarBusy : false}
+                  onClick={() => {
+                    if (isSelfProfile && !profile.avatarUrl) {
+                      handleAvatarPick();
+                      return;
+                    }
+                    setAvatarPreviewOpen(true);
+                  }}
+                  aria-label={
+                    profile.avatarUrl
+                      ? t("profile.avatar_preview.open")
+                      : isSelfProfile
+                        ? t("profile.change_avatar")
+                        : t("profile.avatar_preview.title")
+                  }
+                  className={cn(
+                    "shrink-0 rounded-full ring-2 ring-primary/25 ring-offset-2 ring-offset-zinc-950 transition-[opacity,transform] hover:opacity-95 active:scale-[0.99] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950",
+                  )}
+                >
+                  <AvatarCircle name={profile.name} src={profile.avatarUrl} size={84} />
+                </button>
+                {isSelfProfile && !profile.avatarUrl ? (
+                  <ProfileAvatarCameraBadge
+                    onClick={handleAvatarPick}
+                    disabled={avatarBusy}
+                    busy={avatarBusy}
+                  />
+                ) : null}
+                {isSelfProfile ? (
+                  <input
+                    ref={avatarFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={onAvatarFileChange}
+                  />
+                ) : null}
               </div>
               <div className="min-w-0 flex-1">
                 <h2 className="truncate text-xl font-bold text-foreground md:text-2xl">
@@ -530,6 +679,53 @@ export default function UserProfile() {
             : t("profile.stats.sheet.empty_follow_list")}
         </p>
       </ProfileStatsDetailSheet>
+
+      <ProfileAvatarPreviewDialog
+        open={avatarPreviewOpen}
+        onOpenChange={setAvatarPreviewOpen}
+        name={profile.name}
+        avatarUrl={profile.avatarUrl}
+        canManage={isSelfProfile}
+        busy={avatarBusy}
+        onEdit={handleAvatarPick}
+        onDelete={() => setAvatarRemoveOpen(true)}
+      />
+
+      <AlertDialog open={avatarRemoveOpen} onOpenChange={setAvatarRemoveOpen}>
+        <AlertDialogContent
+          dir="rtl"
+          className={cn(
+            SETTINGS_DIALOG_CONTENT,
+            "!p-0 gap-0 overflow-hidden text-right sm:max-w-md",
+          )}
+        >
+          <div className="border-b border-primary/20 px-5 py-4">
+            <AlertDialogHeader className="space-y-1.5 text-right">
+              <AlertDialogTitle className="text-right text-base font-bold text-foreground">
+                {t("profile.avatar_remove_dialog.title")}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-right text-sm leading-relaxed text-zinc-400">
+                {t("profile.avatar_remove_dialog.description")}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+          </div>
+          <AlertDialogFooter className="flex flex-col-reverse gap-2 border-t border-primary/20 bg-[#0A0A0A]/98 p-4 sm:flex-row sm:justify-stretch sm:gap-3">
+            <AlertDialogCancel
+              className={cn(SETTINGS_OUTLINE_BUTTON, "m-0 mt-0 w-full sm:flex-1")}
+            >
+              {t("profile.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmRemoveAvatar}
+              className={cn(
+                "m-0 inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-red-500/45 bg-red-950/40 px-4 text-sm font-semibold text-red-100 shadow-[0_0_22px_-12px_rgba(239,68,68,0.35)] ring-1 ring-red-500/22 transition-colors hover:border-red-500/58 hover:bg-red-950/55 sm:flex-1",
+              )}
+            >
+              {t("profile.avatar_remove_dialog.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent hideClose dir="rtl" className={cn(dialogSurface, "text-right")}>

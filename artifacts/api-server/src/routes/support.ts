@@ -8,7 +8,10 @@ import {
 } from "@workspace/db";
 import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
+import { requireAdmin, requireAdminCsrf } from "../middlewares/require-admin";
 import { getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
+import { createNotification } from "../lib/create-notification";
+import { logger } from "../lib/logger";
 
 const router = Router();
 const ALLOWED_SUPPORT_CATEGORIES = new Set([
@@ -46,13 +49,6 @@ function normalizeSupportCategory(value: unknown): string {
   const normalized = value.trim().toLowerCase();
   if (!normalized) return "general";
   return ALLOWED_SUPPORT_CATEGORIES.has(normalized) ? normalized : "general";
-}
-
-function requireAdmin(req: any, res: any, next: any) {
-  if (!req.session?.isAdmin) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-  next();
 }
 
 router.post("/support/tickets", requireAuth, async (req, res) => {
@@ -248,6 +244,7 @@ router.get("/admin/support/tickets", requireAdmin, async (req, res) => {
       userId: supportTicketsTable.userId,
       userName: usersTable.name,
       userEmail: usersTable.email,
+      userAvatarUrl: usersTable.avatarUrl,
       category: supportTicketsTable.category,
       subject: supportTicketsTable.subject,
       status: supportTicketsTable.status,
@@ -310,7 +307,7 @@ router.get("/admin/support/tickets/:id/messages", requireAdmin, async (req, res)
   );
 });
 
-router.patch("/admin/support/tickets/:id", requireAdmin, async (req, res) => {
+router.patch("/admin/support/tickets/:id", requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid ticket id" });
@@ -333,6 +330,8 @@ router.patch("/admin/support/tickets/:id", requireAdmin, async (req, res) => {
       id: supportTicketsTable.id,
       status: supportTicketsTable.status,
       priority: supportTicketsTable.priority,
+      userId: supportTicketsTable.userId,
+      subject: supportTicketsTable.subject,
     })
     .from(supportTicketsTable)
     .where(eq(supportTicketsTable.id, id))
@@ -341,6 +340,9 @@ router.patch("/admin/support/tickets/:id", requireAdmin, async (req, res) => {
   if (!before) {
     return res.status(404).json({ error: "Ticket not found" });
   }
+
+  const statusChanged = status !== undefined && status !== before.status;
+  const priorityChanged = priority !== undefined && priority !== before.priority;
 
   const [updated] = await db
     .update(supportTicketsTable)
@@ -377,10 +379,32 @@ router.patch("/admin/support/tickets/:id", requireAdmin, async (req, res) => {
     },
   });
 
+  if (before.userId != null && (statusChanged || priorityChanged)) {
+    try {
+      const subj = before.subject.trim().slice(0, 100) || "تذكرة الدعم";
+      const newStatus = updated?.status ?? before.status;
+      const newPriority = updated?.priority ?? before.priority;
+      const parts: string[] = [];
+      if (statusChanged) parts.push(`الحالة: ${newStatus}`);
+      if (priorityChanged) parts.push(`الأولوية: ${newPriority}`);
+      await createNotification({
+        userId: before.userId,
+        type: "support.ticket.updated",
+        title: "تحديث على تذكرة الدعم",
+        body: `«${subj}» — ${parts.join(" • ")}`,
+        entityType: "support_ticket",
+        entityId: id,
+        metadata: { ticketId: id },
+      });
+    } catch (err) {
+      logger.warn({ err, ticketId: id }, "createNotification failed (support ticket update)");
+    }
+  }
+
   return res.json(updated);
 });
 
-router.post("/admin/support/tickets/:id/reply", requireAdmin, async (req, res) => {
+router.post("/admin/support/tickets/:id/reply", requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid ticket id" });
@@ -392,7 +416,11 @@ router.post("/admin/support/tickets/:id/reply", requireAdmin, async (req, res) =
   }
 
   const [ticket] = await db
-    .select({ id: supportTicketsTable.id })
+    .select({
+      id: supportTicketsTable.id,
+      userId: supportTicketsTable.userId,
+      subject: supportTicketsTable.subject,
+    })
     .from(supportTicketsTable)
     .where(eq(supportTicketsTable.id, id))
     .limit(1);
@@ -420,6 +448,24 @@ router.post("/admin/support/tickets/:id/reply", requireAdmin, async (req, res) =
     .update(supportTicketsTable)
     .set({ status: "pending", updatedAt: new Date() })
     .where(eq(supportTicketsTable.id, id));
+
+  if (ticket.userId != null) {
+    try {
+      const subj = ticket.subject.trim().slice(0, 100) || "تذكرة الدعم";
+      const preview = message.slice(0, 200);
+      await createNotification({
+        userId: ticket.userId,
+        type: "support.reply",
+        title: "رد من فريق الدعم",
+        body: `«${subj}» — ${preview}`,
+        entityType: "support_ticket",
+        entityId: id,
+        metadata: { previewSlice: preview },
+      });
+    } catch (err) {
+      logger.warn({ err, ticketId: id }, "createNotification failed (support reply)");
+    }
+  }
 
   return res.status(201).json({
     ...inserted,

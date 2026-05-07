@@ -16,17 +16,33 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+/** إعدادات / حساب / قانوني / دعم — نفس وضع الإشعارات: بدون شريط سفلي وبدون حجز ارتفاعه */
+function isImmersiveSettingsLegalAccountRoute(pathname: string): boolean {
+  return (
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/account/") ||
+    pathname === "/privacy" ||
+    pathname === "/terms" ||
+    pathname === "/verify-email" ||
+    pathname.startsWith("/support")
+  );
+}
+
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const isAdminPage = location.startsWith("/admin");
   /** محادثة `/messages/:id` — fullscreen مثل واتساب: لا BottomNav ولا padding سفلي للشريط */
   const isMessageThreadRoute = /^\/messages\/\d+/.test(location);
+  const isNotificationsRoute = location.startsWith("/notifications");
+  const isImmersiveShell =
+    isMessageThreadRoute || isNotificationsRoute || isImmersiveSettingsLegalAccountRoute(location);
   const hideBottomNav =
     location.startsWith("/reset-password") ||
     location.startsWith("/login") ||
     location.startsWith("/signup") ||
     location.startsWith("/forgot-password") ||
-    isMessageThreadRoute;
+    location.startsWith("/admin-login") ||
+    isImmersiveShell;
 
   return (
     <div className="w-full min-h-[100svh] bg-[#0A0A0A]">
@@ -37,7 +53,7 @@ export function Layout({ children }: LayoutProps) {
       <div
         className={cn(
           "relative mx-auto w-full max-w-screen-2xl min-h-[100svh] overflow-x-hidden bg-[#0A0A0A]",
-          isMessageThreadRoute
+          isImmersiveShell
             ? "pb-0"
             : "pb-[calc(64px+env(safe-area-inset-bottom,0px))] md:pb-[calc(72px+env(safe-area-inset-bottom,0px))]",
         )}

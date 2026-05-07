@@ -1,21 +1,28 @@
+import { Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { adminLogout } from "@/features/admin/api";
 import { AdminShell } from "@/features/admin/components/admin-shell";
 import { DashboardHome } from "@/features/admin/components/dashboard-home";
 import { useAdminDashboard, useRequireAdmin } from "@/features/admin/hooks";
+import { BTN_FIX } from "@/features/admin/admin-interaction-classes";
+import { AUTH_ACCENT_OUTLINE_BTN } from "@/lib/auth-page-styles";
+import { cn } from "@/lib/utils";
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="h-20 animate-pulse rounded-2xl border border-slate-800 bg-[#0d1324]" />
+    <div className="space-y-6" dir="rtl">
+      <div className="h-20 animate-pulse rounded-2xl border border-primary/25 bg-zinc-950/70 ring-1 ring-primary/10" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-28 animate-pulse rounded-2xl border border-slate-800 bg-[#0d1324]" />
+          <div
+            key={i}
+            className="h-28 animate-pulse rounded-2xl border border-primary/25 bg-zinc-950/70 ring-1 ring-primary/10"
+          />
         ))}
       </div>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <div className="h-72 animate-pulse rounded-2xl border border-slate-800 bg-[#0d1324] xl:col-span-2" />
-        <div className="h-72 animate-pulse rounded-2xl border border-slate-800 bg-[#0d1324]" />
+        <div className="h-72 animate-pulse rounded-2xl border border-primary/25 bg-zinc-950/70 ring-1 ring-primary/10 xl:col-span-2" />
+        <div className="h-72 animate-pulse rounded-2xl border border-primary/25 bg-zinc-950/70 ring-1 ring-primary/10" />
       </div>
     </div>
   );
@@ -32,33 +39,50 @@ export default function AdminPage() {
   };
 
   if (meQuery.isLoading) {
-    return <div className="min-h-screen bg-[#070b16] text-slate-200 flex items-center justify-center">جاري تحميل لوحة التحكم...</div>;
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center bg-[#0A0A0A] px-4 text-foreground"
+        dir="rtl"
+      >
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-primary/40 bg-zinc-950/85 px-8 py-10 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12">
+          <Loader2 className="h-9 w-9 animate-spin text-primary" aria-hidden />
+          <p className="text-sm text-muted-foreground">جاري تحميل لوحة التحكم...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!dashboardQuery.data) {
+    if (dashboardQuery.isError) {
+      return (
+        <AdminShell activeKey="dashboard" onLogout={handleLogout}>
+          <div
+            className="rounded-2xl border border-destructive/35 bg-destructive/10 p-8 text-center text-destructive shadow-[0_0_20px_-12px_rgba(0,0,0,0.4)] ring-1 ring-destructive/25"
+            dir="rtl"
+          >
+            <p className="mb-4 text-destructive">تعذر تحميل بيانات لوحة التحكم.</p>
+            <button
+              type="button"
+              onClick={() => dashboardQuery.refetch()}
+              className={cn(AUTH_ACCENT_OUTLINE_BTN, BTN_FIX, "cursor-pointer hover:bg-zinc-900 active:scale-[0.98]")}
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        </AdminShell>
+      );
+    }
+
     return (
       <AdminShell activeKey="dashboard" onLogout={handleLogout}>
-        <div className="rounded-2xl border border-red-700/40 bg-red-950/20 p-8 text-center text-red-200">
-          <p className="mb-3">تعذر تحميل بيانات لوحة التحكم.</p>
-          <button
-            type="button"
-            onClick={() => dashboardQuery.refetch()}
-            className="rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white"
-          >
-            إعادة المحاولة
-          </button>
-        </div>
+        <DashboardSkeleton />
       </AdminShell>
     );
   }
 
   return (
     <AdminShell activeKey="dashboard" onLogout={handleLogout}>
-      {dashboardQuery.isLoading ? (
-        <DashboardSkeleton />
-      ) : (
-        <DashboardHome data={dashboardQuery.data} isRefreshing={dashboardQuery.isFetching} />
-      )}
+      <DashboardHome data={dashboardQuery.data} isRefreshing={dashboardQuery.isFetching} />
     </AdminShell>
   );
 }

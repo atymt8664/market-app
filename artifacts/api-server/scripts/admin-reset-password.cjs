@@ -57,13 +57,13 @@ async function main() {
   try {
     await client.query("begin");
     await client.query(
-      "create table if not exists app_settings (id integer primary key default 1, app_name text not null default 'سوق العرب EU', app_version text not null default '2.0.0', support_email text not null default 'support@souq-arab.eu', require_ad_approval boolean not null default true, reports_enabled boolean not null default true, support_enabled boolean not null default true, terms_path text not null default '/terms', privacy_path text not null default '/privacy', updated_at timestamptz not null default now(), updated_by_admin_id integer null)",
+      "create table if not exists app_settings (id integer primary key default 1, app_name text not null default 'سوق العرب EU', app_version text not null default '1.0.0', support_email text not null default 'souqarab.market@gmail.com', require_ad_approval boolean not null default true, reports_enabled boolean not null default true, support_enabled boolean not null default true, terms_path text not null default '/terms', privacy_path text not null default '/privacy', updated_at timestamptz not null default now(), updated_by_admin_id integer null)",
     );
     await client.query(
       "alter table app_settings add column if not exists admin_password_hash text",
     );
     await client.query(
-      "insert into app_settings (id, app_name, app_version, support_email, require_ad_approval, reports_enabled, support_enabled, terms_path, privacy_path) values (1, 'سوق العرب EU', '2.0.0', 'support@souq-arab.eu', true, true, true, '/terms', '/privacy') on conflict (id) do nothing",
+      "insert into app_settings (id, app_name, app_version, support_email, require_ad_approval, reports_enabled, support_enabled, terms_path, privacy_path) values (1, 'سوق العرب EU', '1.0.0', 'souqarab.market@gmail.com', true, true, true, '/terms', '/privacy') on conflict (id) do nothing",
     );
     const hash = await bcrypt.hash(nextPassword, 12);
     await client.query(

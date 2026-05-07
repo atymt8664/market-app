@@ -26,7 +26,19 @@ import {
 } from "../lib/email";
 import { logger } from "../lib/logger";
 import { ensureAppSettingsTable } from "../lib/ensure-app-settings-table";
-import { hasValidAdminSession } from "../middlewares/require-admin";
+import {
+  attachAdminCsrfToken,
+  hasValidAdminSession,
+} from "../middlewares/require-admin";
+import {
+  getSessionClearCookieOptions,
+  SESSION_COOKIE_NAME,
+} from "../lib/session-cookie";
+import {
+  ACCOUNT_DISABLED_CODE,
+  ACCOUNT_DISABLED_MESSAGE,
+  destroySessionRespondBanned,
+} from "../middlewares/require-auth";
 
 const router: IRouter = Router();
 
@@ -99,8 +111,10 @@ const ADMIN_LOGIN_MAX_FAILURES = 5;
 const ADMIN_LOGIN_LOCK_MS = 15 * 60 * 1000;
 const adminLoginFailures = new Map<string, { count: number; lockUntil: number }>();
 
-function getAdminLoginIdentifier() {
-  return "admin-login";
+function getAdminLoginIdentifier(req: import("express").Request) {
+  const raw = req.ip || req.socket.remoteAddress || "";
+  const ip = String(raw).split(",")[0]?.trim() || "unknown";
+  return `admin-login:${ip}`;
 }
 
 function isAdminLoginLocked(identifier: string): boolean {
@@ -398,6 +412,14 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
     return;
   }
 
+  if (user.isBanned) {
+    res.status(403).json({
+      error: ACCOUNT_DISABLED_MESSAGE,
+      code: ACCOUNT_DISABLED_CODE,
+    });
+    return;
+  }
+
   req.session.userId = user.id;
   res.json(await serializeUserMe(user));
 });
@@ -408,6 +430,24 @@ router.patch("/auth/me", async (req, res) => {
     res.status(401).json({ error: "غير مسجل الدخول" });
     return;
   }
+
+  const [existingMe] = await db
+    .select({ isBanned: usersTable.isBanned })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  if (!existingMe) {
+    req.session.destroy(() => {
+      res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
+      res.status(401).json({ error: "غير مسجل الدخول" });
+    });
+    return;
+  }
+  if (existingMe.isBanned) {
+    destroySessionRespondBanned(req, res);
+    return;
+  }
+
   const body = req.body as {
     name?: unknown;
     phone?: unknown;
@@ -486,6 +526,10 @@ router.post("/auth/change-password", async (req, res) => {
     res.status(401).json({ error: "غير مسجل الدخول" });
     return;
   }
+  if (user.isBanned) {
+    destroySessionRespondBanned(req, res);
+    return;
+  }
   const ok = await bcrypt.compare(current, user.passwordHash);
   if (!ok) {
     res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة" });
@@ -501,7 +545,7 @@ router.post("/auth/change-password", async (req, res) => {
 
 router.post("/auth/logout", (req, res) => {
   req.session.destroy(() => {
-    res.clearCookie("souq.sid");
+    res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
     res.status(204).end();
   });
 });
@@ -517,11 +561,16 @@ router.get("/auth/me", async (req, res) => {
     .from(usersTable)
     .where(eq(usersTable.id, userId))
     .limit(1);
-  if (!rows[0]) {
+  const user = rows[0];
+  if (!user) {
     res.status(401).json({ error: "غير مسجل الدخول" });
     return;
   }
-  res.json(await serializeUserMe(rows[0]));
+  if (user.isBanned) {
+    destroySessionRespondBanned(req, res);
+    return;
+  }
+  res.json(await serializeUserMe(user));
 });
 
 router.post("/auth/verify-email", verifyLimiter, async (req, res) => {
@@ -713,7 +762,7 @@ void and;
 
 router.post("/admin-login", adminLoginLimiter, async (req, res) => {
   const { password } = req.body;
-  const loginIdentifier = getAdminLoginIdentifier();
+  const loginIdentifier = getAdminLoginIdentifier(req);
 
   if (isAdminLoginLocked(loginIdentifier)) {
     return res.status(429).json({ error: "بيانات الدخول غير صحيحة" });
@@ -756,15 +805,28 @@ router.post("/admin-login", adminLoginLimiter, async (req, res) => {
       }
       req.session.isAdmin = true;
       req.session.adminAuthenticatedAt = Date.now();
+      req.session.adminActorId = 1;
+      req.session.adminActorLabel = "primary-admin";
+      req.session.adminCsrfToken = undefined;
       resolve();
     });
   });
-  return res.json({ success: true });
+  const csrfToken = attachAdminCsrfToken(req, res);
+  return res.json({
+    success: true,
+    csrfToken,
+    adminActorLabel: req.session.adminActorLabel ?? "primary-admin",
+  });
 });
 
 router.get("/admin/me", (req, res) => {
   if (hasValidAdminSession(req)) {
-    return res.json({ isAdmin: true });
+    const csrfToken = attachAdminCsrfToken(req, res);
+    return res.json({
+      isAdmin: true,
+      csrfToken,
+      adminActorLabel: req.session.adminActorLabel ?? "primary-admin",
+    });
   }
 
   return res.status(401).json({ isAdmin: false });
@@ -772,7 +834,7 @@ router.get("/admin/me", (req, res) => {
 
 router.post("/admin-logout", (req, res) => {
   req.session.destroy(() => {
-    res.clearCookie("souq.sid");
+    res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
     return res.json({ success: true });
   });
 });

@@ -10,6 +10,8 @@ import conversationsRouter from "./conversations";
 import reports from "./reports";
 import adminRouter from "./admin";
 import supportRouter from "./support";
+import notificationsRouter from "./notifications";
+import accountRouter from "./account";
 
 const router: IRouter = Router();
 
@@ -24,4 +26,6 @@ router.use(conversationsRouter);
 router.use("/reports", reports);
 router.use(adminRouter);
 router.use(supportRouter);
+router.use(notificationsRouter);
+router.use(accountRouter);
 export default router;

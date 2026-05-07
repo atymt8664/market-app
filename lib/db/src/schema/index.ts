@@ -9,3 +9,4 @@ export * from "./reports";
 export * from "./user-sessions";
 export * from "./support";
 export * from "./app-settings";
+export * from "./notifications";

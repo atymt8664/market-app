@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./load-env";
 import dns from "node:dns";
 import { createServer } from "http";
 import app from "./app";
@@ -27,7 +27,29 @@ if (Number.isNaN(port) || port <= 0) {
 const server = createServer(app);
 attachWebSocketServer(server);
 
+function logDatabaseTargetSanitized(): void {
+  const raw = process.env["DATABASE_URL"]?.trim();
+  if (!raw) {
+    logger.warn("DATABASE_URL is not set");
+    return;
+  }
+  try {
+    const u = new URL(raw);
+    logger.info(
+      {
+        dbHost: u.hostname,
+        dbPort: u.port || "(default)",
+        dbName: u.pathname.replace(/^\//, "").split(/[?]/)[0] || "(unknown)",
+      },
+      "API PostgreSQL target (sanitized, no password)",
+    );
+  } catch {
+    logger.warn("DATABASE_URL is set but could not be parsed for logging");
+  }
+}
+
 async function start() {
+  logDatabaseTargetSanitized();
   try {
     await prepareDatabase();
   } catch (err) {

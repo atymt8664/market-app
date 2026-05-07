@@ -1,15 +1,26 @@
-import { useAuthMe, getAuthMeQueryKey } from "@workspace/api-client-react";
+import { useEffect } from "react";
+import { ApiError, useAuthMe, getAuthMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+
+const ACCOUNT_DISABLED_CODE = "ACCOUNT_DISABLED";
 
 export function useAuth() {
   const queryClient = useQueryClient();
-  const { data, isLoading, isFetching } = useAuthMe({
+  const { data, isLoading, isFetching, error } = useAuthMe({
     query: {
       queryKey: getAuthMeQueryKey(),
       retry: false,
       staleTime: 30_000,
     },
   });
+
+  useEffect(() => {
+    if (!error || !(error instanceof ApiError) || error.status !== 403) return;
+    const code = (error.data as { code?: string } | null)?.code;
+    if (code === ACCOUNT_DISABLED_CODE) {
+      queryClient.removeQueries({ queryKey: getAuthMeQueryKey() });
+    }
+  }, [error, queryClient]);
   const cached = queryClient.getQueryData(getAuthMeQueryKey()) as
     | (typeof data)
     | undefined;

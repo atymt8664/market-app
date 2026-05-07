@@ -113,6 +113,22 @@ const POST_CORE_SCHEMA_SQL = `
       PRIMARY KEY (user_id, conversation_id)
     );
     CREATE INDEX IF NOT EXISTS conversation_hides_user_idx ON conversation_hides(user_id);
+
+    CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      entity_type TEXT NULL,
+      entity_id INTEGER NULL,
+      metadata JSONB NULL,
+      read_at TIMESTAMPTZ NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id);
+    CREATE INDEX IF NOT EXISTS notifications_user_created_idx ON notifications(user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS notifications_user_unread_idx ON notifications(user_id) WHERE read_at IS NULL;
     `;
 
 /**

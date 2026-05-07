@@ -655,3 +655,63 @@ export async function uploadChatImageForUser(
   throw lastError ?? new Error("Chat image upload failed");
 }
 
+/** Extract `bucket/path/to/object` path after `/object/public/{bucket}/` for the configured uploads bucket. */
+export function tryParseUploadsObjectPathFromPublicUrl(imageUrl: string): string | null {
+  const raw = imageUrl.trim();
+  if (!raw) return null;
+  const marker = `/storage/v1/object/public/${UPLOADS_BUCKET}/`;
+  let pathPart: string;
+  try {
+    const u = new URL(raw);
+    const idx = u.pathname.indexOf(marker);
+    if (idx === -1) return null;
+    pathPart = u.pathname.slice(idx + marker.length);
+  } catch {
+    const idx = raw.indexOf(marker);
+    if (idx === -1) return null;
+    pathPart = raw.slice(idx + marker.length).split("?")[0]!;
+  }
+  const decoded = decodeURIComponent(pathPart).replace(/^\/+/, "");
+  if (!decoded || decoded.includes("..")) return null;
+  return decoded;
+}
+
+const STORAGE_REMOVE_BATCH = 80;
+
+/**
+ * Best-effort removal of objects from the uploads bucket (ad/avatar/chat paths).
+ * Does not throw on missing config — callers log and continue when deletion is optional.
+ */
+export async function removeUploadsObjectsByPaths(paths: string[]): Promise<void> {
+  const unique = [...new Set(paths.map((p) => p.trim()).filter(Boolean))];
+  if (unique.length === 0) return;
+
+  let supabase: ReturnType<typeof getSupabaseStorageClient>;
+  try {
+    supabase = getSupabaseStorageClient();
+  } catch (e) {
+    logger.warn(
+      { err: e instanceof Error ? e.message : String(e), count: unique.length },
+      "account deletion: skip storage cleanup (Supabase not configured)",
+    );
+    return;
+  }
+
+  await ensureUploadsBucketExists(supabase);
+
+  for (let i = 0; i < unique.length; i += STORAGE_REMOVE_BATCH) {
+    const batch = unique.slice(i, i + STORAGE_REMOVE_BATCH);
+    const { error } = await supabase.storage.from(UPLOADS_BUCKET).remove(batch);
+    if (error) {
+      logger.warn(
+        {
+          step: "remove",
+          batchSize: batch.length,
+          message: error.message,
+        },
+        "account deletion: storage remove batch had errors (continuing)",
+      );
+    }
+  }
+}
+

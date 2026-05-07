@@ -23,6 +23,7 @@ import {
   uploadAvatarImageForUser,
 } from "../lib/supabaseStorage";
 import { PUBLIC_AD_STATUSES } from "../lib/ad-visibility";
+import { requireAuth } from "../middlewares/require-auth";
 
 const router: IRouter = Router();
 const avatarUpload = multer({
@@ -32,14 +33,6 @@ const avatarUpload = multer({
     fileSize: 5 * 1024 * 1024,
   },
 });
-
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (!req.session.userId) {
-    res.status(401).json({ error: "غير مسجل الدخول" });
-    return;
-  }
-  next();
-}
 
 function parseUserId(req: Request, res: Response): number | null {
   const n = Number(req.params["userId"]);

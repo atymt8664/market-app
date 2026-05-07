@@ -4,29 +4,47 @@ import {
   Bell,
   ChevronLeft,
   CreditCard,
+  Eye,
+  EyeOff,
   Globe,
   HelpCircle,
   Info,
+  Loader2,
   Lock,
   LogOut,
   Mail,
   Shield,
   Star,
+  Trash2,
   User as UserIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   useAuthLogout,
   getAuthMeQueryKey,
   getListMyAdsQueryKey,
+  getListFavoriteAdsQueryKey,
+  getListConversationsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { AvatarCircle } from "@/components/avatar-circle";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { apiUrl } from "@/lib/api-url";
+import { cn } from "@/lib/utils";
+import {
+  notificationsQueryKey,
+  unreadCountQueryKey,
+} from "@/hooks/use-notifications";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { getAccountVerificationStatus, isAccountVerified } from "@/lib/account-verification";
@@ -39,6 +57,12 @@ import {
   SETTINGS_HEADER_INNER,
   SETTINGS_ICON_TILE,
   SETTINGS_ICON_TILE_DESTRUCTIVE,
+  SETTINGS_DIALOG_CONTENT,
+  SETTINGS_IMMERSIVE_BOTTOM,
+  SETTINGS_INPUT,
+  SETTINGS_INPUT_ICON_BUTTON,
+  SETTINGS_INPUT_ICON_CLASS,
+  SETTINGS_LABEL,
   SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
   SETTINGS_PAGE_TITLE,
@@ -50,6 +74,24 @@ import {
   stashLegalNavigationReturn,
   stashReturnTarget,
 } from "@/lib/return-navigation";
+
+function parseDeleteAccountErrorMessage(
+  status: number,
+  serverError: string | undefined,
+  translate: (key: string) => string,
+): string {
+  if (status >= 500) {
+    return translate("settings.account.delete.error_server");
+  }
+  if (typeof serverError === "string" && serverError.trim().length > 0) {
+    return serverError.trim();
+  }
+  if (status === 401) return translate("settings.account.delete.error_unauthorized");
+  if (status === 403) return translate("settings.account.delete.error_forbidden");
+  if (status === 429) return translate("settings.account.delete.error_rate_limit");
+  if (status === 400) return translate("settings.account.delete.error_wrong_password");
+  return translate("settings.account.delete.error_generic");
+}
 
 interface RowProps {
   icon: React.ReactNode;
@@ -143,6 +185,11 @@ export default function Settings() {
   const queryClient = useQueryClient();
   const logoutMutation = useAuthLogout();
 
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+
   // Force dark mode globally. App supports dark design only for now.
   useEffect(() => {
     localStorage.setItem("theme", "dark");
@@ -172,14 +219,83 @@ export default function Settings() {
     stashReturnTarget("/settings");
     navigate(finalUrl);
   };
-  void toast;
+
+  const resetDeleteDialog = () => {
+    setDeletePassword("");
+    setShowDeletePassword(false);
+  };
+
+  const handleDeleteDialogOpenChange = (open: boolean) => {
+    if (deletePending) return;
+    setDeleteOpen(open);
+    if (!open) resetDeleteDialog();
+  };
+
+  const clearSessionAfterAccountDeletion = async () => {
+    sessionStorage.clear();
+    queryClient.setQueryData(getAuthMeQueryKey(), null);
+    queryClient.removeQueries({ queryKey: getAuthMeQueryKey() });
+    queryClient.removeQueries({ queryKey: getListMyAdsQueryKey() });
+    queryClient.removeQueries({ queryKey: getListFavoriteAdsQueryKey() });
+    queryClient.removeQueries({ queryKey: getListConversationsQueryKey() });
+    queryClient.removeQueries({ queryKey: notificationsQueryKey });
+    queryClient.removeQueries({ queryKey: unreadCountQueryKey });
+    await queryClient.invalidateQueries();
+  };
+
+  const handleConfirmDeleteAccount = async () => {
+    const pwd = deletePassword.trim();
+    if (!pwd || deletePending) return;
+    setDeletePending(true);
+    try {
+      const res = await fetch(apiUrl("/api/account/delete"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pwd }),
+      });
+
+      const rawText = await res.text();
+      let serverError: string | undefined;
+      if (rawText) {
+        try {
+          const parsed = JSON.parse(rawText) as { error?: unknown };
+          if (typeof parsed.error === "string") serverError = parsed.error;
+        } catch {
+          /* ignore malformed JSON */
+        }
+      }
+
+      if (!res.ok) {
+        toast({
+          title: parseDeleteAccountErrorMessage(res.status, serverError, t),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      resetDeleteDialog();
+      setDeleteOpen(false);
+      await clearSessionAfterAccountDeletion();
+      toast({ title: t("settings.account.delete.success") });
+      navigate("/login");
+    } catch {
+      toast({
+        title: t("settings.account.delete.error_generic"),
+        variant: "destructive",
+      });
+    } finally {
+      setDeletePending(false);
+    }
+  };
+
   const verificationStatus = getAccountVerificationStatus(user);
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className={`flex flex-col w-full ${SETTINGS_PAGE_BG} pb-10`}
+      className={`flex flex-col w-full ${SETTINGS_PAGE_BG} ${SETTINGS_IMMERSIVE_BOTTOM}`}
     >
       <header className={SETTINGS_HEADER_BAR} dir="rtl">
         <div className={SETTINGS_HEADER_INNER}>
@@ -277,6 +393,32 @@ export default function Settings() {
           dividerClassName="border-primary/10"
         />
         </Section>
+
+        {user && (
+          <section className="mb-5" aria-label={t("settings.account.delete_placeholder_title")}>
+            <div
+              className={`${SETTINGS_CARD_SHELL} overflow-hidden border-red-500/28 ring-1 ring-red-500/12 shadow-[0_0_20px_-14px_rgba(248,113,113,0.35)]`}
+            >
+              <button
+                type="button"
+                onClick={() => handleDeleteDialogOpenChange(true)}
+                disabled={deletePending}
+                className="flex w-full items-start gap-3 px-4 py-4 text-right transition-colors hover:bg-red-500/[0.06] active:bg-red-500/[0.09] disabled:opacity-60 md:px-5 md:py-4"
+              >
+                <div className={SETTINGS_ICON_TILE_DESTRUCTIVE}>
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-red-300/95">{t("settings.account.delete_placeholder_title")}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {t("settings.account.delete_placeholder_subtitle")}
+                  </p>
+                </div>
+                <ChevronLeft className="mt-0.5 h-4 w-4 shrink-0 text-red-400/70" aria-hidden />
+              </button>
+            </div>
+          </section>
+        )}
 
         <Section title={t("settings.section.customization")}>
         <Row
@@ -386,6 +528,107 @@ export default function Settings() {
           </div>
         )}
       </div>
+
+      {user && (
+        <AlertDialog open={deleteOpen} onOpenChange={handleDeleteDialogOpenChange}>
+          <AlertDialogContent
+            dir={locale === "ar" ? "rtl" : "ltr"}
+            className={cn(
+              SETTINGS_DIALOG_CONTENT,
+              "fixed left-[50%] top-[50%] z-50 flex max-h-[min(90vh,680px)] w-[calc(100vw-2rem)] max-w-md translate-x-[-50%] translate-y-[-50%] flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl",
+            )}
+          >
+            <div className="max-h-[min(90vh,680px)] overflow-y-auto px-5 pb-5 pt-5 md:px-6">
+              <AlertDialogTitle className="text-right text-base font-bold text-foreground md:text-lg">
+                {t("settings.account.delete.dialog_title")}
+              </AlertDialogTitle>
+
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t("settings.account.delete.warning_intro")}</p>
+
+              <ul className="mt-3 list-disc space-y-1.5 ps-5 text-sm leading-relaxed text-muted-foreground marker:text-red-400/80">
+                <li>{t("settings.account.delete.bullet_permanent")}</li>
+                <li>{t("settings.account.delete.bullet_ads")}</li>
+                <li>{t("settings.account.delete.bullet_messages")}</li>
+                <li>{t("settings.account.delete.bullet_notifications_favorites")}</li>
+                <li>{t("settings.account.delete.bullet_admin_logs")}</li>
+                <li className="font-medium text-red-200/90">{t("settings.account.delete.bullet_irreversible")}</li>
+              </ul>
+
+              <div className="mt-5 space-y-2">
+                <label htmlFor="delete-account-password" className={SETTINGS_LABEL}>
+                  {t("settings.account.delete.password_label")}
+                </label>
+                <div className="relative">
+                  <input
+                    id="delete-account-password"
+                    type={showDeletePassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder={t("settings.account.delete.password_placeholder")}
+                    disabled={deletePending}
+                    className={cn(SETTINGS_INPUT, locale === "ar" ? "pl-11" : "pr-11")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowDeletePassword((v) => !v)}
+                    disabled={deletePending}
+                    className={cn(
+                      SETTINGS_INPUT_ICON_BUTTON,
+                      locale === "ar" ? "left-3 right-auto" : "right-3 left-auto",
+                    )}
+                    aria-label={
+                      showDeletePassword
+                        ? t("settings.account.delete.hide_password")
+                        : t("settings.account.delete.show_password")
+                    }
+                  >
+                    {showDeletePassword ? (
+                      <EyeOff className={SETTINGS_INPUT_ICON_CLASS} strokeWidth={2.25} />
+                    ) : (
+                      <Eye className={SETTINGS_INPUT_ICON_CLASS} strokeWidth={2.25} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div
+                className={cn(
+                  "mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between sm:gap-3",
+                  locale !== "ar" && "sm:flex-row-reverse",
+                )}
+              >
+                <AlertDialogCancel asChild disabled={deletePending}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={deletePending}
+                    className="h-11 min-w-[7rem] rounded-xl border-primary/35 bg-zinc-950/80"
+                  >
+                    {t("settings.account.delete.cancel")}
+                  </Button>
+                </AlertDialogCancel>
+                <Button
+                  type="button"
+                  disabled={deletePending || deletePassword.trim().length === 0}
+                  onClick={() => void handleConfirmDeleteAccount()}
+                  aria-busy={deletePending}
+                  className="inline-flex h-11 min-w-[10rem] items-center justify-center gap-2 rounded-xl border border-red-500/45 bg-red-950/55 font-semibold text-red-100 shadow-[0_0_18px_-12px_rgba(248,113,113,0.55)] hover:bg-red-950/75 hover:text-red-50 disabled:opacity-50"
+                >
+                  {deletePending ? (
+                    <>
+                      <Loader2 className="me-2 h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                      {t("settings.account.delete.working")}
+                    </>
+                  ) : (
+                    t("settings.account.delete.confirm")
+                  )}
+                </Button>
+              </div>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </motion.div>
   );
 }

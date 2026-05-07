@@ -44,6 +44,22 @@ const apiProxy: ProxyOptions = {
 export default defineConfig({
   base: basePath,
   plugins: [
+    {
+      name: "log-api-proxy-target",
+      configureServer(server) {
+        server.httpServer?.once("listening", () => {
+          const addr = server.httpServer?.address();
+          const where =
+            addr && typeof addr === "object"
+              ? `http://${addr.address === "::" ? "localhost" : addr.address}:${addr.port}`
+              : "";
+          // eslint-disable-next-line no-console -- dev-only diagnostics for LAN/mobile debugging
+          console.info(
+            `\n[vite] Dev server ${where || ""}\n[vite] Browser calls /api/* → proxied to API_PROXY_TARGET=${JSON.stringify(apiProxyTarget)}\n[vite] Set API_PROXY_TARGET=http://10.x.x.x:3001 if the API runs on another host.\n`,
+          );
+        });
+      },
+    },
     react(),
     tailwindcss(),
     ...(process.env.NODE_ENV !== "production" &&
@@ -112,5 +128,8 @@ export default defineConfig({
     port,
     host: true,
     allowedHosts: true,
+    proxy: {
+      "/api": apiProxy,
+    },
   },
 });

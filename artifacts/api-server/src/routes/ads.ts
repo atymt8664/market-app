@@ -3,7 +3,6 @@ import {
   type IRouter,
   type Request,
   type Response,
-  type NextFunction,
 } from "express";
 import {
   db,
@@ -23,8 +22,15 @@ import {
   UpdateAdBody,
   GetAdParams,
 } from "@workspace/api-zod";
-import { requireAdmin } from "../middlewares/require-admin";
+import {
+  hasValidAdminSession,
+  requireAdmin,
+  requireAdminCsrf,
+} from "../middlewares/require-admin";
 import { PUBLIC_AD_STATUSES, isPublicAdStatus } from "../lib/ad-visibility";
+import { createNotification } from "../lib/create-notification";
+import { logger } from "../lib/logger";
+import { requireAuth } from "../middlewares/require-auth";
 
 const router: IRouter = Router();
 let ensureAdsDetailsColumnPromise: Promise<void> | null = null;
@@ -52,14 +58,6 @@ router.use(async (_req, _res, next) => {
     next(error);
   }
 });
-
-function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  if (!req.session.userId) {
-    res.status(401).json({ error: "يرجى تسجيل الدخول" });
-    return;
-  }
-  next();
-}
 
 function serializeAd(row: {
   ads: typeof adsTable.$inferSelect;
@@ -166,23 +164,37 @@ router.get("/ads/featured", async (req, res) => {
 router.get("/admin/ads", requireAdmin, async (req, res) => {
   const status = req.query.status as string | undefined;
   const q = (req.query.q as string | undefined)?.trim();
+  const featuredRaw = req.query.featured as string | undefined;
 
-  let query: any = baseSelect(null);
+  const clauses = [];
 
   if (status) {
-    query = query.where(eq(adsTable.status, status));
+    clauses.push(eq(adsTable.status, status));
   }
 
   if (q) {
     const pattern = `%${q}%`;
-    const searchClause = or(
-      ilike(adsTable.title, pattern),
-      ilike(adsTable.description, pattern),
-      ilike(adsTable.city, pattern),
-      ilike(adsTable.sellerName, pattern),
-      ilike(adsTable.sellerPhone, pattern),
+    clauses.push(
+      or(
+        ilike(adsTable.title, pattern),
+        ilike(adsTable.description, pattern),
+        ilike(adsTable.city, pattern),
+        ilike(adsTable.sellerName, pattern),
+        ilike(adsTable.sellerPhone, pattern),
+      )!,
     );
-    query = query.where(searchClause);
+  }
+
+  if (featuredRaw === "true") {
+    clauses.push(eq(adsTable.featured, true));
+  } else if (featuredRaw === "false") {
+    clauses.push(eq(adsTable.featured, false));
+  }
+
+  let query: any = baseSelect(null);
+
+  if (clauses.length > 0) {
+    query = query.where(and(...clauses));
   }
 
   const rows = await query.orderBy(desc(adsTable.createdAt)).limit(100);
@@ -195,7 +207,7 @@ router.get("/admin/ads", requireAdmin, async (req, res) => {
   );
 });
 
-router.delete("/admin/ads/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/ads/:id", requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -203,7 +215,7 @@ router.delete("/admin/ads/:id", requireAdmin, async (req, res) => {
   }
 
   const [existing] = await db
-    .select({ id: adsTable.id, status: adsTable.status })
+    .select({ id: adsTable.id, status: adsTable.status, userId: adsTable.userId })
     .from(adsTable)
     .where(eq(adsTable.id, id))
     .limit(1);
@@ -212,6 +224,22 @@ router.delete("/admin/ads/:id", requireAdmin, async (req, res) => {
   }
 
   await db.delete(adsTable).where(eq(adsTable.id, id));
+
+  if (existing.userId != null) {
+    try {
+      await createNotification({
+        userId: existing.userId,
+        type: "ad.deleted",
+        title: "تم حذف إعلانك",
+        body: "تم حذف إعلانك من الإدارة",
+        entityType: null,
+        entityId: null,
+        metadata: { adId: id, source: "admin.ads.delete" },
+      });
+    } catch (err) {
+      logger.warn({ err, adId: id }, "createNotification failed (ad.delete)");
+    }
+  }
 
   await logAdminActivity({
     action: "ad.delete",
@@ -500,7 +528,8 @@ router.patch("/ads/:adId", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Ad not found" });
     return;
   }
-  if (existing[0].userId !== req.session.userId && !req.session.isAdmin) {
+  const isAdminWithValidSession = hasValidAdminSession(req);
+  if (existing[0].userId !== req.session.userId && !isAdminWithValidSession) {
     res.status(403).json({ error: "غير مصرح" });
     return;
   }
@@ -637,7 +666,7 @@ router.delete("/ads/:adId", requireAuth, async (req, res) => {
   res.status(204).end();
 });
 
-router.patch("/admin/ads/:id/status", requireAdmin, async (req, res) => {
+router.patch("/admin/ads/:id/status", requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   const status = req.body?.status;
 
@@ -646,7 +675,12 @@ router.patch("/admin/ads/:id/status", requireAdmin, async (req, res) => {
   }
 
   const [before] = await db
-    .select({ id: adsTable.id, status: adsTable.status })
+    .select({
+      id: adsTable.id,
+      status: adsTable.status,
+      userId: adsTable.userId,
+      title: adsTable.title,
+    })
     .from(adsTable)
     .where(eq(adsTable.id, id))
     .limit(1);
@@ -673,7 +707,139 @@ router.patch("/admin/ads/:id/status", requireAdmin, async (req, res) => {
     details: { fromStatus: before.status, toStatus: status },
   });
 
+  if (before.userId != null) {
+    try {
+      const shortTitle = before.title.trim().slice(0, 120) || "إعلانك";
+      if (status === "approved") {
+        await createNotification({
+          userId: before.userId,
+          type: "ad.approved",
+          title: "تم قبول إعلانك",
+          body: `تم اعتماد الإعلان: ${shortTitle}`,
+          entityType: "ad",
+          entityId: id,
+          metadata: { adTitle: shortTitle },
+        });
+      } else if (status === "rejected") {
+        await createNotification({
+          userId: before.userId,
+          type: "ad.rejected",
+          title: "تم رفض إعلانك",
+          body: `لم يُعتمد الإعلان: ${shortTitle}`,
+          entityType: "ad",
+          entityId: id,
+          metadata: { adTitle: shortTitle },
+        });
+      } else if (status === "hidden") {
+        await createNotification({
+          userId: before.userId,
+          type: "ad.hidden",
+          title: "تم إخفاء إعلانك",
+          body: "تم إخفاء إعلانك من الإدارة ولن يظهر للمستخدمين حاليًا",
+          entityType: "ad",
+          entityId: id,
+          metadata: { adTitle: shortTitle },
+        });
+      }
+    } catch (err) {
+      logger.warn({ err, adId: id }, "createNotification failed (ad status)");
+    }
+  }
+
   return res.json({ success: true });
+});
+
+// يدوي من الأدمن فقط حالياً؛ لاحقاً يمكن ربط التفعيل بعمليات دفع/مدة (featuredUntil) دون تغيير المسار العام.
+router.patch("/admin/ads/:id/featured", requireAdmin, requireAdminCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  const featured = req.body?.featured;
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "معرّف غير صالح" });
+  }
+  if (typeof featured !== "boolean") {
+    return res.status(400).json({ error: "القيمة featured مطلوبة (true/false)" });
+  }
+
+  const [before] = await db
+    .select({
+      id: adsTable.id,
+      featured: adsTable.featured,
+      status: adsTable.status,
+      userId: adsTable.userId,
+      title: adsTable.title,
+    })
+    .from(adsTable)
+    .where(eq(adsTable.id, id))
+    .limit(1);
+
+  if (!before) {
+    return res.status(404).json({ error: "الإعلان غير موجود" });
+  }
+
+  if (featured === true && before.status !== "approved") {
+    return res.status(400).json({
+      error: "يمكن تمييز الإعلانات المعتمدة فقط لتظهر في الصفحة الرئيسية",
+    });
+  }
+
+  if (before.featured === featured) {
+    return res.json({
+      ok: true,
+      id,
+      featured: before.featured,
+      status: before.status,
+    });
+  }
+
+  await db.update(adsTable).set({ featured }).where(eq(adsTable.id, id));
+
+  await logAdminActivity({
+    action: featured ? "ad.feature_on" : "ad.feature_off",
+    actorAdminId: getAdminActorId(req),
+    targetType: "ad",
+    targetId: id,
+    details: {
+      featured,
+      prevFeatured: before.featured,
+      status: before.status,
+    },
+  });
+
+  if (before.userId != null) {
+    try {
+      const shortTitle = before.title.trim().slice(0, 120) || "إعلانك";
+      await createNotification({
+        userId: before.userId,
+        type: featured ? "ad.featured" : "ad.unfeatured",
+        title: featured ? "تم تمييز إعلانك" : "تمت إزالة التمييز",
+        body: featured
+          ? `أصبح إعلانك ضمن المميزة (إن كان معتمدًا): ${shortTitle}`
+          : `أُزيل التمييز عن الإعلان: ${shortTitle}`,
+        entityType: "ad",
+        entityId: id,
+        metadata: { adTitle: shortTitle, featured },
+      });
+    } catch (err) {
+      logger.warn({ err, adId: id }, "createNotification failed (ad featured)");
+    }
+  }
+
+  const [after] = await db
+    .select({
+      featured: adsTable.featured,
+      status: adsTable.status,
+    })
+    .from(adsTable)
+    .where(eq(adsTable.id, id))
+    .limit(1);
+
+  return res.json({
+    ok: true,
+    id,
+    featured: after?.featured ?? featured,
+    status: after?.status ?? before.status,
+  });
 });
 
 export default router;

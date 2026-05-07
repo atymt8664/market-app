@@ -5,6 +5,15 @@ const PRODUCTION_ORIGINS = new Set([
   "https://www.souq-arab.com",
 ]);
 
+function loadOriginsFromEnv(): string[] {
+  const raw = process.env["CORS_ALLOWED_ORIGINS"]?.trim();
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && !s.includes("*"));
+}
+
 /** Browsers during local dev (Vite and common alt ports). */
 const DEV_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
@@ -32,7 +41,8 @@ export function createCorsOriginHandler(
       return;
     }
     if (isProduction) {
-      callback(null, PRODUCTION_ORIGINS.has(origin));
+      const extra = new Set(loadOriginsFromEnv());
+      callback(null, PRODUCTION_ORIGINS.has(origin) || extra.has(origin));
       return;
     }
     callback(null, isAllowedDevOrigin(origin));

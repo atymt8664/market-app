@@ -8,6 +8,7 @@ import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { createCorsOriginHandler } from "./lib/cors-allowlist";
+import { getSessionCookieSecure, getSessionSameSite, SESSION_COOKIE_NAME } from "./lib/session-cookie";
 import { getSessionSecret } from "./lib/session-secret";
 
 declare module "express-session" {
@@ -15,16 +16,14 @@ declare module "express-session" {
     userId?: number;
     isAdmin?: boolean;
     adminAuthenticatedAt?: number;
+    adminCsrfToken?: string;
+    adminActorId?: number;
+    adminActorLabel?: string;
   }
 }
 
 const app: Express = express();
 const isProduction = process.env.NODE_ENV === "production";
-/** trycloudflare / HTTPS dev: SESSION_COOKIE_SECURE=1 → Secure + SameSite=None (required with Secure cross-context cookies). */
-const sessionCookieSecure =
-  isProduction || process.env["SESSION_COOKIE_SECURE"] === "1";
-const sessionSameSite: "lax" | "none" =
-  sessionCookieSecure ? "none" : "lax";
 
 app.use(
   pinoHttp({
@@ -56,6 +55,8 @@ app.use(
   helmet({
     contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
+    frameguard: { action: "deny" },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   }),
 );
 app.use((_req, res, next) => {
@@ -71,7 +72,7 @@ app.set("trust proxy", 1);
 
 app.use(
   session({
-    name: "souq.sid",
+    name: SESSION_COOKIE_NAME,
     store: new PgStore({
       pool,
       tableName: "user_sessions",
@@ -80,10 +81,11 @@ app.use(
     secret: getSessionSecret(),
     resave: false,
     saveUninitialized: false,
+    rolling: true,
     cookie: {
       httpOnly: true,
-      secure: sessionCookieSecure,
-      sameSite: sessionSameSite,
+      secure: getSessionCookieSecure(),
+      sameSite: getSessionSameSite(),
       path: "/",
       maxAge: 1000 * 60 * 60 * 24 * 30,
     },
@@ -101,8 +103,19 @@ app.use((err: any, _req: any, res: any, _next: any) => {
         ? err.status
         : 500;
   if (res.headersSent) return;
+  const exposeMessage =
+    statusCode < 500 &&
+    typeof err?.message === "string" &&
+    err.message.length > 0 &&
+    err.message.length < 500;
   res.status(statusCode).json({
-    error: statusCode >= 500 ? "Internal Server Error" : err?.message || "Request failed",
+    error: isProduction
+      ? statusCode >= 500
+        ? "Internal Server Error"
+        : exposeMessage
+          ? err.message
+          : "Request failed"
+      : err?.message || "Request failed",
   });
 });
 

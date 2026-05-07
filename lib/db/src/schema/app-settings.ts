@@ -3,8 +3,8 @@ import { integer, pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core"
 export const appSettingsTable = pgTable("app_settings", {
   id: integer("id").primaryKey().default(1),
   appName: text("app_name").notNull().default("سوق العرب EU"),
-  appVersion: text("app_version").notNull().default("2.0.0"),
-  supportEmail: text("support_email").notNull().default("support@souq-arab.eu"),
+  appVersion: text("app_version").notNull().default("1.0.0"),
+  supportEmail: text("support_email").notNull().default("souqarab.market@gmail.com"),
   requireAdApproval: boolean("require_ad_approval").notNull().default(true),
   reportsEnabled: boolean("reports_enabled").notNull().default(true),
   supportEnabled: boolean("support_enabled").notNull().default(true),

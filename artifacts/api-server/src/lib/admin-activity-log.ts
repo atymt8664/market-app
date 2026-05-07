@@ -45,10 +45,12 @@ function sanitizeDetails(input?: SafeDetails): SafeDetails {
   return output;
 }
 
-export function getAdminActorId(req: { session?: { userId?: unknown } }): number | null {
-  const userId = req.session?.userId;
-  return typeof userId === "number" && Number.isInteger(userId) && userId > 0
-    ? userId
+export function getAdminActorId(req: { session?: { adminActorId?: unknown } }): number | null {
+  const adminActorId = req.session?.adminActorId;
+  return typeof adminActorId === "number" &&
+    Number.isInteger(adminActorId) &&
+    adminActorId > 0
+    ? adminActorId
     : null;
 }
 

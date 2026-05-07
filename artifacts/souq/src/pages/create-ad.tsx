@@ -98,15 +98,6 @@ function CreateAdSheetHeader({ title }: { title: string }) {
   );
 }
 
-function buildMockImprovedDescription(
-  originalDescription: string,
-  title?: string,
-  categoryLabel?: string,
-) {
-  const normalized = originalDescription.trim().replace(/\s+/g, " ");
-  return `${title ? `${title}: ` : ""}${normalized}، بحالة جيدة، استخدام خفيف، بدون أعطال واضحة، السعر قابل للتفاوض.${categoryLabel ? ` مناسب ضمن فئة ${categoryLabel}.` : ""}`;
-}
-
 const createAdSchema = z.object({
   title: z.string().min(3, "العنوان قصير جداً").max(65, "العنوان طويل جداً"),
   description: z
@@ -601,6 +592,13 @@ const CURRENCY_OPTIONS: CurrencyOption[] = [
   { id: "DKK", label: "DKK" },
 ];
 
+/** Paid promotions are not implemented yet; selections must not be persisted. */
+const PROMOTIONS_COMING_SOON_MSG =
+  "خدمة تمييز الإعلانات ستتوفر قريبًا";
+
+const AI_UNAVAILABLE_MSG =
+  "خدمة الذكاء الاصطناعي غير متاحة حاليًا، حاول لاحقًا";
+
 const PROMOTION_FEATURES: PromotionFeature[] = [
   {
     id: "highlight",
@@ -673,7 +671,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const [pickupOnly, setPickupOnly] = useState(false);
   const [tempPickupOnly, setTempPickupOnly] = useState(false);
   const [directBuy, setDirectBuy] = useState<"yes" | "no">("no");
-  const [promotionIds, setPromotionIds] = useState<string[]>([]);
   const [sellerSafetyAccepted, setSellerSafetyAccepted] = useState(false);
   const [safetyNoticeExpanded, setSafetyNoticeExpanded] = useState(false);
   const [showAiImproveHint, setShowAiImproveHint] = useState(true);
@@ -744,9 +741,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       if (parsed.meta?.directBuy === "yes" || parsed.meta?.directBuy === "no") {
         setDirectBuy(parsed.meta.directBuy);
       }
-      if (parsed.meta?.promotions?.length) {
-        setPromotionIds(parsed.meta.promotions);
-      }
     }
   }, [existingAd, isEdit, form]);
 
@@ -810,12 +804,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const toggleShippingTemp = (id: string) => {
     setTempPickupOnly(false);
     setTempShippingIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    );
-  };
-
-  const togglePromotion = (id: string) => {
-    setPromotionIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
@@ -1014,7 +1002,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       shippingIds,
       pickupOnly,
       directBuy,
-      promotionIds,
+      promotionIds: [],
     });
     const adBody = { ...data, details: detailsPayload };
 
@@ -1180,16 +1168,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       return;
     }
 
-    const categoryLabel = selectedCategoryPath
-      ? `${selectedCategoryPath.main} - ${selectedCategoryPath.sub}${selectedCategoryPath.leaf ? ` - ${selectedCategoryPath.leaf}` : ""}`
-      : selectedCategory?.name || "";
-
-    const fallbackImproved = buildMockImprovedDescription(
-      currentDescription,
-      watchTitle || undefined,
-      categoryLabel || undefined,
-    );
-
     improveDescMutation.mutate(
       {
         data: {
@@ -1203,16 +1181,17 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           const improvedFromApi = res.description?.trim() || "";
           const didChange =
             improvedFromApi.length > 0 && improvedFromApi !== currentDescription;
-          const nextDescription = didChange ? improvedFromApi : fallbackImproved;
-          form.setValue("description", nextDescription, {
-            shouldValidate: true,
-          });
-          toast({
-            title: didChange ? "تم تحسين الوصف بنجاح!" : "تم تحسين الوصف مبدئيًا",
-            description: didChange
-              ? undefined
-              : "تم استخدام تحسين مؤقت لأن الخدمة أعادت نصًا غير محسّن",
-          });
+          if (didChange) {
+            form.setValue("description", improvedFromApi, {
+              shouldValidate: true,
+            });
+            toast({ title: "تم تحسين الوصف" });
+          } else {
+            toast({
+              title: "لم يتغير الوصف",
+              description: "جرّب إضافة تفاصيل أكثر ثم أعد المحاولة.",
+            });
+          }
         },
         onError: (err) => {
           const aborted =
@@ -1222,40 +1201,27 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           if (aborted) {
             toast({
               title: "انتهت مهلة الطلب",
-              description: "تأكد أن الـ API يعمل محليًا ثم أعد المحاولة.",
+              description: "حاول لاحقًا.",
               variant: "destructive",
             });
             return;
           }
-          if (err instanceof ApiError && err.status === 503) {
-            const detail =
-              typeof err.data === "object" &&
-              err.data !== null &&
-              "message" in err.data &&
-              typeof (err.data as { message?: unknown }).message === "string"
-                ? (err.data as { message: string }).message
-                : err.message;
+          if (
+            err instanceof ApiError &&
+            (err.status === 502 ||
+              err.status === 503 ||
+              err.status === 504 ||
+              err.status === 500)
+          ) {
             toast({
-              title: "الذكاء الاصطناعي غير مفعّل على الخادم",
-              description: detail,
+              title: AI_UNAVAILABLE_MSG,
               variant: "destructive",
             });
             return;
           }
-          if (err instanceof ApiError && err.status === 502) {
-            toast({
-              title: "فشل طلب الذكاء الاصطناعي",
-              description: err.message,
-              variant: "destructive",
-            });
-            return;
-          }
-          form.setValue("description", fallbackImproved, {
-            shouldValidate: true,
-          });
           toast({
-            title: "تم تحسين الوصف مبدئيًا",
-            description: "تم استخدام تحسين مؤقت لحين يعمل الاتصال بالخادم.",
+            title: AI_UNAVAILABLE_MSG,
+            variant: "destructive",
           });
         },
       },
@@ -1267,20 +1233,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       toast({ title: "أدخل عنوان الإعلان أولاً", variant: "destructive" });
       return;
     }
-
-    const condition = dynamicFieldValues.condition || "";
-    const storage = dynamicFieldValues.storage || "";
-    const hasPremiumBrand = /آبل|Apple|سامسونج/i.test(
-      selectedCategoryPath?.leaf || watchTitle,
-    );
-    let base = hasPremiumBrand ? 280 : 180;
-    if (/جديد|مثل الجديد/.test(condition)) base += 120;
-    else if (/جيد جداً|جيد جدا/.test(condition)) base += 70;
-    else if (/مقبول|يحتاج صيانة/.test(condition)) base -= 40;
-    if (/512|1TB/i.test(storage)) base += 150;
-    else if (/256/i.test(storage)) base += 90;
-    else if (/128/i.test(storage)) base += 50;
-    const mockPrice = Math.max(30, Math.round(base / 5) * 5);
 
     suggestPriceMutation.mutate(
       {
@@ -1304,39 +1256,27 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           if (aborted) {
             toast({
               title: "انتهت مهلة الطلب",
-              description: "تأكد أن الـ API يعمل محليًا ثم أعد المحاولة.",
+              description: "حاول لاحقًا.",
               variant: "destructive",
             });
             return;
           }
-          if (err instanceof ApiError && err.status === 503) {
-            const detail =
-              typeof err.data === "object" &&
-              err.data !== null &&
-              "message" in err.data &&
-              typeof (err.data as { message?: unknown }).message === "string"
-                ? (err.data as { message: string }).message
-                : err.message;
+          if (
+            err instanceof ApiError &&
+            (err.status === 502 ||
+              err.status === 503 ||
+              err.status === 504 ||
+              err.status === 500)
+          ) {
             toast({
-              title: "الذكاء الاصطناعي غير مفعّل على الخادم",
-              description: detail,
+              title: AI_UNAVAILABLE_MSG,
               variant: "destructive",
             });
             return;
           }
-          if (err instanceof ApiError && err.status === 502) {
-            toast({
-              title: "فشل طلب الذكاء الاصطناعي",
-              description: err.message,
-              variant: "destructive",
-            });
-            return;
-          }
-          form.setValue("price", mockPrice, { shouldValidate: true });
-          form.setValue("priceType", "negotiable");
           toast({
-            title: "تم اقتراح سعر مبدئي",
-            description: `اقتراح مؤقت: ${mockPrice} €`,
+            title: AI_UNAVAILABLE_MSG,
+            variant: "destructive",
           });
         },
       },
@@ -1366,9 +1306,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     : selectedShippingLabels.length > 0
       ? selectedShippingLabels
       : ["الاستلام متاح دائمًا"];
-  const promotionsPreviewLines = PROMOTION_FEATURES.filter((p) =>
-    promotionIds.includes(p.id),
-  ).map((p) => `${p.title} (${p.price})`);
+  const promotionsPreviewLines: string[] = [];
   const currencyLabelForPreview =
     CURRENCY_OPTIONS.find((c) => c.id === selectedCurrency)?.label ??
     selectedCurrency;
@@ -2239,44 +2177,47 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               ميزات الترويج
             </label>
             <div className={adCardShell}>
-              <div className="space-y-0">
+              <div className="mb-3 rounded-xl border border-primary/35 bg-primary/8 px-3 py-2.5 text-right">
+                <p className="text-sm font-semibold text-foreground">
+                  {PROMOTIONS_COMING_SOON_MSG}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                  يمكنك نشر إعلانك بشكل عادي دون تمييز؛ خيارات الترويج المدفوعة غير
+                  مفعّلة بعد.
+                </p>
+              </div>
+              <div
+                className="pointer-events-none space-y-0 opacity-[0.45]"
+                aria-hidden
+              >
                 {PROMOTION_FEATURES.map((feature, index) => {
-                  const selected = promotionIds.includes(feature.id);
                   const isLast = index === PROMOTION_FEATURES.length - 1;
                   return (
-                    <button
+                    <div
                       key={feature.id}
-                      type="button"
-                      onClick={() => togglePromotion(feature.id)}
-                      className={`w-full py-2 text-right transition-colors ${
-                        !isLast ? "mb-1 border-b border-primary/20 pb-3" : ""
+                      className={`w-full py-2 text-right ${
+                        !isLast ? "mb-1 border-b border-primary/15 pb-3" : ""
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-2 min-w-0">
-                          <span
-                            className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center ${
-                              selected
-                                ? "border-primary bg-primary text-black"
-                                : "border-primary/35 text-transparent"
-                            }`}
-                          >
-                            <Check className="w-3.5 h-3.5" />
+                        <div className="flex min-w-0 items-start gap-2">
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-primary/35" />
+                          <span className="mt-0.5">
+                            {renderPromotionIcon(feature.icon)}
                           </span>
-                          <span className="mt-0.5">{renderPromotionIcon(feature.icon)}</span>
                           <div className="min-w-0">
-                            <p className="font-medium text-sm">{feature.title}</p>
+                            <p className="text-sm font-medium">{feature.title}</p>
                             <p className="mt-0.5 text-xs text-zinc-500">
                               {feature.description}
                             </p>
-                            <p className="text-xs font-semibold text-primary mt-1">
+                            <p className="mt-1 text-xs font-semibold text-primary">
                               {feature.price}
                             </p>
                           </div>
                         </div>
                         <Info className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>

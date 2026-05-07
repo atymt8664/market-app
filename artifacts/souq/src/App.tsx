@@ -1,5 +1,6 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/query-client";
 import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -44,6 +45,7 @@ import AccountInfo from "@/pages/account-info";
 import Messages from "@/pages/messages";
 import MessageThread from "@/pages/message-thread";
 import SupportHelpPage from "@/pages/support-help";
+import NotificationsPage from "@/pages/notifications";
 import GuestWelcome from "@/pages/guest-welcome";
 import { hasSavedLocale, t, type Locale } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
@@ -56,15 +58,6 @@ import {
   AUTH_SELECT_ROW,
 } from "@/lib/auth-page-styles";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
 function Router() {
   return (
     <Layout>
@@ -75,7 +68,9 @@ function Router() {
         <Route path="/search" component={Search} />
         <Route path="/ad/:id" component={AdDetail} />
         <Route path="/new">{() => <CreateAd />}</Route>
+        <Route path="/create-ad">{() => <Redirect to="/new" />}</Route>
         <Route path="/edit/:id" component={EditAd} />
+        <Route path="/edit-ad/:id">{({ id }) => <Redirect to={`/edit/${id}`} />}</Route>
         <Route path="/login" component={Login} />
         <Route path="/admin-login" component={AdminLogin} />
         <Route path="/admin" component={AdminPage} />
@@ -103,6 +98,9 @@ function Router() {
         <Route path="/account/password" component={AccountPassword} />
         <Route path="/account/verification" component={AccountVerification} />
         <Route path="/account/help" component={SupportHelpPage} />
+        <Route path="/support">{() => <Redirect to="/account/help" />}</Route>
+        <Route path="/support/help">{() => <Redirect to="/account/help" />}</Route>
+        <Route path="/notifications" component={NotificationsPage} />
         <Route path="/account/:slug" component={AccountInfo} />
         <Route path="/profile" component={Profile} />
         <Route path="/favorites" component={Favorites} />

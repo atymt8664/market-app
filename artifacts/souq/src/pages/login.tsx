@@ -57,6 +57,7 @@ function resolvePostLoginRedirect(search: string): string {
   if (path.startsWith("//")) return "/";
   if (!path.startsWith("/")) return "/";
   if (path === "/login" || path.startsWith("/login?")) return "/";
+  if (path === "/create-ad") return "/new";
   return path;
 }
 
@@ -71,7 +72,27 @@ export default function Login() {
   const queryClient = useQueryClient();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [accountDisabledByAdmin, setAccountDisabledByAdmin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /** بعد إعادة التوجيه من اعتراض الحظر، أو فتح الرابط مع ?accountDisabled=1 */
+  useLayoutEffect(() => {
+    try {
+      const params = new URLSearchParams(search);
+      if (params.get("accountDisabled") === "1") {
+        setAccountDisabledByAdmin(true);
+        sessionStorage.removeItem("souq_account_disabled");
+        void queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
+        queryClient.removeQueries({ queryKey: getAuthMeQueryKey() });
+      } else if (sessionStorage.getItem("souq_account_disabled") === "1") {
+        setAccountDisabledByAdmin(true);
+        sessionStorage.removeItem("souq_account_disabled");
+        queryClient.removeQueries({ queryKey: getAuthMeQueryKey() });
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [search, queryClient]);
 
   /** إذا أصبح المستخدم مسجلاً (من الكاش أو بعد setQueryData) يجب مغادرة /login فوراً */
   useLayoutEffect(() => {
@@ -87,6 +108,7 @@ export default function Login() {
 
   const onSubmit = async (data: Values) => {
     setError(null);
+    setAccountDisabledByAdmin(false);
     setIsSubmitting(true);
 
     try {
@@ -100,7 +122,12 @@ export default function Login() {
       });
 
       const text = await res.text();
-      const json = text ? JSON.parse(text) : {};
+      let json: any = {};
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        json = {};
+      }
 
       if (!res.ok) {
         if (res.status === 403 && json?.code === "EMAIL_NOT_VERIFIED") {
@@ -112,6 +139,11 @@ export default function Login() {
           });
 
           setLocation(`/verify-email?${params.toString()}`);
+          return;
+        }
+
+        if (res.status === 403 && json?.code === "ACCOUNT_DISABLED") {
+          setAccountDisabledByAdmin(true);
           return;
         }
 
@@ -207,6 +239,18 @@ export default function Login() {
                   </FormItem>
                 )}
               />
+
+              {accountDisabledByAdmin && (
+                <p className="rounded-xl border border-amber-500/35 bg-amber-950/25 p-3 text-center text-sm leading-relaxed text-amber-100 ring-1 ring-amber-500/20">
+                  تم تعطيل هذا الحساب من قبل الإدارة. للتواصل:{" "}
+                  <a
+                    href="mailto:souqarab.market@gmail.com"
+                    className="font-medium text-primary underline underline-offset-2 hover:text-primary/90"
+                  >
+                    souqarab.market@gmail.com
+                  </a>
+                </p>
+              )}
 
               {error && (
                 <p className="rounded-xl border border-destructive/35 bg-destructive/10 p-3 text-center text-sm text-destructive ring-1 ring-destructive/20">

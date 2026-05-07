@@ -61,9 +61,13 @@ export function useAdminCities(params: { status: string; q: string; countryCode:
   });
 }
 
-export function useAdminAds(params: { status: string; q: string }) {
+export function useAdminAds(params: {
+  status: string;
+  q: string;
+  featured: "all" | "true" | "false";
+}) {
   return useQuery({
-    queryKey: ["admin", "ads", params.status, params.q],
+    queryKey: ["admin", "ads", params.status, params.q, params.featured],
     queryFn: () => getAdminAds(params),
   });
 }
@@ -72,6 +76,8 @@ export function useAdminReports() {
   return useQuery({
     queryKey: ["admin", "reports"],
     queryFn: getAdminReports,
+    refetchOnWindowFocus: true,
+    staleTime: 10_000,
   });
 }
 
@@ -79,6 +85,8 @@ export function useAdminSupportTickets(params: { status: string; q: string }) {
   return useQuery({
     queryKey: ["admin", "support", "tickets", params.status, params.q],
     queryFn: () => getAdminSupportTickets(params),
+    refetchOnWindowFocus: true,
+    staleTime: 10_000,
   });
 }
 
@@ -94,6 +102,8 @@ export function useAdminUsers(params: { status: string; q: string }) {
   return useQuery({
     queryKey: ["admin", "users", params.status, params.q],
     queryFn: () => getAdminUsers(params),
+    refetchOnWindowFocus: true,
+    staleTime: 10_000,
   });
 }
 

@@ -1,23 +1,30 @@
 import {
   Router,
   type IRouter,
-  type NextFunction,
-  type Request,
   type Response,
 } from "express";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import OpenAI from "openai";
 import { ImproveDescriptionBody, SuggestPriceBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
+import { requireAuth } from "../middlewares/require-auth";
 
 const router: IRouter = Router();
+const isProduction = process.env.NODE_ENV === "production";
 
-function requireUserAuth(req: Request, res: Response, next: NextFunction) {
-  if (!req.session?.userId) {
-    res.status(401).json({ error: "يرجى تسجيل الدخول" });
-    return;
-  }
-  next();
-}
+/** Per logged-in user (session id); falls back to IP if session missing. */
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isProduction ? 12 : 80,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "AI_RATE_LIMIT", message: "طلبات كثيرة، انتظر قليلاً ثم أعد المحاولة" },
+  keyGenerator: (req) => {
+    const uid = req.session?.userId;
+    if (typeof uid === "number" && uid > 0) return `ai:u:${uid}`;
+    return ipKeyGenerator(req.ip ?? "");
+  },
+});
 
 /** Non-empty key from integration-specific or standard OpenAI env names. */
 function resolveOpenAiApiKey(): string | undefined {
@@ -49,21 +56,59 @@ function createOpenAiClient(): OpenAI | null {
 
 const openai = createOpenAiClient();
 
+/** Valid OpenAI chat model; override via OPENAI_CHAT_MODEL. Avoid invalid names (they surface as failed requests). */
+const OPENAI_CHAT_MODEL =
+  process.env["OPENAI_CHAT_MODEL"]?.trim() || "gpt-4o-mini";
+
 if (!openai) {
   logger.info(
     "AI routes are disabled: set AI_INTEGRATIONS_OPENAI_API_KEY or OPENAI_API_KEY in the API server environment.",
   );
 }
 
+const AI_USER_MESSAGE =
+  "خدمة الذكاء الاصطناعي غير متاحة حاليًا، حاول لاحقًا";
+
 function aiUnavailable(res: Response) {
   res.status(503).json({
     error: "AI_UNAVAILABLE",
-    message:
-      "ميزة الذكاء الاصطناعي غير مفعّلة على الخادم. لطلب التحسين أو التسعير عبر AI، أضف المفتاح في ملف بيئة الـ API: AI_INTEGRATIONS_OPENAI_API_KEY (مفضّل) أو OPENAI_API_KEY، واختياريًا عنوان القاعدة: AI_INTEGRATIONS_OPENAI_BASE_URL أو OPENAI_BASE_URL.",
+    message: AI_USER_MESSAGE,
   });
 }
 
-router.post("/ai/improve-description", requireUserAuth, async (req, res) => {
+function aiRequestFailed(res: Response) {
+  res.status(503).json({
+    error: "AI_FAILED",
+    message: AI_USER_MESSAGE,
+  });
+}
+
+function logAiError(scope: "improveDescription" | "suggestPrice", err: unknown) {
+  const e = err as {
+    status?: unknown;
+    code?: unknown;
+    type?: unknown;
+    name?: unknown;
+    message?: unknown;
+  };
+  logger.error(
+    {
+      scope,
+      aiErrorStatus: typeof e?.status === "number" ? e.status : null,
+      aiErrorCode: typeof e?.code === "string" ? e.code : null,
+      aiErrorType: typeof e?.type === "string" ? e.type : null,
+      aiErrorName: typeof e?.name === "string" ? e.name : null,
+      // Keep diagnostics without leaking provider messages/prompts/secrets.
+      aiErrorKind:
+        typeof e?.message === "string" && /invalid[_-]?api[_-]?key/i.test(e.message)
+          ? "invalid_api_key"
+          : "provider_request_failed",
+    },
+    `${scope} failed`,
+  );
+}
+
+router.post("/ai/improve-description", requireAuth, aiLimiter, async (req, res) => {
   const body = ImproveDescriptionBody.parse(req.body);
   if (!openai) {
     aiUnavailable(res);
@@ -71,7 +116,7 @@ router.post("/ai/improve-description", requireUserAuth, async (req, res) => {
   }
   try {
     const r = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: OPENAI_CHAT_MODEL,
       max_completion_tokens: 1200,
       messages: [
         {
@@ -88,12 +133,12 @@ router.post("/ai/improve-description", requireUserAuth, async (req, res) => {
     const description = r.choices[0]?.message?.content?.trim() ?? body.description;
     res.json({ description });
   } catch (err) {
-    logger.error({ err }, "improveDescription failed");
-    res.status(502).json({ error: "AI request failed" });
+    logAiError("improveDescription", err);
+    aiRequestFailed(res);
   }
 });
 
-router.post("/ai/suggest-price", requireUserAuth, async (req, res) => {
+router.post("/ai/suggest-price", requireAuth, aiLimiter, async (req, res) => {
   const body = SuggestPriceBody.parse(req.body);
   if (!openai) {
     aiUnavailable(res);
@@ -101,7 +146,7 @@ router.post("/ai/suggest-price", requireUserAuth, async (req, res) => {
   }
   try {
     const r = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: OPENAI_CHAT_MODEL,
       max_completion_tokens: 400,
       response_format: { type: "json_object" },
       messages: [
@@ -123,8 +168,8 @@ router.post("/ai/suggest-price", requireUserAuth, async (req, res) => {
       reasoning: parsed.reasoning ?? "",
     });
   } catch (err) {
-    logger.error({ err }, "suggestPrice failed");
-    res.status(502).json({ error: "AI request failed" });
+    logAiError("suggestPrice", err);
+    aiRequestFailed(res);
   }
 });
 

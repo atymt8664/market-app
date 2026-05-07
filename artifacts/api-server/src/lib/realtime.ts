@@ -8,11 +8,12 @@ import connectPgSimple from "connect-pg-simple";
 import { pool } from "@workspace/db";
 import { logger } from "./logger";
 import { getSessionSecret } from "./session-secret";
+import { SESSION_COOKIE_NAME } from "./session-cookie";
 
 const PgStore = connectPgSimple(session);
 const store = new PgStore({ pool, tableName: "user_sessions" });
 
-const SESSION_COOKIE = "souq.sid";
+const SESSION_COOKIE = SESSION_COOKIE_NAME;
 const SESSION_SECRET = getSessionSecret();
 
 const cookieParserMw = cookie(SESSION_SECRET);

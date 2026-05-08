@@ -82,7 +82,11 @@ export default function AdminPage() {
 
   return (
     <AdminShell activeKey="dashboard" onLogout={handleLogout}>
-      <DashboardHome data={dashboardQuery.data} isRefreshing={dashboardQuery.isFetching} />
+      <DashboardHome
+        key={dashboardQuery.dataUpdatedAt}
+        data={dashboardQuery.data}
+        isRefreshing={dashboardQuery.isFetching}
+      />
     </AdminShell>
   );
 }

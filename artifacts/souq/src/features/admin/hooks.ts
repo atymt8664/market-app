@@ -30,8 +30,16 @@ export function useAdminDashboard() {
     queryFn: ({ signal }) => getAdminDashboard(signal),
     refetchInterval: 20000,
     refetchIntervalInBackground: true,
-    staleTime: 10000,
-    placeholderData: (previousData) => previousData,
+    /** Always treat dashboard totals as stale so navigations/refetches pull fresh counts. */
+    staleTime: 0,
+    refetchOnMount: "always",
+    /** Override global default (false): refresh when returning to the admin tab. */
+    refetchOnWindowFocus: true,
+    /**
+     * Default structural sharing can reuse nested object references when merging fetch results.
+     * That sometimes skips React/Recharts updates even when the API JSON changed (especially large nested payloads).
+     */
+    structuralSharing: false,
   });
 }
 
@@ -43,7 +51,7 @@ export function useAdminStats(period: AdminStatsPeriod) {
     refetchIntervalInBackground: true,
     refetchOnMount: "always",
     staleTime: 0,
-    placeholderData: (previousData) => previousData,
+    structuralSharing: false,
   });
 }
 

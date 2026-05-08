@@ -1,4 +1,5 @@
 import { db, notificationsTable } from "@workspace/db";
+import { shouldDeliverInAppNotification } from "./notification-preference-gate";
 
 export type CreateNotificationInput = {
   userId: number;
@@ -37,6 +38,9 @@ export async function createNotification(
   const title = String(input.title ?? "").trim().slice(0, 500);
   const body = String(input.body ?? "").trim().slice(0, 2000);
   if (!type || !title) return null;
+
+  const allowed = await shouldDeliverInAppNotification(userId, type);
+  if (!allowed) return null;
 
   let entityType: string | null = null;
   if (input.entityType != null && String(input.entityType).trim()) {

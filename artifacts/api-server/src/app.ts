@@ -1,15 +1,15 @@
-import express, { type Express } from "express";
+import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
-import helmet from "helmet";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { createCorsOriginHandler } from "./lib/cors-allowlist";
 import { getSessionCookieSecure, getSessionSameSite, SESSION_COOKIE_NAME } from "./lib/session-cookie";
 import { getSessionSecret } from "./lib/session-secret";
+import { apiSecurityHeadersMiddleware } from "./lib/security-headers";
 
 declare module "express-session" {
   interface SessionData {
@@ -19,11 +19,27 @@ declare module "express-session" {
     adminCsrfToken?: string;
     adminActorId?: number;
     adminActorLabel?: string;
+    /** Set after successful ADMIN_ACCESS_KEY verification at admin login (same TTL as admin session). */
+    adminAccessGrantedAt?: number;
+    /** Password verified; awaiting TOTP before full admin session (future 2FA step). */
+    adminTotpPending?: boolean;
+    /** Epoch ms; pending step expires (future 2FA). */
+    adminTotpPendingExpiresAt?: number;
+    /** Mirrors app_settings.admin_security_revision after login; used to invalidate sessions when revision bumps. */
+    adminSecurityRevision?: number;
+    /** Pending TOTP secret during in-dashboard 2FA enrollment (server session only). */
+    admin2faSetupSecret?: string;
+    admin2faSetupExpiresAt?: number;
+    /** Failed admin-login TOTP attempts during pending step (cleared on success or lockout). */
+    adminTotpFailedAttempts?: number;
   }
 }
 
 const app: Express = express();
 const isProduction = process.env.NODE_ENV === "production";
+
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -45,18 +61,22 @@ app.use(
   }),
 );
 
+app.use(apiSecurityHeadersMiddleware(isProduction));
+
 app.use(
   cors({
     origin: createCorsOriginHandler(isProduction),
     credentials: true,
-  }),
-);
-app.use(
-  helmet({
-    contentSecurityPolicy: false,
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    frameguard: { action: "deny" },
-    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Admin-Access-Key",
+      "X-CSRF-Token",
+      "X-Requested-With",
+    ],
+    exposedHeaders: ["X-CSRF-Token"],
+    maxAge: 86_400,
   }),
 );
 app.use((_req, res, next) => {
@@ -67,8 +87,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const PgStore = connectPgSimple(session);
-
-app.set("trust proxy", 1);
 
 app.use(
   session({
@@ -94,28 +112,36 @@ app.use(
 
 app.use("/api", router);
 
-app.use((err: any, _req: any, res: any, _next: any) => {
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   logger.error({ err }, "Unhandled API error");
+  const e = err as { statusCode?: number; status?: number; message?: string };
   const statusCode =
-    typeof err?.statusCode === "number"
-      ? err.statusCode
-      : typeof err?.status === "number"
-        ? err.status
+    typeof e?.statusCode === "number"
+      ? e.statusCode
+      : typeof e?.status === "number"
+        ? e.status
         : 500;
   if (res.headersSent) return;
-  const exposeMessage =
-    statusCode < 500 &&
-    typeof err?.message === "string" &&
-    err.message.length > 0 &&
-    err.message.length < 500;
+  if (isProduction) {
+    if (statusCode >= 500) {
+      res.status(statusCode).json({ error: "Internal Server Error" });
+      return;
+    }
+    const msg = typeof e?.message === "string" ? e.message.trim() : "";
+    const safeClientMessage =
+      msg.length > 0 &&
+      msg.length < 500 &&
+      !/^\s*error\s*:/i.test(msg) &&
+      !msg.includes("at ") &&
+      !msg.includes(".ts") &&
+      !msg.includes(".js:");
+    res.status(statusCode).json({
+      error: safeClientMessage ? msg : "Request failed",
+    });
+    return;
+  }
   res.status(statusCode).json({
-    error: isProduction
-      ? statusCode >= 500
-        ? "Internal Server Error"
-        : exposeMessage
-          ? err.message
-          : "Request failed"
-      : err?.message || "Request failed",
+    error: e?.message || "Request failed",
   });
 });
 

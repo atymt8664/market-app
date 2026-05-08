@@ -30,7 +30,6 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { AvatarCircle } from "@/components/avatar-circle";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -394,48 +393,16 @@ export default function Settings() {
         />
         </Section>
 
-        {user && (
-          <section className="mb-5" aria-label={t("settings.account.delete_placeholder_title")}>
-            <div
-              className={`${SETTINGS_CARD_SHELL} overflow-hidden border-red-500/28 ring-1 ring-red-500/12 shadow-[0_0_20px_-14px_rgba(248,113,113,0.35)]`}
-            >
-              <button
-                type="button"
-                onClick={() => handleDeleteDialogOpenChange(true)}
-                disabled={deletePending}
-                className="flex w-full items-start gap-3 px-4 py-4 text-right transition-colors hover:bg-red-500/[0.06] active:bg-red-500/[0.09] disabled:opacity-60 md:px-5 md:py-4"
-              >
-                <div className={SETTINGS_ICON_TILE_DESTRUCTIVE}>
-                  <Trash2 className="h-4 w-4" aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-red-300/95">{t("settings.account.delete_placeholder_title")}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {t("settings.account.delete_placeholder_subtitle")}
-                  </p>
-                </div>
-                <ChevronLeft className="mt-0.5 h-4 w-4 shrink-0 text-red-400/70" aria-hidden />
-              </button>
-            </div>
-          </section>
-        )}
-
         <Section title={t("settings.section.customization")}>
         <Row
           icon={<Bell className="w-4 h-4" />}
           label={t("settings.customization.notifications")}
           hint={t("settings.notifications.placeholder")}
+          onClick={leaveSettings("/account/notifications")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
           labelClassName="text-sm md:text-[15px] text-foreground"
           hintClassName="mt-0.5 text-[11px] md:text-xs text-muted-foreground/90"
           dividerClassName="border-primary/10"
-          trailing={
-            <Switch
-              checked={false}
-              disabled
-              aria-label={t("settings.notifications.aria")}
-            />
-          }
         />
         <Row
           icon={<Globe className="w-4 h-4" />}
@@ -514,18 +481,39 @@ export default function Settings() {
         </Section>
 
         {user && (
-          <div className="pt-4 flex justify-center">
-            <div className={`${SETTINGS_CARD} w-full max-w-[min(100%,320px)]`}>
-              <Button
-                variant="outline"
-                onClick={handleLogout}
-                disabled={logoutMutation.isPending}
-                className="h-11 w-full rounded-xl border border-destructive/35 bg-destructive/10 px-5 text-sm font-semibold gap-2 text-destructive-foreground shadow-[0_0_0_1px_rgba(239,68,68,0.08),0_8px_18px_-14px_rgba(239,68,68,0.45)] hover:bg-destructive/15 hover:text-destructive-foreground"
-              >
-                <LogOut className="w-5 h-5" /> {t("settings.logout")}
-              </Button>
+          <>
+            <div className="pt-4 flex justify-center">
+              <div className={`${SETTINGS_CARD} w-full max-w-[min(100%,320px)]`}>
+                <Button
+                  variant="outline"
+                  onClick={handleLogout}
+                  disabled={logoutMutation.isPending}
+                  className="h-11 w-full rounded-xl border border-destructive/35 bg-destructive/10 px-5 text-sm font-semibold gap-2 text-destructive-foreground shadow-[0_0_0_1px_rgba(239,68,68,0.08),0_8px_18px_-14px_rgba(239,68,68,0.45)] hover:bg-destructive/15 hover:text-destructive-foreground"
+                >
+                  <LogOut className="w-5 h-5" /> {t("settings.logout")}
+                </Button>
+              </div>
             </div>
-          </div>
+
+            <section
+              className="mt-3 flex justify-center pb-6 md:pb-8"
+              aria-label={t("settings.account.delete_placeholder_title")}
+            >
+              <div className={`${SETTINGS_CARD} w-full max-w-[min(100%,320px)]`}>
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => handleDeleteDialogOpenChange(true)}
+                  disabled={deletePending}
+                  dir={locale === "ar" ? "rtl" : "ltr"}
+                  className="h-11 w-full rounded-xl border border-red-500/45 bg-red-950/35 px-5 text-sm font-semibold gap-2 text-red-200 shadow-[0_0_0_1px_rgba(248,113,113,0.2),0_8px_24px_-14px_rgba(239,68,68,0.52)] hover:border-red-400/55 hover:bg-red-950/50 hover:text-red-50 disabled:opacity-60"
+                >
+                  <Trash2 className="h-5 w-5 shrink-0 text-red-300" aria-hidden />
+                  {t("settings.account.delete_placeholder_title")}
+                </Button>
+              </div>
+            </section>
+          </>
         )}
       </div>
 

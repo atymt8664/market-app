@@ -134,7 +134,7 @@ export default function ResetPassword() {
             <button
               type="button"
               className={SETTINGS_BACK_BUTTON}
-              aria-label={locale === "ar" ? "رجوع" : "Back"}
+              aria-label={t("common.back")}
             >
               <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
             </button>

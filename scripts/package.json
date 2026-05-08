@@ -6,6 +6,7 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed": "tsx ./src/seed.ts",
+    "seed:staging": "tsx ./src/seed-staging.ts",
     "db:export": "tsx ./src/db-export.ts",
     "db:import": "tsx ./src/db-import.ts",
     "db:schema:snapshot": "tsx ./src/db-schema-snapshot.ts",
@@ -15,6 +16,8 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@workspace/db": "workspace:*",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
     "drizzle-orm": "catalog:",
     "tsx": "catalog:"
   }

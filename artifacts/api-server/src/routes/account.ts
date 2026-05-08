@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, notificationPreferencesTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/require-auth";
 import {
   collectUploadsPathsForUserAccount,
@@ -27,6 +27,135 @@ const deleteAccountLimiter = rateLimit({
 
 const DeleteAccountBody = z.object({
   password: z.string().min(1, "كلمة المرور مطلوبة"),
+});
+
+const NotificationPreferencesPatchBody = z
+  .object({
+    notifyMessages: z.boolean().optional(),
+    notifyAdModeration: z.boolean().optional(),
+    notifySupport: z.boolean().optional(),
+    notifyReports: z.boolean().optional(),
+    notifyAnnouncements: z.boolean().optional(),
+  })
+  .strict();
+
+const defaultNotificationPrefs = {
+  notifyMessages: true,
+  notifyAdModeration: true,
+  notifySupport: true,
+  notifyReports: true,
+  notifyAnnouncements: true,
+} as const;
+
+function isPgUndefinedTableError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code: string }).code === "42P01"
+  );
+}
+
+router.get("/account/notification-preferences", requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.userId!;
+    const [row] = await db
+      .select()
+      .from(notificationPreferencesTable)
+      .where(eq(notificationPreferencesTable.userId, userId))
+      .limit(1);
+
+    if (!row) {
+      return res.json({ ...defaultNotificationPrefs });
+    }
+
+    return res.json({
+      notifyMessages: row.notifyMessages,
+      notifyAdModeration: row.notifyAdModeration,
+      notifySupport: row.notifySupport,
+      notifyReports: row.notifyReports,
+      notifyAnnouncements: row.notifyAnnouncements,
+    });
+  } catch (err) {
+    if (isPgUndefinedTableError(err)) {
+      logger.warn({ err }, "notification_preferences: table missing (run prepareDatabase / migration 006)");
+      return res.status(503).json({
+        error:
+          "إعدادات الإشعارات غير متاحة مؤقتًا. طبّق تحديث قاعدة البيانات ثم أعد تشغيل الخادم.",
+        code: "NOTIFICATION_PREFS_SCHEMA_MISSING",
+      });
+    }
+    next(err);
+  }
+});
+
+router.patch("/account/notification-preferences", requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.userId!;
+    const parsed = NotificationPreferencesPatchBody.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "بيانات غير صحيحة" });
+    }
+    const patch = parsed.data;
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ error: "لا توجد حقول للتحديث" });
+    }
+
+    const [existing] = await db
+      .select()
+      .from(notificationPreferencesTable)
+      .where(eq(notificationPreferencesTable.userId, userId))
+      .limit(1);
+
+    const nextPrefs = {
+      ...defaultNotificationPrefs,
+      ...(existing
+        ? {
+            notifyMessages: existing.notifyMessages,
+            notifyAdModeration: existing.notifyAdModeration,
+            notifySupport: existing.notifySupport,
+            notifyReports: existing.notifyReports,
+            notifyAnnouncements: existing.notifyAnnouncements,
+          }
+        : {}),
+      ...patch,
+    };
+
+    await db
+      .insert(notificationPreferencesTable)
+      .values({
+        userId,
+        notifyMessages: nextPrefs.notifyMessages,
+        notifyAdModeration: nextPrefs.notifyAdModeration,
+        notifySupport: nextPrefs.notifySupport,
+        notifyReports: nextPrefs.notifyReports,
+        notifyAnnouncements: nextPrefs.notifyAnnouncements,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: notificationPreferencesTable.userId,
+        set: {
+          notifyMessages: nextPrefs.notifyMessages,
+          notifyAdModeration: nextPrefs.notifyAdModeration,
+          notifySupport: nextPrefs.notifySupport,
+          notifyReports: nextPrefs.notifyReports,
+          notifyAnnouncements: nextPrefs.notifyAnnouncements,
+          updatedAt: new Date(),
+        },
+      });
+
+    return res.json(nextPrefs);
+  } catch (err) {
+    if (isPgUndefinedTableError(err)) {
+      logger.warn({ err }, "notification_preferences: table missing (run prepareDatabase / migration 006)");
+      return res.status(503).json({
+        error:
+          "إعدادات الإشعارات غير متاحة مؤقتًا. طبّق تحديث قاعدة البيانات ثم أعد تشغيل الخادم.",
+        code: "NOTIFICATION_PREFS_SCHEMA_MISSING",
+      });
+    }
+    next(err);
+  }
 });
 
 router.post("/account/delete", deleteAccountLimiter, requireAuth, async (req, res) => {

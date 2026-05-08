@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Eye, EyeOff, Loader2, Lock, Settings, Shield } from "lucide-react";
@@ -13,6 +13,7 @@ import {
   SUB_CARD,
 } from "@/features/admin/admin-interaction-classes";
 import { AdminShell } from "@/features/admin/components/admin-shell";
+import { AdminTwoFactorSettings } from "@/features/admin/components/admin-two-factor-settings";
 import { useRequireAdmin } from "@/features/admin/hooks";
 import { Button } from "@/components/ui/button";
 import {
@@ -133,6 +134,7 @@ function PasswordField({
 export default function AdminSettingsPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const meQuery = useRequireAdmin();
 
   const settingsQuery = useQuery({
@@ -301,6 +303,16 @@ export default function AdminSettingsPage() {
             </div>
           ) : null}
         </section>
+
+        {settings ? (
+          <AdminTwoFactorSettings
+            twoFactorEnabled={settings.admin2faEnabled === true}
+            onStatusChanged={() => {
+              void queryClient.invalidateQueries({ queryKey: ["admin", "settings"] });
+              void queryClient.invalidateQueries({ queryKey: ["admin", "me"] });
+            }}
+          />
+        ) : null}
 
         <section className={cn(SUB_CARD, "p-4 md:p-5")}>
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

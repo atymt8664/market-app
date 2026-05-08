@@ -10,6 +10,7 @@ import {
   userFollowsTable,
   userViewsTable,
   adsTable,
+  appSettingsTable,
 } from "@workspace/db";
 
 import { and, eq, sql } from "drizzle-orm";
@@ -25,10 +26,23 @@ import {
   sendVerificationCodeEmail,
 } from "../lib/email";
 import { logger } from "../lib/logger";
-import { ensureAppSettingsTable } from "../lib/ensure-app-settings-table";
+import { verifyAdminAccessKeyHeader } from "../lib/admin-access-key";
+import { isAdminSecurityRevisionStale } from "../lib/admin-security-revision";
+import { getAdminAuthSecuritySnapshot } from "../lib/admin-auth-settings";
+import { ADMIN_TOTP_LOGIN_PENDING_MS } from "../lib/admin-2fa-constants";
+import { consumeBackupCodeIfValid } from "../lib/admin-backup-codes";
+import { verifyTotpCode } from "../lib/admin-totp";
+import { getTrustedClientIp } from "../lib/client-ip";
+import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import {
   attachAdminCsrfToken,
+  clearAdminIdentityOnSession,
+  hasValidAdminAccessGrant,
   hasValidAdminSession,
+  refreshAdminAccessGrant,
+  requireAdmin,
+  requireAdminAccessGrant,
+  requireAdminCsrf,
 } from "../middlewares/require-admin";
 import {
   getSessionClearCookieOptions,
@@ -107,13 +121,23 @@ const adminLoginLimiter = rateLimit({
   message: { error: "بيانات الدخول غير صحيحة" },
 });
 
+const adminTotpLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDevApi ? 120 : 12,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "محاولات كثيرة، انتظر قليلاً وحاول مجدداً" },
+});
+
+/** Wrong TOTP or backup during pending login; clears pending state after this many failures. */
+const ADMIN_TOTP_LOGIN_MAX_FAILURES = 5;
+
 const ADMIN_LOGIN_MAX_FAILURES = 5;
 const ADMIN_LOGIN_LOCK_MS = 15 * 60 * 1000;
 const adminLoginFailures = new Map<string, { count: number; lockUntil: number }>();
 
 function getAdminLoginIdentifier(req: import("express").Request) {
-  const raw = req.ip || req.socket.remoteAddress || "";
-  const ip = String(raw).split(",")[0]?.trim() || "unknown";
+  const ip = getTrustedClientIp(req);
   return `admin-login:${ip}`;
 }
 
@@ -760,9 +784,15 @@ router.post("/auth/reset-password", passwordResetLimiter, async (req, res) => {
 // Suppress unused import warning when only referenced via select chains.
 void and;
 
-router.post("/admin-login", adminLoginLimiter, async (req, res) => {
+router.use("/admin", requireAdminIpAllowlist);
+
+router.post("/admin-login", requireAdminIpAllowlist, adminLoginLimiter, async (req, res) => {
   const { password } = req.body;
   const loginIdentifier = getAdminLoginIdentifier(req);
+
+  if (!verifyAdminAccessKeyHeader(req)) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
 
   if (isAdminLoginLocked(loginIdentifier)) {
     return res.status(429).json({ error: "بيانات الدخول غير صحيحة" });
@@ -772,31 +802,39 @@ router.post("/admin-login", adminLoginLimiter, async (req, res) => {
     return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
   }
 
-  await ensureAppSettingsTable();
-  const settingsResult = await db.execute(
-    sql`select admin_password_hash as admin_password_hash from app_settings where id = 1 limit 1`,
-  );
-  const settingsRows = Array.isArray(settingsResult)
-    ? (settingsResult as Array<{ admin_password_hash?: unknown }>)
-    : (
-        settingsResult as unknown as { rows?: Array<{ admin_password_hash?: unknown }> }
-      ).rows;
-  const settingsRow = settingsRows?.[0];
-  const adminPasswordHash =
-    settingsRow && typeof settingsRow.admin_password_hash === "string"
-      ? settingsRow.admin_password_hash
-      : "";
-  if (!adminPasswordHash) {
+  const snap = await getAdminAuthSecuritySnapshot();
+  if (!snap) {
     return res.status(500).json({ error: "Admin password is not configured" });
   }
 
-  const isValid = await bcrypt.compare(password, adminPasswordHash);
+  const isValid = await bcrypt.compare(password, snap.adminPasswordHash);
   if (!isValid) {
     registerAdminLoginFailure(loginIdentifier);
     return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
   }
 
   clearAdminLoginFailures(loginIdentifier);
+
+  const needs2fa =
+    snap.admin2faEnabled &&
+    typeof snap.admin2faSecret === "string" &&
+    snap.admin2faSecret.length > 0;
+
+  if (needs2fa) {
+    await new Promise<void>((resolve, reject) => {
+      req.session.regenerate((err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        req.session.adminTotpPending = true;
+        req.session.adminTotpPendingExpiresAt = Date.now() + ADMIN_TOTP_LOGIN_PENDING_MS;
+        resolve();
+      });
+    });
+    return res.json({ requiresTwoFactor: true });
+  }
+
   await new Promise<void>((resolve, reject) => {
     req.session.regenerate((err) => {
       if (err) {
@@ -808,6 +846,8 @@ router.post("/admin-login", adminLoginLimiter, async (req, res) => {
       req.session.adminActorId = 1;
       req.session.adminActorLabel = "primary-admin";
       req.session.adminCsrfToken = undefined;
+      req.session.adminSecurityRevision = snap.adminSecurityRevision;
+      refreshAdminAccessGrant(req);
       resolve();
     });
   });
@@ -819,24 +859,129 @@ router.post("/admin-login", adminLoginLimiter, async (req, res) => {
   });
 });
 
-router.get("/admin/me", (req, res) => {
-  if (hasValidAdminSession(req)) {
-    const csrfToken = attachAdminCsrfToken(req, res);
-    return res.json({
-      isAdmin: true,
-      csrfToken,
-      adminActorLabel: req.session.adminActorLabel ?? "primary-admin",
-    });
+router.post("/admin-login/totp", requireAdminIpAllowlist, adminTotpLoginLimiter, async (req, res) => {
+  if (!verifyAdminAccessKeyHeader(req)) {
+    return res.status(403).json({ error: "Forbidden" });
   }
 
-  return res.status(401).json({ isAdmin: false });
-});
+  const codeRaw = req.body?.code;
+  const code = typeof codeRaw === "string" ? codeRaw : "";
+  if (!code.trim()) {
+    return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+  }
 
-router.post("/admin-logout", (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
-    return res.json({ success: true });
+  const pending = req.session.adminTotpPending === true;
+  const exp = req.session.adminTotpPendingExpiresAt;
+  if (!pending || typeof exp !== "number" || Number.isNaN(exp) || Date.now() > exp) {
+    return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+  }
+
+  let snap = await getAdminAuthSecuritySnapshot();
+  if (!snap?.admin2faSecret) {
+    return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+  }
+
+  const totpOk = await verifyTotpCode(snap.admin2faSecret, code);
+  let consumedPayload: string | null = null;
+  if (!totpOk) {
+    consumedPayload = await consumeBackupCodeIfValid(code, snap.adminBackupCodesHash);
+  }
+
+  if (!totpOk && !consumedPayload) {
+    const fails = (req.session.adminTotpFailedAttempts ?? 0) + 1;
+    req.session.adminTotpFailedAttempts = fails;
+    if (fails >= ADMIN_TOTP_LOGIN_MAX_FAILURES) {
+      req.session.adminTotpPending = undefined;
+      req.session.adminTotpPendingExpiresAt = undefined;
+      req.session.adminTotpFailedAttempts = undefined;
+    }
+    return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+  }
+
+  if (!totpOk && consumedPayload) {
+    await db
+      .update(appSettingsTable)
+      .set({ adminBackupCodesHash: consumedPayload, updatedAt: new Date() })
+      .where(eq(appSettingsTable.id, 1));
+    snap = await getAdminAuthSecuritySnapshot();
+    if (!snap?.admin2faSecret) {
+      return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+    }
+  }
+
+  clearAdminLoginFailures(getAdminLoginIdentifier(req));
+  req.session.adminTotpFailedAttempts = undefined;
+
+  await new Promise<void>((resolve, reject) => {
+    req.session.regenerate((err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      req.session.isAdmin = true;
+      req.session.adminAuthenticatedAt = Date.now();
+      req.session.adminActorId = 1;
+      req.session.adminActorLabel = "primary-admin";
+      req.session.adminCsrfToken = undefined;
+      req.session.adminTotpPending = undefined;
+      req.session.adminTotpPendingExpiresAt = undefined;
+      req.session.adminSecurityRevision = snap!.adminSecurityRevision;
+      refreshAdminAccessGrant(req);
+      resolve();
+    });
+  });
+
+  const csrfToken = attachAdminCsrfToken(req, res);
+  return res.json({
+    success: true,
+    csrfToken,
+    adminActorLabel: req.session.adminActorLabel ?? "primary-admin",
   });
 });
+
+router.get("/admin/me", async (req, res, next) => {
+  try {
+    if (hasValidAdminSession(req)) {
+      if (!hasValidAdminAccessGrant(req)) {
+        clearAdminIdentityOnSession(req);
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const revRows = await db
+        .select({ rev: appSettingsTable.adminSecurityRevision })
+        .from(appSettingsTable)
+        .where(eq(appSettingsTable.id, 1))
+        .limit(1);
+      const dbRev = Number(revRows[0]?.rev ?? 0);
+      if (isAdminSecurityRevisionStale(req.session.adminSecurityRevision, dbRev)) {
+        clearAdminIdentityOnSession(req);
+        return res.status(401).json({ isAdmin: false });
+      }
+      const csrfToken = attachAdminCsrfToken(req, res);
+      return res.json({
+        isAdmin: true,
+        csrfToken,
+        adminActorLabel: req.session.adminActorLabel ?? "primary-admin",
+      });
+    }
+
+    return res.status(401).json({ isAdmin: false });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post(
+  "/admin-logout",
+  requireAdminIpAllowlist,
+  requireAdminAccessGrant,
+  requireAdmin,
+  requireAdminCsrf,
+  (req, res) => {
+    req.session.destroy(() => {
+      res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
+      return res.json({ success: true });
+    });
+  },
+);
 
 export default router;

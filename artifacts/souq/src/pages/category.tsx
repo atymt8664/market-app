@@ -1,84 +1,219 @@
-import { useListAds, useListSubcategories, useListCategories, getListAdsQueryKey } from "@workspace/api-client-react";
+import {
+  useListAds,
+  useListSubcategories,
+  useListCategories,
+  getListAdsQueryKey,
+} from "@workspace/api-client-react";
 import { Link, useParams } from "wouter";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, LayoutGrid } from "lucide-react";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
+import { CategoryIcon } from "@/components/category-icon";
+import { cn } from "@/lib/utils";
+import {
+  SETTINGS_BACK_BUTTON,
+  SETTINGS_HEADER_BAR,
+  SETTINGS_HEADER_INNER,
+  SETTINGS_IMMERSIVE_BOTTOM,
+  SETTINGS_PAGE_BG,
+  SETTINGS_CARD_SHELL,
+} from "@/components/settings-shell";
+
+/** Same ad grid tone as `home.tsx` recommended section */
+const listingGridCardTone =
+  "[&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-card/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:dark:bg-zinc-950/70 [&_article]:hover:border-primary/40 [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55";
+
+const subChipClass =
+  "inline-flex shrink-0 items-center rounded-full border border-primary/40 bg-zinc-950/75 px-4 py-2 text-[13px] font-medium text-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[border-color,box-shadow,transform] duration-200 hover:border-primary/55 hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.24)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100";
+
+function SubChipSkeleton() {
+  return (
+    <div className="h-10 w-[5.5rem] shrink-0 animate-pulse rounded-full border border-primary/20 bg-zinc-900/85 ring-1 ring-primary/8" />
+  );
+}
 
 export default function Category() {
   const { locale } = useLocale();
+  const isRtl = locale === "ar";
   const params = useParams();
   const categoryId = Number(params.id);
 
   const { data: categories } = useListCategories();
   const { data: subcategories, isLoading: isLoadingSubs } = useListSubcategories(categoryId);
-  const { data: ads, isLoading: isLoadingAds } = useListAds({ categoryId }, { query: { enabled: !!categoryId, queryKey: getListAdsQueryKey({ categoryId }) } });
+  const { data: ads, isLoading: isLoadingAds } = useListAds(
+    { categoryId },
+    {
+      query: {
+        enabled: !!categoryId,
+        queryKey: getListAdsQueryKey({ categoryId }),
+      },
+    },
+  );
   const selectedCategory = categories?.find((cat) => cat.id === categoryId);
   const title = selectedCategory
     ? getCreateAdTaxonomyLabel(locale, selectedCategory.name)
     : t("category.title_fallback");
 
+  const hasArabicText = (value?: string | null) =>
+    !!value && /[\u0600-\u06FF]/.test(value);
+
+  const headerSubtitle = selectedCategory?.subtitle
+    ? (() => {
+        const mapped = getCreateAdTaxonomyLabel(locale, selectedCategory.subtitle);
+        if (locale !== "ar" && hasArabicText(mapped)) return t("category.subtitle");
+        return mapped;
+      })()
+    : null;
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-background"
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.2 }}
+      className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM, "flex flex-col")}
+      dir={isRtl ? "rtl" : "ltr"}
     >
-      <header className="sticky top-0 z-40 bg-background border-b border-border p-4 flex items-center gap-4">
-        <Link href="/categories">
-          <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </Link>
-        <h1 className="font-bold text-xl">{title}</h1>
+      <header className={SETTINGS_HEADER_BAR}>
+        <div className={SETTINGS_HEADER_INNER}>
+          <Link href="/categories">
+            <button
+              type="button"
+              className={SETTINGS_BACK_BUTTON}
+              aria-label={t("common.back")}
+            >
+              <ArrowRight className="h-5 w-5" />
+            </button>
+          </Link>
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 items-center gap-2.5",
+              isRtl ? "flex-row-reverse" : "flex-row",
+            )}
+          >
+            {selectedCategory ? (
+              <div
+                className={cn(
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+                  "border border-primary/35 bg-zinc-950/75 text-primary",
+                  "shadow-[0_0_14px_-10px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10",
+                )}
+              >
+                <CategoryIcon name={selectedCategory.icon} className="h-6 w-6" />
+              </div>
+            ) : null}
+            <h1
+              className={cn(
+                "min-w-0 flex-1 text-lg font-bold leading-tight text-foreground md:text-xl",
+                isRtl ? "text-right" : "text-left",
+              )}
+            >
+              {title}
+            </h1>
+          </div>
+          <span className="w-11 shrink-0" aria-hidden />
+        </div>
       </header>
 
-      {/* Subcategories */}
-      <div className="border-b border-border bg-muted/20">
-        <ScrollArea className="w-full whitespace-nowrap" dir={locale === "ar" ? "rtl" : "ltr"}>
-          <div className="flex gap-2 p-3">
-            {isLoadingSubs ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-8 w-24 bg-muted animate-pulse rounded-full" />
-              ))
-            ) : (
-              subcategories?.map((sub) => (
-                <Link key={sub.id} href={`/search?categoryId=${categoryId}&subcategoryId=${sub.id}`}>
-                  <div className="px-4 py-1.5 bg-background border border-border rounded-full text-sm font-medium hover:bg-muted active:scale-95 transition-all cursor-pointer">
-                    {getCreateAdTaxonomyLabel(locale, sub.name)}
-                  </div>
-                </Link>
-              ))
+      <div className="border-b border-primary/12 bg-zinc-950/45">
+        <div className="mx-auto w-full max-w-[900px] px-4 py-3 md:max-w-[760px] md:px-6 md:py-3.5 lg:max-w-[860px]">
+          {headerSubtitle ? (
+            <p
+              className={cn(
+                "mb-3 text-sm leading-relaxed text-zinc-500",
+                isRtl ? "text-right" : "text-left",
+              )}
+            >
+              {headerSubtitle}
+            </p>
+          ) : null}
+          <div
+            className={cn(
+              SETTINGS_CARD_SHELL,
+              "p-2.5 shadow-[0_0_20px_-14px_hsl(var(--primary)/0.15)] md:p-3",
             )}
+          >
+            <ScrollArea className="w-full whitespace-nowrap" dir={isRtl ? "rtl" : "ltr"}>
+              <div className="flex gap-2 pb-0.5 pt-0.5">
+                {isLoadingSubs ? (
+                  <>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <SubChipSkeleton key={i} />
+                    ))}
+                  </>
+                ) : subcategories?.length ? (
+                  subcategories.map((sub) => (
+                    <Link
+                      key={sub.id}
+                      href={`/search?categoryId=${categoryId}&subcategoryId=${sub.id}`}
+                    >
+                      <span className={cn(subChipClass, "cursor-pointer")}>
+                        {getCreateAdTaxonomyLabel(locale, sub.name)}
+                      </span>
+                    </Link>
+                  ))
+                ) : (
+                  <span className="px-2 py-1.5 text-sm text-zinc-500">
+                    {t("category.no_subcategories")}
+                  </span>
+                )}
+              </div>
+              <ScrollBar orientation="horizontal" className="hidden" />
+            </ScrollArea>
           </div>
-          <ScrollBar orientation="horizontal" className="hidden" />
-        </ScrollArea>
+        </div>
       </div>
 
-      {/* Ads Grid */}
-      <div className="p-4 flex-1">
-        <div className="grid grid-cols-2 gap-3">
+      <main className="mx-auto flex w-full max-w-[900px] flex-1 flex-col px-4 py-4 md:max-w-[760px] md:px-6 md:py-5 lg:max-w-[860px]">
+        <h2
+          className={cn(
+            "mb-3 text-base font-semibold tracking-tight text-foreground md:mb-4 md:text-lg",
+            isRtl ? "text-right" : "text-left",
+          )}
+        >
+          {t("home.recommended")}
+        </h2>
+
+        <div
+          className={cn(
+            "grid grid-cols-2 items-start gap-2.5 md:grid-cols-3 md:gap-3 xl:grid-cols-4 xl:gap-3.5",
+            listingGridCardTone,
+          )}
+        >
           {isLoadingAds ? (
-            Array.from({ length: 6 }).map((_, i) => (
+            Array.from({ length: 8 }).map((_, i) => (
               <AdCardSkeleton key={i} />
             ))
           ) : ads?.length ? (
-            ads.map((ad) => (
-              <AdCard key={ad.id} ad={ad} />
-            ))
+            ads.map((ad) => <AdCard key={ad.id} ad={ad} />)
           ) : (
-            <div className="col-span-2 flex flex-col items-center justify-center py-12 text-center opacity-80">
-              <img src="/empty-state.png" alt={t("category.empty_title")} className="w-48 h-48 mb-4" />
-              <h2 className="text-xl font-bold mb-2">{t("category.empty_title")}</h2>
-              <p className="text-muted-foreground">{t("category.empty_desc")}</p>
+            <div
+              className={cn(
+                SETTINGS_CARD_SHELL,
+                "col-span-full flex flex-col items-center gap-3 px-5 py-12 text-center",
+              )}
+            >
+              <div
+                className={cn(
+                  "flex h-16 w-16 items-center justify-center rounded-2xl",
+                  "border border-primary/35 bg-zinc-950/75 text-primary",
+                  "shadow-[0_0_20px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/12",
+                )}
+              >
+                <LayoutGrid className="h-8 w-8" aria-hidden />
+              </div>
+              <h3 className="text-base font-semibold text-foreground">
+                {t("category.empty_title")}
+              </h3>
+              <p className="max-w-sm text-sm text-zinc-500">{t("category.empty_desc")}</p>
             </div>
           )}
         </div>
-      </div>
+      </main>
     </motion.div>
   );
 }

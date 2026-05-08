@@ -25,12 +25,14 @@ import {
 import {
   hasValidAdminSession,
   requireAdmin,
+  requireAdminAccessGrant,
   requireAdminCsrf,
 } from "../middlewares/require-admin";
 import { PUBLIC_AD_STATUSES, isPublicAdStatus } from "../lib/ad-visibility";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 import { requireAuth } from "../middlewares/require-auth";
+import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 
 const router: IRouter = Router();
 let ensureAdsDetailsColumnPromise: Promise<void> | null = null;
@@ -58,6 +60,8 @@ router.use(async (_req, _res, next) => {
     next(error);
   }
 });
+
+router.use("/admin", requireAdminIpAllowlist);
 
 function serializeAd(row: {
   ads: typeof adsTable.$inferSelect;
@@ -161,7 +165,7 @@ router.get("/ads/featured", async (req, res) => {
     .limit(10);
   res.json(rows.map(serializeAd));
 });
-router.get("/admin/ads", requireAdmin, async (req, res) => {
+router.get("/admin/ads", requireAdminAccessGrant, requireAdmin, async (req, res) => {
   const status = req.query.status as string | undefined;
   const q = (req.query.q as string | undefined)?.trim();
   const featuredRaw = req.query.featured as string | undefined;
@@ -207,7 +211,7 @@ router.get("/admin/ads", requireAdmin, async (req, res) => {
   );
 });
 
-router.delete("/admin/ads/:id", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.delete("/admin/ads/:id", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -666,7 +670,7 @@ router.delete("/ads/:adId", requireAuth, async (req, res) => {
   res.status(204).end();
 });
 
-router.patch("/admin/ads/:id/status", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.patch("/admin/ads/:id/status", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   const status = req.body?.status;
 
@@ -750,7 +754,7 @@ router.patch("/admin/ads/:id/status", requireAdmin, requireAdminCsrf, async (req
 });
 
 // يدوي من الأدمن فقط حالياً؛ لاحقاً يمكن ربط التفعيل بعمليات دفع/مدة (featuredUntil) دون تغيير المسار العام.
-router.patch("/admin/ads/:id/featured", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.patch("/admin/ads/:id/featured", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   const featured = req.body?.featured;
 

@@ -1,6 +1,7 @@
 import { pool } from "@workspace/db";
 import { logger } from "./logger";
 import { ensureCoreSchema } from "./ensure-core-schema";
+import { ensureAppSettingsTable } from "./ensure-app-settings-table";
 
 const POST_CORE_SCHEMA_SQL = `
     ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT false;
@@ -129,6 +130,16 @@ const POST_CORE_SCHEMA_SQL = `
     CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id);
     CREATE INDEX IF NOT EXISTS notifications_user_created_idx ON notifications(user_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS notifications_user_unread_idx ON notifications(user_id) WHERE read_at IS NULL;
+
+    CREATE TABLE IF NOT EXISTS notification_preferences (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      notify_messages BOOLEAN NOT NULL DEFAULT true,
+      notify_ad_moderation BOOLEAN NOT NULL DEFAULT true,
+      notify_support BOOLEAN NOT NULL DEFAULT true,
+      notify_reports BOOLEAN NOT NULL DEFAULT true,
+      notify_announcements BOOLEAN NOT NULL DEFAULT true,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
     `;
 
 /**
@@ -137,6 +148,7 @@ const POST_CORE_SCHEMA_SQL = `
  */
 export async function prepareDatabase(): Promise<void> {
   await ensureCoreSchema(pool);
+  await ensureAppSettingsTable();
   await pool.query(POST_CORE_SCHEMA_SQL);
   logger.info("Database schema ready");
 }

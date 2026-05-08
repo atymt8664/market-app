@@ -13,5 +13,10 @@ export const appSettingsTable = pgTable("app_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   updatedByAdminId: integer("updated_by_admin_id"),
   adminPasswordHash: text("admin_password_hash"),
+  admin2faEnabled: boolean("admin_2fa_enabled").notNull().default(false),
+  admin2faSecret: text("admin_2fa_secret"),
+  admin2faEnabledAt: timestamp("admin_2fa_enabled_at", { withTimezone: true }),
+  adminBackupCodesHash: text("admin_backup_codes_hash"),
+  adminSecurityRevision: integer("admin_security_revision").notNull().default(0),
 });
 

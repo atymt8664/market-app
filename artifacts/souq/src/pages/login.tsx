@@ -22,6 +22,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api-url";
 import { LEGAL_EXPLICIT_RETURN_KEY, LEGAL_NAV_RETURN_KEY } from "@/lib/return-navigation";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
+import { useLocale } from "@/hooks/use-locale";
 import {
   AUTH_ACCENT_OUTLINE_BTN,
   AUTH_BACK_BUTTON,
@@ -34,11 +36,11 @@ import {
 } from "@/lib/auth-page-styles";
 
 const schema = z.object({
-  email: z.string().email("بريد إلكتروني غير صحيح"),
+  email: z.string().email("auth.validation.invalid_email"),
   password: z
     .string()
-    .min(1, "كلمة المرور مطلوبة")
-    .min(6, "كلمة المرور قصيرة جداً"),
+    .min(1, "auth.validation.password_required")
+    .min(6, "auth.validation.password_short"),
 });
 
 type Values = z.infer<typeof schema>;
@@ -66,6 +68,7 @@ function isOnLoginPath(path: string): boolean {
 }
 
 export default function Login() {
+  const { locale } = useLocale();
   const [locationPath, setLocation] = useLocation();
   const search = useSearch();
   const { toast } = useToast();
@@ -134,8 +137,8 @@ export default function Login() {
           const params = new URLSearchParams({ email: json?.email || data.email });
 
           toast({
-            title: "البريد غير مُفعّل",
-            description: "أدخل رمز التفعيل لإكمال الدخول",
+            title: t("auth.login.email_not_verified_title"),
+            description: t("auth.login.email_not_verified_desc"),
           });
 
           setLocation(`/verify-email?${params.toString()}`);
@@ -147,10 +150,10 @@ export default function Login() {
           return;
         }
 
-        throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+        throw new Error("auth.login.invalid_credentials");
       }
 
-      toast({ title: "تم تسجيل الدخول بنجاح" });
+      toast({ title: t("auth.login.success") });
       try {
         sessionStorage.removeItem(LEGAL_EXPLICIT_RETURN_KEY);
         sessionStorage.removeItem(LEGAL_NAV_RETURN_KEY);
@@ -164,26 +167,33 @@ export default function Login() {
       setLocation(next, { replace: true });
 
     } catch (err: any) {
-      setError(err.message || "فشل تسجيل الدخول");
+      const msg = err?.message as string | undefined;
+      setError(
+        msg && msg.startsWith("auth.")
+          ? t(msg)
+          : msg || t("auth.login.failed"),
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const dir = locale === "ar" ? "rtl" : "ltr";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={AUTH_PAGE_BG}
-      dir="rtl"
+      dir={dir}
     >
       <header className={AUTH_HEADER}>
         <Link href="/">
-          <button type="button" className={AUTH_BACK_BUTTON} aria-label="رجوع">
+          <button type="button" className={AUTH_BACK_BUTTON} aria-label={t("common.back")}>
             <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
           </button>
         </Link>
-        <h1 className={AUTH_HEADER_TITLE}>تسجيل الدخول</h1>
+        <h1 className={AUTH_HEADER_TITLE}>{t("auth.login.title")}</h1>
       </header>
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pb-8 pt-6 md:px-5">
@@ -196,9 +206,11 @@ export default function Login() {
           </div>
 
           <div className={cn(AUTH_HERO_CARD, "w-full max-w-md space-y-1.5")}>
-            <h2 className="text-lg font-bold text-foreground md:text-xl">أهلاً بعودتك 👋</h2>
+            <h2 className="text-lg font-bold text-foreground md:text-xl">
+              {t("auth.login.welcome_title")}
+            </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              سجّل الدخول لإدارة إعلاناتك ومتابعة المفضلة بسهولة
+              {t("auth.login.welcome_desc")}
             </p>
           </div>
         </div>
@@ -211,17 +223,24 @@ export default function Login() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-foreground">البريد الإلكتروني</FormLabel>
+                    <FormLabel className="text-foreground">{t("auth.fields.email")}</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
                         dir="ltr"
-                        className={cn(AUTH_INPUT, "text-right")}
+                        className={cn(
+                          AUTH_INPUT,
+                          locale === "ar" ? "text-right" : "text-left",
+                        )}
                         placeholder="name@email.com"
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage>
+                      {form.formState.errors.email?.message
+                        ? t(String(form.formState.errors.email.message))
+                        : null}
+                    </FormMessage>
                   </FormItem>
                 )}
               />
@@ -231,18 +250,22 @@ export default function Login() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-foreground">كلمة المرور</FormLabel>
+                    <FormLabel className="text-foreground">{t("auth.fields.password")}</FormLabel>
                     <FormControl>
                       <Input type="password" className={AUTH_INPUT} placeholder="••••••••" {...field} />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage>
+                      {form.formState.errors.password?.message
+                        ? t(String(form.formState.errors.password.message))
+                        : null}
+                    </FormMessage>
                   </FormItem>
                 )}
               />
 
               {accountDisabledByAdmin && (
                 <p className="rounded-xl border border-amber-500/35 bg-amber-950/25 p-3 text-center text-sm leading-relaxed text-amber-100 ring-1 ring-amber-500/20">
-                  تم تعطيل هذا الحساب من قبل الإدارة. للتواصل:{" "}
+                  {t("auth.login.account_disabled")}{" "}
                   <a
                     href="mailto:souqarab.market@gmail.com"
                     className="font-medium text-primary underline underline-offset-2 hover:text-primary/90"
@@ -264,23 +287,27 @@ export default function Login() {
                 className={cn(AUTH_ACCENT_OUTLINE_BTN, "mt-1 hover:bg-zinc-900")}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "تسجيل الدخول"}
+                {isSubmitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  t("auth.login.submit")
+                )}
               </Button>
 
               <Link
                 href="/forgot-password"
                 className="text-center text-sm font-medium text-primary/90 hover:text-primary hover:underline"
               >
-                نسيت كلمة المرور؟
+                {t("auth.login.forgot_password")}
               </Link>
             </form>
           </Form>
         </div>
 
         <p className="text-center text-sm text-muted-foreground">
-          ليس لديك حساب؟{" "}
+          {t("auth.login.no_account")}{" "}
           <Link href="/signup" className="font-semibold text-primary hover:underline">
-            إنشاء حساب جديد
+            {t("auth.login.create_account")}
           </Link>
         </p>
       </div>

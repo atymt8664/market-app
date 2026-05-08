@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "set NODE_ENV=development&& set PORT=5173&& set BASE_PATH=/&& vite --config vite.config.ts",
     "build": "vite build",
+    "i18n:check": "node scripts/check-i18n-keys.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

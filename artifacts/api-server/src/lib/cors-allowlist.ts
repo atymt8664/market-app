@@ -29,7 +29,8 @@ function isAllowedDevOrigin(origin: string): boolean {
 }
 
 /**
- * Strict CORS: production allows only the live site(s); development allows localhost + LAN IPs.
+ * Strict CORS: production allows only the live site(s) plus optional `CORS_ALLOWED_ORIGINS`
+ * (comma-separated full origins, no `*`). `credentials: true` is paired with explicit origins only.
  * Requests with no `Origin` (e.g. health checks, curl) are allowed so load balancers still work.
  */
 export function createCorsOriginHandler(

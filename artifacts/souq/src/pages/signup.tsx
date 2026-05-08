@@ -38,6 +38,8 @@ import {
   AUTH_POPOVER_PANEL,
   AUTH_SELECT_ROW,
 } from "@/lib/auth-page-styles";
+import { t } from "@/i18n";
+import { useLocale } from "@/hooks/use-locale";
 import {
   SIGNUP_COUNTRIES,
   SIGNUP_COUNTRY_BY_CODE,
@@ -48,16 +50,16 @@ import {
 
 const schema = z
   .object({
-    firstName: z.string().min(1, "الاسم الأول مطلوب"),
-    lastName: z.string().min(1, "اسم العائلة مطلوب"),
-    countryCode: z.string().min(1, "الرجاء اختيار الدولة"),
-    city: z.string().min(1, "الرجاء اختيار المدينة من القائمة"),
-    email: z.string().email("بريد إلكتروني غير صحيح"),
-    phoneNumber: z.string().regex(/^[0-9]{6,15}$/, "رقم الهاتف غير صحيح لهذه الدولة"),
-    password: z.string().min(1, "كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم، ولا تقل عن 8 أحرف"),
-    confirmPassword: z.string().min(1, "تأكيد كلمة المرور مطلوب"),
-    acceptTerms: z.boolean().refine((v) => v, "يجب الموافقة على الشروط والأحكام"),
-    acceptPrivacy: z.boolean().refine((v) => v, "يجب الموافقة على سياسة الخصوصية"),
+    firstName: z.string().min(1, "auth.validation.first_name_required"),
+    lastName: z.string().min(1, "auth.validation.last_name_required"),
+    countryCode: z.string().min(1, "auth.validation.country_required"),
+    city: z.string().min(1, "auth.validation.city_required"),
+    email: z.string().email("auth.validation.invalid_email"),
+    phoneNumber: z.string().regex(/^[0-9]{6,15}$/, "auth.validation.invalid_phone"),
+    password: z.string().min(1, "auth.validation.password_policy"),
+    confirmPassword: z.string().min(1, "auth.validation.confirm_password_required"),
+    acceptTerms: z.boolean().refine((v) => v, "auth.validation.accept_terms_required"),
+    acceptPrivacy: z.boolean().refine((v) => v, "auth.validation.accept_privacy_required"),
   })
   .superRefine((values, ctx) => {
     if (
@@ -69,14 +71,14 @@ const schema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["password"],
-        message: "كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم، ولا تقل عن 8 أحرف",
+        message: "auth.validation.password_policy",
       });
     }
     if (values.password !== values.confirmPassword) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["confirmPassword"],
-        message: "كلمة المرور وتأكيد كلمة المرور غير متطابقين",
+        message: "auth.validation.passwords_mismatch",
       });
     }
     const country = SIGNUP_COUNTRY_BY_CODE[values.countryCode];
@@ -85,7 +87,7 @@ const schema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["city"],
-        message: "الرجاء اختيار المدينة من القائمة",
+        message: "auth.validation.city_required",
       });
     }
   });
@@ -93,6 +95,7 @@ const schema = z
 type Values = z.infer<typeof schema>;
 
 export default function Signup() {
+  const { locale } = useLocale();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -140,14 +143,19 @@ export default function Signup() {
     return () => window.clearTimeout(timer);
   }, [rateLimitSeconds]);
 
+  const fieldErrorMsg = (msg: string | undefined) => {
+    if (!msg) return null;
+    return msg.startsWith("auth.") ? t(msg) : msg;
+  };
+
   const onSubmit = async (data: Values) => {
     setError(null);
     if (rateLimitSeconds > 0) {
-      setError(`محاولات كثيرة، يرجى الانتظار ${rateLimitSeconds} ثانية ثم المحاولة مرة أخرى`);
+      setError(t("auth.signup.rate_limited_wait", { seconds: rateLimitSeconds }));
       return;
     }
     if (!citySelectedFromSuggestions || !data.city) {
-      form.setError("city", { type: "manual", message: "الرجاء اختيار المدينة من القائمة" });
+      form.setError("city", { type: "manual", message: "auth.validation.city_required" });
       return;
     }
     setIsSubmitting(true);
@@ -198,56 +206,58 @@ export default function Signup() {
           }
         }
         if (res.status === 409) {
-          setError("هذا البريد الإلكتروني مسجّل مسبقاً");
+          setError(t("auth.signup.email_exists"));
           return;
         }
         if (res.status === 429) {
           const retryAfter = Number.parseInt(String(res.headers.get("retry-after") || ""), 10);
           const cooldown = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 30;
           setRateLimitSeconds(cooldown);
-          setError("محاولات كثيرة، يرجى الانتظار قليلاً ثم المحاولة مرة أخرى");
+          setError(t("auth.signup.rate_limited"));
           return;
         }
         if (hasFieldErrors) {
           return;
         }
-        throw new Error(resp?.error || "تعذّر إنشاء الحساب، حاول مرة أخرى");
+        throw new Error(resp?.error || "auth.signup.failed");
       }
 
       await queryClient.invalidateQueries();
       localStorage.setItem("email", resp.email || data.email);
       toast({
-        title: "تم إنشاء الحساب",
+        title: t("auth.signup.success_title"),
         description: resp?.devVerificationCode
-          ? `رمز التفعيل (وضع التطوير): ${resp.devVerificationCode}`
-          : "أرسلنا رمز التفعيل إلى بريدك الإلكتروني",
+          ? t("auth.signup.dev_code", { code: resp.devVerificationCode })
+          : t("auth.signup.success_desc"),
       });
       const params = new URLSearchParams();
       params.set("email", resp.email || data.email);
       if (resp?.devVerificationCode) params.set("code", resp.devVerificationCode);
       navigate(`/verify-email?${params.toString()}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "تعذّر إنشاء الحساب، حاول مرة أخرى";
-      setError(message);
+      const message = err instanceof Error ? err.message : "auth.signup.failed";
+      setError(message.startsWith("auth.") ? t(message) : message);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const dir = locale === "ar" ? "rtl" : "ltr";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={AUTH_PAGE_BG}
-      dir="rtl"
+      dir={dir}
     >
       <header className={AUTH_HEADER}>
         <Link href="/">
-          <button type="button" className={AUTH_BACK_BUTTON} aria-label="رجوع">
+          <button type="button" className={AUTH_BACK_BUTTON} aria-label={t("common.back")}>
             <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
           </button>
         </Link>
-        <h1 className={AUTH_HEADER_TITLE}>إنشاء حساب</h1>
+        <h1 className={AUTH_HEADER_TITLE}>{t("auth.signup.title")}</h1>
       </header>
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pb-8 pt-6 md:px-5">
@@ -259,9 +269,11 @@ export default function Signup() {
             </div>
           </div>
           <div className={cn(AUTH_HERO_CARD, "w-full max-w-md space-y-1.5")}>
-            <h2 className="text-lg font-bold text-foreground md:text-xl">أهلاً بك في سوق العرب EU</h2>
+            <h2 className="text-lg font-bold text-foreground md:text-xl">
+              {t("auth.shared.welcome_brand")}
+            </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              أنشئ حسابك مجانًا لبيع وشراء المنتجات بسهولة والتواصل مع المستخدمين في أوروبا وأمريكا وكندا
+              {t("auth.shared.welcome_desc")}
             </p>
           </div>
         </div>
@@ -274,11 +286,15 @@ export default function Signup() {
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-foreground">الاسم الأول</FormLabel>
+                    <FormLabel className="text-foreground">{t("auth.fields.first_name")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="مثال: محمد" className={AUTH_INPUT} {...field} />
+                      <Input
+                        placeholder={t("auth.signup.first_name_placeholder")}
+                        className={AUTH_INPUT}
+                        {...field}
+                      />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage>{fieldErrorMsg(form.formState.errors.firstName?.message)}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -287,11 +303,15 @@ export default function Signup() {
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-foreground">اسم العائلة</FormLabel>
+                    <FormLabel className="text-foreground">{t("auth.fields.last_name")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="مثال: أحمد" className={AUTH_INPUT} {...field} />
+                      <Input
+                        placeholder={t("auth.signup.last_name_placeholder")}
+                        className={AUTH_INPUT}
+                        {...field}
+                      />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage>{fieldErrorMsg(form.formState.errors.lastName?.message)}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -301,7 +321,7 @@ export default function Signup() {
                 name="countryCode"
                 render={({ field }) => (
                   <FormItem className={cn("relative", countryPickerOpen && "z-[50] isolate")}>
-                    <FormLabel className="text-foreground">الدولة</FormLabel>
+                    <FormLabel className="text-foreground">{t("auth.fields.country")}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <input type="hidden" {...field} />
@@ -309,7 +329,8 @@ export default function Signup() {
                           type="button"
                           className={cn(
                             AUTH_INPUT,
-                            "flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2.5 text-right font-normal",
+                            "flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2.5 font-normal",
+                            locale === "ar" ? "text-right" : "text-left",
                           )}
                           onClick={() => {
                             setCountryPickerOpen((v) => !v);
@@ -325,7 +346,9 @@ export default function Signup() {
                                 <span className="truncate">{selectedCountry.name}</span>
                               </>
                             ) : (
-                              <span className="text-muted-foreground">اختر الدولة</span>
+                              <span className="text-muted-foreground">
+                                {t("auth.signup.choose_country")}
+                              </span>
                             )}
                           </span>
                           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-80" />
@@ -366,7 +389,7 @@ export default function Signup() {
                         )}
                       </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage>{fieldErrorMsg(form.formState.errors.countryCode?.message)}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -376,7 +399,7 @@ export default function Signup() {
                 name="city"
                 render={({ field }) => (
                   <FormItem className={cn("relative", cityPickerOpen && "z-[50] isolate")}>
-                    <FormLabel className="text-foreground">المدينة</FormLabel>
+                    <FormLabel className="text-foreground">{t("auth.fields.city")}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <button
@@ -389,12 +412,20 @@ export default function Signup() {
                           }}
                           className={cn(
                             AUTH_INPUT,
-                            "flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2.5 text-right font-normal disabled:opacity-50",
+                            "flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2.5 font-normal disabled:opacity-50",
+                            locale === "ar" ? "text-right" : "text-left",
                           )}
                         >
-                          <span className="min-w-0 flex-1 truncate text-right">
+                          <span
+                            className={cn(
+                              "min-w-0 flex-1 truncate",
+                              locale === "ar" ? "text-right" : "text-left",
+                            )}
+                          >
                             {field.value ||
-                              (selectedCountry ? "اختر المدينة" : "اختر الدولة أولاً")}
+                              (selectedCountry
+                                ? t("auth.signup.choose_city")
+                                : t("auth.signup.choose_country_first"))}
                           </span>
                           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-80" />
                         </button>
@@ -408,7 +439,7 @@ export default function Signup() {
                           >
                             <Input
                               autoFocus
-                              placeholder="ابحث عن مدينة..."
+                              placeholder={t("auth.signup.search_city")}
                               value={cityQuery}
                               onChange={(e) => {
                                 const value = e.target.value;
@@ -421,7 +452,7 @@ export default function Signup() {
                             <div
                               className="max-h-[min(50dvh,280px)] touch-pan-y space-y-2 overflow-y-auto overscroll-y-contain px-0.5 py-1"
                               role="listbox"
-                              aria-label="قائمة المدن"
+                              aria-label={t("auth.signup.city_list_aria")}
                             >
                               {(cityQuery.trim().length < 2 ? countryCities.slice(0, 80) : citySuggestions).map(
                                 (city) => (
@@ -451,7 +482,7 @@ export default function Signup() {
                         )}
                       </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage>{fieldErrorMsg(form.formState.errors.city?.message)}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -461,17 +492,20 @@ export default function Signup() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-foreground">البريد الإلكتروني</FormLabel>
+                    <FormLabel className="text-foreground">{t("auth.fields.email")}</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
                         dir="ltr"
-                        className={cn(AUTH_INPUT, "text-right")}
+                        className={cn(
+                          AUTH_INPUT,
+                          locale === "ar" ? "text-right" : "text-left",
+                        )}
                         placeholder="name@email.com"
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage>{fieldErrorMsg(form.formState.errors.email?.message)}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -481,7 +515,7 @@ export default function Signup() {
                 name="phoneNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-foreground">رقم الهاتف</FormLabel>
+                    <FormLabel className="text-foreground">{t("auth.fields.phone")}</FormLabel>
                     <FormControl>
                       <div className="flex gap-2" dir="ltr">
                         <Input
@@ -500,7 +534,7 @@ export default function Signup() {
                         />
                       </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage>{fieldErrorMsg(form.formState.errors.phoneNumber?.message)}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -510,26 +544,36 @@ export default function Signup() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-foreground">كلمة المرور</FormLabel>
+                    <FormLabel className="text-foreground">{t("auth.fields.password")}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showPassword ? "text" : "password"}
                           placeholder="••••••••"
-                          className={cn(AUTH_INPUT, "pl-10")}
+                          className={cn(
+                            AUTH_INPUT,
+                            locale === "ar" ? "pl-10" : "pr-10",
+                          )}
                           {...field}
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword((v) => !v)}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-                          aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                          className={cn(
+                            "absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary",
+                            locale === "ar" ? "left-3" : "right-3",
+                          )}
+                          aria-label={
+                            showPassword
+                              ? t("auth.aria.hide_password")
+                              : t("auth.aria.show_password")
+                          }
                         >
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage>{fieldErrorMsg(form.formState.errors.password?.message)}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -539,28 +583,38 @@ export default function Signup() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-foreground">تأكيد كلمة المرور</FormLabel>
+                    <FormLabel className="text-foreground">{t("auth.fields.confirm_password")}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showConfirmPassword ? "text" : "password"}
                           placeholder="••••••••"
-                          className={cn(AUTH_INPUT, "pl-10")}
+                          className={cn(
+                            AUTH_INPUT,
+                            locale === "ar" ? "pl-10" : "pr-10",
+                          )}
                           {...field}
                         />
                         <button
                           type="button"
                           onClick={() => setShowConfirmPassword((v) => !v)}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                          className={cn(
+                            "absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary",
+                            locale === "ar" ? "left-3" : "right-3",
+                          )}
                           aria-label={
-                            showConfirmPassword ? "إخفاء تأكيد كلمة المرور" : "إظهار تأكيد كلمة المرور"
+                            showConfirmPassword
+                              ? t("auth.aria.hide_confirm_password")
+                              : t("auth.aria.show_confirm_password")
                           }
                         >
                           {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage>
+                      {fieldErrorMsg(form.formState.errors.confirmPassword?.message)}
+                    </FormMessage>
                   </FormItem>
                 )}
               />
@@ -578,7 +632,7 @@ export default function Signup() {
                         className="mt-0.5 h-4 w-4 shrink-0 rounded border-primary/40 accent-primary"
                       />
                       <span className="text-foreground">
-                        أوافق على{" "}
+                        {t("auth.signup.agree_to")}{" "}
                         <Link
                           href={appendReturnToQuery("/terms", "/signup")}
                           className="font-medium text-primary underline underline-offset-2"
@@ -588,11 +642,11 @@ export default function Signup() {
                             stashReturnTarget("/signup");
                           }}
                         >
-                          الشروط والأحكام
+                          {t("auth.signup.terms_link")}
                         </Link>
                       </span>
                     </label>
-                    <FormMessage />
+                    <FormMessage>{fieldErrorMsg(form.formState.errors.acceptTerms?.message)}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -610,7 +664,7 @@ export default function Signup() {
                         className="mt-0.5 h-4 w-4 shrink-0 rounded border-primary/40 accent-primary"
                       />
                       <span className="text-foreground">
-                        أوافق على{" "}
+                        {t("auth.signup.agree_to")}{" "}
                         <Link
                           href={appendReturnToQuery("/privacy", "/signup")}
                           className="font-medium text-primary underline underline-offset-2"
@@ -620,11 +674,11 @@ export default function Signup() {
                             stashReturnTarget("/signup");
                           }}
                         >
-                          سياسة الخصوصية
+                          {t("auth.signup.privacy_link")}
                         </Link>
                       </span>
                     </label>
-                    <FormMessage />
+                    <FormMessage>{fieldErrorMsg(form.formState.errors.acceptPrivacy?.message)}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -644,22 +698,22 @@ export default function Signup() {
                 {isSubmitting ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : rateLimitSeconds > 0 ? (
-                  `انتظر ${rateLimitSeconds}s`
+                  t("auth.signup.wait_seconds", { seconds: rateLimitSeconds })
                 ) : (
-                  "إنشاء الحساب"
+                  t("auth.signup.submit")
                 )}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                سيصلك كود تفعيل عبر البريد الإلكتروني بعد إنشاء الحساب
+                {t("auth.signup.verification_note")}
               </p>
             </form>
           </Form>
         </div>
 
         <p className="text-center text-sm text-muted-foreground">
-          لديك حساب بالفعل؟{" "}
+          {t("auth.signup.has_account")}{" "}
           <Link href="/login" className="font-semibold text-primary hover:underline">
-            تسجيل الدخول
+            {t("auth.login.title")}
           </Link>
         </p>
       </div>

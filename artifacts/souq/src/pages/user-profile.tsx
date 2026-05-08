@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -76,12 +76,12 @@ import {
 
 const USER_PROFILE_MORE_HINT_KEY = "souq.hint.userProfileMoreMenu.v1";
 
-const USER_REPORT_REASONS = [
-  "سلوك مسيء أو تحرش",
-  "احتيال أو نصب",
-  "إعلانات مضللة",
-  "انتحال شخصية",
-  "أخرى",
+const USER_REPORT_REASON_KEYS = [
+  "user_profile.report.opt_harassment",
+  "user_profile.report.opt_fraud",
+  "user_profile.report.opt_misleading",
+  "user_profile.report.opt_impersonation",
+  "user_profile.report.opt_other",
 ] as const;
 
 const dropdownSurface =
@@ -96,9 +96,10 @@ const dialogSurface =
 const alertSurface =
   "rounded-2xl border border-primary/35 bg-zinc-950/95 p-5 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15 sm:max-w-md";
 
-const reportReasonBtn = (active: boolean) =>
+const reportReasonBtn = (active: boolean, alignClass: string) =>
   cn(
-    "w-full rounded-xl border px-3 py-2.5 text-right text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+    "w-full rounded-xl border px-3 py-2.5 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+    alignClass,
     active
       ? "border-primary/45 bg-zinc-900/95 ring-1 ring-primary/18 shadow-[0_0_14px_-10px_hsl(var(--primary)/0.2)]"
       : "border-primary/25 bg-zinc-950/85 hover:border-primary/38 hover:bg-zinc-900/70",
@@ -130,6 +131,12 @@ export default function UserProfile() {
   const userId = Number(params.id);
   const profileQueryEnabled = Number.isFinite(userId) && userId > 0;
   const { locale } = useLocale();
+  const reportTextAlign = locale === "ar" ? "text-right" : "text-left";
+  const userReportReasonOptions = useMemo(
+    () => USER_REPORT_REASON_KEYS.map((k) => t(k)),
+    [locale],
+  );
+  const otherReportLabel = t("user_profile.report.opt_other");
   const numberLocale = locale === "en" ? "en-US" : locale === "de" ? "de-DE" : "ar";
   const { user: me } = useAuth();
   const { toast } = useToast();
@@ -219,15 +226,15 @@ export default function UserProfile() {
 
   const submitUserReport = async () => {
     if (!reportReason.trim()) {
-      toast({ title: "اختر سبب الإبلاغ", variant: "destructive" });
+      toast({ title: t("user_profile.report.choose_reason_toast"), variant: "destructive" });
       return;
     }
     if (!me) {
       navigate(`/login?redirect=/users/${userId}`);
       return;
     }
-    if (reportReason === "أخرى" && !reportExtra.trim()) {
-      toast({ title: "أضف تفاصيل", variant: "destructive" });
+    if (reportReason === otherReportLabel && !reportExtra.trim()) {
+      toast({ title: t("user_profile.report.add_details_toast"), variant: "destructive" });
       return;
     }
     setReporting(true);
@@ -240,24 +247,27 @@ export default function UserProfile() {
           targetUserId: userId,
           reason: reportReason,
           description:
-            reportReason === "أخرى" ? reportExtra.trim() : undefined,
+            reportReason === otherReportLabel ? reportExtra.trim() : undefined,
         }),
       });
       if (!res.ok) {
-        const t = await res.text().catch(() => "");
+        const errBody = await res.text().catch(() => "");
         toast({
-          title: "تعذّر إرسال البلاغ",
-          description: t || `رمز ${res.status}`,
+          title: t("user_profile.report.failed"),
+          description: errBody || t("ad_detail.http_status", { status: res.status }),
           variant: "destructive",
         });
         return;
       }
-      toast({ title: "تم إرسال البلاغ", description: "شكراً لمساعدتك في الحفاظ على السوق." });
+      toast({
+        title: t("user_profile.report.sent_title"),
+        description: t("user_profile.report.sent_desc"),
+      });
       setReportOpen(false);
       setReportReason("");
       setReportExtra("");
     } catch {
-      toast({ title: "فشل الاتصال", variant: "destructive" });
+      toast({ title: t("user_profile.report.network_failed"), variant: "destructive" });
     } finally {
       setReporting(false);
     }
@@ -728,30 +738,44 @@ export default function UserProfile() {
       </AlertDialog>
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent hideClose dir="rtl" className={cn(dialogSurface, "text-right")}>
-          <DialogHeader className="border-b border-primary/15 px-4 pb-3 pt-4 text-right">
+        <DialogContent
+          hideClose
+          dir={locale === "ar" ? "rtl" : "ltr"}
+          className={cn(dialogSurface, reportTextAlign)}
+        >
+          <DialogHeader
+            className={cn(
+              "border-b border-primary/15 px-4 pb-3 pt-4",
+              reportTextAlign,
+            )}
+          >
             <DialogTitle className="text-base font-bold text-foreground">
-              إبلاغ عن المستخدم
+              {t("user_profile.report.dialog_title")}
             </DialogTitle>
           </DialogHeader>
           <div className="max-h-[min(56vh,420px)] space-y-3 overflow-y-auto px-4 py-4">
-            <p className="text-xs font-medium text-muted-foreground">اختر السبب</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              {t("user_profile.report.pick_reason_hint")}
+            </p>
             <div className="space-y-2">
-              {USER_REPORT_REASONS.map((reasonOpt) => (
+              {userReportReasonOptions.map((reasonOpt) => (
                 <button
                   key={reasonOpt}
                   type="button"
                   onClick={() => setReportReason(reasonOpt)}
-                  className={reportReasonBtn(reportReason === reasonOpt)}
+                  className={reportReasonBtn(reportReason === reasonOpt, reportTextAlign)}
                 >
                   {reasonOpt}
                 </button>
               ))}
             </div>
-            {reportReason === "أخرى" && (
+            {reportReason === otherReportLabel && (
               <textarea
-                placeholder="تفاصيل إضافية..."
-                className="min-h-[88px] w-full rounded-xl border border-primary/28 bg-zinc-950/90 p-3 text-right text-sm text-foreground shadow-inner ring-1 ring-primary/10 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                placeholder={t("user_profile.report.details_placeholder")}
+                className={cn(
+                  "min-h-[88px] w-full rounded-xl border border-primary/28 bg-zinc-950/90 p-3 text-sm text-foreground shadow-inner ring-1 ring-primary/10 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                  reportTextAlign,
+                )}
                 value={reportExtra}
                 onChange={(e) => setReportExtra(e.target.value)}
               />
@@ -764,7 +788,7 @@ export default function UserProfile() {
               disabled={
                 reporting ||
                 !reportReason ||
-                (reportReason === "أخرى" && !reportExtra.trim())
+                (reportReason === otherReportLabel && !reportExtra.trim())
               }
               className={cn(
                 AUTH_ACCENT_OUTLINE_BTN,
@@ -772,7 +796,9 @@ export default function UserProfile() {
               )}
               onClick={() => void submitUserReport()}
             >
-              {reporting ? "جاري الإرسال..." : "إرسال البلاغ"}
+              {reporting
+                ? t("user_profile.report.submitting")
+                : t("user_profile.report.submit")}
             </Button>
           </div>
         </DialogContent>

@@ -8,7 +8,8 @@ import {
 } from "@workspace/db";
 import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
-import { requireAdmin, requireAdminCsrf } from "../middlewares/require-admin";
+import { requireAdmin, requireAdminAccessGrant, requireAdminCsrf } from "../middlewares/require-admin";
+import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import { getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
@@ -22,6 +23,8 @@ const ALLOWED_SUPPORT_CATEGORIES = new Set([
   "account",
   "other",
 ]);
+
+router.use("/admin", requireAdminIpAllowlist);
 
 function parseOptionalId(value: unknown): number | null {
   if (value === null || value === undefined) return null;
@@ -234,7 +237,7 @@ router.get("/support/tickets/:id/messages", requireAuth, async (req, res) => {
   );
 });
 
-router.get("/admin/support/tickets", requireAdmin, async (req, res) => {
+router.get("/admin/support/tickets", requireAdminAccessGrant, requireAdmin, async (req, res) => {
   const status = String(req.query.status || "").trim();
   const q = String(req.query.q || "").trim();
 
@@ -280,7 +283,7 @@ router.get("/admin/support/tickets", requireAdmin, async (req, res) => {
   );
 });
 
-router.get("/admin/support/tickets/:id/messages", requireAdmin, async (req, res) => {
+router.get("/admin/support/tickets/:id/messages", requireAdminAccessGrant, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid ticket id" });
@@ -307,7 +310,7 @@ router.get("/admin/support/tickets/:id/messages", requireAdmin, async (req, res)
   );
 });
 
-router.patch("/admin/support/tickets/:id", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.patch("/admin/support/tickets/:id", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid ticket id" });
@@ -404,7 +407,7 @@ router.patch("/admin/support/tickets/:id", requireAdmin, requireAdminCsrf, async
   return res.json(updated);
 });
 
-router.post("/admin/support/tickets/:id/reply", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.post("/admin/support/tickets/:id/reply", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid ticket id" });

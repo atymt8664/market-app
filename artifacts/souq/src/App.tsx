@@ -41,6 +41,7 @@ import AccountProfile from "@/pages/account-profile";
 import AccountEmail from "@/pages/account-email";
 import AccountPassword from "@/pages/account-password";
 import AccountVerification from "@/pages/account-verification";
+import AccountNotifications from "@/pages/account-notifications";
 import AccountInfo from "@/pages/account-info";
 import Messages from "@/pages/messages";
 import MessageThread from "@/pages/message-thread";
@@ -97,6 +98,7 @@ function Router() {
         <Route path="/account/email" component={AccountEmail} />
         <Route path="/account/password" component={AccountPassword} />
         <Route path="/account/verification" component={AccountVerification} />
+        <Route path="/account/notifications" component={AccountNotifications} />
         <Route path="/account/help" component={SupportHelpPage} />
         <Route path="/support">{() => <Redirect to="/account/help" />}</Route>
         <Route path="/support/help">{() => <Redirect to="/account/help" />}</Route>

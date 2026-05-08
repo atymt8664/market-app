@@ -4,14 +4,23 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api-url";
 import { SETTINGS_IMMERSIVE_BOTTOM } from "@/components/settings-shell";
+import { t } from "@/i18n";
+import { useLocale } from "@/hooks/use-locale";
+
+function translateMaybeKey(message: string) {
+  return message.startsWith("auth.") ? t(message) : message;
+}
 
 export default function VerifyEmail() {
+  const { locale } = useLocale();
   const [, navigate] = useLocation();
   const search = useSearch();
   const { toast } = useToast();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+
+  const dir = locale === "ar" ? "rtl" : "ltr";
 
   const readJson = async (res: Response) => {
     const text = await res.text();
@@ -38,8 +47,8 @@ export default function VerifyEmail() {
   const handleVerify = async () => {
     if (code.trim().length !== 6) {
       toast({
-        title: "خطأ",
-        description: "أدخل رمز مكون من 6 أرقام",
+        title: t("auth.verify.error_title"),
+        description: t("auth.verify.code_6_digits"),
         variant: "destructive",
       });
       return;
@@ -49,7 +58,7 @@ export default function VerifyEmail() {
       setLoading(true);
 
       const email = resolveVerificationEmail();
-      if (!email) throw new Error("ما في إيميل محفوظ، ارجع سجل من جديد");
+      if (!email) throw new Error("auth.verify.no_saved_email");
 
       const res = await fetch(apiUrl("/api/auth/verify-email"), {
         method: "POST",
@@ -64,18 +73,19 @@ export default function VerifyEmail() {
       const data = await readJson(res);
 
       if (!res.ok) {
-        throw new Error(data.error || "فشل التفعيل");
+        throw new Error(data.error || "auth.verify.activation_failed");
       }
 
       toast({
-        title: "تم التفعيل",
-        description: "تم تفعيل الحساب بنجاح، يمكنك تسجيل الدخول الآن",
+        title: t("auth.verify.activated_title"),
+        description: t("auth.verify.activated_desc"),
       });
       navigate("/login");
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("auth.verify.activation_failed");
       toast({
-        title: "خطأ",
-        description: err.message || "فشل التفعيل",
+        title: t("auth.verify.error_title"),
+        description: translateMaybeKey(msg),
         variant: "destructive",
       });
     } finally {
@@ -88,7 +98,7 @@ export default function VerifyEmail() {
       setResending(true);
 
       const email = resolveVerificationEmail();
-      if (!email) throw new Error("ما في إيميل محفوظ");
+      if (!email) throw new Error("auth.verify.no_saved_email");
 
       const res = await fetch(apiUrl("/api/auth/resend-verification"), {
         method: "POST",
@@ -100,17 +110,18 @@ export default function VerifyEmail() {
       const data = await readJson(res);
 
       if (!res.ok) {
-        throw new Error(data.error || "فشل إعادة الإرسال");
+        throw new Error(data.error || "auth.verify.resend_failed");
       }
 
       toast({
-        title: "تم الإرسال",
-        description: "تم إرسال رمز جديد",
+        title: t("auth.verify.sent_title"),
+        description: t("auth.verify.sent_desc"),
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("auth.verify.resend_failed");
       toast({
-        title: "خطأ",
-        description: err.message || "فشل إعادة الإرسال",
+        title: t("auth.verify.error_title"),
+        description: translateMaybeKey(msg),
         variant: "destructive",
       });
     } finally {
@@ -121,11 +132,12 @@ export default function VerifyEmail() {
   return (
     <div
       className={`min-h-[100dvh] flex flex-col items-center justify-center bg-background px-6 ${SETTINGS_IMMERSIVE_BOTTOM}`}
+      dir={dir}
     >
-      <h1 className="text-xl font-bold mb-2">أدخل رمز التفعيل</h1>
+      <h1 className="text-xl font-bold mb-2">{t("auth.verify.title")}</h1>
 
       <p className="text-sm text-muted-foreground mb-6 text-center">
-        أدخل الرمز المكون من 6 أرقام الذي وصلك على البريد
+        {t("auth.verify.subtitle")}
       </p>
 
       <input
@@ -143,15 +155,16 @@ export default function VerifyEmail() {
         disabled={loading}
         className="w-full max-w-xs h-12 rounded-2xl bg-primary text-black font-bold text-base"
       >
-        {loading ? "جاري التفعيل..." : "تفعيل الحساب"}
+        {loading ? t("auth.verify.activating") : t("auth.verify.submit")}
       </Button>
 
       <button
+        type="button"
         onClick={resendCode}
         disabled={resending}
         className="mt-4 text-primary text-sm disabled:opacity-60"
       >
-        {resending ? "جاري الإرسال..." : "إعادة إرسال الرمز"}
+        {resending ? t("auth.verify.resending") : t("auth.verify.resend")}
       </button>
     </div>
   );

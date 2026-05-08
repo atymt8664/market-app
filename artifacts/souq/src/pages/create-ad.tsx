@@ -28,7 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { useUpload } from "@workspace/object-storage-web";
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -39,7 +39,6 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -64,6 +63,9 @@ import {
 } from "@/lib/ad-stored-details";
 import { cn } from "@/lib/utils";
 import { SETTINGS_PRIMARY_BUTTON } from "@/components/settings-shell";
+import { t } from "@/i18n";
+import { useLocale } from "@/hooks/use-locale";
+import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 
 /** هوية dark/lime — نفس روح ad-detail / profile */
 const adCardShell =
@@ -90,7 +92,7 @@ function CreateAdSheetHeader({ title }: { title: string }) {
       <SheetClose
         type="button"
         className={createAdSheetCloseBtn}
-        aria-label="إغلاق"
+        aria-label={t("create_ad.images.close")}
       >
         <X className="h-4 w-4" />
       </SheetClose>
@@ -99,19 +101,22 @@ function CreateAdSheetHeader({ title }: { title: string }) {
 }
 
 const createAdSchema = z.object({
-  title: z.string().min(3, "العنوان قصير جداً").max(65, "العنوان طويل جداً"),
+  title: z
+    .string()
+    .min(3, "create_ad.validation.title_short")
+    .max(65, "create_ad.validation.title_long"),
   description: z
     .string()
-    .min(10, "الوصف قصير جداً")
-    .max(4000, "الوصف طويل جداً"),
+    .min(10, "create_ad.validation.description_short")
+    .max(4000, "create_ad.validation.description_long"),
   price: z.coerce.number().optional().nullable(),
   priceType: z.enum(["fixed", "negotiable", "free", "swap"]),
   type: z.enum(["offer", "request"]),
-  categoryId: z.number().min(1, "الرجاء اختيار تصنيف"),
+  categoryId: z.number().min(1, "create_ad.validation.category_required"),
   subcategoryId: z.number().optional().nullable(),
-  city: z.string().min(2, "اسم المدينة مطلوب"),
-  sellerName: z.string().min(2, "الاسم مطلوب"),
-  sellerPhone: z.string().min(5, "رقم الهاتف مطلوب"),
+  city: z.string().min(2, "create_ad.validation.city_required"),
+  sellerName: z.string().min(2, "create_ad.validation.name_required"),
+  sellerPhone: z.string().min(5, "create_ad.validation.phone_required"),
   images: z.array(z.string()).optional(),
 });
 
@@ -523,64 +528,6 @@ const isSupportedImageFile = (file: File) => {
 const formatFileSizeMb = (bytes: number) =>
   `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
 
-const SHIPPING_METHODS: ShippingMethod[] = [
-  {
-    id: "dhl_paket",
-    name: "DHL Paket",
-    description: "شحن موثوق مع تتبع كامل",
-    priceText: "ابتداءً من 6.99 €",
-    compactPrice: "6.19 €",
-    logo: "dhl",
-  },
-  {
-    id: "dhl_packchen",
-    name: "DHL Päckchen",
-    description: "خيار اقتصادي للشحنات الصغيرة",
-    priceText: "ابتداءً من 4.79 €",
-    logo: "dhl",
-  },
-  {
-    id: "hermes_packchen",
-    name: "Hermes Päckchen",
-    description: "مناسب للشحنات الخفيفة",
-    priceText: "ابتداءً من 4.50 €",
-    compactPrice: "1.99 €",
-    logo: "hermes",
-  },
-  {
-    id: "hermes_s_paket",
-    name: "Hermes S-Paket",
-    description: "توازن جيد بين السعر والحجم",
-    priceText: "ابتداءً من 5.95 €",
-    compactPrice: "2.49 €",
-    logo: "hermes",
-  },
-  {
-    id: "dpd_paket",
-    name: "DPD Paket",
-    description: "توصيل سريع مع تتبع",
-    logo: "dpd",
-  },
-  {
-    id: "ups_paket",
-    name: "UPS Paket",
-    description: "خدمة شحن دولية موثوقة",
-    logo: "ups",
-  },
-  {
-    id: "gls_paket",
-    name: "GLS Paket",
-    description: "تغطية واسعة وخيارات مرنة",
-    logo: "gls",
-  },
-  {
-    id: "other",
-    name: "أخرى",
-    description: "طريقة شحن أخرى تحددها لاحقاً",
-    logo: "other",
-  },
-];
-
 const CURRENCY_OPTIONS: CurrencyOption[] = [
   { id: "EUR", label: "EUR (€)" },
   { id: "USD", label: "USD ($)" },
@@ -592,43 +539,107 @@ const CURRENCY_OPTIONS: CurrencyOption[] = [
   { id: "DKK", label: "DKK" },
 ];
 
-/** Paid promotions are not implemented yet; selections must not be persisted. */
-const PROMOTIONS_COMING_SOON_MSG =
-  "خدمة تمييز الإعلانات ستتوفر قريبًا";
-
-const AI_UNAVAILABLE_MSG =
-  "خدمة الذكاء الاصطناعي غير متاحة حاليًا، حاول لاحقًا";
-
-const PROMOTION_FEATURES: PromotionFeature[] = [
-  {
-    id: "highlight",
-    title: "تمييز الإعلان",
-    price: "6.99 €",
-    description: "ظهور أعلى وتمييز بصري للإعلان لمدة 7 أيام",
-    icon: "highlight",
-  },
-  {
-    id: "daily_boost",
-    title: "رفع يومي",
-    price: "12.99 €",
-    description: "رفع الإعلان يوميًا للأعلى لمدة 7 أيام",
-    icon: "boost",
-  },
-  {
-    id: "premium_ad",
-    title: "إعلان مميز",
-    price: "14.99 €",
-    description: "ظهور أقوى في بداية النتائج لمدة 7 أيام",
-    icon: "premium",
-  },
-];
-
 export default function CreateAd({ editId }: CreateAdProps = {}) {
+  const { locale } = useLocale();
+  const isRtl = locale === "ar";
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const isEdit = typeof editId === "number";
+
+  const fieldErrorMsg = (msg: string | undefined) => {
+    if (!msg) return null;
+    return msg.startsWith("create_ad.") ? t(msg) : msg;
+  };
+
+  const shippingMethods: ShippingMethod[] = useMemo(
+    () => [
+      {
+        id: "dhl_paket",
+        name: t("create_ad.shipping.dhl_paket_name"),
+        description: t("create_ad.shipping.dhl_paket_desc"),
+        priceText: t("create_ad.shipping.from_699"),
+        compactPrice: "6.19 €",
+        logo: "dhl",
+      },
+      {
+        id: "dhl_packchen",
+        name: t("create_ad.shipping.dhl_packchen_name"),
+        description: t("create_ad.shipping.dhl_packchen_desc"),
+        priceText: t("create_ad.shipping.from_479"),
+        logo: "dhl",
+      },
+      {
+        id: "hermes_packchen",
+        name: t("create_ad.shipping.hermes_packchen_name"),
+        description: t("create_ad.shipping.hermes_packchen_desc"),
+        priceText: t("create_ad.shipping.from_450"),
+        compactPrice: "1.99 €",
+        logo: "hermes",
+      },
+      {
+        id: "hermes_s_paket",
+        name: t("create_ad.shipping.hermes_s_paket_name"),
+        description: t("create_ad.shipping.hermes_s_paket_desc"),
+        priceText: t("create_ad.shipping.from_595"),
+        compactPrice: "2.49 €",
+        logo: "hermes",
+      },
+      {
+        id: "dpd_paket",
+        name: t("create_ad.shipping.dpd_name"),
+        description: t("create_ad.shipping.dpd_desc"),
+        logo: "dpd",
+      },
+      {
+        id: "ups_paket",
+        name: t("create_ad.shipping.ups_name"),
+        description: t("create_ad.shipping.ups_desc"),
+        logo: "ups",
+      },
+      {
+        id: "gls_paket",
+        name: t("create_ad.shipping.gls_name"),
+        description: t("create_ad.shipping.gls_desc"),
+        logo: "gls",
+      },
+      {
+        id: "other",
+        name: t("create_ad.shipping.other_name"),
+        description: t("create_ad.shipping.other_desc"),
+        logo: "other",
+      },
+    ],
+    [locale],
+  );
+
+  const promotionFeatures: PromotionFeature[] = useMemo(
+    () => [
+      {
+        id: "highlight",
+        title: t("create_ad.promotion.highlight_title"),
+        price: t("create_ad.promotion.highlight_price"),
+        description: t("create_ad.promotion.highlight_desc"),
+        icon: "highlight",
+      },
+      {
+        id: "daily_boost",
+        title: t("create_ad.promotion.daily_boost_title"),
+        price: t("create_ad.promotion.daily_boost_price"),
+        description: t("create_ad.promotion.daily_boost_desc"),
+        icon: "boost",
+      },
+      {
+        id: "premium_ad",
+        title: t("create_ad.promotion.premium_title"),
+        price: t("create_ad.promotion.premium_price"),
+        description: t("create_ad.promotion.premium_desc"),
+        icon: "premium",
+      },
+    ],
+    [locale],
+  );
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -966,7 +977,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const onSubmit = async (data: CreateAdFormValues) => {
     if (!sellerSafetyAccepted) {
       toast({
-        title: "يجب الموافقة على تنبيه الأمان قبل نشر الإعلان",
+        title: t("create_ad.safety.accept_required_before_publish"),
         variant: "destructive",
       });
       return;
@@ -982,12 +993,12 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       )?.details;
       const firstFailure = details?.[0];
       toast({
-        title: "فشل رفع الصور",
+        title: t("create_ad.upload.failed"),
         description: firstFailure
-          ? `فشل: ${firstFailure.name} (${firstFailure.type}، ${formatFileSizeMb(
+          ? `${t("create_ad.upload.failed_file_prefix")} ${firstFailure.name} (${firstFailure.type}, ${formatFileSizeMb(
               firstFailure.size,
-            )}) - ${firstFailure.reason}`
-          : (error as Error)?.message || "تعذر رفع صورة واحدة أو أكثر",
+            )}) — ${firstFailure.reason}`
+          : (error as Error)?.message || t("create_ad.upload.one_or_more_failed"),
         variant: "destructive",
       });
       setIsSubmittingUploads(false);
@@ -1025,12 +1036,15 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           onSuccess: async () => {
             await invalidate();
             toast({
-              title: "تم تحديث الإعلان",
+              title: t("create_ad.success.updated"),
             });
             navigate("/profile");
           },
           onError: () => {
-            toast({ title: "حدث خطأ أثناء التحديث", variant: "destructive" });
+            toast({
+              title: t("create_ad.error.update"),
+              variant: "destructive",
+            });
           },
         },
       );
@@ -1041,13 +1055,16 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           onSuccess: async () => {
             await invalidate();
             toast({
-              title: "تم إرسال إعلانك للمراجعة",
-              description: "سيظهر في السوق بعد موافقة الإدارة",
+              title: t("create_ad.success.sent_for_review"),
+              description: t("create_ad.success.sent_for_review_desc"),
             });
             navigate("/");
           },
           onError: () => {
-            toast({ title: "حدث خطأ أثناء النشر", variant: "destructive" });
+            toast({
+              title: t("create_ad.error.publish"),
+              variant: "destructive",
+            });
           },
         },
       );
@@ -1058,7 +1075,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     if (!files) return;
     if (uploadedImages.length >= MAX_IMAGES) {
       toast({
-        title: `الحد الأقصى ${MAX_IMAGES} صور`,
+        title: t("create_ad.images.max_reached", { count: MAX_IMAGES }),
         variant: "destructive",
       });
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -1071,8 +1088,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
 
     if (selected.length > availableSlots) {
       toast({
-        title: `يمكنك رفع ${MAX_IMAGES} صور كحد أقصى`,
-        description: `تم تجاهل ${selected.length - availableSlots} صورة إضافية`,
+        title: t("create_ad.images.max_upload", { count: MAX_IMAGES }),
+        description: t("create_ad.images.ignored_extra", {
+          count: selected.length - availableSlots,
+        }),
         variant: "destructive",
       });
     }
@@ -1080,16 +1099,16 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     for (const file of list) {
       if (!isSupportedImageFile(file)) {
         toast({
-          title: "نوع الصورة غير مدعوم",
-          description: `${file.name} ليس ملف صورة مدعوم`,
+          title: t("create_ad.images.unsupported_type"),
+          description: t("create_ad.images.unsupported_file", { name: file.name }),
           variant: "destructive",
         });
         continue;
       }
       if (file.size > MAX_IMAGE_SIZE_BYTES) {
         toast({
-          title: "حجم الصورة كبير جداً",
-          description: `${file.name} يتجاوز الحد الأقصى 5MB`,
+          title: t("create_ad.images.too_large"),
+          description: t("create_ad.images.too_large_file", { name: file.name }),
           variant: "destructive",
         });
         continue;
@@ -1123,9 +1142,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
         } catch (err) {
           console.error("[create-ad] immediate image upload failed", err);
           toast({
-            title: "تعذر رفع الصورة",
+            title: t("create_ad.upload.single_failed_title"),
             description:
-              err instanceof Error ? err.message : "حدث خطأ غير معروف",
+              err instanceof Error ? err.message : t("create_ad.upload.unknown_error"),
             variant: "destructive",
           });
         }
@@ -1162,7 +1181,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     const currentDescription = form.getValues("description")?.trim() || "";
     if (!currentDescription) {
       toast({
-        title: "اكتب وصف أولاً",
+        title: t("create_ad.ai.write_description_first"),
         variant: "destructive",
       });
       return;
@@ -1185,23 +1204,23 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             form.setValue("description", improvedFromApi, {
               shouldValidate: true,
             });
-            toast({ title: "تم تحسين الوصف" });
+            toast({ title: t("create_ad.ai.improved_success") });
           } else {
             toast({
-              title: "لم يتغير الوصف",
-              description: "جرّب إضافة تفاصيل أكثر ثم أعد المحاولة.",
+              title: t("create_ad.ai.description_unchanged_title"),
+              description: t("create_ad.ai.description_unchanged_hint"),
             });
           }
         },
         onError: (err) => {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          const errProbe = `${err instanceof Error ? err.name : ""} ${errMsg}`;
           const aborted =
-            err instanceof Error &&
-            (err.name === "AbortError" ||
-              /aborted|timeout|timed out/i.test(err.message));
+            /aborted|timeout|timed out|AbortError/i.test(errProbe);
           if (aborted) {
             toast({
-              title: "انتهت مهلة الطلب",
-              description: "حاول لاحقًا.",
+              title: t("create_ad.ai.timeout_title"),
+              description: t("create_ad.ai.try_later_short"),
               variant: "destructive",
             });
             return;
@@ -1214,13 +1233,13 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               err.status === 500)
           ) {
             toast({
-              title: AI_UNAVAILABLE_MSG,
+              title: t("create_ad.ai.service_unavailable"),
               variant: "destructive",
             });
             return;
           }
           toast({
-            title: AI_UNAVAILABLE_MSG,
+            title: t("create_ad.ai.service_unavailable"),
             variant: "destructive",
           });
         },
@@ -1230,15 +1249,28 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
 
   const handleSuggestPrice = () => {
     if (!watchTitle) {
-      toast({ title: "أدخل عنوان الإعلان أولاً", variant: "destructive" });
+      toast({
+        title: t("create_ad.ai.enter_title_first"),
+        variant: "destructive",
+      });
       return;
     }
+
+    const conditionVal = dynamicFieldValues["condition"]?.trim();
+    const storageVal = dynamicFieldValues["storage"]?.trim();
+    const descriptionForPrice = [
+      watchDesc || "",
+      `${t("create_ad.dynamic.condition")}: ${conditionVal || t("create_ad.not_specified")}`,
+      `${t("create_ad.dynamic.storage")}: ${storageVal || t("create_ad.not_specified")}`,
+    ]
+      .filter((line) => line.length > 0)
+      .join("\n");
 
     suggestPriceMutation.mutate(
       {
         data: {
           title: watchTitle,
-          description: `${watchDesc || ""}\nالحالة: ${condition || "غير محدد"}\nالسعة: ${storage || "غير محدد"}`,
+          description: descriptionForPrice,
           category: selectedCategory?.name,
         },
       },
@@ -1246,17 +1278,20 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
         onSuccess: (res) => {
           form.setValue("price", res.price, { shouldValidate: true });
           form.setValue("priceType", "negotiable");
-          toast({ title: "تم اقتراح السعر", description: res.reasoning });
+          toast({
+            title: t("create_ad.price.suggested"),
+            description: res.reasoning?.trim() || undefined,
+          });
         },
         onError: (err) => {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          const errProbe = `${err instanceof Error ? err.name : ""} ${errMsg}`;
           const aborted =
-            err instanceof Error &&
-            (err.name === "AbortError" ||
-              /aborted|timeout|timed out/i.test(err.message));
+            /aborted|timeout|timed out|AbortError/i.test(errProbe);
           if (aborted) {
             toast({
-              title: "انتهت مهلة الطلب",
-              description: "حاول لاحقًا.",
+              title: t("create_ad.ai.timeout_title"),
+              description: t("create_ad.ai.try_later_short"),
               variant: "destructive",
             });
             return;
@@ -1269,13 +1304,13 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               err.status === 500)
           ) {
             toast({
-              title: AI_UNAVAILABLE_MSG,
+              title: t("create_ad.ai.service_unavailable"),
               variant: "destructive",
             });
             return;
           }
           toast({
-            title: AI_UNAVAILABLE_MSG,
+            title: t("create_ad.ai.service_unavailable"),
             variant: "destructive",
           });
         },
@@ -1287,31 +1322,51 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     updateAdMutation.isPending ||
     isSubmittingUploads ||
     isUploading;
+  const pathSep = isRtl ? " ← " : " → ";
+  const listSep = isRtl ? "، " : ", ";
   const resolvedCategoryPathLabel = selectedCategoryPath
-    ? `${selectedCategoryPath.main} → ${selectedCategoryPath.sub}${selectedCategoryPath.leaf ? ` → ${selectedCategoryPath.leaf}` : ""}`
+    ? [
+        getCreateAdTaxonomyLabel(locale, selectedCategoryPath.main),
+        getCreateAdTaxonomyLabel(locale, selectedCategoryPath.sub),
+        ...(selectedCategoryPath.leaf
+          ? [getCreateAdTaxonomyLabel(locale, selectedCategoryPath.leaf)]
+          : []),
+      ].join(pathSep)
     : watchCategoryId
-      ? `${selectedCategory?.name ?? ""}${selectedSubcategory ? ` → ${selectedSubcategory.name}` : ""}`
+      ? [
+          getCreateAdTaxonomyLabel(locale, selectedCategory?.name ?? ""),
+          ...(selectedSubcategory
+            ? [getCreateAdTaxonomyLabel(locale, selectedSubcategory.name)]
+            : []),
+        ]
+          .filter((s) => s.length > 0)
+          .join(pathSep)
       : "";
   const selectedShippingLabels = pickupOnly
-    ? ["استلام فقط"]
-    : SHIPPING_METHODS.filter((item) => shippingIds.includes(item.id)).map(
+    ? [t("create_ad.shipping.pickup_only")]
+    : shippingMethods.filter((item) => shippingIds.includes(item.id)).map(
         (item) => item.name,
       );
   const shippingSummary =
     selectedShippingLabels.length > 0
-      ? selectedShippingLabels.join("، ")
-      : "الاستلام متاح دائمًا";
+      ? selectedShippingLabels.join(listSep)
+      : t("create_ad.shipping.note_2");
   const previewShippingLines: string[] = pickupOnly
     ? []
     : selectedShippingLabels.length > 0
       ? selectedShippingLabels
-      : ["الاستلام متاح دائمًا"];
+      : [t("create_ad.shipping.note_2")];
   const promotionsPreviewLines: string[] = [];
   const currencyLabelForPreview =
     CURRENCY_OPTIONS.find((c) => c.id === selectedCurrency)?.label ??
     selectedCurrency;
-  const categoryLabelForPreview = selectedCategory?.name ?? "";
-  const subcategoryLabelForPreview = selectedSubcategory?.name ?? null;
+  const categoryLabelForPreview = getCreateAdTaxonomyLabel(
+    locale,
+    selectedCategory?.name ?? "",
+  );
+  const subcategoryLabelForPreview = selectedSubcategory
+    ? getCreateAdTaxonomyLabel(locale, selectedSubcategory.name)
+    : null;
   const defaultCollapsedShippingIds = [
     "dhl_paket",
     "hermes_packchen",
@@ -1320,7 +1375,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const collapsedShippingMethods = pickupOnly
     ? []
     : (shippingIds.length > 0 ? shippingIds : defaultCollapsedShippingIds)
-        .map((id) => SHIPPING_METHODS.find((method) => method.id === id))
+        .map((id) => shippingMethods.find((method) => method.id === id))
         .filter((method): method is ShippingMethod => Boolean(method));
 
   useEffect(() => {
@@ -1371,14 +1426,18 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     <div className="flex min-h-0 w-full flex-col bg-[#0A0A0A] pb-28">
       <header
         className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]"
-        dir="rtl"
+        dir={isRtl ? "rtl" : "ltr"}
       >
         <div className="mx-auto flex w-full max-w-[900px] items-center justify-between gap-3 px-4 py-3 md:max-w-[760px] md:px-6 lg:max-w-[860px]">
-          <h1 className="min-w-0 flex-1 text-right text-lg font-bold text-foreground">
-            {isEdit ? "تعديل الإعلان" : "إنشاء إعلان"}
+          <h1 className="min-w-0 flex-1 text-start text-lg font-bold text-foreground">
+            {isEdit ? t("create_ad.edit_title") : t("create_ad.create_title")}
           </h1>
           <Link href="/" className="shrink-0">
-            <button type="button" className={adHeaderBackBtn} aria-label="رجوع">
+            <button
+              type="button"
+              className={adHeaderBackBtn}
+              aria-label={t("common.back")}
+            >
               <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
             </button>
           </Link>
@@ -1390,7 +1449,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           onSubmit={form.handleSubmit(onSubmit)}
           className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-4 flex flex-col gap-4"
         >
-          <section className="space-y-2.5" dir="rtl">
+          <section className="space-y-2.5" dir={isRtl ? "rtl" : "ltr"}>
             <input
               ref={fileInputRef}
               type="file"
@@ -1408,7 +1467,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 onRemoveAt={removeImage}
               />
               <p className="text-center text-xs tabular-nums text-zinc-400">
-                {uploadedImages.length} من 10 صور
+                {t("create_ad.images.count_of_max", {
+                  current: uploadedImages.length,
+                  max: MAX_IMAGES,
+                })}
               </p>
             <Sheet open={photoTipsOpen} onOpenChange={setPhotoTipsOpen}>
               <SheetTrigger asChild>
@@ -1416,26 +1478,26 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   type="button"
                   className="self-end text-xs font-medium text-primary hover:underline"
                 >
-                  نصائح الصور
+                  {t("create_ad.images.tips_link")}
                 </button>
               </SheetTrigger>
               <SheetContent
                 hideClose
                 side="bottom"
                 className={cn(createAdSheetContentBase, "h-auto max-h-[85dvh]")}
-                dir="rtl"
+                dir={isRtl ? "rtl" : "ltr"}
               >
-                <CreateAdSheetHeader title="نصائح الصور" />
+                <CreateAdSheetHeader title={t("create_ad.images.tips_title")} />
                 <div className="space-y-2 px-4 pb-2 pt-1">
                   {[
-                    "صوّر المنتج بإضاءة جيدة",
-                    "اجعل المنتج واضحًا وفي منتصف الصورة",
-                    "أضف صورًا من أكثر من زاوية",
-                    "تجنّب الصور المهتزة أو المظلمة",
-                    "لا تستخدم صورًا مضللة أو من الإنترنت",
-                  ].map((tip) => (
+                    t("create_ad.images.tip_1"),
+                    t("create_ad.images.tip_2"),
+                    t("create_ad.images.tip_3"),
+                    t("create_ad.images.tip_4"),
+                    t("create_ad.images.tip_5"),
+                  ].map((tip, tipIndex) => (
                     <div
-                      key={tip}
+                      key={`photo-tip-${tipIndex}`}
                       className="rounded-lg border border-primary/15 bg-zinc-950/80 px-2.5 py-1.5"
                     >
                       <p className="text-xs leading-5 text-zinc-300">- {tip}</p>
@@ -1449,7 +1511,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       className="h-12 w-full rounded-full border border-primary/45 bg-zinc-950/80 text-base font-semibold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-zinc-900/90 active:opacity-90"
                       onClick={() => setPhotoTipsOpen(false)}
                     >
-                      فهمت
+                      {t("common.got_it")}
                     </Button>
                   </SheetClose>
                 </div>
@@ -1469,14 +1531,14 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       onValueChange={field.onChange}
                       value={field.value}
                       className="flex flex-wrap items-center gap-5"
-                      dir="rtl"
+                      dir={isRtl ? "rtl" : "ltr"}
                     >
                       <FormItem className="flex items-center gap-2 space-y-0">
                         <FormControl>
                           <RadioGroupItem value="offer" />
                         </FormControl>
                         <FormLabel className="cursor-pointer font-medium">
-                          أعرض (بيع)
+                          {t("create_ad.type.offer")}
                         </FormLabel>
                       </FormItem>
                       <FormItem className="flex items-center gap-2 space-y-0">
@@ -1484,7 +1546,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                           <RadioGroupItem value="request" />
                         </FormControl>
                         <FormLabel className="cursor-pointer font-medium">
-                          أبحث (شراء)
+                          {t("create_ad.type.request")}
                         </FormLabel>
                       </FormItem>
                     </RadioGroup>
@@ -1494,46 +1556,50 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             />
           </div>
 
-          <section className="space-y-3" dir="rtl">
+          <section className="space-y-3" dir={isRtl ? "rtl" : "ltr"}>
             <div className={cn(adCardShell, "space-y-3")}>
               <FormField
                 control={form.control}
                 name="title"
-                render={({ field }) => (
+                render={({ field, fieldState }) => (
                   <FormItem>
                     <FormLabel className="text-xs font-medium text-zinc-400">
-                      عنوان الإعلان
+                      {t("create_ad.title.heading")}
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="مثال: آيفون 13 برو بحالة ممتازة"
+                        placeholder={t("create_ad.title.placeholder")}
                         className={cn(
-                          "h-11 rounded-xl px-3 text-right",
+                          "h-11 rounded-xl px-3 text-start",
                           adInputClass,
                         )}
                         {...field}
                       />
                     </FormControl>
-                    <div className="mt-1 text-right text-xs text-zinc-500">
+                    <div className="mt-1 text-start text-xs text-zinc-500">
                       {field.value.length}/65
                     </div>
-                    <FormMessage />
+                    {fieldState.error?.message ? (
+                      <p className="text-[0.8rem] font-medium text-destructive text-start">
+                        {fieldErrorMsg(fieldState.error.message)}
+                      </p>
+                    ) : null}
                   </FormItem>
                 )}
               />
 
               <div className="space-y-2">
-                <label className="block text-right text-xs font-medium text-zinc-400">
-                  التصنيف
+                <label className="block text-start text-xs font-medium text-zinc-400">
+                  {t("create_ad.category.title")}
                 </label>
-                <p className="min-h-4 text-right text-xs text-primary/90">
+                <p className="min-h-4 text-start text-xs text-primary/90">
                   {resolvedCategoryPathLabel}
                 </p>
                 <Sheet open={categorySheetOpen} onOpenChange={setCategorySheetOpen}>
                   <SheetTrigger asChild>
                     <Button
                       variant="outline"
-                      className="h-11 w-full justify-between rounded-xl border-primary/35 bg-zinc-950/80 px-3 text-right font-normal text-foreground hover:border-primary/50 hover:bg-zinc-900/90"
+                      className="h-11 w-full justify-between rounded-xl border-primary/35 bg-zinc-950/80 px-3 text-start font-normal text-foreground hover:border-primary/50 hover:bg-zinc-900/90"
                     >
                       <span
                         className={
@@ -1543,8 +1609,8 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         }
                       >
                         {resolvedCategoryPathLabel
-                          ? "تغيير التصنيف"
-                          : "اختيار التصنيف"}
+                          ? t("create_ad.category.change")
+                          : t("create_ad.category.choose")}
                       </span>
                       <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
                     </Button>
@@ -1553,16 +1619,16 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     hideClose
                     side="bottom"
                     className={cn(createAdSheetContentBase, "h-[80vh] max-h-[90dvh]")}
-                    dir="rtl"
+                    dir={isRtl ? "rtl" : "ltr"}
                   >
-                    <CreateAdSheetHeader title="اختر التصنيف" />
+                    <CreateAdSheetHeader title={t("create_ad.category.sheet_title")} />
                     <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3">
                       {!pickerMain ? (
                         CATEGORY_TREE.map((main) => (
                           <button
                             key={main.name}
                             type="button"
-                            className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3.5 text-right text-white transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
+                            className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
                             onClick={() => {
                               setPickerMain(main);
                               setPickerSub(null);
@@ -1570,7 +1636,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                               if (mainApi) setSelectedCatId(mainApi.id);
                             }}
                           >
-                            <span className="font-medium">{main.name}</span>
+                            <span className="font-medium">
+                              {getCreateAdTaxonomyLabel(locale, main.name)}
+                            </span>
                             <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
                           </button>
                         ))
@@ -1578,21 +1646,23 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         <>
                           <button
                             type="button"
-                            className="mb-1 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-zinc-950/85 px-3 py-3 text-right text-sm font-medium text-primary transition-colors hover:border-primary/45 hover:bg-zinc-900/90"
+                            className="mb-1 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-zinc-950/85 px-3 py-3 text-start text-sm font-medium text-primary transition-colors hover:border-primary/45 hover:bg-zinc-900/90"
                             onClick={() => {
                               setPickerMain(null);
                               setPickerSub(null);
                             }}
                           >
                             <ArrowRight className="h-4 w-4 shrink-0" />
-                            العودة للتصنيفات الرئيسية
+                            {t("create_ad.category.back_to_main")}
                           </button>
-                          <p className="px-1 pb-1 text-xs text-zinc-500">{pickerMain.name}</p>
+                          <p className="px-1 pb-1 text-xs text-zinc-500">
+                            {getCreateAdTaxonomyLabel(locale, pickerMain.name)}
+                          </p>
                           {pickerMain.subcategories.map((sub) => (
                             <button
                               key={sub.name}
                               type="button"
-                              className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3.5 text-right text-white transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
+                              className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
                               onClick={() => {
                                 if (!sub.options?.length) {
                                   applyCategorySelection(pickerMain.name, sub.name);
@@ -1601,7 +1671,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                                 setPickerSub(sub);
                               }}
                             >
-                              <span>{sub.name}</span>
+                              <span>{getCreateAdTaxonomyLabel(locale, sub.name)}</span>
                               <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
                             </button>
                           ))}
@@ -1610,20 +1680,23 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         <>
                           <button
                             type="button"
-                            className="mb-1 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-zinc-950/85 px-3 py-3 text-right text-sm font-medium text-primary transition-colors hover:border-primary/45 hover:bg-zinc-900/90"
+                            className="mb-1 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-zinc-950/85 px-3 py-3 text-start text-sm font-medium text-primary transition-colors hover:border-primary/45 hover:bg-zinc-900/90"
                             onClick={() => setPickerSub(null)}
                           >
                             <ArrowRight className="h-4 w-4 shrink-0" />
-                            العودة إلى {pickerMain.name}
+                            {t("create_ad.category.back_to_main_name", {
+                              name: getCreateAdTaxonomyLabel(locale, pickerMain.name),
+                            })}
                           </button>
                           <p className="px-1 pb-1 text-xs text-zinc-500">
-                            {pickerMain.name} → {pickerSub.name}
+                            {getCreateAdTaxonomyLabel(locale, pickerMain.name)} →{" "}
+                            {getCreateAdTaxonomyLabel(locale, pickerSub.name)}
                           </p>
                           {pickerSub.options?.map((leaf) => (
                             <button
                               key={leaf.name}
                               type="button"
-                              className="w-full rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3.5 text-right text-white transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
+                              className="w-full rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
                               onClick={() => {
                                 applyCategorySelection(
                                   pickerMain.name,
@@ -1632,7 +1705,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                                 );
                               }}
                             >
-                              {leaf.name}
+                              {getCreateAdTaxonomyLabel(locale, leaf.name)}
                             </button>
                           ))}
                         </>
@@ -1641,8 +1714,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   </SheetContent>
                 </Sheet>
                 {form.formState.errors.categoryId && (
-                  <span className="text-xs text-destructive block text-right">
-                    {form.formState.errors.categoryId.message}
+                  <span className="text-xs text-destructive block text-start">
+                    {fieldErrorMsg(
+                      form.formState.errors.categoryId.message as string | undefined,
+                    )}
                   </span>
                 )}
               </div>
@@ -1650,25 +1725,29 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               <FormField
                 control={form.control}
                 name="description"
-                render={({ field }) => (
+                render={({ field, fieldState }) => (
                   <FormItem>
                     <FormLabel className="text-xs font-medium text-zinc-400">
-                      الوصف
+                      {t("create_ad.description.title")}
                     </FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="صف المنتج بدقة. اذكر حالته، مدة الاستخدام، وأي تفاصيل تهم المشتري."
+                        placeholder={t("create_ad.description.placeholder")}
                         className={cn(
-                          "h-28 max-h-[120px] min-h-[100px] resize-none rounded-xl px-3 py-2 text-right",
+                          "h-28 max-h-[120px] min-h-[100px] resize-none rounded-xl px-3 py-2 text-start",
                           adInputClass,
                         )}
                         {...field}
                       />
                     </FormControl>
-                    <div className="mt-1 text-right text-xs text-zinc-500">
+                    <div className="mt-1 text-start text-xs text-zinc-500">
                       {field.value.length}/4000
                     </div>
-                    <FormMessage />
+                    {fieldState.error?.message ? (
+                      <p className="text-[0.8rem] font-medium text-destructive text-start">
+                        {fieldErrorMsg(fieldState.error.message)}
+                      </p>
+                    ) : null}
                   </FormItem>
                 )}
               />
@@ -1676,31 +1755,36 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           </section>
 
           {activeDynamicFields.length > 0 && (
-            <section className="space-y-2.5" dir="rtl">
+            <section className="space-y-2.5" dir={isRtl ? "rtl" : "ltr"}>
               <p className="text-sm font-medium text-foreground">
-                حقول مرتبطة بالتصنيف
+                {t("create_ad.dynamic.title")}
               </p>
               <div className="grid grid-cols-1 gap-2">
                 {activeDynamicFields.map((field) => {
                   const current = dynamicFieldValues[field.id] ?? "";
+                  const fieldLabel = getCreateAdTaxonomyLabel(locale, field.label);
                   return (
                     <div key={field.id} className={cn(adCardShellCompact, "px-3 py-2.5")}>
                       <label className="mb-1.5 block text-xs text-zinc-400">
-                        {field.label}
+                        {fieldLabel}
                       </label>
                       <Sheet>
                         <SheetTrigger asChild>
                           <button
                             type="button"
                             className="flex h-11 w-full items-center justify-between rounded-lg border border-primary/30 bg-zinc-950/90 px-3 text-sm transition-colors hover:border-primary/45 hover:bg-zinc-900/90"
-                            dir="rtl"
+                            dir={isRtl ? "rtl" : "ltr"}
                           >
                             <span
                               className={
-                                current ? "text-right text-white" : "text-right text-zinc-500"
+                                current ? "text-start text-white" : "text-start text-zinc-500"
                               }
                             >
-                              {current || `اختر ${field.label}`}
+                              {current
+                                ? getCreateAdTaxonomyLabel(locale, current)
+                                : t("create_ad.dynamic.choose_field", {
+                                    field: fieldLabel,
+                                  })}
                             </span>
                             <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
                           </button>
@@ -1712,17 +1796,21 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                             createAdSheetContentBase,
                             "max-h-[min(85dvh,560px)]",
                           )}
-                          dir="rtl"
+                          dir={isRtl ? "rtl" : "ltr"}
                         >
-                          <CreateAdSheetHeader title={`اختر ${field.label}`} />
+                          <CreateAdSheetHeader
+                            title={t("create_ad.dynamic.choose_field", {
+                              field: fieldLabel,
+                            })}
+                          />
                           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-6 pt-2">
                             <SheetClose asChild>
                               <button
                                 type="button"
-                                className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/70 px-3 py-3 text-right text-sm text-zinc-400 transition-colors hover:border-primary/35 hover:bg-zinc-900/85"
+                                className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/70 px-3 py-3 text-start text-sm text-zinc-400 transition-colors hover:border-primary/35 hover:bg-zinc-900/85"
                                 onClick={() => handleDynamicFieldChange(field.id, "")}
                               >
-                                <span>إلغاء الاختيار</span>
+                                <span>{t("create_ad.dynamic.clear_selection")}</span>
                               </button>
                             </SheetClose>
                             {field.options?.map((option) => {
@@ -1735,13 +1823,15 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                                       handleDynamicFieldChange(field.id, option)
                                     }
                                     className={cn(
-                                      "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-right text-white transition-colors",
+                                      "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-start text-white transition-colors",
                                       selected
                                         ? "border-primary bg-primary/15 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.35)]"
                                         : "border-primary/25 bg-zinc-950/75 hover:border-primary/45 hover:bg-zinc-900/85",
                                     )}
                                   >
-                                    <span className="font-medium">{option}</span>
+                                    <span className="font-medium">
+                                      {getCreateAdTaxonomyLabel(locale, option)}
+                                    </span>
                                     <span
                                       className={cn(
                                         "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
@@ -1769,23 +1859,27 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </section>
           )}
 
-          <section className="space-y-2.5" dir="rtl">
+          <section className="space-y-2.5" dir={isRtl ? "rtl" : "ltr"}>
             <Sheet open={shippingSheetOpen} onOpenChange={setShippingSheetOpen}>
               <SheetTrigger asChild>
                 <button
                   type="button"
                   className={cn(
                     adCardShellCompact,
-                    "w-full py-3 text-right transition-colors hover:border-primary/45",
+                    "w-full py-3 text-start transition-colors hover:border-primary/45",
                   )}
                 >
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-sm font-medium">طرق الشحن</p>
+                    <p className="text-sm font-medium">
+                      {t("create_ad.shipping.methods_title")}
+                    </p>
                     <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
                   </div>
                   {pickupOnly ? (
                     <div className="rounded-lg border border-primary/25 bg-zinc-950/60 px-2.5 py-2">
-                      <p className="text-sm font-medium">استلام فقط</p>
+                      <p className="text-sm font-medium">
+                        {t("create_ad.shipping.pickup_only")}
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-1.5">
@@ -1819,24 +1913,23 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 hideClose
                 side="bottom"
                 className={cn(createAdSheetContentBase, "h-[85vh] max-h-[90dvh] px-0")}
-                dir="rtl"
+                dir={isRtl ? "rtl" : "ltr"}
               >
-                <CreateAdSheetHeader title="طرق الشحن" />
+                <CreateAdSheetHeader title={t("create_ad.shipping.methods_title")} />
                 <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
                   <div className="space-y-1 rounded-xl border border-primary/25 bg-zinc-950/70 px-3 py-2 text-xs text-zinc-500">
-                    <p>- المشتري يختار ويدفع الشحن</p>
-                    <p>- يشمل التتبع والتأمين عند توفره</p>
-                    <p>- الاستلام متاح دائمًا</p>
+                    <p>{t("create_ad.shipping.note_1")}</p>
+                    <p>{t("create_ad.shipping.note_2")}</p>
                   </div>
 
-                  {SHIPPING_METHODS.map((method) => {
+                  {shippingMethods.map((method) => {
                     const selected = tempShippingIds.includes(method.id) && !tempPickupOnly;
                     return (
                       <button
                         key={method.id}
                         type="button"
                         onClick={() => toggleShippingTemp(method.id)}
-                        className={`w-full rounded-xl border px-3 py-3 text-right transition-colors ${
+                        className={`w-full rounded-xl border px-3 py-3 text-start transition-colors ${
                           selected
                             ? "border-primary bg-primary/10"
                             : "border-primary/25 bg-zinc-950/70"
@@ -1881,7 +1974,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       setTempPickupOnly(true);
                       setTempShippingIds([]);
                     }}
-                    className={`w-full rounded-xl border px-3 py-3 text-right transition-colors ${
+                    className={`w-full rounded-xl border px-3 py-3 text-start transition-colors ${
                       tempPickupOnly
                         ? "border-primary bg-primary/10"
                         : "border-primary/25 bg-zinc-950/70"
@@ -1897,7 +1990,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       >
                         <Check className="w-3.5 h-3.5" />
                       </span>
-                      <span className="font-medium">بدون شحن - استلام فقط</span>
+                      <span className="font-medium">
+                        {t("create_ad.shipping.no_shipping_pickup_only")}
+                      </span>
                     </div>
                   </button>
                 </div>
@@ -1914,25 +2009,29 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       setShippingSheetOpen(false);
                     }}
                   >
-                    تأكيد
+                    {t("common.confirm")}
                   </button>
                 </div>
               </SheetContent>
             </Sheet>
-            <p className="px-1 text-xs text-zinc-500">الاستلام متاح دائمًا</p>
+            <p className="px-1 text-xs text-zinc-500">
+              {t("create_ad.shipping.footer_note")}
+            </p>
           </section>
 
-          <section className="space-y-3" dir="rtl">
+          <section className="space-y-3" dir={isRtl ? "rtl" : "ltr"}>
             <div className={cn(adCardShell, "space-y-3")}>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-3">
                   <FormField
                     control={form.control}
                     name="price"
-                    render={({ field }) => (
+                    render={({ field, fieldState }) => (
                       <FormItem>
                         <div className="flex justify-between items-center mb-2">
-                          <FormLabel className="text-right block">السعر</FormLabel>
+                          <FormLabel className="text-start block">
+                            {t("create_ad.price.title")}
+                          </FormLabel>
                           {watchTitle && watchPriceType !== "free" && (
                             <button
                               type="button"
@@ -1945,16 +2044,16 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                               ) : (
                                 <Sparkles className="w-3 h-3" />
                               )}
-                              اقترح السعر
+                              {t("create_ad.price.suggest_price_btn")}
                             </button>
                           )}
                         </div>
                         <FormControl>
                           <Input
                             type="number"
-                            placeholder="السعر"
+                            placeholder={t("create_ad.price.amount")}
                             className={cn(
-                              "h-12 rounded-xl text-right",
+                              "h-12 rounded-xl text-start",
                               adInputClass,
                             )}
                             {...field}
@@ -1969,7 +2068,11 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                             }
                           />
                         </FormControl>
-                        <FormMessage />
+                        {fieldState.error?.message ? (
+                          <p className="text-[0.8rem] font-medium text-destructive text-start">
+                            {fieldErrorMsg(fieldState.error.message)}
+                          </p>
+                        ) : null}
                       </FormItem>
                     )}
                   />
@@ -1977,8 +2080,8 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
 
                 <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-3">
                   <div className="space-y-2">
-                    <label className="block text-right text-sm font-medium">
-                      العملة
+                    <label className="block text-start text-sm font-medium">
+                      {t("create_ad.price.currency")}
                     </label>
                     <Sheet
                       open={currencySheetOpen}
@@ -2001,9 +2104,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         hideClose
                         side="bottom"
                         className={cn(createAdSheetContentBase, "h-auto max-h-[85dvh]")}
-                        dir="rtl"
+                        dir={isRtl ? "rtl" : "ltr"}
                       >
-                        <CreateAdSheetHeader title="اختر العملة" />
+                        <CreateAdSheetHeader title={t("create_ad.price.choose_currency")} />
                         <div className="space-y-2 overflow-y-auto px-4 pb-6 pt-2">
                           {CURRENCY_OPTIONS.map((currency) => {
                             const picked = selectedCurrency === currency.id;
@@ -2012,7 +2115,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                                 key={currency.id}
                                 type="button"
                                 className={cn(
-                                  "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-right text-white transition-colors",
+                                  "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-start text-white transition-colors",
                                   picked
                                     ? "border-primary bg-primary/15 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.35)]"
                                     : "border-primary/25 bg-zinc-950/75 hover:border-primary/45 hover:bg-zinc-900/85",
@@ -2049,8 +2152,8 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   name="priceType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="mb-2 block text-right">
-                        نوع السعر
+                      <FormLabel className="mb-2 block text-start">
+                        {t("create_ad.price.type")}
                       </FormLabel>
                       <Sheet
                         open={priceTypeSheetOpen}
@@ -2062,10 +2165,14 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                             className="flex h-12 w-full items-center justify-between rounded-xl border border-primary/35 bg-zinc-950/80 px-3 text-sm text-foreground hover:border-primary/50"
                           >
                             <span>
-                              {field.value === "fixed" && "ثابت"}
-                              {field.value === "negotiable" && "قابل للتفاوض"}
-                              {field.value === "free" && "مجاني"}
-                              {field.value === "swap" && "للتبادل"}
+                              {field.value === "fixed" &&
+                                t("create_ad.price_type.fixed")}
+                              {field.value === "negotiable" &&
+                                t("create_ad.price_type.negotiable")}
+                              {field.value === "free" &&
+                                t("create_ad.price_type.free")}
+                              {field.value === "swap" &&
+                                t("create_ad.price_type.swap")}
                             </span>
                             <ArrowRight className="h-4 w-4 rotate-180 text-primary/70" />
                           </button>
@@ -2074,23 +2181,28 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                           hideClose
                           side="bottom"
                           className={cn(createAdSheetContentBase, "h-auto max-h-[85dvh]")}
-                          dir="rtl"
+                          dir={isRtl ? "rtl" : "ltr"}
                         >
-                          <CreateAdSheetHeader title="اختر نوع السعر" />
+                          <CreateAdSheetHeader title={t("create_ad.price.choose_type")} />
                           <div className="space-y-2 overflow-y-auto px-4 pb-6 pt-2">
-                            {[
-                              { id: "fixed", label: "ثابت" },
-                              { id: "negotiable", label: "قابل للتفاوض" },
-                              { id: "free", label: "مجاني" },
-                              { id: "swap", label: "للتبادل" },
-                            ].map((pt) => {
+                            {(
+                              [
+                                { id: "fixed", labelKey: "create_ad.price_type.fixed" },
+                                {
+                                  id: "negotiable",
+                                  labelKey: "create_ad.price_type.negotiable",
+                                },
+                                { id: "free", labelKey: "create_ad.price_type.free" },
+                                { id: "swap", labelKey: "create_ad.price_type.swap" },
+                              ] as const
+                            ).map((pt) => {
                               const picked = field.value === pt.id;
                               return (
                                 <button
                                   key={pt.id}
                                   type="button"
                                   className={cn(
-                                    "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-right text-white transition-colors",
+                                    "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-start text-white transition-colors",
                                     picked
                                       ? "border-primary bg-primary/15 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.35)]"
                                       : "border-primary/25 bg-zinc-950/75 hover:border-primary/45 hover:bg-zinc-900/85",
@@ -2105,7 +2217,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                                     setPriceTypeSheetOpen(false);
                                   }}
                                 >
-                                  <span className="font-medium">{pt.label}</span>
+                                  <span className="font-medium">{t(pt.labelKey)}</span>
                                   {picked ? (
                                     <span className="flex h-5 w-5 items-center justify-center rounded-full border border-primary bg-primary text-black">
                                       <Check className="h-3 w-3" />
@@ -2129,16 +2241,16 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </div>
           </section>
 
-          <section className="space-y-2.5" dir="rtl">
-            <label className="block text-right text-sm font-medium">
-              الشراء المباشر
+          <section className="space-y-2.5" dir={isRtl ? "rtl" : "ltr"}>
+            <label className="block text-start text-sm font-medium">
+              {t("create_ad.direct_buy.title")}
             </label>
             <div className={adCardShell}>
               <RadioGroup
                 value={directBuy}
                 onValueChange={(value) => setDirectBuy(value as "yes" | "no")}
                 className="space-y-3"
-                dir="rtl"
+                dir={isRtl ? "rtl" : "ltr"}
               >
                 <div className="space-y-3">
                   <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-zinc-950/60 px-3 py-3">
@@ -2146,15 +2258,15 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       value="yes"
                       className="data-[state=checked]:border-primary [&>span>svg]:fill-primary"
                     />
-                    <span className="text-sm text-right">
-                      نعم، أريد استخدام الشراء المباشر
+                    <span className="text-sm text-start">
+                      {t("create_ad.direct_buy.yes")}
                     </span>
                   </label>
                   {directBuy === "yes" && (
                     <div className="rounded-xl border border-primary/40 bg-primary/10 px-3 py-3 text-xs text-foreground/90 space-y-1.5">
-                      <p>- بدون تفاوض - السعر الذي تحدده هو السعر النهائي</p>
-                      <p>- حماية المشتري تزيد الثقة وتساعد على البيع</p>
-                      <p>- يمكن ربط الدفع لاحقًا عبر Stripe/Adyen</p>
+                      <p>{t("create_ad.direct_buy.yes_note_1")}</p>
+                      <p>{t("create_ad.direct_buy.yes_note_2")}</p>
+                      <p>{t("create_ad.direct_buy.yes_note_3")}</p>
                     </div>
                   )}
                 </div>
@@ -2164,38 +2276,37 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     value="no"
                     className="data-[state=checked]:border-primary [&>span>svg]:fill-primary"
                   />
-                  <span className="text-sm text-right">
-                    لا، لا أريد استخدام الشراء المباشر
+                  <span className="text-sm text-start">
+                    {t("create_ad.direct_buy.no")}
                   </span>
                 </label>
               </RadioGroup>
             </div>
           </section>
 
-          <section className="space-y-2.5" dir="rtl">
-            <label className="block text-right text-sm font-medium">
-              ميزات الترويج
+          <section className="space-y-2.5" dir={isRtl ? "rtl" : "ltr"}>
+            <label className="block text-start text-sm font-medium">
+              {t("create_ad.promotion.title")}
             </label>
             <div className={adCardShell}>
-              <div className="mb-3 rounded-xl border border-primary/35 bg-primary/8 px-3 py-2.5 text-right">
+              <div className="mb-3 rounded-xl border border-primary/35 bg-primary/8 px-3 py-2.5 text-start">
                 <p className="text-sm font-semibold text-foreground">
-                  {PROMOTIONS_COMING_SOON_MSG}
+                  {t("create_ad.promotion.unavailable_title")}
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                  يمكنك نشر إعلانك بشكل عادي دون تمييز؛ خيارات الترويج المدفوعة غير
-                  مفعّلة بعد.
+                  {t("create_ad.promotion.unavailable_detail")}
                 </p>
               </div>
               <div
                 className="pointer-events-none space-y-0 opacity-[0.45]"
                 aria-hidden
               >
-                {PROMOTION_FEATURES.map((feature, index) => {
-                  const isLast = index === PROMOTION_FEATURES.length - 1;
+                {promotionFeatures.map((feature, index) => {
+                  const isLast = index === promotionFeatures.length - 1;
                   return (
                     <div
                       key={feature.id}
-                      className={`w-full py-2 text-right ${
+                      className={`w-full py-2 text-start ${
                         !isLast ? "mb-1 border-b border-primary/15 pb-3" : ""
                       }`}
                     >
@@ -2224,28 +2335,36 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </div>
           </section>
 
-          <section className="space-y-3" dir="rtl">
+          <section className="space-y-3" dir={isRtl ? "rtl" : "ltr"}>
             <div className="space-y-2">
-              <p className="text-right text-sm font-medium">معلومات التواصل</p>
+              <p className="text-start text-sm font-medium">
+                {t("create_ad.contact.title")}
+              </p>
               <div className={adCardShell}>
                 <div className="mb-3">
                   <FormField
                     control={form.control}
                     name="sellerName"
-                    render={({ field }) => (
+                    render={({ field, fieldState }) => (
                       <FormItem>
-                        <FormLabel className="text-right block">الاسم</FormLabel>
+                        <FormLabel className="text-start block">
+                          {t("create_ad.contact.name")}
+                        </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="اسمك"
+                            placeholder={t("create_ad.contact.name_placeholder")}
                             className={cn(
-                              "h-12 rounded-xl text-right",
+                              "h-12 rounded-xl text-start",
                               adInputClass,
                             )}
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage />
+                        {fieldState.error?.message ? (
+                          <p className="text-[0.8rem] font-medium text-destructive text-start">
+                            {fieldErrorMsg(fieldState.error.message)}
+                          </p>
+                        ) : null}
                       </FormItem>
                     )}
                   />
@@ -2255,24 +2374,28 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   <FormField
                     control={form.control}
                     name="sellerPhone"
-                    render={({ field }) => (
+                    render={({ field, fieldState }) => (
                       <FormItem>
-                        <FormLabel className="text-right block">
-                          رقم الهاتف
+                        <FormLabel className="text-start block">
+                          {t("create_ad.contact.phone")}
                         </FormLabel>
                         <FormControl>
                           <Input
                             type="tel"
-                            placeholder="مثال: +491761234567"
+                            placeholder={t("create_ad.contact.phone_placeholder")}
                             dir="ltr"
                             className={cn(
-                              "h-12 rounded-xl text-right",
+                              "h-12 rounded-xl text-start",
                               adInputClass,
                             )}
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage />
+                        {fieldState.error?.message ? (
+                          <p className="text-[0.8rem] font-medium text-destructive text-start">
+                            {fieldErrorMsg(fieldState.error.message)}
+                          </p>
+                        ) : null}
                       </FormItem>
                     )}
                   />
@@ -2281,21 +2404,27 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 <FormField
                   control={form.control}
                   name="city"
-                  render={({ field }) => (
+                  render={({ field, fieldState }) => (
                     <FormItem>
-                      <FormLabel className="text-right block">المدينة</FormLabel>
+                      <FormLabel className="text-start block">
+                        {t("create_ad.contact.city")}
+                      </FormLabel>
                       <FormControl>
                         <CitySelect
                           value={field.value || ""}
                           onChange={field.onChange}
-                          placeholder="اختر مدينة في ألمانيا"
+                          placeholder={t("create_ad.contact.city_placeholder")}
                           className={cn(
                             "h-12 rounded-xl py-2.5 hover:bg-zinc-900/90",
                             adInputClass,
                           )}
                         />
                       </FormControl>
-                      <FormMessage />
+                      {fieldState.error?.message ? (
+                        <p className="text-[0.8rem] font-medium text-destructive text-start">
+                          {fieldErrorMsg(fieldState.error.message)}
+                        </p>
+                      ) : null}
                     </FormItem>
                   )}
                 />
@@ -2303,12 +2432,14 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </div>
           </section>
 
-          <section className="space-y-2" dir="rtl">
+          <section className="space-y-2" dir={isRtl ? "rtl" : "ltr"}>
             <div className={cn(adCardShellCompact, "space-y-2.5 p-3")}>
               <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-2">
                 <div className="mb-1 flex items-center gap-1.5">
                   <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
-                  <h3 className="text-xs font-semibold">تنبيه أمان مهم</h3>
+                  <h3 className="text-xs font-semibold">
+                    {t("create_ad.safety.card_title")}
+                  </h3>
                 </div>
                 <p
                   className={cn(
@@ -2316,14 +2447,16 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     safetyNoticeExpanded ? "line-clamp-none" : "line-clamp-1",
                   )}
                 >
-                  سوق العرب EU لا يتحمل مسؤولية أي دفع أو تحويل أموال خارج التطبيق. تأكد من الطرف الآخر والمنتج، ويفضل الدفع عند الاستلام أو اللقاء في مكان آمن.
+                  {t("create_ad.safety.seller_card_body")}
                 </p>
                 <button
                   type="button"
                   className="mt-1 text-xs font-medium text-primary hover:underline"
                   onClick={() => setSafetyNoticeExpanded((prev) => !prev)}
                 >
-                  {safetyNoticeExpanded ? "عرض أقل" : "عرض المزيد"}
+                  {safetyNoticeExpanded
+                    ? t("create_ad.show_less")
+                    : t("create_ad.show_more")}
                 </button>
               </div>
 
@@ -2335,7 +2468,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   className="mt-0.5 h-3.5 w-3.5 accent-primary"
                 />
                 <span className="text-[11px] leading-4.5 text-foreground/90">
-                  أقرّ بأنني قرأت تنبيه الأمان وأتحمل مسؤولية التعاملات خارج التطبيق
+                  {t("create_ad.safety.checkbox")}
                 </span>
               </label>
             </div>
@@ -2350,10 +2483,14 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               {isSubmittingForm ? (
                 <span className="inline-flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  جاري النشر...
+                  {isEdit
+                    ? t("create_ad.loading.saving")
+                    : t("create_ad.loading.publishing")}
                 </span>
+              ) : isEdit ? (
+                t("create_ad.save_changes")
               ) : (
-                "نشر الإعلان"
+                t("create_ad.publish")
               )}
             </Button>
             <Button
@@ -2362,7 +2499,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               className="h-12 w-full rounded-full border-primary/40 bg-zinc-950/80 text-base font-semibold text-foreground shadow-[0_0_16px_-12px_hsl(var(--primary)/0.3)] transition-colors hover:border-primary/55 hover:bg-zinc-900/90 active:opacity-90"
               onClick={() => setPreviewOpen(true)}
             >
-              معاينة
+              {t("create_ad.preview")}
             </Button>
           </div>
         </form>
@@ -2405,7 +2542,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           type="button"
           onClick={handleImproveDescription}
           disabled={improveDescMutation.isPending}
-          aria-label="تحسين الوصف بالذكاء الاصطناعي"
+          aria-label={t("create_ad.ai.aria_label")}
           className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-primary/45 bg-zinc-950/92 px-2.5 text-primary shadow-[0_0_12px_-12px_hsl(var(--primary)/0.32)] transition-[transform,colors,box-shadow] hover:border-primary/60 hover:bg-zinc-900/95 hover:shadow-[0_0_16px_-12px_hsl(var(--primary)/0.4)] active:scale-[0.98] disabled:opacity-60"
         >
           {improveDescMutation.isPending ? (
@@ -2413,7 +2550,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           ) : (
             <Sparkles className="h-3.5 w-3.5" />
           )}
-          <span className="text-[10px] font-medium">تحسين</span>
+          <span className="text-[10px] font-medium">
+            {t("create_ad.ai.short_label")}
+          </span>
         </button>
 
         <div
@@ -2427,7 +2566,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
         >
           <span className="inline-flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span>حسّن منشورك</span>
+            <span>{t("create_ad.ai.hint")}</span>
           </span>
         </div>
       </div>

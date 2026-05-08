@@ -2,12 +2,15 @@ import { Router } from "express";
 import { db, reportsTable, usersTable, adsTable, conversationsTable } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
-import { requireAdmin, requireAdminCsrf } from "../middlewares/require-admin";
+import { requireAdmin, requireAdminAccessGrant, requireAdminCsrf } from "../middlewares/require-admin";
+import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import { getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 
 const router = Router();
+
+router.use("/admin", requireAdminIpAllowlist);
 
 function reportStatusNotificationPayload(status: string): { type: string; title: string; body: string } | null {
   if (status === "in_review" || status === "reviewing") {
@@ -199,7 +202,7 @@ router.post("/", requireAuth, async (req, res) => {
 /**
  * جلب البلاغات للأدمن
  */
-router.get("/admin", requireAdmin, async (_req, res) => {
+router.get("/admin", requireAdminAccessGrant, requireAdmin, async (_req, res) => {
   const reports = await db
     .select({
       id: reportsTable.id,
@@ -234,7 +237,7 @@ router.get("/admin", requireAdmin, async (_req, res) => {
   );
 });
 
-router.patch("/admin/:id/status", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.patch("/admin/:id/status", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid report id" });
@@ -296,7 +299,7 @@ router.patch("/admin/:id/status", requireAdmin, requireAdminCsrf, async (req, re
   return res.json(updated[0]);
 });
 
-router.post("/admin/:id/ad-action", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.post("/admin/:id/ad-action", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid report id" });

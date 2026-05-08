@@ -26,6 +26,26 @@ export async function ensureAppSettingsTable() {
         add column if not exists admin_password_hash text
       `);
       await db.execute(sql`
+        alter table app_settings
+        add column if not exists admin_2fa_enabled boolean not null default false
+      `);
+      await db.execute(sql`
+        alter table app_settings
+        add column if not exists admin_2fa_secret text null
+      `);
+      await db.execute(sql`
+        alter table app_settings
+        add column if not exists admin_2fa_enabled_at timestamptz null
+      `);
+      await db.execute(sql`
+        alter table app_settings
+        add column if not exists admin_backup_codes_hash text null
+      `);
+      await db.execute(sql`
+        alter table app_settings
+        add column if not exists admin_security_revision integer not null default 0
+      `);
+      await db.execute(sql`
         insert into app_settings (
           id,
           app_name,

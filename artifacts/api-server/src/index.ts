@@ -6,6 +6,7 @@ import { logger } from "./lib/logger";
 import { attachWebSocketServer } from "./lib/realtime";
 import { prepareDatabase } from "./lib/prepare-database";
 import { runSupabaseStorageStartupProbe } from "./lib/supabaseStorage";
+import { assertSafeRuntimeEnv } from "./lib/env-safety";
 
 /** Prefer IPv4 for outbound HTTPS (Railway/Node + Supabase sometimes fail with undici "fetch failed" on IPv6). */
 dns.setDefaultResultOrder("ipv4first");
@@ -49,6 +50,7 @@ function logDatabaseTargetSanitized(): void {
 }
 
 async function start() {
+  assertSafeRuntimeEnv();
   logDatabaseTargetSanitized();
   try {
     await prepareDatabase();

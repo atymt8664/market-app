@@ -5,29 +5,12 @@ import {
   adsTable,
 } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { REFERENCE_CATEGORY_TAXONOMY } from "./seed-reference-taxonomy";
 
 async function main() {
   await db.execute(sql`TRUNCATE TABLE ads, subcategories, categories RESTART IDENTITY CASCADE`);
 
-  const categories = [
-    { name: "العقارات", slug: "immobilien", icon: "home", subtitle: "شقق، منازل وأراضٍ", subs: ["شقق للإيجار", "شقق للبيع", "غرف مشتركة", "محلات تجارية"] },
-    { name: "الأزياء والجمال", slug: "mode-beauty", icon: "shirt", subtitle: "ملابس، إكسسوارات ومجوهرات", subs: ["ملابس رجالية", "ملابس نسائية", "ملابس أطفال", "أحذية", "حقائب وإكسسوارات", "عطور وعناية"] },
-    { name: "السيارات والدراجات", slug: "auto-rad", icon: "car", subtitle: "مركبات وقطع غيار", subs: ["سيارات", "دراجات نارية", "دراجات هوائية", "قطع غيار", "إطارات"] },
-    { name: "المنزل والحديقة", slug: "haus-garten", icon: "sofa", subtitle: "أثاث، ديكور وأدوات", subs: ["أثاث غرف نوم", "أثاث صالون", "أدوات مطبخ", "ديكور", "حدائق ونباتات"] },
-    { name: "الإلكترونيات", slug: "elektronik", icon: "smartphone", subtitle: "هواتف وأجهزة كمبيوتر", subs: ["هواتف ذكية", "حواسيب محمولة", "تلفزيونات", "ألعاب فيديو", "أجهزة منزلية"] },
-    { name: "الوظائف", slug: "jobs", icon: "briefcase", subtitle: "فرص عمل وتدريب", subs: ["دوام كامل", "دوام جزئي", "تدريب مهني", "عمل عن بُعد"] },
-    { name: "العائلة والأطفال", slug: "familie", icon: "baby", subtitle: "ألعاب ومستلزمات أطفال", subs: ["عربات أطفال", "ملابس أطفال", "ألعاب", "حضانة"] },
-    { name: "الحيوانات الأليفة", slug: "haustiere", icon: "paw-print", subtitle: "حيوانات ومستلزماتها", subs: ["قطط", "كلاب", "طيور", "مستلزمات"] },
-    { name: "الترفيه والهوايات", slug: "freizeit", icon: "tent", subtitle: "رياضة، رحلات وفنون", subs: ["رياضة", "موسيقى", "كتب", "كاميرات", "ألعاب لوحية"] },
-    { name: "الموسيقى والكتب", slug: "musik-buecher", icon: "book-open", subtitle: "كتب، آلات وأفلام", subs: ["كتب عربية", "كتب ألمانية", "آلات موسيقية", "أفلام"] },
-    { name: "تذاكر وفعاليات", slug: "tickets", icon: "ticket", subtitle: "حفلات، رياضة وقطارات", subs: ["حفلات", "مباريات", "تذاكر قطار"] },
-    { name: "الخدمات", slug: "dienstleistungen", icon: "wrench", subtitle: "صيانة، تنظيف ورعاية", subs: ["نقل عفش", "تنظيف", "صيانة", "ترجمة", "دروس خصوصية"] },
-    { name: "للتبادل والإهداء", slug: "verschenken", icon: "gift", subtitle: "مجاناً ومقايضة", subs: ["مجاناً", "للمقايضة"] },
-    { name: "دروس ودورات", slug: "unterricht", icon: "graduation-cap", subtitle: "تعليم لغات ومساعدة دراسية", subs: ["لغة ألمانية", "لغة عربية", "مساعدة مدرسية", "دورات مهنية"] },
-    { name: "مساعدة الجوار", slug: "nachbarschaft", icon: "heart-handshake", subtitle: "خدمات قريبة منك", subs: ["مشاوير", "مساعدة كبار السن", "أعمال صغيرة"] },
-  ];
-
-  for (const [i, c] of categories.entries()) {
+  for (const [i, c] of REFERENCE_CATEGORY_TAXONOMY.entries()) {
     const [inserted] = await db
       .insert(categoriesTable)
       .values({ name: c.name, slug: c.slug, icon: c.icon, subtitle: c.subtitle, sortOrder: i })
@@ -310,7 +293,7 @@ async function main() {
     })),
   );
 
-  console.log(`Seeded ${categories.length} categories and ${ads.length} ads.`);
+  console.log(`Seeded ${REFERENCE_CATEGORY_TAXONOMY.length} categories and ${ads.length} ads.`);
   process.exit(0);
 }
 

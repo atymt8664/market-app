@@ -65,6 +65,7 @@ export type AdminAppSettings = {
   privacyPath: string;
   updatedAt: string | null;
   updatedByAdminId: number | null;
+  admin2faEnabled?: boolean;
 };
 
 export function getAdminSettings(signal?: AbortSignal) {
@@ -120,6 +121,136 @@ export async function adminLogout() {
   });
   if (!res.ok) throw new Error("Logout failed");
   adminCsrfToken = null;
+}
+
+/** After successful admin-login responses that include csrfToken. */
+export function absorbAdminLoginCsrf(body: { csrfToken?: unknown } | null | undefined) {
+  rememberAdminCsrfToken(body?.csrfToken);
+}
+
+export async function submitAdminLoginTotp(accessKey: string, code: string): Promise<void> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const trimmedKey = accessKey.trim();
+  if (trimmedKey) {
+    headers["X-Admin-Access-Key"] = trimmedKey;
+  }
+  const res = await fetch(apiUrl("/api/admin-login/totp"), {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    headers,
+    body: JSON.stringify({ code: code.trim() }),
+  });
+  const text = await res.text();
+  let parsed: { csrfToken?: unknown; success?: boolean; error?: string } | null = null;
+  try {
+    parsed = text ? (JSON.parse(text) as typeof parsed) : null;
+  } catch {
+    parsed = null;
+  }
+  if (!res.ok) {
+    if (res.status === 403) {
+      throw new Error("تم رفض الوصول.");
+    }
+    if (res.status === 429) {
+      throw new Error("محاولات كثيرة، انتظر قليلاً وحاول مجدداً");
+    }
+    throw new Error("تعذر إكمال الدخول. تحقق من الرمز أو رمز الاسترداد.");
+  }
+  absorbAdminLoginCsrf(parsed);
+}
+
+export async function admin2faSetupStart(currentPassword: string): Promise<void> {
+  const res = await fetch(apiUrl("/api/admin/2fa/setup/start"), {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    headers: getAdminMutationHeaders(),
+    body: JSON.stringify({ currentPassword: currentPassword.trim() }),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    let err = "تعذر بدء الإعداد";
+    try {
+      const j = text ? (JSON.parse(text) as { error?: string }) : null;
+      if (j?.error) err = j.error;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(err);
+  }
+}
+
+export async function admin2faSetupQr(): Promise<{ qrDataUrl: string }> {
+  const res = await fetch(apiUrl("/api/admin/2fa/setup/qr"), {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Request failed (${res.status})`);
+  }
+  return res.json() as Promise<{ qrDataUrl: string }>;
+}
+
+export async function admin2faSetupConfirm(
+  currentPassword: string,
+  code: string,
+): Promise<{ backupCodes: string[] }> {
+  const res = await fetch(apiUrl("/api/admin/2fa/setup/confirm"), {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    headers: getAdminMutationHeaders(),
+    body: JSON.stringify({
+      currentPassword: currentPassword.trim(),
+      code: code.trim(),
+    }),
+  });
+  const text = await res.text();
+  let parsed: { ok?: boolean; backupCodes?: string[]; error?: string } | null = null;
+  try {
+    parsed = text ? (JSON.parse(text) as typeof parsed) : null;
+  } catch {
+    parsed = null;
+  }
+  if (!res.ok) {
+    const msg =
+      typeof parsed?.error === "string" && parsed.error.trim()
+        ? parsed.error
+        : "فشل تأكيد المصادقة الثنائية";
+    throw new Error(msg);
+  }
+  const codes = Array.isArray(parsed?.backupCodes) ? parsed!.backupCodes! : [];
+  return { backupCodes: codes.filter((c) => typeof c === "string") };
+}
+
+export async function admin2faDisable(currentPassword: string, code: string): Promise<void> {
+  const res = await fetch(apiUrl("/api/admin/2fa/disable"), {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    headers: getAdminMutationHeaders(),
+    body: JSON.stringify({
+      currentPassword: currentPassword.trim(),
+      code: code.trim(),
+    }),
+  });
+  const text = await res.text();
+  let parsed: { error?: string } | null = null;
+  try {
+    parsed = text ? (JSON.parse(text) as typeof parsed) : null;
+  } catch {
+    parsed = null;
+  }
+  if (!res.ok) {
+    const msg =
+      typeof parsed?.error === "string" && parsed.error.trim()
+        ? parsed.error
+        : "تعذر تعطيل المصادقة الثنائية";
+    throw new Error(msg);
+  }
 }
 
 export async function getAdminAds(params: {

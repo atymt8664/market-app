@@ -38,10 +38,12 @@ import { parseStoredAdDetails } from "@/lib/ad-stored-details";
 import { AD_SHIPPING_LABELS } from "@/lib/ad-meta-labels";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
+import { useLocale } from "@/hooks/use-locale";
+import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { BuyerSafetyNote } from "@/components/buyer-safety-note";
-import { t } from "@/i18n";
+import { t, type Locale } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { AUTH_ACCENT_OUTLINE_BTN } from "@/lib/auth-page-styles";
 import {
@@ -233,6 +235,7 @@ export default function AdDetail() {
   const id = Number(params.id);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { locale } = useLocale();
   const [, navigate] = useLocation();
 
   const queryClient = useQueryClient();
@@ -309,7 +312,7 @@ export default function AdDetail() {
         const errText = await res.text().catch(() => "");
         toast({
           title: t("ad_detail.report.failed"),
-          description: errText || `رمز ${res.status}`,
+          description: errText || t("ad_detail.http_status", { status: res.status }),
           variant: "destructive",
         });
         return;
@@ -393,7 +396,10 @@ export default function AdDetail() {
       return;
     }
     if (ad.userId && ad.userId === user.id) {
-      toast({ title: "هذا إعلانك", description: "لا يمكنك مراسلة نفسك" });
+      toast({
+        title: t("ad_detail.own_ad"),
+        description: t("ad_detail.cannot_message_self"),
+      });
       return;
     }
     startConversation.mutate(
@@ -411,8 +417,8 @@ export default function AdDetail() {
         onError: (err: unknown) => {
           const e = err as { data?: { error?: string } };
           toast({
-            title: "تعذّر فتح المحادثة",
-            description: e?.data?.error || "حاول مرة أخرى",
+            title: t("ad_detail.chat.open_failed"),
+            description: e?.data?.error || t("common.try_again"),
             variant: "destructive",
           });
         },
@@ -426,8 +432,8 @@ export default function AdDetail() {
     navigator.clipboard.writeText(ad.sellerPhone);
     setCopied(true);
     toast({
-      title: "تم النسخ",
-      description: "تم نسخ رقم الهاتف بنجاح",
+      title: t("ad_detail.copied"),
+      description: t("ad_detail.phone_copied"),
     });
     setTimeout(() => setCopied(false), 2000);
   };
@@ -459,7 +465,7 @@ export default function AdDetail() {
   const handleWhatsappContact = () => {
     if (!ad) return;
     if (!requireLogin()) return;
-    const text = encodeURIComponent(`مرحباً، أنا مهتم بإعلانك: ${ad.title}`);
+    const text = encodeURIComponent(t("ad_detail.whatsapp_message", { title: ad.title }));
     window.open(
       `https://wa.me/${ad.sellerPhone.replace(/[^0-9+]/g, "")}?text=${text}`,
       "_blank",
@@ -482,12 +488,10 @@ export default function AdDetail() {
   if (!ad) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[100dvh] bg-[#0A0A0A] p-4 text-center">
-        <h2 className="text-2xl font-bold mb-2">الإعلان غير موجود</h2>
-        <p className="text-muted-foreground mb-6">
-          ربما تم حذف هذا الإعلان أو أن الرابط غير صحيح.
-        </p>
+        <h2 className="text-2xl font-bold mb-2">{t("ad_detail.not_found_title")}</h2>
+        <p className="text-muted-foreground mb-6">{t("ad_detail.not_found_desc")}</p>
         <Link href="/">
-          <Button>العودة للصفحة الرئيسية</Button>
+          <Button>{t("ad_detail.back_home")}</Button>
         </Link>
       </div>
     );
@@ -496,10 +500,26 @@ export default function AdDetail() {
   const isFree = ad.priceType === "free";
   /** `details` يأتي من الـ API لكنه غير مُعرَّف في نوع Ad المولَّد */
   const detailsRaw = normalizeAdDetailsRaw(
-    (ad as Record<string, unknown>).details,
+    (ad as unknown as Record<string, unknown>).details,
   );
   const parsed = parseStoredAdDetails(detailsRaw ?? {});
-  const deviceInfoRows = buildDeviceInfoRowsFromDetailsOnly(detailsRaw ?? {});
+  const deviceLabelById: Record<string, string> = {
+    "device-spec:manufacturer": t("ad_detail.device.manufacturer"),
+    "device-spec:color": t("ad_detail.device.color"),
+    "device-spec:condition": t("ad_detail.device.condition"),
+    "device-spec:storage": t("ad_detail.device.storage"),
+    "device-spec:accessories": t("ad_detail.device.accessories"),
+  };
+  const deviceInfoRows = buildDeviceInfoRowsFromDetailsOnly(detailsRaw ?? {}).map((row) => ({
+    ...row,
+    label: deviceLabelById[row.id] ?? row.label,
+    value:
+      row.value === "نعم"
+        ? t("common.yes")
+        : row.value === "لا"
+          ? t("common.no")
+          : getCreateAdTaxonomyLabel(locale as Locale, row.value),
+  }));
 
   const shipMeta = parsed.meta?.shipping;
   const shippingPickupOnly = shipMeta?.pickupOnly === true;
@@ -571,7 +591,7 @@ export default function AdDetail() {
             <button
               type="button"
               className={floatingHeaderBtn}
-              aria-label="رجوع"
+              aria-label={t("common.back")}
             >
               <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
             </button>

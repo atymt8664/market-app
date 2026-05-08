@@ -16,7 +16,9 @@ import { ensureAdminLogsReady, getAdminActorId, logAdminActivity } from "../lib/
 import { ensureCategoryAdminColumns } from "../lib/ensure-category-admin-columns";
 import { ensureCityAdminColumns } from "../lib/ensure-city-admin-columns";
 import { ensureAppSettingsTable } from "../lib/ensure-app-settings-table";
-import { requireAdmin, requireAdminCsrf } from "../middlewares/require-admin";
+import { bumpAdminSecurityRevision } from "../lib/admin-auth-settings";
+import { requireAdmin, requireAdminAccessGrant, requireAdminCsrf } from "../middlewares/require-admin";
+import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import { getSessionClearCookieOptions, SESSION_COOKIE_NAME } from "../lib/session-cookie";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
@@ -44,6 +46,11 @@ const appSettingsTable = pgTable("app_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   updatedByAdminId: integer("updated_by_admin_id"),
   adminPasswordHash: text("admin_password_hash"),
+  admin2faEnabled: boolean("admin_2fa_enabled").notNull().default(false),
+  admin2faSecret: text("admin_2fa_secret"),
+  admin2faEnabledAt: timestamp("admin_2fa_enabled_at", { withTimezone: true }),
+  adminBackupCodesHash: text("admin_backup_codes_hash"),
+  adminSecurityRevision: integer("admin_security_revision").notNull().default(0),
 });
 
 router.use(async (_req, _res, next) => {
@@ -56,7 +63,7 @@ router.use(async (_req, _res, next) => {
     next(error);
   }
 });
-router.use("/admin", requireAdmin);
+router.use("/admin", requireAdminIpAllowlist, requireAdminAccessGrant, requireAdmin);
 
 function toSlug(value: string): string {
   return value
@@ -679,6 +686,7 @@ router.get("/admin/settings", requireAdmin, async (_req, res) => {
       privacyPath: appSettingsTable.privacyPath,
       updatedAt: appSettingsTable.updatedAt,
       updatedByAdminId: appSettingsTable.updatedByAdminId,
+      admin2faEnabled: appSettingsTable.admin2faEnabled,
     })
     .from(appSettingsTable)
     .where(eq(appSettingsTable.id, 1))
@@ -848,6 +856,8 @@ router.post("/admin/change-password", requireAdmin, requireAdminCsrf, async (req
       updatedByAdminId: actorAdminId,
     })
     .where(eq(appSettingsTable.id, 1));
+
+  await bumpAdminSecurityRevision();
 
   await logAdminActivity({
     action: "admin.password.change",
@@ -1247,7 +1257,7 @@ router.get("/admin/logs", requireAdmin, async (req, res) => {
     user: ["user.block", "user.unblock"],
     category: ["category.create", "category.update", "category.hide", "category.unhide", "category.delete"],
     city: ["city.create", "city.update", "city.hide", "city.unhide", "city.delete"],
-    settings: ["settings.update", "admin.password.change"],
+    settings: ["settings.update", "admin.password.change", "admin.2fa.enable", "admin.2fa.disable"],
   };
 
   const where = and(

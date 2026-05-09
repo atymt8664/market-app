@@ -1,0 +1,24 @@
+{
+  "name": "@local/play-distribution",
+  "private": true,
+  "version": "1.0.0",
+  "description": "PWA/TWA assets, Play Store graphics — isolated from Souq app logic",
+  "type": "module",
+  "scripts": {
+    "icons": "node scripts/generate-icons.mjs",
+    "wire-pwa-icons": "node scripts/wire-official-pwa-icons-from-store.mjs",
+    "provision": "node scripts/provision-play-store-data.mjs",
+    "capture": "node scripts/capture-screenshots.mjs",
+    "compose": "node scripts/render-store-slides.mjs",
+    "feature": "node scripts/render-feature-graphic.mjs",
+    "splash": "node scripts/render-splash-png.mjs",
+    "brand-rasters": "node scripts/export-brand-rasters.mjs",
+    "all-graphics": "pnpm run icons && pnpm run capture && pnpm run compose && pnpm run feature && pnpm run splash && pnpm run brand-rasters",
+    "final-store": "pnpm run provision && pnpm run capture && pnpm run compose && pnpm run feature"
+  },
+  "devDependencies": {
+    "pg": "^8.14.1",
+    "playwright": "1.49.1",
+    "sharp": "^0.34.1"
+  }
+}

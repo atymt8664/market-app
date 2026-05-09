@@ -23,6 +23,7 @@ function isImmersiveSettingsLegalAccountRoute(pathname: string): boolean {
     pathname.startsWith("/account/") ||
     pathname === "/privacy" ||
     pathname === "/terms" ||
+    pathname === "/delete-account" ||
     pathname === "/verify-email" ||
     pathname.startsWith("/support")
   );

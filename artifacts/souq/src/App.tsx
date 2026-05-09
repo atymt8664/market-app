@@ -37,6 +37,7 @@ import Settings from "@/pages/settings";
 import VerifyEmail from "@/pages/verify-email";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
+import DeleteAccountPage from "@/pages/delete-account";
 import AccountProfile from "@/pages/account-profile";
 import AccountEmail from "@/pages/account-email";
 import AccountPassword from "@/pages/account-password";
@@ -89,6 +90,7 @@ function Router() {
         <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/terms" component={TermsPage} />
         <Route path="/privacy" component={PrivacyPage} />
+        <Route path="/delete-account" component={DeleteAccountPage} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/guest-welcome" component={GuestWelcome} />
@@ -177,10 +179,25 @@ function FirstLaunchLanguageGate({ onDone }: { onDone: () => void }) {
   );
 }
 
+/**
+ * Public Google Play Data Safety landing page. Must render even on a brand-new
+ * visit (no saved locale yet), before the first-launch language gate, so external
+ * reviewers / search crawlers see the deletion instructions immediately.
+ */
+function isPublicDataSafetyPath(pathname: string): boolean {
+  const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+  const stripped = base && pathname.startsWith(base) ? pathname.slice(base.length) : pathname;
+  return stripped === "/delete-account";
+}
+
 function App() {
   const [showFirstLaunchSelector, setShowFirstLaunchSelector] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && isPublicDataSafetyPath(window.location.pathname)) {
+      setShowFirstLaunchSelector(false);
+      return;
+    }
     setShowFirstLaunchSelector(!hasSavedLocale());
   }, []);
 

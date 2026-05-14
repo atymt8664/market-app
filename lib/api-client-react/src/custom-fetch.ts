@@ -1,3 +1,9 @@
+import {
+  absorbAuthProfileCsrfFromResponse,
+  clearAuthProfileCsrfToken,
+  getAuthProfileCsrfTokenForRequest,
+} from "./auth-profile-csrf";
+
 export type CustomFetchOptions = RequestInit & {
   responseType?: "json" | "text" | "blob" | "auto";
 };
@@ -146,6 +152,144 @@ function getStringField(value: unknown, key: string): string | undefined {
 
 function truncate(text: string, maxLength = 300): string {
   return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+}
+
+function pathnameOfRequestUrl(url: string): string {
+  try {
+    return new URL(url, "http://local.invalid").pathname;
+  } catch {
+    return "";
+  }
+}
+
+function isGetAuthMe(method: string, url: string): boolean {
+  return method === "GET" && pathnameOfRequestUrl(url) === "/api/auth/me";
+}
+
+function isPatchAuthMe(method: string, url: string): boolean {
+  return method === "PATCH" && pathnameOfRequestUrl(url) === "/api/auth/me";
+}
+
+function isPostAuthLogout(method: string, url: string): boolean {
+  return method === "POST" && pathnameOfRequestUrl(url) === "/api/auth/logout";
+}
+
+function isPostAuthChangePassword(method: string, url: string): boolean {
+  return method === "POST" && pathnameOfRequestUrl(url) === "/api/auth/change-password";
+}
+
+function isPostAccountDelete(method: string, url: string): boolean {
+  return method === "POST" && pathnameOfRequestUrl(url) === "/api/account/delete";
+}
+
+function isPostApiAdsCreate(method: string, url: string): boolean {
+  return method === "POST" && pathnameOfRequestUrl(url) === "/api/ads";
+}
+
+function isPatchApiAdsById(method: string, url: string): boolean {
+  if (method !== "PATCH") return false;
+  return /^\/api\/ads\/\d+$/.test(pathnameOfRequestUrl(url));
+}
+
+function isDeleteApiAdsById(method: string, url: string): boolean {
+  if (method !== "DELETE") return false;
+  return /^\/api\/ads\/\d+$/.test(pathnameOfRequestUrl(url));
+}
+
+function isPostStorageAdImages(method: string, url: string): boolean {
+  return method === "POST" && pathnameOfRequestUrl(url) === "/api/storage/uploads/ad-images";
+}
+
+const AD_SOCIAL_PATH = /^\/api\/ads\/\d+\/(like|favorite)$/;
+const USER_FOLLOW_PATH = /^\/api\/users\/\d+\/follow$/;
+
+/** Like/favorite/follow state changes (same `userCsrfToken`). */
+function isUserSocialMutation(method: string, url: string): boolean {
+  const p = pathnameOfRequestUrl(url);
+  const m = method.toUpperCase();
+  if ((m === "POST" || m === "DELETE") && AD_SOCIAL_PATH.test(p)) return true;
+  if ((m === "POST" || m === "DELETE") && USER_FOLLOW_PATH.test(p)) return true;
+  return false;
+}
+
+function isPostSupportTickets(method: string, url: string): boolean {
+  return method === "POST" && pathnameOfRequestUrl(url) === "/api/support/tickets";
+}
+
+function isPostReports(method: string, url: string): boolean {
+  return method === "POST" && pathnameOfRequestUrl(url) === "/api/reports";
+}
+
+function isPatchNotificationsReadAll(method: string, url: string): boolean {
+  return method === "PATCH" && pathnameOfRequestUrl(url) === "/api/notifications/read-all";
+}
+
+function isPatchNotificationReadById(method: string, url: string): boolean {
+  return method === "PATCH" && /^\/api\/notifications\/\d+\/read$/.test(pathnameOfRequestUrl(url));
+}
+
+function isUserSupportReportsNotificationsCsrf(method: string, url: string): boolean {
+  return (
+    isPostSupportTickets(method, url) ||
+    isPostReports(method, url) ||
+    isPatchNotificationsReadAll(method, url) ||
+    isPatchNotificationReadById(method, url)
+  );
+}
+
+function isPatchAccountNotificationPreferences(method: string, url: string): boolean {
+  return method === "PATCH" && pathnameOfRequestUrl(url) === "/api/account/notification-preferences";
+}
+
+function isPostAiImproveDescription(method: string, url: string): boolean {
+  return method === "POST" && pathnameOfRequestUrl(url) === "/api/ai/improve-description";
+}
+
+function isPostAiSuggestPrice(method: string, url: string): boolean {
+  return method === "POST" && pathnameOfRequestUrl(url) === "/api/ai/suggest-price";
+}
+
+const CONV_POST_MESSAGES_ONLY = /^\/api\/conversations\/\d+\/messages$/;
+const CONV_POST_MESSAGES_UPLOAD_IMAGE = /^\/api\/conversations\/\d+\/messages\/upload-image$/;
+const CONV_POST_READ = /^\/api\/conversations\/\d+\/read$/;
+const CONV_POST_MESSAGES_HIDE_FOR_ME = /^\/api\/conversations\/\d+\/messages\/hide-for-me$/;
+const CONV_POST_HIDE_OR_HIDE_FOR_ME = /^\/api\/conversations\/\d+\/(hide|hide-for-me)$/;
+const CONV_POST_UNHIDE_FOR_ME = /^\/api\/conversations\/\d+\/unhide-for-me$/;
+const CONV_DELETE_HIDE = /^\/api\/conversations\/\d+\/hide$/;
+
+/** Start conversation, send message, chat image upload, hide/unhide thread (same `userCsrfToken`). */
+function isUserConversationsMutation(method: string, url: string): boolean {
+  const p = pathnameOfRequestUrl(url);
+  const m = method.toUpperCase();
+  if (m === "POST" && p === "/api/conversations") return true;
+  if (m === "POST" && CONV_POST_MESSAGES_ONLY.test(p)) return true;
+  if (m === "POST" && CONV_POST_MESSAGES_UPLOAD_IMAGE.test(p)) return true;
+  if (m === "POST" && CONV_POST_READ.test(p)) return true;
+  if (m === "POST" && CONV_POST_MESSAGES_HIDE_FOR_ME.test(p)) return true;
+  if (m === "POST" && CONV_POST_HIDE_OR_HIDE_FOR_ME.test(p)) return true;
+  if (m === "POST" && CONV_POST_UNHIDE_FOR_ME.test(p)) return true;
+  if (m === "DELETE" && CONV_DELETE_HIDE.test(p)) return true;
+  return false;
+}
+
+/** User session CSRF: profile + mutators + social + support/reports/notifications + conversations (same `userCsrfToken`). */
+function shouldAttachUserProfileCsrf(method: string, url: string): boolean {
+  return (
+    isPatchAuthMe(method, url) ||
+    isPostAuthChangePassword(method, url) ||
+    isPostAuthLogout(method, url) ||
+    isPostAccountDelete(method, url) ||
+    isPostApiAdsCreate(method, url) ||
+    isPatchApiAdsById(method, url) ||
+    isDeleteApiAdsById(method, url) ||
+    isPostStorageAdImages(method, url) ||
+    isUserSocialMutation(method, url) ||
+    isUserSupportReportsNotificationsCsrf(method, url) ||
+    isPatchAccountNotificationPreferences(method, url) ||
+    isPostAiImproveDescription(method, url) ||
+    isPostAiSuggestPrice(method, url) ||
+    isUserConversationsMutation(method, url)
+  );
 }
 
 function buildErrorMessage(response: Response, data: unknown): string {
@@ -330,6 +474,7 @@ export async function customFetch<T = unknown>(
   const { responseType = "auto", headers: headersInit, ...init } = options;
 
   const method = resolveMethod(input, init.method);
+  const resolvedFetchUrl = resolveUrl(input);
 
   if (init.body != null && (method === "GET" || method === "HEAD")) {
     throw new TypeError(`customFetch: ${method} requests cannot have a body.`);
@@ -358,7 +503,13 @@ export async function customFetch<T = unknown>(
     }
   }
 
-  const resolvedFetchUrl = resolveUrl(input);
+  if (shouldAttachUserProfileCsrf(method, resolvedFetchUrl) && !headers.has("x-csrf-token")) {
+    const csrf = getAuthProfileCsrfTokenForRequest();
+    if (csrf) {
+      headers.set("X-CSRF-Token", csrf);
+    }
+  }
+
   const requestInfo = { method, url: resolvedFetchUrl };
 
   const isBrowser =
@@ -400,8 +551,19 @@ export async function customFetch<T = unknown>(
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
+    if (response.status === 401 && isGetAuthMe(method, resolvedFetchUrl)) {
+      clearAuthProfileCsrfToken();
+    }
     throw new ApiError(response, errorData, requestInfo);
   }
 
-  return (await parseSuccessBody(response, responseType, requestInfo)) as T;
+  const parsed = (await parseSuccessBody(response, responseType, requestInfo)) as T;
+  if (responseType === "auto" || responseType === "json") {
+    if (isGetAuthMe(method, resolvedFetchUrl)) {
+      absorbAuthProfileCsrfFromResponse(parsed);
+    } else if (isPostAuthLogout(method, resolvedFetchUrl)) {
+      clearAuthProfileCsrfToken();
+    }
+  }
+  return parsed;
 }

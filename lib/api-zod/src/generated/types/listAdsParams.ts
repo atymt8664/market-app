@@ -15,5 +15,9 @@ export type ListAdsParams = {
   minPrice?: number;
   maxPrice?: number;
   type?: ListAdsType;
+  /**
+   * When set, return only ads owned by this user (public approved statuses).
+   */
+  userId?: number;
   limit?: number;
 };

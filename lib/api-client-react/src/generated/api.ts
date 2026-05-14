@@ -42,7 +42,9 @@ import type {
   LoginInput,
   Message,
   OkResponse,
+  ProfileFollowUser,
   ProfileViewResponse,
+  ProfileViewersResponse,
   PublicUserProfile,
   ReactionResponse,
   ResendVerificationInput,
@@ -1909,6 +1911,274 @@ export function useGetUserProfile<
   }
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetUserProfileQueryOptions(userId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List users who follow this profile
+ */
+export const getGetUserFollowersUrl = (userId: number) => {
+  return `/api/users/${userId}/followers`;
+};
+
+export const getUserFollowers = async (
+  userId: number,
+  options?: RequestInit
+): Promise<ProfileFollowUser[]> => {
+  return customFetch<ProfileFollowUser[]>(getGetUserFollowersUrl(userId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUserFollowersQueryKey = (userId: number) => {
+  return [`/api/users/${userId}/followers`] as const;
+};
+
+export const getGetUserFollowersQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUserFollowers>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  userId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserFollowers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetUserFollowersQueryKey(userId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getUserFollowers>>
+  > = ({ signal }) => getUserFollowers(userId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!userId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUserFollowers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUserFollowersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUserFollowers>>
+>;
+export type GetUserFollowersQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary List users who follow this profile
+ */
+
+export function useGetUserFollowers<
+  TData = Awaited<ReturnType<typeof getUserFollowers>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  userId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserFollowers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUserFollowersQueryOptions(userId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List users this profile follows
+ */
+export const getGetUserFollowingUrl = (userId: number) => {
+  return `/api/users/${userId}/following`;
+};
+
+export const getUserFollowing = async (
+  userId: number,
+  options?: RequestInit
+): Promise<ProfileFollowUser[]> => {
+  return customFetch<ProfileFollowUser[]>(getGetUserFollowingUrl(userId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUserFollowingQueryKey = (userId: number) => {
+  return [`/api/users/${userId}/following`] as const;
+};
+
+export const getGetUserFollowingQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUserFollowing>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  userId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserFollowing>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetUserFollowingQueryKey(userId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getUserFollowing>>
+  > = ({ signal }) => getUserFollowing(userId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!userId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUserFollowing>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUserFollowingQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUserFollowing>>
+>;
+export type GetUserFollowingQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary List users this profile follows
+ */
+
+export function useGetUserFollowing<
+  TData = Awaited<ReturnType<typeof getUserFollowing>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  userId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserFollowing>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUserFollowingQueryOptions(userId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Per-viewer profile view log (owner only)
+ */
+export const getGetUserProfileViewersUrl = (userId: number) => {
+  return `/api/users/${userId}/profile-viewers`;
+};
+
+export const getUserProfileViewers = async (
+  userId: number,
+  options?: RequestInit
+): Promise<ProfileViewersResponse> => {
+  return customFetch<ProfileViewersResponse>(
+    getGetUserProfileViewersUrl(userId),
+    {
+      ...options,
+      method: "GET",
+    }
+  );
+};
+
+export const getGetUserProfileViewersQueryKey = (userId: number) => {
+  return [`/api/users/${userId}/profile-viewers`] as const;
+};
+
+export const getGetUserProfileViewersQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUserProfileViewers>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  userId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserProfileViewers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetUserProfileViewersQueryKey(userId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getUserProfileViewers>>
+  > = ({ signal }) =>
+    getUserProfileViewers(userId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!userId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUserProfileViewers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUserProfileViewersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUserProfileViewers>>
+>;
+export type GetUserProfileViewersQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Per-viewer profile view log (owner only)
+ */
+
+export function useGetUserProfileViewers<
+  TData = Awaited<ReturnType<typeof getUserProfileViewers>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  userId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserProfileViewers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUserProfileViewersQueryOptions(userId, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

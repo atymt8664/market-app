@@ -67,6 +67,12 @@ export const ListAdsQueryParams = zod.object({
   minPrice: zod.coerce.number().optional(),
   maxPrice: zod.coerce.number().optional(),
   type: zod.enum(["offer", "request"]).optional(),
+  userId: zod.coerce
+    .number()
+    .optional()
+    .describe(
+      "When set, return only ads owned by this user (public approved statuses)."
+    ),
   limit: zod.coerce.number().default(listAdsQueryLimitDefault),
 });
 
@@ -530,6 +536,53 @@ export const GetUserProfileResponse = zod.object({
   followingCount: zod.number(),
   profileViews: zod.number(),
   adCount: zod.number(),
+});
+
+/**
+ * @summary List users who follow this profile
+ */
+export const GetUserFollowersParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const GetUserFollowersResponseItem = zod.object({
+  userId: zod.number(),
+  name: zod.string(),
+  avatarUrl: zod.string().nullish(),
+});
+export const GetUserFollowersResponse = zod.array(GetUserFollowersResponseItem);
+
+/**
+ * @summary List users this profile follows
+ */
+export const GetUserFollowingParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const GetUserFollowingResponseItem = zod.object({
+  userId: zod.number(),
+  name: zod.string(),
+  avatarUrl: zod.string().nullish(),
+});
+export const GetUserFollowingResponse = zod.array(GetUserFollowingResponseItem);
+
+/**
+ * @summary Per-viewer profile view log (owner only)
+ */
+export const GetUserProfileViewersParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const GetUserProfileViewersResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      userId: zod.number().nullish(),
+      name: zod.string(),
+      avatarUrl: zod.string().nullish(),
+      lastViewedAt: zod.coerce.date(),
+    })
+  ),
+  anonymousDistinctCount: zod.number(),
 });
 
 export const RecordProfileViewParams = zod.object({

@@ -61,6 +61,24 @@ export interface FollowResponse {
   followingCount: number;
 }
 
+export interface ProfileFollowUser {
+  userId: number;
+  name: string;
+  avatarUrl?: string | null;
+}
+
+export interface ProfileViewerEntry {
+  userId?: number | null;
+  name: string;
+  avatarUrl?: string | null;
+  lastViewedAt: string;
+}
+
+export interface ProfileViewersResponse {
+  items: ProfileViewerEntry[];
+  anonymousDistinctCount: number;
+}
+
 export interface ProfileViewResponse {
   profileViews: number;
   counted: boolean;
@@ -161,6 +179,10 @@ export interface Ad {
   isFavorited: boolean;
   userId?: number | null;
   createdAt: string;
+  /** Moderation state (e.g. profile / owner views). */
+  status?: string;
+  /** Category-specific JSON blob from the API. */
+  details?: unknown;
 }
 
 export interface ReactionResponse {
@@ -310,6 +332,10 @@ export type ListAdsParams = {
   minPrice?: number;
   maxPrice?: number;
   type?: ListAdsType;
+  /**
+   * When set, return only ads owned by this user (public approved statuses).
+   */
+  userId?: number;
   limit?: number;
 };
 

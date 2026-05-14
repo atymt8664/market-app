@@ -141,6 +141,10 @@ paths:
         - name: type
           in: query
           schema: { type: string, enum: [offer, request] }
+        - name: userId
+          in: query
+          description: When set, return only ads owned by this user (public approved statuses).
+          schema: { type: integer }
         - name: limit
           in: query
           schema: { type: integer, default: 50 }
@@ -527,6 +531,112 @@ paths:
                 $ref: "#/components/schemas/PublicUserProfile"
         "404":
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /users/{userId}/followers:
+    get:
+      operationId: getUserFollowers
+      tags: [auth]
+      summary: List users who follow this profile
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Follower accounts (newest first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProfileFollowUser"
+        "400":
+          description: Invalid user id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /users/{userId}/following:
+    get:
+      operationId: getUserFollowing
+      tags: [auth]
+      summary: List users this profile follows
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Following accounts (newest first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProfileFollowUser"
+        "400":
+          description: Invalid user id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /users/{userId}/profile-viewers:
+    get:
+      operationId: getUserProfileViewers
+      tags: [auth]
+      summary: Per-viewer profile view log (owner only)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Known logged-in viewers and anonymous viewer count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileViewersResponse"
+        "400":
+          description: Invalid user id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Only the profile owner can list viewers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: User not found
           content:
             application/json:
               schema:
@@ -1143,6 +1253,33 @@ components:
         isFollowing: { type: boolean }
         followerCount: { type: integer }
         followingCount: { type: integer }
+
+    ProfileFollowUser:
+      type: object
+      required: [userId, name]
+      properties:
+        userId: { type: integer }
+        name: { type: string }
+        avatarUrl: { type: string, nullable: true }
+
+    ProfileViewerEntry:
+      type: object
+      required: [name, lastViewedAt]
+      properties:
+        userId: { type: integer, nullable: true }
+        name: { type: string }
+        avatarUrl: { type: string, nullable: true }
+        lastViewedAt: { type: string, format: date-time }
+
+    ProfileViewersResponse:
+      type: object
+      required: [items, anonymousDistinctCount]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfileViewerEntry"
+        anonymousDistinctCount: { type: integer }
 
     ProfileViewResponse:
       type: object

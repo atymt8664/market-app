@@ -24,8 +24,9 @@ import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 import { cn } from "@/lib/utils";
 
 /** توحيد كروت الإعلانات مع ad-detail / user-profile (طبقة أب فقط) */
+/** على الموبايل ظل أخف قليلًا لتقليل تكلفة التركيب أثناء التمرير؛ md+ يبقى كما كان. */
 const homeAdCardTone =
-  "[&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-card/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:dark:bg-zinc-950/70 [&_article]:hover:border-primary/40 [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55";
+  "[&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-card/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] max-md:[&_article]:shadow-[0_0_12px_-14px_hsl(var(--primary)/0.09)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:dark:bg-zinc-950/70 [&_article]:hover:border-primary/40 [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55";
 
 export default function Home() {
   const { locale } = useLocale();

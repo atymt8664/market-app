@@ -3,7 +3,11 @@ import { useMemo, useState } from "react";
 import {
   useListConversations,
   getListConversationsQueryKey,
+  getAuthProfileCsrfTokenForRequest,
+  normalizePresenceUserIds,
+  useUserPresenceBatch,
 } from "@workspace/api-client-react";
+import { UserPresenceBadge } from "@/components/user-presence-badge";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageCircle } from "lucide-react";
@@ -20,6 +24,9 @@ import {
   SheetDescription,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useToast } from "@/hooks/use-toast";
+import { applyIncomingMessageToInboxCache } from "@/lib/inbox-conversation-cache";
+
 const emptyCardShell =
   "rounded-2xl border border-primary/40 bg-card/80 p-8 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/15 dark:bg-zinc-950/70 md:p-10";
 
@@ -29,10 +36,13 @@ const conversationRowClass =
 export default function Messages() {
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data: conversations, isLoading } = useListConversations({
     query: {
       queryKey: getListConversationsQueryKey(),
       enabled: !!user,
+      /** يقلّل refetch المتكرر عند التنقل دون إبطاء التحديث عبر الـ socket/الإبطال الصريح */
+      staleTime: 20_000,
     },
   });
   type HiddenConversation = NonNullable<typeof conversations>[number];
@@ -42,6 +52,18 @@ export default function Messages() {
   const [unhidingId, setUnhidingId] = useState<number | null>(null);
 
   const visibleRows = useMemo(() => conversations ?? [], [conversations]);
+
+  const inboxPresenceTargets = useMemo(
+    () =>
+      normalizePresenceUserIds(
+        visibleRows.map((c) => c.otherId).filter((id) => typeof id === "number" && id > 0),
+      ),
+    [visibleRows],
+  );
+
+  const inboxPresenceQ = useUserPresenceBatch(inboxPresenceTargets, {
+    enabled: Boolean(user) && inboxPresenceTargets.length > 0,
+  });
 
   const loadHiddenConversations = async () => {
     setHiddenLoading(true);
@@ -65,11 +87,21 @@ export default function Messages() {
   const unhideConversation = async (convId: number) => {
     setUnhidingId(convId);
     try {
+      const csrf = getAuthProfileCsrfTokenForRequest();
+      const headers =
+        typeof csrf === "string" && csrf.length >= 32 ? { "X-CSRF-Token": csrf } : undefined;
       const res = await fetch(apiUrl(`/api/conversations/${convId}/unhide-for-me`), {
         method: "POST",
         credentials: "include",
+        headers,
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        toast({
+          title: t("messages.hidden_unhide_failed"),
+          variant: "destructive",
+        });
+        return;
+      }
       setHiddenRows((prev) => prev.filter((row) => row.id !== convId));
       await queryClient.invalidateQueries({
         queryKey: getListConversationsQueryKey(),
@@ -80,9 +112,11 @@ export default function Messages() {
   };
 
   useChatSocket((ev) => {
-    if (ev.type === "message") {
-      queryClient.invalidateQueries({
-        queryKey: getListConversationsQueryKey(),
+    if (ev.type === "message" && user?.id) {
+      applyIncomingMessageToInboxCache(queryClient, {
+        myUserId: user.id,
+        conversationId: ev.conversationId,
+        message: ev.message,
       });
     }
   });
@@ -126,7 +160,7 @@ export default function Messages() {
               <li key={c.id}>
                 <Link
                   href={`/messages/${c.id}`}
-                  className={cn(conversationRowClass)}
+                  className={cn(conversationRowClass, "items-start")}
                   dir="rtl"
                 >
                   <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/20 bg-zinc-900">
@@ -135,6 +169,9 @@ export default function Messages() {
                         src={c.adImage}
                         alt=""
                         className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        sizes="44px"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-primary/70">
@@ -150,6 +187,13 @@ export default function Messages() {
                       <span className="shrink-0 text-[11px] text-primary/75 tabular-nums">
                         {formatRelativeTime(c.lastMessageAt)}
                       </span>
+                    </div>
+                    <div className="mt-1 w-full min-w-0">
+                      <UserPresenceBadge
+                        entry={inboxPresenceQ.data?.byUserId[String(c.otherId)]}
+                        isLoading={inboxPresenceQ.isPending}
+                        variant="compact"
+                      />
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
                       {c.adTitle}
@@ -243,7 +287,14 @@ export default function Messages() {
                     <div className="flex items-center gap-3" dir="rtl">
                       <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/20 bg-zinc-900">
                         {c.adImage ? (
-                          <img src={c.adImage} alt="" className="h-full w-full object-cover" />
+                          <img
+                            src={c.adImage}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            sizes="44px"
+                          />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-primary/70">
                             <MessageCircle className="h-4 w-4" strokeWidth={2} />

@@ -23,6 +23,7 @@ import {
 import { apiUrl } from "@/lib/api-url";
 import { cn } from "@/lib/utils";
 import { AUTH_ACCENT_OUTLINE_BTN, AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
+import { useAdminActiveAppUsersCount } from "../hooks";
 import type { AdminDashboardResponse, DashboardReport } from "../types";
 
 type DashboardHomeProps = {
@@ -36,6 +37,14 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: "hsl(0 84% 60%)",
   hidden: "hsl(215 16% 47%)",
 };
+
+/** عنوان لوحة التحكم داخل كرت/شريحة صغيرة — هوية الكروت */
+const ADMIN_DASHBOARD_TITLE_CHIP =
+  "min-h-[4.65rem] min-w-0 w-full max-w-full rounded-2xl border border-primary/40 bg-zinc-950/85 px-4 py-3 text-right shadow-[0_0_20px_-10px_hsl(var(--primary)/0.26)] ring-1 ring-primary/12 sm:min-h-[4.85rem] sm:max-w-[min(100%,22.5rem)] sm:px-5 sm:py-3.5";
+
+/** كرت مقياس مباشر (النشطون الآن / مباشر) — نفس المقاس والهوية */
+const ADMIN_HEADER_LIVE_METRIC_TILE =
+  "flex h-[4.35rem] w-[6.5rem] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/40 bg-zinc-950/85 px-2.5 py-2 text-center shadow-[0_0_18px_-10px_hsl(var(--primary)/0.26)] ring-1 ring-primary/12 sm:h-[4.5rem] sm:w-[7rem]";
 
 function mediaSrc(url: string | null | undefined): string | undefined {
   if (!url?.trim()) return undefined;
@@ -145,7 +154,14 @@ function StatCard({
   );
 }
 
-export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps) {
+export function DashboardHome({ data, isRefreshing: _isRefreshing = false }: DashboardHomeProps) {
+  void _isRefreshing;
+  const activeUsersQuery = useAdminActiveAppUsersCount(true);
+  const countNum =
+    activeUsersQuery.data != null && typeof activeUsersQuery.data.count === "number"
+      ? activeUsersQuery.data.count
+      : 0;
+  const liveCount = countNum.toLocaleString("ar-EG");
   const [, navigate] = useLocation();
   const totals = data?.totals ?? { users: 0, ads: 0, reports: 0, views: 0 };
   const highlights = {
@@ -173,23 +189,51 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
     <div className="space-y-6" dir="rtl">
       <header
         className={cn(
-          "flex flex-col gap-4 rounded-2xl border border-primary/40 bg-zinc-950/75 px-5 py-5 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 sm:flex-row sm:items-center sm:justify-between",
+          "rounded-2xl border border-primary/40 bg-zinc-950/75 px-5 py-5 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12",
         )}
       >
-        <div className="space-y-1 text-right">
-          <h1 className={cn(AUTH_HEADER_TITLE, "text-2xl md:text-[1.65rem]")}>لوحة التحكم</h1>
-          <p className="text-sm text-muted-foreground">نظرة شاملة لحالة المنصة لحظياً</p>
-        </div>
-        <span
-          className={cn(
-            "inline-flex shrink-0 items-center justify-center rounded-full border px-3 py-1.5 text-xs font-medium",
-            isRefreshing
-              ? "border-primary/45 bg-primary/15 text-primary shadow-[0_0_14px_-6px_hsl(var(--primary)/0.45)]"
-              : "border-primary/25 bg-zinc-900/90 text-muted-foreground",
-          )}
+        <div
+          dir="ltr"
+          className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-4"
         >
-          {isRefreshing ? "جاري التحديث..." : "مباشر"}
-        </span>
+          <div className="flex min-w-0 justify-start">
+            <div className={ADMIN_HEADER_LIVE_METRIC_TILE}>
+              <span className="text-[10px] font-medium leading-tight text-muted-foreground">مباشر</span>
+              <span className="relative flex h-2 w-2 shrink-0 items-center justify-center" aria-hidden>
+                <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-emerald-400/45" />
+                <span className="relative h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_1px_rgba(16,185,129,0.65)]" />
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-center" aria-live="polite">
+            <div className={ADMIN_HEADER_LIVE_METRIC_TILE}>
+              <span className="text-[10px] font-medium leading-tight text-muted-foreground">
+                النشطون الآن
+              </span>
+              <div className="flex flex-row items-center justify-center gap-1.5">
+                <span className="relative flex h-2 w-2 shrink-0 items-center justify-center" aria-hidden>
+                  <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-emerald-400/45" />
+                  <span className="relative h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_1px_rgba(16,185,129,0.65)]" />
+                </span>
+                <span className="text-xl font-bold tabular-nums leading-none text-primary sm:text-2xl">
+                  {liveCount}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex min-w-0 justify-end">
+            <div dir="rtl" className={ADMIN_DASHBOARD_TITLE_CHIP}>
+              <h1 className={cn(AUTH_HEADER_TITLE, "text-lg font-bold leading-tight sm:text-xl")}>
+                لوحة التحكم
+              </h1>
+              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground sm:text-xs">
+                نظرة شاملة لحالة المنصة لحظياً
+              </p>
+            </div>
+          </div>
+        </div>
       </header>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

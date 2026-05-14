@@ -7,6 +7,8 @@
     "dev": "set NODE_ENV=development&& set PORT=5173&& set BASE_PATH=/&& vite --config vite.config.ts",
     "build": "vite build",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
+    "locations:generate": "node scripts/generate-marketplace-locations-data.mjs",
+    "locations:compare-csc": "node scripts/compare-marketplace-locations-to-csc.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -58,6 +60,7 @@
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "cmdk": "^1.1.1",
+    "country-state-city": "^3.2.1",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "catalog:",
@@ -80,8 +83,5 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:"
-  },
-  "dependencies": {
-    "country-state-city": "^3.2.1"
   }
 }

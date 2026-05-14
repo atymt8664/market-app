@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import type { UppyFile } from "@uppy/core";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthProfileCsrfTokenForRequest } from "@workspace/api-client-react";
 
 declare global {
   interface ImportMetaEnv {
@@ -196,20 +197,33 @@ export function useUpload(options: UseUploadOptions = {}) {
           const formData = new FormData();
           formData.append("images", file);
           const uploadUrl = resolveApiFetchUrl("/api/storage/uploads/ad-images");
-          try {
-            const u = new URL(uploadUrl, "http://localhost");
-            console.log("[use-upload] POST ad-images", {
-              path: "/api/storage/uploads/ad-images",
-              apiHost: u.hostname,
-              https: u.protocol === "https:",
-            });
-          } catch {
-            console.log("[use-upload] POST ad-images", { uploadUrl: uploadUrl.slice(0, 80) });
+          const viteDev = Boolean((import.meta.env as { DEV?: boolean }).DEV);
+          if (viteDev) {
+            try {
+              const u = new URL(uploadUrl, "http://localhost");
+              // eslint-disable-next-line no-console -- ad-images upload diagnostics (dev only)
+              console.log("[use-upload] POST ad-images", {
+                path: "/api/storage/uploads/ad-images",
+                apiHost: u.hostname,
+                https: u.protocol === "https:",
+              });
+            } catch {
+              // eslint-disable-next-line no-console
+              console.log("[use-upload] POST ad-images", {
+                uploadUrl: uploadUrl.slice(0, 80),
+              });
+            }
           }
+          const csrf = getAuthProfileCsrfTokenForRequest();
+          const uploadHeaders =
+            typeof csrf === "string" && csrf.length >= 32
+              ? { "X-CSRF-Token": csrf }
+              : undefined;
           const res = await fetch(uploadUrl, {
             method: "POST",
             body: formData,
             credentials: "include",
+            headers: uploadHeaders,
             signal: AbortSignal.timeout(API_UPLOAD_FETCH_MS),
           });
           const payload = (await res.json().catch(() => ({}))) as {
@@ -260,10 +274,16 @@ export function useUpload(options: UseUploadOptions = {}) {
           const formData = new FormData();
           formData.append("image", file);
           const avatarUrl = resolveApiFetchUrl("/api/users/upload-avatar");
+          const csrf = getAuthProfileCsrfTokenForRequest();
+          const uploadHeaders =
+            typeof csrf === "string" && csrf.length >= 32
+              ? { "X-CSRF-Token": csrf }
+              : undefined;
           const res = await fetch(avatarUrl, {
             method: "POST",
             body: formData,
             credentials: "include",
+            headers: uploadHeaders,
             signal: AbortSignal.timeout(API_UPLOAD_FETCH_MS),
           });
           const payload = (await res.json().catch(() => ({}))) as {

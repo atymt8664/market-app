@@ -7,6 +7,9 @@ import {
   useUnlikeAd,
   useFavoriteAd,
   useUnfavoriteAd,
+  getAuthProfileCsrfTokenForRequest,
+  useUserPresenceBatch,
+  ApiError,
 } from "@workspace/api-client-react";
 import { apiUrl } from "@/lib/api-url";
 import { Link, useLocation, useParams } from "wouter";
@@ -37,12 +40,13 @@ import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { parseStoredAdDetails } from "@/lib/ad-stored-details";
 import { AD_SHIPPING_LABELS } from "@/lib/ad-meta-labels";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/hooks/use-locale";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { BuyerSafetyNote } from "@/components/buyer-safety-note";
+import { UserPresenceBadge } from "@/components/user-presence-badge";
 import { t, type Locale } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { AUTH_ACCENT_OUTLINE_BTN } from "@/lib/auth-page-styles";
@@ -244,6 +248,16 @@ export default function AdDetail() {
     query: { enabled: !!id, queryKey: adKey },
   });
 
+  const sellerPresenceTargets = useMemo(() => {
+    if (!ad?.userId || !user?.id || ad.userId === user.id) return [];
+    return [ad.userId];
+  }, [ad?.userId, user?.id]);
+
+  const sellerPresenceQ = useUserPresenceBatch(sellerPresenceTargets, {
+    enabled: sellerPresenceTargets.length > 0,
+  });
+  const sellerPresenceEntry = sellerPresenceQ.data?.byUserId[String(ad?.userId ?? "")];
+
   const [copied, setCopied] = useState(false);
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [reporting, setReporting] = useState(false);
@@ -294,11 +308,17 @@ export default function AdDetail() {
     try {
       setReporting(true);
 
+      const csrf = getAuthProfileCsrfTokenForRequest();
+      const reportHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (typeof csrf === "string" && csrf.length >= 32) {
+        reportHeaders["X-CSRF-Token"] = csrf;
+      }
+
       const res = await fetch(apiUrl("/api/reports"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: reportHeaders,
         credentials: "include",
         body: JSON.stringify({
           targetAdId: id,
@@ -415,6 +435,14 @@ export default function AdDetail() {
           );
         },
         onError: (err: unknown) => {
+          if (err instanceof ApiError && err.status === 403) {
+            toast({
+              title: t("ad_detail.chat.open_failed"),
+              description: err.message || t("message_thread.chat_send_blocked_toast_body"),
+              variant: "destructive",
+            });
+            return;
+          }
           const e = err as { data?: { error?: string } };
           toast({
             title: t("ad_detail.chat.open_failed"),
@@ -837,6 +865,13 @@ export default function AdDetail() {
                     <p className="truncate text-base font-bold leading-tight text-foreground">
                       {ad.sellerName}
                     </p>
+                    {sellerPresenceTargets.length > 0 ? (
+                      <UserPresenceBadge
+                        entry={sellerPresenceEntry}
+                        isLoading={sellerPresenceQ.isPending}
+                        variant="compact"
+                      />
+                    ) : null}
                     <p className="text-xs leading-snug text-muted-foreground">
                       {ad.userId
                         ? t("ad_detail.view_profile_and_ads")

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, isCancelledError, keepPreviousData } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import {
@@ -6,6 +6,7 @@ import {
   getAdminCategories,
   getAdminCities,
   getAdminDashboard,
+  getAdminActiveAppUsersCount,
   getAdminMe,
   getAdminReports,
   getAdminStats,
@@ -24,12 +25,32 @@ export function useAdminMe() {
   });
 }
 
+/** Live count of app users with an open chat WebSocket (this API instance only). */
+export function useAdminActiveAppUsersCount(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "activeAppUsersCount"],
+    queryFn: ({ signal }) => getAdminActiveAppUsersCount(signal),
+    enabled,
+    refetchInterval: 7000,
+    refetchIntervalInBackground: false,
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+    /** Avoid overlap with interval refetches (focus refetch cancels in-flight → spurious error state). */
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (isCancelledError(error)) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 1500,
+  });
+}
+
 export function useAdminDashboard() {
   return useQuery({
     queryKey: ["admin", "dashboard"],
     queryFn: ({ signal }) => getAdminDashboard(signal),
-    refetchInterval: 20000,
-    refetchIntervalInBackground: true,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     /** Always treat dashboard totals as stale so navigations/refetches pull fresh counts. */
     staleTime: 0,
     refetchOnMount: "always",
@@ -47,8 +68,8 @@ export function useAdminStats(period: AdminStatsPeriod) {
   return useQuery({
     queryKey: ["admin", "stats", period],
     queryFn: ({ signal }) => getAdminStats(period, signal),
-    refetchInterval: 30000,
-    refetchIntervalInBackground: true,
+    refetchInterval: 90_000,
+    refetchIntervalInBackground: false,
     refetchOnMount: "always",
     staleTime: 0,
     structuralSharing: false,

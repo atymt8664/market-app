@@ -14,7 +14,11 @@ import {
   getListMessagesQueryKey,
   useSendMessage,
   useHideMessagesForMe,
+  getAuthProfileCsrfTokenForRequest,
+  invalidateUserPresenceBatchQueries,
+  useUserPresenceBatch,
   type Message as ChatMessage,
+  ApiError,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,14 +33,24 @@ import {
   X,
 } from "lucide-react";
 import { useChatSocket } from "@/hooks/use-chat-socket";
-import { useQueryClient } from "@tanstack/react-query";
+import { applyIncomingMessageToInboxCache } from "@/lib/inbox-conversation-cache";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
-import { formatMessageTimestamp, formatRelativeTime } from "@/lib/format";
+import { formatMessageTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { apiUrl } from "@/lib/api-url";
 import { useToast } from "@/hooks/use-toast";
 import { ChatThreadOverflowMenu } from "@/components/chat-thread-overflow-menu";
+import { UserPresenceBadge } from "@/components/user-presence-badge";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   CHAT_MENU_TIP_SEEN_KEY,
   MESSAGE_SELECTION_TIP_SEEN_KEY,
@@ -64,6 +78,10 @@ const QUICK_REPLY_ROW =
 /** بطاقات تلميحات أول مرة فقط — لا تُستخدم على فقاعات الرسائل. */
 const CHAT_TIP_CARD =
   "rounded-2xl border border-primary/35 bg-[#0A0A0A] text-[12px] leading-relaxed text-zinc-200 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12";
+
+/** مطابقة نافذة إلغاء الحظر في قائمة الشات */
+const INLINE_UNBLOCK_ALERT_SURFACE =
+  "rounded-2xl border border-primary/35 bg-zinc-950/95 p-5 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15 sm:max-w-md";
 
 const BUYER_QUICK_KEYS = [
   "message_thread.msg_qs_buyer_1",
@@ -142,10 +160,14 @@ function splitMessageSegments(text: string): Array<{ kind: "text" | "link"; valu
 async function postChatImageUpload(convId: number, file: File): Promise<string> {
   const fd = new FormData();
   fd.append("image", file);
+  const csrf = getAuthProfileCsrfTokenForRequest();
+  const uploadHeaders =
+    typeof csrf === "string" && csrf.length >= 32 ? { "X-CSRF-Token": csrf } : undefined;
   const res = await fetch(apiUrl(`/api/conversations/${convId}/messages/upload-image`), {
     method: "POST",
     body: fd,
     credentials: "include",
+    headers: uploadHeaders,
   });
   const data: unknown = await res.json().catch(() => null);
   if (!res.ok) {
@@ -209,6 +231,10 @@ export default function MessageThread() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialScrollDoneRef = useRef(false);
   const typingHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingActiveSentRef = useRef(false);
+  const typingStartDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingIdleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingRenewRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const otherUserIdRef = useRef<number | undefined>(undefined);
   const [peerTyping, setPeerTyping] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
@@ -225,6 +251,8 @@ export default function MessageThread() {
   const [quickTipSeen, setQuickTipSeen] = useState<boolean>(() =>
     readSeenFlag(QUICK_REPLIES_TIP_SEEN_KEY),
   );
+  const [inlineUnblockConfirmOpen, setInlineUnblockConfirmOpen] = useState(false);
+  const [inlineUnblockPending, setInlineUnblockPending] = useState(false);
 
   const pendingImagePreviewUrl = useMemo(() => {
     if (!pendingImageFile) return null;
@@ -270,6 +298,91 @@ export default function MessageThread() {
 
   otherUserIdRef.current = conv?.otherId;
 
+  const peerIdForBlock = conv?.otherId;
+  const peerBlockQueryKey = ["userBlockStatus", peerIdForBlock ?? 0, user?.id ?? 0] as const;
+  const peerBlockQueryEnabled =
+    Boolean(user) &&
+    typeof peerIdForBlock === "number" &&
+    peerIdForBlock > 0 &&
+    user != null &&
+    peerIdForBlock !== user.id;
+
+  const {
+    data: peerBlockStatus,
+    isPending: peerBlockPending,
+    isError: peerBlockQueryError,
+  } = useQuery({
+    queryKey: peerBlockQueryKey,
+    enabled: peerBlockQueryEnabled,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const res = await fetch(apiUrl(`/api/users/${peerIdForBlock}/block-status`), {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => "");
+        throw new Error(errBody || `HTTP ${res.status}`);
+      }
+      return (await res.json()) as { blockedByMe: boolean; blocksMe?: boolean };
+    },
+  });
+
+  const peerPresenceTargets = useMemo(
+    () => (typeof conv?.otherId === "number" && conv.otherId > 0 ? [conv.otherId] : []),
+    [conv?.otherId],
+  );
+  const peerPresenceQ = useUserPresenceBatch(peerPresenceTargets, {
+    enabled: messagesQueryEnabled && peerPresenceTargets.length > 0,
+  });
+  const peerPresenceEntry = peerPresenceQ.data?.byUserId[String(conv?.otherId ?? "")];
+
+  const chatPeerMessagingDisabled =
+    Boolean(peerBlockStatus?.blockedByMe) || Boolean(peerBlockStatus?.blocksMe);
+  const composerLocked =
+    peerBlockQueryEnabled &&
+    (peerBlockPending || peerBlockQueryError || chatPeerMessagingDisabled);
+
+  const performInlineUnblock = useCallback(async () => {
+    setInlineUnblockConfirmOpen(false);
+    if (!user || peerIdForBlock == null || !Number.isFinite(peerIdForBlock)) return;
+    setInlineUnblockPending(true);
+    try {
+      const headers: Record<string, string> = { Accept: "application/json" };
+      const csrf = getAuthProfileCsrfTokenForRequest();
+      if (typeof csrf === "string" && csrf.length >= 32) {
+        headers["X-CSRF-Token"] = csrf;
+      }
+      const res = await fetch(apiUrl(`/api/users/${peerIdForBlock}/block`), {
+        method: "DELETE",
+        credentials: "include",
+        headers,
+      });
+      if (res.ok) {
+        toast({ title: t("message_thread.chat_unblock_success") });
+        queryClient.setQueryData<{ blockedByMe: boolean; blocksMe?: boolean }>(
+          peerBlockQueryKey,
+          (old) => ({
+            blockedByMe: false,
+            blocksMe: Boolean(old?.blocksMe),
+          }),
+        );
+        await queryClient.invalidateQueries({ queryKey: peerBlockQueryKey });
+        await invalidateUserPresenceBatchQueries(queryClient, [peerIdForBlock]);
+        return;
+      }
+    } catch {
+      /* network */
+    } finally {
+      setInlineUnblockPending(false);
+    }
+    toast({
+      title: t("user_profile.block_unavailable_title"),
+      description: t("user_profile.block_unavailable_desc"),
+      variant: "destructive",
+    });
+  }, [user, peerIdForBlock, peerBlockQueryKey, queryClient, toast, t]);
+
   const { send: wsSend } = useChatSocket((ev) => {
     if (!conversationOk) return;
     if (ev.type === "message" && ev.conversationId === conversationId) {
@@ -277,6 +390,23 @@ export default function MessageThread() {
         getListMessagesQueryKey(convIdForQuery),
         (old) => mergeMessagesIntoList(old, ev.message as ChatMessage),
       );
+      if (user?.id) {
+        applyIncomingMessageToInboxCache(queryClient, {
+          myUserId: user.id,
+          conversationId: ev.conversationId,
+          message: ev.message,
+        });
+      }
+      if (
+        otherUserIdRef.current != null &&
+        ev.message.senderId === otherUserIdRef.current
+      ) {
+        setPeerTyping(false);
+        if (typingHideRef.current) {
+          clearTimeout(typingHideRef.current);
+          typingHideRef.current = null;
+        }
+      }
       return;
     }
     if (
@@ -291,7 +421,7 @@ export default function MessageThread() {
         typingHideRef.current = setTimeout(() => {
           setPeerTyping(false);
           typingHideRef.current = null;
-        }, 4500);
+        }, 5000);
       } else {
         setPeerTyping(false);
         if (typingHideRef.current) {
@@ -302,6 +432,77 @@ export default function MessageThread() {
     }
   });
 
+  const flushTypingToPeer = useCallback(() => {
+    if (typingStartDebounceRef.current) {
+      clearTimeout(typingStartDebounceRef.current);
+      typingStartDebounceRef.current = null;
+    }
+    if (typingIdleRef.current) {
+      clearTimeout(typingIdleRef.current);
+      typingIdleRef.current = null;
+    }
+    if (typingRenewRef.current) {
+      clearInterval(typingRenewRef.current);
+      typingRenewRef.current = null;
+    }
+    if (!typingActiveSentRef.current) return;
+    if (conversationOk && user) {
+      wsSend({ type: "typing:stop", conversationId });
+    }
+    typingActiveSentRef.current = false;
+  }, [conversationId, conversationOk, user, wsSend]);
+
+  useEffect(() => {
+    if (!conversationOk || !user) return;
+    if (composerLocked) {
+      flushTypingToPeer();
+      return;
+    }
+    const trimmed = body.trim();
+    if (!trimmed) {
+      flushTypingToPeer();
+      return;
+    }
+    if (typingStartDebounceRef.current) {
+      clearTimeout(typingStartDebounceRef.current);
+      typingStartDebounceRef.current = null;
+    }
+    typingStartDebounceRef.current = setTimeout(() => {
+      typingStartDebounceRef.current = null;
+      if (!conversationOk || !user || composerLocked) return;
+      if (!body.trim()) return;
+      if (!typingActiveSentRef.current) {
+        wsSend({ type: "typing:start", conversationId });
+        typingActiveSentRef.current = true;
+        if (!typingRenewRef.current) {
+          typingRenewRef.current = setInterval(() => {
+            if (!typingActiveSentRef.current) return;
+            wsSend({ type: "typing:start", conversationId });
+          }, 2200);
+        }
+      }
+    }, 350);
+    if (typingIdleRef.current) clearTimeout(typingIdleRef.current);
+    typingIdleRef.current = setTimeout(() => {
+      typingIdleRef.current = null;
+      flushTypingToPeer();
+    }, 1800);
+    return () => {
+      if (typingStartDebounceRef.current) {
+        clearTimeout(typingStartDebounceRef.current);
+        typingStartDebounceRef.current = null;
+      }
+      if (typingIdleRef.current) {
+        clearTimeout(typingIdleRef.current);
+        typingIdleRef.current = null;
+      }
+    };
+  }, [body, composerLocked, conversationId, conversationOk, user, wsSend, flushTypingToPeer]);
+
+  useEffect(() => {
+    if (chatPeerMessagingDisabled) setPeerTyping(false);
+  }, [chatPeerMessagingDisabled]);
+
   useEffect(() => {
     if (!user || !conversationOk) return;
     wsSend({
@@ -309,13 +510,15 @@ export default function MessageThread() {
       conversationId: conversationId,
       active: true,
     });
-    return () =>
+    return () => {
+      flushTypingToPeer();
       wsSend({
         type: "conversation:focus",
         conversationId: conversationId,
         active: false,
       });
-  }, [conversationId, conversationOk, user?.id, wsSend]);
+    };
+  }, [conversationId, conversationOk, user?.id, wsSend, flushTypingToPeer]);
 
   useEffect(() => {
     setPeerTyping(false);
@@ -434,21 +637,6 @@ export default function MessageThread() {
     scrollToBottom();
   }, [conversationOk, messages, conversationId, scrollToBottom]);
 
-  const peerActivityLabel = useMemo(() => {
-    if (!messages?.length || !conv || !user) return null;
-    let latestIso: string | null = null;
-    for (const m of messages) {
-      if (m.senderId !== conv.otherId) continue;
-      if (!latestIso || new Date(m.createdAt) > new Date(latestIso)) {
-        latestIso = m.createdAt;
-      }
-    }
-    if (!latestIso) return null;
-    const rel = formatRelativeTime(latestIso);
-    if (!rel) return null;
-    return t("message_thread.peer_last_message", { time: rel });
-  }, [messages, conv, user, locale]);
-
   useEffect(() => {
     if (!conversationOk) return;
     const qs = resolveSearchString(search);
@@ -534,6 +722,17 @@ export default function MessageThread() {
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!conversationOk) return;
+    flushTypingToPeer();
+    if (composerLocked) {
+      toast({
+        title: t("message_thread.chat_send_blocked_toast_title"),
+        description: peerBlockPending
+          ? undefined
+          : t("message_thread.chat_send_blocked_toast_body"),
+        variant: "destructive",
+      });
+      return;
+    }
     const trimmed = body.trim();
     if (!trimmed && !pendingImageFile) return;
 
@@ -545,6 +744,24 @@ export default function MessageThread() {
         getListMessagesQueryKey(convIdForQuery),
         (old) => mergeMessagesIntoList(old, newMsg),
       );
+    };
+
+    const onSendBlockedOrError = (err: unknown) => {
+      if (err instanceof ApiError && err.status === 403) {
+        void queryClient.invalidateQueries({ queryKey: peerBlockQueryKey });
+        void invalidateUserPresenceBatchQueries(queryClient, peerPresenceTargets);
+        toast({
+          title: t("message_thread.chat_send_blocked_toast_title"),
+          description: err.message || t("message_thread.chat_send_blocked_toast_body"),
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: t("ad_detail.error"),
+        description: err instanceof Error && err.message ? err.message : undefined,
+        variant: "destructive",
+      });
     };
 
     if (pendingImageFile) {
@@ -563,6 +780,16 @@ export default function MessageThread() {
             {
               onSuccess,
               onError: (err) => {
+                if (err instanceof ApiError && err.status === 403) {
+                  void queryClient.invalidateQueries({ queryKey: peerBlockQueryKey });
+                  void invalidateUserPresenceBatchQueries(queryClient, peerPresenceTargets);
+                  toast({
+                    title: t("message_thread.chat_send_blocked_toast_title"),
+                    description: err.message || t("message_thread.chat_send_blocked_toast_body"),
+                    variant: "destructive",
+                  });
+                  return;
+                }
                 toast({
                   title:
                     err instanceof Error && err.message
@@ -592,6 +819,7 @@ export default function MessageThread() {
       { convId: conversationId, data: { body: trimmed } },
       {
         onSuccess,
+        onError: onSendBlockedOrError,
       },
     );
   };
@@ -600,6 +828,14 @@ export default function MessageThread() {
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
+    if (composerLocked) {
+      toast({
+        title: t("message_thread.chat_send_blocked_toast_title"),
+        description: t("message_thread.chat_send_blocked_toast_body"),
+        variant: "destructive",
+      });
+      return;
+    }
     if (!f.type.startsWith("image/")) {
       toast({
         title: t("message_thread.image_upload_failed"),
@@ -623,7 +859,14 @@ export default function MessageThread() {
   const quickKeys = conv?.isSeller ? SELLER_QUICK_KEYS : BUYER_QUICK_KEYS;
   const dirRtl = locale === "ar";
 
+  const showPeerTyping =
+    peerTyping &&
+    !chatPeerMessagingDisabled &&
+    !peerBlockPending &&
+    !peerBlockQueryError;
+
   const appendQuick = (line: string) => {
+    if (composerLocked) return;
     setBody((prev) => {
       const p = prev.trim();
       return p ? `${p}\n${line}` : line;
@@ -720,8 +963,8 @@ export default function MessageThread() {
     >
       <header className="shrink-0 bg-[#0A0A0A] px-4 pb-2 pt-3 md:px-6">
         <div className="mx-auto w-full max-w-[820px] rounded-2xl border border-primary/35 bg-zinc-950 px-3 py-2.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.12),0_4px_20px_-12px_rgba(0,0,0,0.45)] ring-1 ring-primary/15">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -737,7 +980,14 @@ export default function MessageThread() {
                   href={`/ad/${conv.adId}`}
                   className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-zinc-900"
                 >
-                  <img src={conv.adImage} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={conv.adImage}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    loading="eager"
+                    decoding="async"
+                    sizes="44px"
+                  />
                 </Link>
               ) : (
                 <div
@@ -749,14 +999,32 @@ export default function MessageThread() {
                   }
                 />
               )}
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold text-white">
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
+                <div className="w-full min-w-0 truncate text-sm font-bold leading-tight text-white">
                   {conv?.otherName || "..."}
                 </div>
-                {peerActivityLabel ? (
-                  <p className="truncate text-[11px] leading-snug text-muted-foreground">
-                    {peerActivityLabel}
-                  </p>
+                {showPeerTyping ? (
+                  <div
+                    className="flex min-w-0 items-center gap-1.5 text-[12px] font-medium leading-tight text-primary/90 sm:text-[13px]"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <span className="min-w-0 shrink truncate">{t("message_thread.typing")}</span>
+                    <span className="inline-flex shrink-0 items-end gap-0.5 pb-0.5" aria-hidden>
+                      <span className="inline-block h-1 w-1 animate-bounce rounded-full bg-primary [animation-duration:1s] [animation-delay:0ms]" />
+                      <span className="inline-block h-1 w-1 animate-bounce rounded-full bg-primary/75 [animation-duration:1s] [animation-delay:120ms]" />
+                      <span className="inline-block h-1 w-1 animate-bounce rounded-full bg-primary/55 [animation-duration:1s] [animation-delay:240ms]" />
+                    </span>
+                  </div>
+                ) : null}
+                {peerPresenceTargets.length > 0 ? (
+                  <div className="w-full min-w-0 max-w-full shrink-0">
+                    <UserPresenceBadge
+                      entry={peerPresenceEntry}
+                      isLoading={peerPresenceQ.isPending}
+                      variant="default"
+                    />
+                  </div>
                 ) : null}
                 {conv &&
                   (conv.adAvailable !== false ? (
@@ -951,6 +1219,8 @@ export default function MessageThread() {
                                   alt=""
                                   className="max-h-64 w-full max-w-[min(100%,280px)] rounded-xl border border-primary/35 object-cover shadow-[0_0_22px_-12px_hsl(var(--primary)/0.45)] ring-1 ring-primary/20 sm:max-w-[300px]"
                                   loading="lazy"
+                                  decoding="async"
+                                  sizes="(max-width: 640px) min(100vw - 3rem, 280px), 300px"
                                 />
                               </a>
                             ) : null}
@@ -1059,6 +1329,9 @@ export default function MessageThread() {
                 src={pendingImagePreviewUrl}
                 alt=""
                 className="h-14 w-14 shrink-0 rounded-lg border border-primary/30 object-cover"
+                loading="eager"
+                decoding="async"
+                sizes="56px"
               />
               <button
                 type="button"
@@ -1097,6 +1370,7 @@ export default function MessageThread() {
                   <button
                     key={`fixed-${line}`}
                     type="button"
+                    disabled={composerLocked}
                     onClick={() => appendQuick(line)}
                     className={QUICK_REPLY_CHIP}
                   >
@@ -1104,6 +1378,34 @@ export default function MessageThread() {
                   </button>
                 ))}
               </div>
+              {peerBlockQueryEnabled && !peerBlockPending && chatPeerMessagingDisabled ? (
+                <div
+                  role="alert"
+                  className="rounded-xl border border-amber-500/35 bg-amber-950/25 px-3 py-2.5 text-[12px] leading-relaxed text-amber-50 shadow-[0_0_16px_-12px_rgba(245,158,11,0.25)] ring-1 ring-amber-500/15"
+                  dir={dirRtl ? "rtl" : "ltr"}
+                >
+                  {peerBlockStatus?.blockedByMe ? (
+                    <p className="mb-1.5 last:mb-0">
+                      {t("message_thread.chat_composer_blocked_by_me")}
+                    </p>
+                  ) : null}
+                  {peerBlockStatus?.blockedByMe && !peerBlockStatus?.blocksMe ? (
+                    <button
+                      type="button"
+                      disabled={inlineUnblockPending}
+                      onClick={() => setInlineUnblockConfirmOpen(true)}
+                      className="mt-2 inline-flex min-h-[2.25rem] items-center justify-center rounded-xl border border-primary/45 bg-primary/12 px-3.5 py-2 text-[12px] font-semibold text-primary shadow-[0_0_18px_-12px_hsl(var(--primary)/0.32)] ring-1 ring-primary/15 transition-colors hover:border-primary/60 hover:bg-primary/18 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      {inlineUnblockPending ? "…" : t("message_thread.chat_unblock_menu")}
+                    </button>
+                  ) : null}
+                  {peerBlockStatus?.blocksMe ? (
+                    <p className={cn("mb-0", peerBlockStatus?.blockedByMe ? "mt-2" : "")}>
+                      {t("message_thread.chat_composer_blocked_by_peer")}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </>
           )}
           <div className="flex items-end gap-2">
@@ -1119,12 +1421,13 @@ export default function MessageThread() {
               }}
               placeholder={t("message_thread.placeholder")}
               rows={1}
-              className="max-h-32 flex-1 resize-none bg-transparent px-0 py-0.5 text-sm text-white placeholder:text-zinc-400 focus:outline-none"
+              disabled={composerLocked}
+              className="max-h-32 flex-1 resize-none bg-transparent px-0 py-0.5 text-sm text-white placeholder:text-zinc-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || composerLocked}
             onClick={() => fileInputRef.current?.click()}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-zinc-950 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.35)] transition-[transform,box-shadow] hover:border-primary/65 hover:bg-zinc-900 active:scale-[0.98] disabled:opacity-50"
             aria-label={t("message_thread.attach_image")}
@@ -1137,7 +1440,7 @@ export default function MessageThread() {
           </button>
           <button
             type="submit"
-            disabled={busy || !canSend}
+            disabled={busy || !canSend || composerLocked}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-black shadow-[0_0_16px_-8px_hsl(var(--primary)/0.52)] transition-[transform,box-shadow] hover:shadow-[0_0_20px_-8px_hsl(var(--primary)/0.62)] active:scale-[0.98] disabled:opacity-50"
             aria-label={t("message_thread.send")}
           >
@@ -1150,6 +1453,54 @@ export default function MessageThread() {
           </div>
         </div>
       </form>
+
+      <AlertDialog
+        open={inlineUnblockConfirmOpen}
+        onOpenChange={(next) => {
+          if (!inlineUnblockPending) setInlineUnblockConfirmOpen(next);
+        }}
+      >
+        <AlertDialogContent
+          dir={dirRtl ? "rtl" : "ltr"}
+          className={cn(INLINE_UNBLOCK_ALERT_SURFACE, dirRtl ? "text-right" : "text-left")}
+        >
+          <AlertDialogHeader
+            className={cn("space-y-2", dirRtl ? "text-right" : "text-start")}
+          >
+            <AlertDialogTitle className="text-lg font-bold text-foreground">
+              {t("message_thread.chat_unblock_confirm_title")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
+              {t("message_thread.chat_unblock_confirm_desc")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div
+            className={cn(
+              "flex flex-wrap gap-2 pt-4",
+              dirRtl ? "flex-row-reverse" : "flex-row",
+            )}
+          >
+            <button
+              type="button"
+              disabled={inlineUnblockPending}
+              onClick={() => void performInlineUnblock()}
+              className={cn(
+                "inline-flex h-11 min-w-[8rem] flex-1 items-center justify-center rounded-xl border border-primary/45 bg-primary/15 px-4 text-sm font-semibold text-primary shadow-[0_0_18px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 transition-colors hover:bg-primary/22 disabled:pointer-events-none disabled:opacity-45 sm:flex-none",
+              )}
+            >
+              {inlineUnblockPending ? "…" : t("message_thread.chat_unblock_confirm_cta")}
+            </button>
+            <AlertDialogCancel
+              disabled={inlineUnblockPending}
+              className={cn(
+                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-zinc-950/90 text-sm font-semibold text-foreground hover:bg-zinc-900 disabled:opacity-45 sm:flex-none",
+              )}
+            >
+              {t("message_thread.chat_unblock_cancel")}
+            </AlertDialogCancel>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

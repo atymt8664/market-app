@@ -108,6 +108,8 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
               alt=""
               className="absolute inset-0 h-full w-full object-cover"
               loading={heroIndex === 0 ? "eager" : "lazy"}
+              decoding="async"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, min(820px, 94vw)"
               initial={{ opacity: 0.88 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0.88 }}
@@ -149,7 +151,14 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
                 aria-label={t("ad_images_public.view_photo_in_preview", { index: i + 1 })}
                 aria-pressed={i === heroIndex}
               >
-                <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" />
+                <img
+                  src={src}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  sizes="68px"
+                />
                 <span
                   dir="ltr"
                   className="absolute bottom-1 start-1 rounded bg-black/65 px-1 py-0.5 text-[9px] font-medium tabular-nums text-white"
@@ -211,6 +220,9 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
                   src={images[viewerIndex]}
                   alt={t("ad_images_public.image_alt", { title, index: viewerIndex + 1 })}
                   className="max-h-[min(78vh,calc(100dvh-8rem))] max-w-[94vw] select-none object-contain"
+                  loading="eager"
+                  decoding="async"
+                  sizes="94vw"
                   onClick={(e) => e.stopPropagation()}
                   onTouchStart={(e) => {
                     touchStartXRef.current = e.changedTouches[0]?.clientX ?? null;

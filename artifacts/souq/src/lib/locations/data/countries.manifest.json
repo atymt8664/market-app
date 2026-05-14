@@ -1,0 +1,653 @@
+{
+  "schemaVersion": 1,
+  "countries": [
+    {
+      "code": "AD",
+      "nameAr": "أندورا",
+      "phoneCode": "+376",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Andorra"
+    },
+    {
+      "code": "AL",
+      "nameAr": "ألبانيا",
+      "phoneCode": "+355",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Albania"
+    },
+    {
+      "code": "AR",
+      "nameAr": "الأرجنتين",
+      "phoneCode": "+54",
+      "regions": [
+        "south_america"
+      ],
+      "nameEn": "Argentina"
+    },
+    {
+      "code": "AT",
+      "nameAr": "النمسا",
+      "phoneCode": "+43",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Austria"
+    },
+    {
+      "code": "BA",
+      "nameAr": "البوسنة والهرسك",
+      "phoneCode": "+387",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Bosnia and Herzegovina"
+    },
+    {
+      "code": "BE",
+      "nameAr": "بلجيكا",
+      "phoneCode": "+32",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Belgium"
+    },
+    {
+      "code": "BG",
+      "nameAr": "بلغاريا",
+      "phoneCode": "+359",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Bulgaria"
+    },
+    {
+      "code": "BO",
+      "nameAr": "بوليفيا",
+      "phoneCode": "+591",
+      "regions": [
+        "south_america"
+      ],
+      "nameEn": "Bolivia"
+    },
+    {
+      "code": "BR",
+      "nameAr": "البرازيل",
+      "phoneCode": "+55",
+      "regions": [
+        "south_america"
+      ],
+      "nameEn": "Brazil"
+    },
+    {
+      "code": "BS",
+      "nameAr": "الباهاما",
+      "phoneCode": "+1",
+      "regions": [
+        "caribbean"
+      ],
+      "nameEn": "The Bahamas"
+    },
+    {
+      "code": "BY",
+      "nameAr": "بيلاروس",
+      "phoneCode": "+375",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Belarus"
+    },
+    {
+      "code": "BZ",
+      "nameAr": "بليز",
+      "phoneCode": "+501",
+      "regions": [
+        "central_america"
+      ],
+      "nameEn": "Belize"
+    },
+    {
+      "code": "CA",
+      "nameAr": "كندا",
+      "phoneCode": "+1",
+      "regions": [
+        "north_america"
+      ],
+      "nameEn": "Canada"
+    },
+    {
+      "code": "CH",
+      "nameAr": "سويسرا",
+      "phoneCode": "+41",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Switzerland"
+    },
+    {
+      "code": "CL",
+      "nameAr": "تشيلي",
+      "phoneCode": "+56",
+      "regions": [
+        "south_america"
+      ],
+      "nameEn": "Chile"
+    },
+    {
+      "code": "CO",
+      "nameAr": "كولومبيا",
+      "phoneCode": "+57",
+      "regions": [
+        "south_america"
+      ],
+      "nameEn": "Colombia"
+    },
+    {
+      "code": "CR",
+      "nameAr": "كوستاريكا",
+      "phoneCode": "+506",
+      "regions": [
+        "central_america"
+      ],
+      "nameEn": "Costa Rica"
+    },
+    {
+      "code": "CU",
+      "nameAr": "كوبا",
+      "phoneCode": "+53",
+      "regions": [
+        "caribbean"
+      ],
+      "nameEn": "Cuba"
+    },
+    {
+      "code": "CY",
+      "nameAr": "قبرص",
+      "phoneCode": "+357",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Cyprus"
+    },
+    {
+      "code": "CZ",
+      "nameAr": "التشيك",
+      "phoneCode": "+420",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Czech Republic"
+    },
+    {
+      "code": "DE",
+      "nameAr": "ألمانيا",
+      "phoneCode": "+49",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Germany"
+    },
+    {
+      "code": "DK",
+      "nameAr": "الدنمارك",
+      "phoneCode": "+45",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Denmark"
+    },
+    {
+      "code": "DO",
+      "nameAr": "جمهورية الدومينيكان",
+      "phoneCode": "+1",
+      "regions": [
+        "caribbean"
+      ],
+      "nameEn": "Dominican Republic"
+    },
+    {
+      "code": "EC",
+      "nameAr": "الإكوادور",
+      "phoneCode": "+593",
+      "regions": [
+        "south_america"
+      ],
+      "nameEn": "Ecuador"
+    },
+    {
+      "code": "EE",
+      "nameAr": "إستونيا",
+      "phoneCode": "+372",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Estonia"
+    },
+    {
+      "code": "ES",
+      "nameAr": "إسبانيا",
+      "phoneCode": "+34",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Spain"
+    },
+    {
+      "code": "FI",
+      "nameAr": "فنلندا",
+      "phoneCode": "+358",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Finland"
+    },
+    {
+      "code": "FR",
+      "nameAr": "فرنسا",
+      "phoneCode": "+33",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "France"
+    },
+    {
+      "code": "GB",
+      "nameAr": "المملكة المتحدة",
+      "phoneCode": "+44",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "United Kingdom"
+    },
+    {
+      "code": "GR",
+      "nameAr": "اليونان",
+      "phoneCode": "+30",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Greece"
+    },
+    {
+      "code": "GT",
+      "nameAr": "غواتيمالا",
+      "phoneCode": "+502",
+      "regions": [
+        "central_america"
+      ],
+      "nameEn": "Guatemala"
+    },
+    {
+      "code": "GY",
+      "nameAr": "غيانا",
+      "phoneCode": "+592",
+      "regions": [
+        "south_america"
+      ],
+      "nameEn": "Guyana"
+    },
+    {
+      "code": "HN",
+      "nameAr": "هندوراس",
+      "phoneCode": "+504",
+      "regions": [
+        "central_america"
+      ],
+      "nameEn": "Honduras"
+    },
+    {
+      "code": "HR",
+      "nameAr": "كرواتيا",
+      "phoneCode": "+385",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Croatia"
+    },
+    {
+      "code": "HU",
+      "nameAr": "المجر",
+      "phoneCode": "+36",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Hungary"
+    },
+    {
+      "code": "IE",
+      "nameAr": "إيرلندا",
+      "phoneCode": "+353",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Ireland"
+    },
+    {
+      "code": "IS",
+      "nameAr": "آيسلندا",
+      "phoneCode": "+354",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Iceland"
+    },
+    {
+      "code": "IT",
+      "nameAr": "إيطاليا",
+      "phoneCode": "+39",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Italy"
+    },
+    {
+      "code": "JM",
+      "nameAr": "جامايكا",
+      "phoneCode": "+1",
+      "regions": [
+        "caribbean"
+      ],
+      "nameEn": "Jamaica"
+    },
+    {
+      "code": "LI",
+      "nameAr": "ليختنشتاين",
+      "phoneCode": "+423",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Liechtenstein"
+    },
+    {
+      "code": "LT",
+      "nameAr": "ليتوانيا",
+      "phoneCode": "+370",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Lithuania"
+    },
+    {
+      "code": "LU",
+      "nameAr": "لوكسمبورغ",
+      "phoneCode": "+352",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Luxembourg"
+    },
+    {
+      "code": "LV",
+      "nameAr": "لاتفيا",
+      "phoneCode": "+371",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Latvia"
+    },
+    {
+      "code": "MC",
+      "nameAr": "موناكو",
+      "phoneCode": "+377",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Monaco"
+    },
+    {
+      "code": "MD",
+      "nameAr": "مولدوفا",
+      "phoneCode": "+373",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Moldova"
+    },
+    {
+      "code": "ME",
+      "nameAr": "الجبل الأسود",
+      "phoneCode": "+382",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Montenegro"
+    },
+    {
+      "code": "MK",
+      "nameAr": "مقدونيا الشمالية",
+      "phoneCode": "+389",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Macedonia"
+    },
+    {
+      "code": "MT",
+      "nameAr": "مالطا",
+      "phoneCode": "+356",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Malta"
+    },
+    {
+      "code": "MX",
+      "nameAr": "المكسيك",
+      "phoneCode": "+52",
+      "regions": [
+        "north_america"
+      ],
+      "nameEn": "Mexico"
+    },
+    {
+      "code": "NI",
+      "nameAr": "نيكاراغوا",
+      "phoneCode": "+505",
+      "regions": [
+        "central_america"
+      ],
+      "nameEn": "Nicaragua"
+    },
+    {
+      "code": "NL",
+      "nameAr": "هولندا",
+      "phoneCode": "+31",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Netherlands"
+    },
+    {
+      "code": "NO",
+      "nameAr": "النرويج",
+      "phoneCode": "+47",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Norway"
+    },
+    {
+      "code": "PA",
+      "nameAr": "بنما",
+      "phoneCode": "+507",
+      "regions": [
+        "central_america"
+      ],
+      "nameEn": "Panama"
+    },
+    {
+      "code": "PE",
+      "nameAr": "بيرو",
+      "phoneCode": "+51",
+      "regions": [
+        "south_america"
+      ],
+      "nameEn": "Peru"
+    },
+    {
+      "code": "PL",
+      "nameAr": "بولندا",
+      "phoneCode": "+48",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Poland"
+    },
+    {
+      "code": "PT",
+      "nameAr": "البرتغال",
+      "phoneCode": "+351",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Portugal"
+    },
+    {
+      "code": "PY",
+      "nameAr": "باراغواي",
+      "phoneCode": "+595",
+      "regions": [
+        "south_america"
+      ],
+      "nameEn": "Paraguay"
+    },
+    {
+      "code": "RO",
+      "nameAr": "رومانيا",
+      "phoneCode": "+40",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Romania"
+    },
+    {
+      "code": "RS",
+      "nameAr": "صربيا",
+      "phoneCode": "+381",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Serbia"
+    },
+    {
+      "code": "SE",
+      "nameAr": "السويد",
+      "phoneCode": "+46",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Sweden"
+    },
+    {
+      "code": "SI",
+      "nameAr": "سلوفينيا",
+      "phoneCode": "+386",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Slovenia"
+    },
+    {
+      "code": "SK",
+      "nameAr": "سلوفاكيا",
+      "phoneCode": "+421",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Slovakia"
+    },
+    {
+      "code": "SM",
+      "nameAr": "سان مارينو",
+      "phoneCode": "+378",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "San Marino"
+    },
+    {
+      "code": "SR",
+      "nameAr": "سورينام",
+      "phoneCode": "+597",
+      "regions": [
+        "south_america"
+      ],
+      "nameEn": "Suriname"
+    },
+    {
+      "code": "SV",
+      "nameAr": "السلفادور",
+      "phoneCode": "+503",
+      "regions": [
+        "central_america"
+      ],
+      "nameEn": "El Salvador"
+    },
+    {
+      "code": "TT",
+      "nameAr": "ترينيداد وتوباغو",
+      "phoneCode": "+1",
+      "regions": [
+        "caribbean"
+      ],
+      "nameEn": "Trinidad And Tobago"
+    },
+    {
+      "code": "UA",
+      "nameAr": "أوكرانيا",
+      "phoneCode": "+380",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Ukraine"
+    },
+    {
+      "code": "US",
+      "nameAr": "الولايات المتحدة",
+      "phoneCode": "+1",
+      "regions": [
+        "north_america"
+      ],
+      "nameEn": "United States"
+    },
+    {
+      "code": "UY",
+      "nameAr": "أوروغواي",
+      "phoneCode": "+598",
+      "regions": [
+        "south_america"
+      ],
+      "nameEn": "Uruguay"
+    },
+    {
+      "code": "VA",
+      "nameAr": "الفاتيكان",
+      "phoneCode": "+379",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Vatican City State (Holy See)"
+    },
+    {
+      "code": "VE",
+      "nameAr": "فنزويلا",
+      "phoneCode": "+58",
+      "regions": [
+        "south_america"
+      ],
+      "nameEn": "Venezuela"
+    },
+    {
+      "code": "XK",
+      "nameAr": "كوسوفو",
+      "phoneCode": "+383",
+      "regions": [
+        "europe"
+      ],
+      "nameEn": "Kosovo"
+    }
+  ]
+}

@@ -12,6 +12,56 @@ const basePath = process.env.BASE_PATH ?? "/";
 const apiProxyTarget =
   process.env.API_PROXY_TARGET?.trim() || "http://localhost:3001";
 
+/**
+ * Stable vendor splits for production — reduces entry parse cost and improves HTTP cache.
+ * Order: most-specific paths first (e.g. react-dom before react).
+ */
+function souqManualChunks(id: string): string | undefined {
+  const norm = id.replace(/\\/g, "/");
+  if (!norm.includes("node_modules/")) return undefined;
+
+  if (norm.includes("node_modules/react-dom/")) return "vendor-react-dom";
+  if (norm.includes("node_modules/react/")) return "vendor-react";
+  if (norm.includes("node_modules/scheduler/")) return "vendor-react";
+
+  if (norm.includes("node_modules/@tanstack/")) return "vendor-tanstack";
+
+  if (norm.includes("node_modules/@radix-ui/")) return "vendor-radix";
+
+  if (norm.includes("node_modules/lucide-react/")) return "vendor-lucide";
+
+  if (norm.includes("node_modules/framer-motion/")) return "vendor-framer-motion";
+
+  if (norm.includes("node_modules/recharts")) return "vendor-recharts";
+
+  if (norm.includes("node_modules/react-hook-form/")) return "vendor-rhf";
+  if (norm.includes("node_modules/@hookform/")) return "vendor-rhf";
+
+  if (norm.includes("node_modules/date-fns/")) return "vendor-date-fns";
+
+  if (norm.includes("node_modules/@uppy/")) return "vendor-uppy";
+
+  if (norm.includes("node_modules/zod/")) return "vendor-zod";
+
+  if (norm.includes("node_modules/embla-carousel")) return "vendor-embla";
+  if (norm.includes("node_modules/react-day-picker/")) return "vendor-day-picker";
+  if (norm.includes("node_modules/cmdk/")) return "vendor-cmdk";
+  if (norm.includes("node_modules/vaul/")) return "vendor-vaul";
+  if (norm.includes("node_modules/sonner/")) return "vendor-sonner";
+  if (norm.includes("node_modules/react-resizable-panels/")) return "vendor-resizable-panels";
+  if (norm.includes("node_modules/input-otp/")) return "vendor-input-otp";
+  /** Legacy: `country-state-city` was excluded from named vendor chunks; kept harmless if ever reintroduced. */
+  if (norm.includes("node_modules/country-state-city/")) return undefined;
+  if (norm.includes("node_modules/react-icons/")) return "vendor-react-icons";
+  if (norm.includes("node_modules/next-themes/")) return "vendor-next-themes";
+
+  if (norm.includes("node_modules/@supabase/")) return "vendor-supabase";
+
+  if (norm.includes("node_modules/@floating-ui/")) return "vendor-floating-ui";
+
+  return "vendor-misc";
+}
+
 /** Forward browser Host so express-session Set-Cookie targets the public origin (e.g. trycloudflare.com), not localhost. */
 const apiProxy: ProxyOptions = {
   target: apiProxyTarget,
@@ -92,6 +142,11 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: souqManualChunks,
+      },
+    },
   },
   server: {
     port,

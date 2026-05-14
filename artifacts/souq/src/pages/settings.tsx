@@ -26,6 +26,8 @@ import {
   getListMyAdsQueryKey,
   getListFavoriteAdsQueryKey,
   getListConversationsQueryKey,
+  getAuthProfileCsrfTokenForRequest,
+  clearAuthProfileCsrfToken,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -46,7 +48,7 @@ import {
 } from "@/hooks/use-notifications";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
-import { getAccountVerificationStatus, isAccountVerified } from "@/lib/account-verification";
+import { isAccountVerified } from "@/lib/account-verification";
 import { APP_VERSION } from "@/lib/app-config";
 import {
   SETTINGS_BACK_BUTTON,
@@ -247,10 +249,16 @@ export default function Settings() {
     if (!pwd || deletePending) return;
     setDeletePending(true);
     try {
+      const csrf = getAuthProfileCsrfTokenForRequest();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (csrf) headers["X-CSRF-Token"] = csrf;
+
       const res = await fetch(apiUrl("/api/account/delete"), {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ password: pwd }),
       });
 
@@ -275,6 +283,7 @@ export default function Settings() {
 
       resetDeleteDialog();
       setDeleteOpen(false);
+      clearAuthProfileCsrfToken();
       await clearSessionAfterAccountDeletion();
       toast({ title: t("settings.account.delete.success") });
       navigate("/login");
@@ -287,8 +296,6 @@ export default function Settings() {
       setDeletePending(false);
     }
   };
-
-  const verificationStatus = getAccountVerificationStatus(user);
 
   return (
     <motion.div
@@ -366,7 +373,7 @@ export default function Settings() {
         <Row
           icon={<Shield className="w-4 h-4" />}
           label={t("settings.account.verification")}
-          hint={t(`verification.status.${verificationStatus}`)}
+          hint={t("settings.account.verification_preview_hint")}
           onClick={leaveSettings("/account/verification")}
           className="min-h-[70px] px-4 md:px-5 hover:bg-primary/[0.04] active:bg-primary/[0.06]"
           labelClassName="text-sm md:text-[15px] text-foreground"

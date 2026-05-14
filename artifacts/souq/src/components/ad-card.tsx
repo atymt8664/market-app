@@ -9,10 +9,9 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { t } from "@/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocale } from "@/hooks/use-locale";
@@ -44,7 +43,7 @@ const PRICE_BOX_COMPACT = "min-h-[2rem] shrink-0";
 
 /** صفحة المفضلة — نفس هوية كروت البروفايل / نشر إعلان، بحجم مدمج للموبايل */
 const FAVORITES_CARD_SHELL =
-  "rounded-2xl border border-primary/40 bg-zinc-950/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[border-color,box-shadow] duration-200 hover:border-primary/45 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.22)]";
+  "rounded-2xl border border-primary/40 bg-zinc-950/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[transform,border-color,box-shadow] duration-200 hover:border-primary/45 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.22)]";
 /** Location + time */
 const META_BOX = "h-[1.25rem] min-h-[1.25rem] max-h-[1.25rem] shrink-0";
 
@@ -55,7 +54,7 @@ function priceTypeBadgeText(type: Ad["priceType"]) {
   return t("ad-card.swap");
 }
 
-function PriceBlock({ ad, compact }: { ad: Ad; compact?: boolean }) {
+const PriceBlock = memo(function PriceBlock({ ad, compact }: { ad: Ad; compact?: boolean }) {
   const adWithDetails = ad as Ad & {
     details?: Record<string, unknown>;
   };
@@ -94,9 +93,9 @@ function PriceBlock({ ad, compact }: { ad: Ad; compact?: boolean }) {
       </span>
     </div>
   );
-}
+});
 
-export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCardProps) {
+function AdCardInner({ ad, featured, variant: _variant, favoritesList }: AdCardProps) {
   const { locale } = useLocale();
   const numberLocale = locale === "de" ? "de-DE" : locale === "en" ? "en-US" : "ar";
   const queryClient = useQueryClient();
@@ -160,6 +159,10 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
 
   const hasImage = !!(ad.images && ad.images.length > 0 && ad.images[0]) && !imageFailed;
   const favCompact = Boolean(favoritesList);
+  /** Hint decode size for the CDN/browser without changing layout (object-cover + fixed aspect). */
+  const imageSizes = featured
+    ? "(max-width: 640px) 160px, 172px"
+    : "(max-width: 640px) 50vw, (max-width: 1024px) 34vw, 360px";
 
   return (
     <div
@@ -175,16 +178,16 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
       href={`/ad/${ad.id}`}
       className={cn("block min-h-0 w-full outline-none", !featured && "h-auto")}
     >
-      <motion.article
-        whileTap={{ scale: 0.98 }}
+      <article
         className={cn(
           "group flex w-full flex-col overflow-hidden text-start [contain:layout]",
+          "active:scale-[0.98]",
           favCompact
             ? FAVORITES_CARD_SHELL
             : [
                 "rounded-xl border border-border/45 bg-card",
                 "shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
-                "transition-[border-color,box-shadow] duration-200",
+                "transition-[transform,border-color,box-shadow] duration-200 ease-out",
                 "hover:border-primary/25 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_2px_10px_rgba(0,0,0,0.45)]",
               ].join(" "),
           featured ? "h-full min-h-0" : "h-auto",
@@ -205,6 +208,8 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
               alt={ad.title}
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
               loading="lazy"
+              decoding="async"
+              sizes={imageSizes}
               onError={() => setImageFailed(true)}
             />
           ) : (
@@ -233,10 +238,7 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
               favCompact ? "end-1 top-1 h-6 w-6" : "end-1.5 top-1.5 h-7 w-7",
             )}
           >
-            <motion.div
-              animate={{ scale: isFavorite ? [1, 1.12, 1] : 1 }}
-              transition={{ duration: 0.2 }}
-            >
+            <span className="inline-flex">
               <Heart
                 strokeWidth={2.25}
                 className={cn(
@@ -247,7 +249,7 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
                     : "fill-transparent stroke-white text-white",
                 )}
               />
-            </motion.div>
+            </span>
           </button>
         </div>
 
@@ -325,7 +327,7 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
             </span>
           </div>
         </div>
-      </motion.article>
+      </article>
     </Link>
     {favoritesList && user && isFavorite && (
       <Button
@@ -343,6 +345,9 @@ export function AdCard({ ad, featured, variant: _variant, favoritesList }: AdCar
     </div>
   );
 }
+
+/** يقلّل إعادة الرسم عند تحديثات أعلى الصفحة (بحث، مدينة، إلخ) طالما مرجع `ad` من الكاش مستقر. */
+export const AdCard = memo(AdCardInner);
 
 function StatCell({
   icon,

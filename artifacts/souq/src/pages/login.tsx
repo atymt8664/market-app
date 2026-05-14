@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { ArrowRight, Loader2, LogIn } from "lucide-react";
 import { motion } from "framer-motion";
-import { getAuthMeQueryKey } from "@workspace/api-client-react";
+import { absorbAuthProfileCsrfFromResponse, getAuthMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Form,
@@ -160,6 +160,7 @@ export default function Login() {
       } catch {
         /* ignore */
       }
+      absorbAuthProfileCsrfFromResponse(json);
       queryClient.setQueryData(getAuthMeQueryKey(), json);
       void queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
 

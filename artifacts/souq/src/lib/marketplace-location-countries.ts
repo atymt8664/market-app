@@ -1,5 +1,5 @@
-import { Country } from "country-state-city";
-import { SIGNUP_COUNTRIES } from "@/lib/signup-location-data";
+import { lookupMarketplaceCountry } from "@/lib/locations/manifest-data";
+import { SIGNUP_COUNTRIES } from "@/lib/signup-location-data-constants";
 
 export type MarketplaceCountryOption = {
   code: string;
@@ -7,19 +7,24 @@ export type MarketplaceCountryOption = {
   nameEn: string;
 };
 
+let cachedMarketplaceCountryOptions: MarketplaceCountryOption[] | null = null;
+
 /** Countries available in the home location filter (signup list minus overseas defaults). */
-export function getMarketplaceCountryOptions(): MarketplaceCountryOption[] {
+export async function getMarketplaceCountryOptions(): Promise<MarketplaceCountryOption[]> {
+  if (cachedMarketplaceCountryOptions) return cachedMarketplaceCountryOptions;
   const excluded = new Set(["US", "CA"]);
-  return SIGNUP_COUNTRIES.filter((c) => !excluded.has(c.code))
-    .map((c) => ({
-      code: c.code,
-      nameAr: c.name,
-      nameEn:
-        Country.getCountryByCode(c.code)?.name ??
-        Country.getCountryByCode(c.code.toUpperCase())?.name ??
-        c.code,
-    }))
+  const opts = SIGNUP_COUNTRIES.filter((c) => !excluded.has(c.code))
+    .map((c) => {
+      const row = lookupMarketplaceCountry(c.code);
+      return {
+        code: c.code,
+        nameAr: row?.nameAr ?? c.name,
+        nameEn: row?.nameEn ?? c.code,
+      };
+    })
     .sort((a, b) => a.nameAr.localeCompare(b.nameAr, "ar"));
+  cachedMarketplaceCountryOptions = opts;
+  return opts;
 }
 
 export function filterCountriesByQuery(

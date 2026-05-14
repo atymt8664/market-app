@@ -1,17 +1,20 @@
 import { AccountHeader } from "@/components/account-header";
 import {
   ArrowUpCircle,
-  BadgeDollarSign,
+  Award,
   CreditCard,
   Globe,
   HelpCircle,
+  Images,
   Info,
   Lock,
   Pin,
-  Rocket,
   Shield,
+  Sparkles,
   Star,
   CheckCircle2,
+  TrendingUp,
+  Zap,
 } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { t } from "@/i18n";
@@ -39,6 +42,10 @@ import {
   stashReturnTarget,
 } from "@/lib/return-navigation";
 
+const PAYMENTS_FEATURE_ROW =
+  "rounded-2xl border border-primary/36 bg-zinc-950/76 p-3 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-3.5";
+
+const PROMOTE_PREVIEW_FROM_PAYMENTS = "/promote-preview?return=%2Faccount%2Fpayments";
 const PAGE_META: Record<string, { titleKey: string; icon: React.ReactNode }> = {
   language: { titleKey: "language.title", icon: <Globe className="w-6 h-6" /> },
   privacy: { titleKey: "account_info.privacy.title", icon: <Shield className="w-6 h-6" /> },
@@ -97,15 +104,15 @@ export default function AccountInfoPage() {
     </div>
   );
   const paymentsBody = (
-    <div className="space-y-3.5">
+    <div className="space-y-3.5" dir={locale === "ar" ? "rtl" : "ltr"}>
       <section className={SETTINGS_CARD}>
         <div className="flex items-start gap-3">
-          <div className="h-10 w-10 shrink-0 rounded-xl border border-primary/20 bg-primary/10 text-primary flex items-center justify-center">
-            <CreditCard className="h-5 w-5" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/45 bg-primary/10 text-primary shadow-[0_0_16px_-8px_hsl(var(--primary)/0.38)]">
+            <CreditCard className="h-5 w-5" strokeWidth={2.25} />
           </div>
           <div className="space-y-1">
-            <h3 className="text-sm md:text-base font-semibold text-foreground">{t("payments.title")}</h3>
-            <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
+            <h3 className="text-sm font-semibold text-foreground md:text-base">{t("payments.title")}</h3>
+            <p className="text-xs leading-relaxed text-zinc-400 md:text-sm">
               {t("payments.overview.l1")}
               <br />
               {t("payments.overview.l2")}
@@ -113,49 +120,93 @@ export default function AccountInfoPage() {
           </div>
         </div>
       </section>
+
+      <p
+        className="rounded-2xl border border-amber-500/35 bg-amber-950/25 px-3 py-2.5 text-[11px] font-medium leading-relaxed text-amber-100/95 md:text-xs"
+        role="note"
+      >
+        {t("payments.disclaimer_no_payments")}
+      </p>
+
       <section className={SETTINGS_CARD}>
-        <h3 className="text-sm md:text-base font-semibold text-foreground mb-3">{t("payments.features.title")}</h3>
+        <h3 className="mb-3 text-sm font-semibold text-foreground md:text-base">{t("payments.features.title")}</h3>
         <div className="space-y-2">
-          {[
-            { icon: <Rocket className="h-4 w-4" />, title: t("payments.features.boost.title"), desc: t("payments.features.boost.desc") },
-            { icon: <Pin className="h-4 w-4" />, title: t("payments.features.pin.title"), desc: t("payments.features.pin.desc") },
-            { icon: <ArrowUpCircle className="h-4 w-4" />, title: t("payments.features.top.title"), desc: t("payments.features.top.desc") },
-            { icon: <BadgeDollarSign className="h-4 w-4" />, title: t("payments.features.packages.title"), desc: t("payments.features.packages.desc") },
-          ].map((feature) => (
-            <div key={feature.title} className="rounded-xl border border-primary/12 bg-zinc-950/30 px-3 py-2.5 flex items-start gap-3">
-              <div className="h-8 w-8 shrink-0 rounded-lg border border-primary/20 bg-primary/10 text-primary flex items-center justify-center">{feature.icon}</div>
-              <div>
-                <p className="text-sm font-medium text-foreground">{feature.title}</p>
-                <p className="text-xs text-muted-foreground">{feature.desc}</p>
+          {(
+            [
+              { id: "bump_once" as const, icon: <ArrowUpCircle className="h-5 w-5" strokeWidth={2.25} /> },
+              { id: "highlight" as const, icon: <Sparkles className="h-5 w-5" strokeWidth={2.25} /> },
+              { id: "daily" as const, icon: <TrendingUp className="h-5 w-5" strokeWidth={2.25} /> },
+              { id: "top" as const, icon: <Pin className="h-5 w-5" strokeWidth={2.25} /> },
+              { id: "gallery" as const, icon: <Images className="h-5 w-5" strokeWidth={2.25} /> },
+              { id: "urgent" as const, icon: <Zap className="h-5 w-5" strokeWidth={2.25} /> },
+            ] as const
+          ).map((row) => (
+            <div key={row.id} className={cn(PAYMENTS_FEATURE_ROW, "flex items-start gap-3")}>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/45 bg-primary/10 text-primary shadow-[0_0_14px_-8px_hsl(var(--primary)/0.35)]">
+                {row.icon}
+              </div>
+              <div className="min-w-0 flex-1 space-y-0.5 text-start">
+                <p className="text-sm font-semibold leading-snug text-foreground">{t(`promote.feature.${row.id}.name`)}</p>
+                <p className="text-[11px] leading-relaxed text-zinc-500 md:text-xs">{t(`promote.feature.${row.id}.desc`)}</p>
               </div>
             </div>
           ))}
+          <div className={cn(PAYMENTS_FEATURE_ROW, "flex items-start gap-3")}>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/45 bg-primary/10 text-primary shadow-[0_0_14px_-8px_hsl(var(--primary)/0.35)]">
+              <Award className="h-5 w-5" strokeWidth={2.25} />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1 text-start">
+              <p className="text-sm font-semibold leading-snug text-foreground">{t("payments.features.bundles_heading")}</p>
+              <p className="text-[11px] leading-relaxed text-zinc-500 md:text-xs">{t("payments.features.bundles_line")}</p>
+              <ul className="list-inside list-disc space-y-0.5 text-[11px] text-zinc-400 md:text-xs">
+                <li>{t("promote.bundle.quick.name")}</li>
+                <li>{t("promote.bundle.pro.name")}</li>
+                <li>{t("promote.bundle.power.name")}</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </section>
       <section className={SETTINGS_CARD}>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm md:text-base font-semibold text-foreground">{t("payments.methods.title")}</h3>
-          <span className="rounded-full border border-primary/20 bg-primary/[0.06] px-2 py-0.5 text-[11px] text-muted-foreground">{t("common.coming_soon")}</span>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-foreground md:text-base">{t("payments.methods.title")}</h3>
+          <span className="shrink-0 rounded-full border border-primary/40 bg-zinc-950/90 px-2 py-0.5 text-[10px] font-semibold text-primary shadow-[0_0_10px_-6px_hsl(var(--primary)/0.3)]">
+            {t("common.coming_soon")}
+          </span>
         </div>
         <div className="space-y-2">
-          {["Visa / Mastercard", "PayPal"].map((method) => (
-            <button key={method} type="button" disabled className="w-full rounded-xl border border-primary/10 bg-background/25 px-3 py-2.5 text-right text-sm text-muted-foreground opacity-70 cursor-not-allowed">
+          {[t("payments.methods.visa_mc"), t("payments.methods.paypal")].map((method) => (
+            <button
+              key={method}
+              type="button"
+              disabled
+              className="w-full cursor-not-allowed rounded-2xl border border-primary/25 bg-zinc-950/80 px-3 py-2.5 text-start text-sm font-medium text-zinc-500 opacity-80 shadow-[inset_0_0_0_1px_rgba(182,227,86,0.06)]"
+            >
               {method}
             </button>
           ))}
         </div>
       </section>
       <section className={SETTINGS_CARD}>
-        <h3 className="text-sm md:text-base font-semibold text-foreground mb-2">{t("payments.transactions.title")}</h3>
-        <div className="rounded-xl border border-dashed border-primary/15 bg-zinc-950/25 px-4 py-6 text-center">
+        <h3 className="mb-2 text-sm font-semibold text-foreground md:text-base">{t("payments.transactions.title")}</h3>
+        <div className="rounded-2xl border border-dashed border-primary/25 bg-zinc-950/70 px-4 py-6 text-center ring-1 ring-primary/10">
           <p className="text-sm font-medium text-foreground">{t("payments.transactions.empty")}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{t("payments.transactions.subtext")}</p>
+          <p className="mt-1 text-xs leading-relaxed text-zinc-500">{t("payments.transactions.subtext")}</p>
         </div>
       </section>
-      <section className={`${SETTINGS_CARD} bg-gradient-to-b from-primary/10 to-zinc-950/85`}>
-        <h3 className="text-sm md:text-base font-semibold text-foreground mb-1">{t("payments.promo.title")}</h3>
-        <p className="text-xs text-muted-foreground mb-3">{t("payments.promo.desc")}</p>
-        <button type="button" disabled className="h-10 w-full sm:w-auto sm:min-w-[180px] rounded-xl border border-primary/30 bg-background/40 px-4 text-sm font-medium text-muted-foreground cursor-not-allowed opacity-75">
+      <section
+        className={cn(
+          SETTINGS_CARD,
+          "border-primary/40 bg-gradient-to-b from-primary/[0.12] to-zinc-950/90 shadow-[0_0_22px_-14px_hsl(var(--primary)/0.22)] ring-1 ring-primary/14",
+        )}
+      >
+        <h3 className="mb-1 text-sm font-semibold text-foreground md:text-base">{t("payments.promo.title")}</h3>
+        <p className="mb-3 text-xs leading-relaxed text-zinc-500">{t("payments.promo.desc")}</p>
+        <button
+          type="button"
+          onClick={() => navigate(PROMOTE_PREVIEW_FROM_PAYMENTS)}
+          className="h-11 w-full rounded-2xl border border-primary/45 bg-primary/12 px-4 text-sm font-semibold text-primary shadow-[0_0_18px_-10px_hsl(var(--primary)/0.35)] transition hover:border-primary/55 hover:bg-primary/16 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] sm:w-auto sm:min-w-[200px]"
+        >
           {t("payments.promo.button")}
         </button>
       </section>
@@ -387,7 +438,7 @@ export default function AccountInfoPage() {
       <AccountHeader title={t(page.titleKey)} />
       <div className={SETTINGS_MAIN_COLUMN}>
         {isPaymentsPage ? (
-          <div className="text-sm leading-relaxed text-muted-foreground">{paymentsBody}</div>
+          <div className="text-sm leading-relaxed text-zinc-400">{paymentsBody}</div>
         ) : isLanguagePage ? (
           <div className={SETTINGS_CARD}>
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-primary/35 bg-zinc-950/80 text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.2)]">

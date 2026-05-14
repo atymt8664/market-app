@@ -7,10 +7,13 @@ import {
   Flag,
   LifeBuoy,
   Users,
+  BadgeCheck,
+  Layers,
   BarChart3,
   Building2,
   FolderTree,
   ScrollText,
+  Wallet2,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -23,10 +26,13 @@ const NAV_ITEMS = [
   { key: "reports", href: "/admin/reports", label: "البلاغات", icon: Flag },
   { key: "support", href: "/admin/support", label: "الدعم والمساعدة", icon: LifeBuoy },
   { key: "users", href: "/admin/users", label: "المستخدمون", icon: Users },
+  { key: "verification", href: "/admin/verification", label: "التوثيق", icon: BadgeCheck },
+  { key: "plans", href: "/admin/plans", label: "الخطط والحسابات", icon: Layers },
   { key: "stats", href: "/admin/stats", label: "الإحصائيات", icon: BarChart3 },
   { key: "cities", href: "/admin/cities", label: "المدن", icon: Building2 },
   { key: "categories", href: "/admin/categories", label: "الأقسام", icon: FolderTree },
   { key: "logs", href: "/admin/logs", label: "سجل النشاطات", icon: ScrollText },
+  { key: "billing", href: "/admin/billing", label: "المالية والفواتير", icon: Wallet2 },
   { key: "settings", href: "/admin/settings", label: "الإعدادات", icon: Settings },
 ];
 
@@ -122,7 +128,9 @@ export function AdminShell({ activeKey, onLogout, children }: AdminShellProps) {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
+          {children}
+        </main>
       </div>
     </div>
   );

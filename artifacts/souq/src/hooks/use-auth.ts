@@ -34,8 +34,13 @@ export function useAuth() {
 
   return {
     user,
-    /** نؤجل الحراسة حتى حسم auth/me فعلياً لتجنب وميض إعادة التوجيه أثناء refetch. */
-    isLoading: (isLoading || isFetching) && !user,
+    /**
+     * فقط التحميل الأولي قبل وجود user (من الاستجابة أو الكاش).
+     * لا نربط refetch الخلفي بـ isLoading حتى لا يومض شريط التنقل/الحرس للضيف أو المسجّل.
+     */
+    isLoading: isLoading && !user,
+    /** جلب auth/me جارٍ في الخلفية (اختياري للواجهات التي تريد مؤشرًا خفيفًا دون حجب). */
+    isFetching,
     isAuthenticated: !!user,
     refresh: () =>
       queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() }),

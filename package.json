@@ -8,7 +8,7 @@
     "dev:api": "pnpm --filter @workspace/api-server run dev",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "typecheck": "pnpm run typecheck:libs && pnpm --filter @workspace/souq --filter @workspace/api-server --filter @workspace/mockup-sandbox --filter @workspace/scripts run typecheck",
     "admin:reset-password": "node artifacts/api-server/scripts/admin-reset-password.cjs",
     "db:push:staging:safe": "node scripts/safe-drizzle-push.mjs"
   },

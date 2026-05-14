@@ -10,7 +10,6 @@ import {
   MapPin,
   UserCheck,
   Heart,
-  Loader2,
   Clock,
   User as UserIcon,
   MoreVertical,
@@ -49,6 +48,7 @@ import {
   SETTINGS_OUTLINE_BUTTON,
 } from "@/components/settings-shell";
 import { ProfileStatsDetailSheet } from "@/components/profile-stats-detail-sheet";
+import { ProfileStatsListsPanel } from "@/components/profile-stats-lists-panel";
 import {
   ProfileAvatarPreviewDialog,
   ProfileAvatarCameraBadge,
@@ -58,6 +58,7 @@ import { getPublicAdUrl, getPublicUserProfileUrl } from "@/lib/public-url";
 import { buildAdShareText, buildProfileShareText } from "@/lib/share-text";
 import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { cn } from "@/lib/utils";
+import { stashPromoteAdPreview } from "@/lib/promote-ad-preview";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -107,11 +108,62 @@ const profileAdActionDelete = cn(
 const PROFILE_TAB_LIST =
   "h-auto w-full grid grid-cols-3 gap-1.5 rounded-xl border border-primary/32 bg-zinc-950/78 p-1.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12";
 
+/** نفس لغة `PROFILE_TAB_LIST` — أربعة أعمدة، صف واحد */
+const PROFILE_PLAN_TAB_LIST =
+  "h-auto w-full min-w-0 grid grid-cols-4 gap-1.5 rounded-xl border border-primary/32 bg-zinc-950/78 p-1.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12";
+
 const PROFILE_TAB_TRIGGER =
   "rounded-lg border border-transparent bg-transparent px-2 py-2.5 text-xs font-semibold text-primary/55 transition-all md:text-sm data-[state=active]:border-primary/52 data-[state=active]:bg-zinc-900/95 data-[state=active]:text-primary data-[state=active]:shadow-[0_0_24px_-12px_hsl(var(--primary)/0.32)] data-[state=active]:ring-1 data-[state=active]:ring-primary/28 hover:border-primary/22 hover:bg-zinc-950/85 hover:text-primary/85";
 
+/** تبويبات الخطط: نفس `PROFILE_TAB_TRIGGER` + ضبط بسيط للأربعة في سطر واحد */
+const PROFILE_PLAN_TAB_TRIGGER = cn(
+  PROFILE_TAB_TRIGGER,
+  "min-h-0 px-1.5 py-2 text-center text-[11px] leading-tight sm:px-2 sm:text-xs md:py-2.5 md:text-sm",
+  "focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:ring-offset-0",
+);
+
+type ProfilePlanTier = "personal" | "featured" | "professional" | "trust";
+
+const PROFILE_PLAN_LEARN_MORE_HREF: Record<ProfilePlanTier, string> = {
+  personal: "/professional-seller/personal",
+  featured: "/professional-seller/premium",
+  professional: "/professional-seller/professional",
+  trust: "/professional-seller/trust",
+};
+
+function planTierSummaryCopy(tier: ProfilePlanTier): { title: string; status: string } {
+  switch (tier) {
+    case "personal":
+      return {
+        title: t("profile.plan_tier.summary.personal.title"),
+        status: t("profile.plan_tier.summary.personal.status"),
+      };
+    case "featured":
+      return {
+        title: t("profile.plan_tier.summary.featured.title"),
+        status: t("profile.plan_tier.summary.featured.status"),
+      };
+    case "professional":
+      return {
+        title: t("profile.plan_tier.summary.professional.title"),
+        status: t("profile.plan_tier.summary.professional.status"),
+      };
+    case "trust":
+      return {
+        title: t("profile.plan_tier.summary.trust.title"),
+        status: t("profile.plan_tier.summary.trust.status"),
+      };
+    default:
+      return {
+        title: t("profile.plan_tier.summary.personal.title"),
+        status: t("profile.plan_tier.summary.personal.status"),
+      };
+  }
+}
+
 export default function Profile() {
   const { locale } = useLocale();
+  const profileDir = locale === "ar" ? "rtl" : "ltr";
   const numberLocale = locale === "en" ? "en-US" : locale === "de" ? "de-DE" : "ar";
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
@@ -133,6 +185,7 @@ export default function Profile() {
     },
   });
   const [activeTab, setActiveTab] = useState("my-ads");
+  const [planTier, setPlanTier] = useState<ProfilePlanTier>("personal");
   const [statsSheet, setStatsSheet] = useState<
     null | "followers" | "following" | "views"
   >(null);
@@ -203,6 +256,11 @@ export default function Profile() {
         },
       },
     );
+  };
+
+  const openPromoteForAd = (ad: Ad) => {
+    stashPromoteAdPreview(ad.id, { title: ad.title, imageUrl: ad.images?.[0] ?? null });
+    navigate(`/promote/${ad.id}`);
   };
 
   const handleShareAd = async (ad: Ad) => {
@@ -396,7 +454,92 @@ export default function Profile() {
         <section
           className={cn(
             AD_CARD_SHELL,
-            "mt-5 md:mt-6 p-2.5 md:p-4",
+            "mt-3 md:mt-4 p-2.5 md:p-4",
+          )}
+          dir={profileDir}
+        >
+          <Tabs
+            value={planTier}
+            onValueChange={(v) => setPlanTier(v as ProfilePlanTier)}
+            dir={profileDir}
+            className="w-full"
+          >
+            <TabsList
+              className={cn(
+                PROFILE_PLAN_TAB_LIST,
+                "!bg-zinc-950/78 !text-primary/55 ring-offset-0",
+              )}
+              aria-label={t("profile.plan_tier.nav_aria")}
+            >
+              <TabsTrigger value="personal" className={PROFILE_PLAN_TAB_TRIGGER}>
+                {t("profile.plan_tier.tab.personal")}
+              </TabsTrigger>
+              <TabsTrigger value="featured" className={PROFILE_PLAN_TAB_TRIGGER}>
+                {t("profile.plan_tier.tab.featured")}
+              </TabsTrigger>
+              <TabsTrigger value="professional" className={PROFILE_PLAN_TAB_TRIGGER}>
+                {t("profile.plan_tier.tab.professional")}
+              </TabsTrigger>
+              <TabsTrigger value="trust" className={PROFILE_PLAN_TAB_TRIGGER}>
+                {t("profile.plan_tier.tab.trust")}
+              </TabsTrigger>
+            </TabsList>
+
+            {(["personal", "featured", "professional", "trust"] as const).map((tier) => {
+              const { title, status } = planTierSummaryCopy(tier);
+              return (
+                <TabsContent
+                  key={tier}
+                  value={tier}
+                  className="mt-3 outline-none ring-0 ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 md:mt-4"
+                >
+                  <div
+                    className={cn(
+                      "rounded-lg border border-primary/28 bg-zinc-950/72 p-2 ring-1 ring-primary/10 md:p-2.5",
+                    )}
+                  >
+                    <p
+                      className={cn(
+                        "text-xs font-semibold leading-snug text-foreground md:text-[13px]",
+                        profileDir === "rtl" ? "text-right" : "text-left",
+                      )}
+                    >
+                      {title}
+                    </p>
+                    <p
+                      className={cn(
+                        "mt-0.5 text-[11px] leading-snug text-muted-foreground md:text-xs",
+                        profileDir === "rtl" ? "text-right" : "text-left",
+                      )}
+                    >
+                      {status}
+                    </p>
+                    <div
+                      className={cn(
+                        "mt-2 flex",
+                        profileDir === "rtl" ? "justify-end" : "justify-start",
+                      )}
+                    >
+                      <Link
+                        href={PROFILE_PLAN_LEARN_MORE_HREF[tier]}
+                        className={cn(
+                          "inline-flex min-h-8 items-center justify-center rounded-lg border border-primary/36 bg-zinc-950/82 px-2.5 py-1.5 text-[11px] font-semibold text-primary shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12 transition-colors hover:border-primary/48 hover:bg-zinc-900/90 active:scale-[0.99] md:text-xs",
+                        )}
+                      >
+                        {t("pro_seller.entry_cta")}
+                      </Link>
+                    </div>
+                  </div>
+                </TabsContent>
+              );
+            })}
+          </Tabs>
+        </section>
+
+        <section
+          className={cn(
+            AD_CARD_SHELL,
+            "mt-3 md:mt-4 p-2.5 md:p-4",
           )}
         >
           <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">
@@ -445,7 +588,7 @@ export default function Profile() {
                             onOpenActions={() => setActionAd(ad)}
                             onEdit={() => navigate(`/edit/${ad.id}`)}
                             onDelete={() => setAdToDelete(ad.id)}
-                            onPromote={() => navigate(`/stats?ad=${ad.id}`)}
+                            onPromote={() => openPromoteForAd(ad)}
                           />
                         </div>
                         <div className="hidden md:block">
@@ -455,6 +598,7 @@ export default function Profile() {
                             showActions
                             onEdit={() => navigate(`/edit/${ad.id}`)}
                             onDelete={() => setAdToDelete(ad.id)}
+                            onPromote={() => openPromoteForAd(ad)}
                           />
                         </div>
                       </div>
@@ -615,15 +759,14 @@ export default function Profile() {
                 : ""
         }
       >
-        <div className="rounded-2xl border border-primary/30 bg-zinc-950/85 p-4 shadow-[0_0_16px_-10px_hsl(var(--primary)/0.18)] ring-1 ring-primary/12">
-          <p className="text-sm leading-relaxed text-zinc-200">
-            {statsSheet === "followers"
-              ? t("profile.stats.sheet.followers_unavailable")
-              : statsSheet === "following"
-                ? t("profile.stats.sheet.following_unavailable")
-                : t("profile.stats.sheet.views_unavailable")}
-          </p>
-        </div>
+        {statsSheet !== null ? (
+          <ProfileStatsListsPanel
+            sheet={statsSheet}
+            profileUserId={user.id}
+            isSelf
+            viewerUserId={user.id}
+          />
+        ) : null}
       </ProfileStatsDetailSheet>
 
       <Drawer open={!!actionAd} onOpenChange={(open) => !open && setActionAd(null)}>
@@ -666,7 +809,8 @@ export default function Profile() {
             <button
               type="button"
               onClick={() => {
-                toast({ title: t("profile.actions.bumped") });
+                if (!actionAd) return;
+                openPromoteForAd(actionAd);
                 setActionAd(null);
               }}
               className={cn(
@@ -724,12 +868,14 @@ function ProfileDesktopAdCard({
   showActions,
   onEdit,
   onDelete,
+  onPromote,
 }: {
   ad: Ad;
   onOpen: () => void;
   showActions?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
+  onPromote?: () => void;
 }) {
   const priceTypeLabel =
     ad.priceType === "negotiable"
@@ -812,7 +958,12 @@ function ProfileDesktopAdCard({
       </button>
 
       {showActions && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div
+          className={cn(
+            "mt-3 grid gap-2",
+            onPromote ? "grid-cols-3" : "grid-cols-2",
+          )}
+        >
           <button
             type="button"
             onClick={(e) => {
@@ -835,6 +986,20 @@ function ProfileDesktopAdCard({
           >
             {t("profile.card.delete")}
           </button>
+          {onPromote ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onPromote();
+              }}
+              className={profileAdActionPromote}
+            >
+              <ArrowUp className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+              <span>{t("profile.card.promote")}</span>
+            </button>
+          ) : null}
         </div>
       )}
     </article>

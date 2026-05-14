@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { apiUrl } from "@/lib/api-url";
+import { getAuthProfileCsrfTokenForRequest } from "@workspace/api-client-react";
 import {
   SETTINGS_CARD,
   SETTINGS_IMMERSIVE_BOTTOM,
@@ -37,10 +38,15 @@ async function fetchPrefs(): Promise<NotificationPrefsDto> {
 }
 
 async function patchPrefs(patch: Partial<NotificationPrefsDto>): Promise<NotificationPrefsDto> {
+  const csrf = getAuthProfileCsrfTokenForRequest();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (typeof csrf === "string" && csrf.length >= 32) {
+    headers["X-CSRF-Token"] = csrf;
+  }
   const res = await fetch(apiUrl("/api/account/notification-preferences"), {
     method: "PATCH",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(patch),
   });
   if (!res.ok) throw new Error(String(res.status));
@@ -89,12 +95,15 @@ export default function AccountNotifications() {
   const isRtl = locale === "ar";
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const q = useQuery({
+  const q = useQuery<NotificationPrefsDto, Error>({
     queryKey,
     queryFn: fetchPrefs,
     enabled: !!user,
     retry: 1,
   });
+
+  const refetchPrefs = () =>
+    void queryClient.fetchQuery({ queryKey, queryFn: fetchPrefs });
 
   const mut = useMutation({
     mutationFn: patchPrefs,
@@ -183,7 +192,7 @@ export default function AccountNotifications() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button type="button" variant="secondary" size="sm" onClick={() => void q.refetch()}>
+                <Button type="button" variant="secondary" size="sm" onClick={refetchPrefs}>
                   {t("account_notifications.retry")}
                 </Button>
                 {errStatus === 401 ? (
@@ -239,7 +248,7 @@ export default function AccountNotifications() {
           ) : (
             <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
               <p className="text-sm text-muted-foreground">{t("account_notifications.unexpected_empty")}</p>
-              <Button type="button" variant="secondary" size="sm" onClick={() => void q.refetch()}>
+              <Button type="button" variant="secondary" size="sm" onClick={refetchPrefs}>
                 {t("account_notifications.retry")}
               </Button>
             </div>

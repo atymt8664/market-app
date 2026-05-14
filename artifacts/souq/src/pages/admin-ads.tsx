@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import {
@@ -167,23 +167,39 @@ function FeaturedToggleButtons({
   );
 }
 
+const ADMIN_AD_STATUS_KEYS = new Set(FILTERS.map((f) => f.key));
+
+function parseAdminAdsSearch(searchString: string) {
+  const p = new URLSearchParams(searchString);
+  const rawStatus = p.get("status");
+  const status =
+    rawStatus && ADMIN_AD_STATUS_KEYS.has(rawStatus as (typeof FILTERS)[number]["key"])
+      ? rawStatus
+      : "all";
+  return {
+    status,
+    q: p.get("q") || "",
+    sort: p.get("sort") || "created",
+    featured: featuredFilterFromParam(p.get("featured")),
+  };
+}
+
 export default function AdminAdsPage() {
   const [location, navigate] = useLocation();
+  const searchString = useSearch();
   const queryClient = useQueryClient();
   const meQuery = useRequireAdmin();
   const { toast } = useToast();
 
-  const params = new URLSearchParams(window.location.search);
-  const [status, setStatus] = useState(params.get("status") || "all");
-  const [searchInput, setSearchInput] = useState(params.get("q") || "");
-  const [search, setSearch] = useState(params.get("q") || "");
-  const [featuredFilter, setFeaturedFilter] = useState<"all" | "true" | "false">(() =>
-    featuredFilterFromParam(params.get("featured")),
-  );
+  const initial = parseAdminAdsSearch(searchString);
+  const [status, setStatus] = useState(initial.status);
+  const [searchInput, setSearchInput] = useState(initial.q);
+  const [search, setSearch] = useState(initial.q);
+  const [featuredFilter, setFeaturedFilter] = useState<"all" | "true" | "false">(initial.featured);
   const [selectedAd, setSelectedAd] = useState<AdminAd | null>(null);
   const [dismissedFocusId, setDismissedFocusId] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState(params.get("sort") || "created");
-  const focusId = Number(params.get("focusId") || 0);
+  const [sortBy, setSortBy] = useState(initial.sort);
+  const focusId = Number(new URLSearchParams(searchString).get("focusId") || 0);
   const [pendingDelete, setPendingDelete] = useState<AdminAd | null>(null);
   const [featuredConfirm, setFeaturedConfirm] = useState<{
     ad: AdminAd;
@@ -210,6 +226,16 @@ export default function AdminAdsPage() {
     setDismissedFocusId(selectedAd?.id ?? focusId ?? null);
     setSelectedAd(null);
   }, [selectedAd?.id, focusId]);
+
+  /** Keep filters in sync when the query string changes (in-app navigation, back/forward). */
+  useEffect(() => {
+    const parsed = parseAdminAdsSearch(searchString);
+    setStatus(parsed.status);
+    setSearchInput(parsed.q);
+    setSearch(parsed.q);
+    setSortBy(parsed.sort);
+    setFeaturedFilter(parsed.featured);
+  }, [searchString]);
 
   useEffect(() => {
     const next = new URLSearchParams();

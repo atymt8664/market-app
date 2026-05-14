@@ -35,6 +35,12 @@ export function Layout({ children }: LayoutProps) {
   /** محادثة `/messages/:id` — fullscreen مثل واتساب: لا BottomNav ولا padding سفلي للشريط */
   const isMessageThreadRoute = /^\/messages\/\d+/.test(location);
   const isNotificationsRoute = location.startsWith("/notifications");
+  /** مسارات تسويق غامرة: بدون BottomNav */
+  const isImmersiveMarketingRoute =
+    location.startsWith("/promote/") ||
+    location === "/promote-preview" ||
+    location.startsWith("/professional-seller") ||
+    location.startsWith("/seller-trust");
   const isImmersiveShell =
     isMessageThreadRoute || isNotificationsRoute || isImmersiveSettingsLegalAccountRoute(location);
   const hideBottomNav =
@@ -43,7 +49,8 @@ export function Layout({ children }: LayoutProps) {
     location.startsWith("/signup") ||
     location.startsWith("/forgot-password") ||
     location.startsWith("/admin-login") ||
-    isImmersiveShell;
+    isImmersiveShell ||
+    isImmersiveMarketingRoute;
 
   return (
     <div className="w-full min-h-[100svh] bg-[#0A0A0A]">
@@ -54,7 +61,7 @@ export function Layout({ children }: LayoutProps) {
       <div
         className={cn(
           "relative mx-auto w-full max-w-screen-2xl min-h-[100svh] overflow-x-hidden bg-[#0A0A0A]",
-          isImmersiveShell
+          isImmersiveShell || isImmersiveMarketingRoute
             ? "pb-0"
             : "pb-[calc(64px+env(safe-area-inset-bottom,0px))] md:pb-[calc(72px+env(safe-area-inset-bottom,0px))]",
         )}
@@ -123,14 +130,17 @@ function BottomNav() {
     forceNavigate(target);
   };
   const logNavTap = (key: "profile" | "messages" | "favorites" | "create", target: string) => {
-    console.log("[bottom-nav]", {
-      key,
-      target,
-      isAuthenticated,
-      isLoading,
-      location,
-      href: `${window.location.pathname}${window.location.search}`,
-    });
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console -- BottomNav tap diagnostics (dev only)
+      console.log("[bottom-nav]", {
+        key,
+        target,
+        isAuthenticated,
+        isLoading,
+        location,
+        href: `${window.location.pathname}${window.location.search}`,
+      });
+    }
   };
 
   const handleCreateClick = () => {
@@ -199,7 +209,15 @@ function BottomNav() {
 
   return (
     <nav className="pointer-events-none fixed bottom-0 left-0 right-0 z-40">
-      <div className="pointer-events-auto w-full border-t border-primary/25 bg-[#0A0A0A]/94 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md shadow-[0_-1px_0_rgba(163,230,53,0.08),0_-12px_36px_-16px_rgba(0,0,0,0.65)]">
+      <div
+        className={cn(
+          "pointer-events-auto w-full border-t border-primary/25 pb-[env(safe-area-inset-bottom,0px)]",
+          /* موبايل: بدون blur (تكلفة GPU أثناء السكرول) — خلفية أغلق قليلًا + ظل أخف */
+          "bg-[#0A0A0A]/98 shadow-[0_-1px_0_rgba(163,230,53,0.06),0_-6px_20px_-14px_rgba(0,0,0,0.42)]",
+          /* md+: نفس الطبقة الزجاجية السابقة تقريبًا */
+          "md:bg-[#0A0A0A]/94 md:backdrop-blur-md md:shadow-[0_-1px_0_rgba(163,230,53,0.08),0_-12px_36px_-16px_rgba(0,0,0,0.65)]",
+        )}
+      >
         <div
           className="relative mx-auto flex max-w-screen-2xl items-stretch gap-1.5 px-2 py-2 md:gap-2 md:px-4 md:py-2.5 lg:px-8"
           dir="rtl"
@@ -218,7 +236,7 @@ function BottomNav() {
                 {isAuthenticated && favCount > 0 && (
                   <span
                     dir="ltr"
-                    className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-zinc-950 bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
+                    className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-zinc-950 bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_5px_-1px_hsl(var(--primary)/0.32)] md:shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
                   >
                     {favCount > 99 ? "99+" : favCount}
                   </span>
@@ -230,7 +248,7 @@ function BottomNav() {
 
           <button type="button" onClick={handleCreateClick} className="flex min-w-0 flex-1">
             <BottomNavSlot isActive={isCreateActive} promote>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/50 bg-zinc-950/90 text-primary shadow-[0_0_16px_-10px_hsl(var(--primary)/0.38)] ring-1 ring-primary/25 md:h-10 md:w-10">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/50 bg-zinc-950/90 text-primary shadow-[0_0_12px_-10px_hsl(var(--primary)/0.26)] ring-1 ring-primary/22 md:h-10 md:w-10 md:shadow-[0_0_16px_-10px_hsl(var(--primary)/0.38)] md:ring-primary/25">
                 <Plus className="h-5 w-5 md:h-6 md:w-6" strokeWidth={2.5} />
               </div>
               <span className="text-[10px] font-medium md:text-xs">{t("bottom_nav.post")}</span>
@@ -244,7 +262,7 @@ function BottomNav() {
                 {isAuthenticated && unreadTotal > 0 && (
                   <span
                     dir="ltr"
-                    className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-zinc-950 bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
+                    className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-zinc-950 bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_5px_-1px_hsl(var(--primary)/0.32)] md:shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
                   >
                     {unreadTotal > 99 ? "99+" : unreadTotal}
                   </span>
@@ -279,12 +297,18 @@ function BottomNavSlot({
   return (
     <div
       className={cn(
-        "flex h-full min-h-[52px] w-full flex-col items-center justify-center gap-1 rounded-xl border px-1 py-1.5 transition-all duration-200 md:min-h-[56px] md:py-2",
+        "flex h-full min-h-[52px] w-full flex-col items-center justify-center gap-1 rounded-xl border px-1 py-1.5 md:min-h-[56px] md:py-2",
+        /* انتقالات أخف: ألوان/حدود فقط على الموبايل لتقليل repaints */
+        "transition-[color,background-color,border-color,box-shadow] duration-150 ease-out md:duration-200",
         isActive
-          ? "border-primary/58 bg-zinc-900/95 text-primary shadow-[0_0_30px_-10px_hsl(var(--primary)/0.48)] ring-1 ring-primary/38 [&_svg]:text-primary [&_span]:font-semibold [&_span]:text-primary"
+          ? cn(
+              "border-primary/55 bg-zinc-900/95 text-primary ring-1 ring-primary/32 [&_svg]:text-primary [&_span]:font-semibold [&_span]:text-primary",
+              "shadow-[0_0_18px_-12px_hsl(var(--primary)/0.32)] md:border-primary/58 md:shadow-[0_0_30px_-10px_hsl(var(--primary)/0.48)] md:ring-primary/38",
+            )
           : cn(
-              "border-primary/30 bg-zinc-950/82 shadow-[0_0_22px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/16 hover:border-primary/45 hover:bg-zinc-900/92 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.28)] active:scale-[0.98]",
+              "border-primary/30 bg-zinc-950/82 ring-1 ring-primary/14 shadow-[0_0_14px_-14px_hsl(var(--primary)/0.12)] hover:border-primary/42 hover:bg-zinc-900/90 md:shadow-[0_0_22px_-14px_hsl(var(--primary)/0.16)] md:ring-primary/16 md:hover:border-primary/45 md:hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.28)]",
               "[&_svg]:text-primary/58 [&_span]:text-primary/52",
+              "md:active:scale-[0.98]",
               promote &&
                 "border-primary/42 bg-zinc-950/88 ring-primary/22 [&_svg]:text-primary/85 [&_span]:text-primary/72",
             ),

@@ -39,6 +39,7 @@ packages:
   - lib/*
   - lib/integrations/*
   - scripts
+  - play-distribution
 
 catalog:
   '@replit/vite-plugin-cartographer': ^0.5.1
@@ -72,6 +73,7 @@ onlyBuiltDependencies:
   - esbuild
   - msw
   - unrs-resolver
+  - sharp
 
 overrides:
   # replit uses linux-x64 only, we can exclude all other platforms

@@ -10,6 +10,7 @@ import {
   Loader2,
   Flag,
   ShieldBan,
+  ShieldOff,
   Megaphone,
   CalendarDays,
   MoreVertical,
@@ -27,9 +28,12 @@ import {
   getListAdsQueryKey,
   useAuthUpdateProfile,
   getAuthMeQueryKey,
+  getAuthProfileCsrfTokenForRequest,
+  useUserPresenceBatch,
+  invalidateUserPresenceBatchQueries,
 } from "@workspace/api-client-react";
 import { useUpload } from "@workspace/object-storage-web";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,6 +69,8 @@ import {
   ProfileStatTile,
 } from "@/components/profile-stat-tiles";
 import { ProfileStatsDetailSheet } from "@/components/profile-stats-detail-sheet";
+import { ProfileStatsListsPanel } from "@/components/profile-stats-lists-panel";
+import { UserPresenceBadge } from "@/components/user-presence-badge";
 import {
   ProfileAvatarPreviewDialog,
   ProfileAvatarCameraBadge,
@@ -164,6 +170,16 @@ export default function UserProfile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  const profilePresenceTargets = useMemo(() => {
+    if (!profile || profile.isSelf || !me?.id) return [];
+    return [userId];
+  }, [profile, me?.id, userId]);
+
+  const profilePresenceQ = useUserPresenceBatch(profilePresenceTargets, {
+    enabled: profileQueryEnabled && profilePresenceTargets.length > 0,
+  });
+  const profilePresenceEntry = profilePresenceQ.data?.byUserId[String(userId)];
+
   const listAdsParams = { userId, limit: 100 } as const;
   const adsKey = getListAdsQueryKey(listAdsParams);
   const { data: userAds, isLoading: adsLoading } = useListAds(
@@ -171,6 +187,29 @@ export default function UserProfile() {
     { query: { queryKey: adsKey, enabled: profileQueryEnabled } },
   );
   const sellerAds = userAds ?? [];
+
+  const blockStatusQueryEnabled =
+    profileQueryEnabled &&
+    Boolean(me?.id) &&
+    profile != null &&
+    !profile.isSelf;
+
+  const userBlockStatusQueryKey = ["userBlockStatus", userId, me?.id ?? 0] as const;
+
+  const { data: blockStatus } = useQuery({
+    queryKey: userBlockStatusQueryKey,
+    enabled: blockStatusQueryEnabled,
+    queryFn: async () => {
+      const res = await fetch(apiUrl(`/api/users/${userId}/block-status`), {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => "");
+        throw new Error(errBody || `HTTP ${res.status}`);
+      }
+      return (await res.json()) as { blockedByMe: boolean; blocksMe?: boolean };
+    },
+  });
 
   const followMut = useFollowUser();
   const unfollowMut = useUnfollowUser();
@@ -180,6 +219,7 @@ export default function UserProfile() {
   const [reportReason, setReportReason] = useState("");
   const [reportExtra, setReportExtra] = useState("");
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+  const [unblockConfirmOpen, setUnblockConfirmOpen] = useState(false);
   const [showMoreHint, setShowMoreHint] = useState(false);
   const [statsSheet, setStatsSheet] = useState<
     null | "followers" | "following" | "views"
@@ -224,6 +264,15 @@ export default function UserProfile() {
     setShowMoreHint(false);
   };
 
+  const csrfHeadersForUserMutations = (): Record<string, string> => {
+    const headers: Record<string, string> = { Accept: "application/json" };
+    const csrf = getAuthProfileCsrfTokenForRequest();
+    if (typeof csrf === "string" && csrf.length >= 32) {
+      headers["X-CSRF-Token"] = csrf;
+    }
+    return headers;
+  };
+
   const submitUserReport = async () => {
     if (!reportReason.trim()) {
       toast({ title: t("user_profile.report.choose_reason_toast"), variant: "destructive" });
@@ -239,9 +288,16 @@ export default function UserProfile() {
     }
     setReporting(true);
     try {
+      const csrf = getAuthProfileCsrfTokenForRequest();
+      const reportHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (typeof csrf === "string" && csrf.length >= 32) {
+        reportHeaders["X-CSRF-Token"] = csrf;
+      }
       const res = await fetch(apiUrl("/api/reports"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: reportHeaders,
         credentials: "include",
         body: JSON.stringify({
           targetUserId: userId,
@@ -283,10 +339,15 @@ export default function UserProfile() {
       const res = await fetch(apiUrl(`/api/users/${userId}/block`), {
         method: "POST",
         credentials: "include",
-        headers: { Accept: "application/json" },
+        headers: csrfHeadersForUserMutations(),
       });
       if (res.ok) {
         toast({ title: t("user_profile.block_success") });
+        queryClient.setQueryData<{ blockedByMe: boolean }>(userBlockStatusQueryKey, {
+          blockedByMe: true,
+        });
+        await queryClient.invalidateQueries({ queryKey: userBlockStatusQueryKey });
+        await invalidateUserPresenceBatchQueries(queryClient, [userId]);
         return;
       }
     } catch {
@@ -295,6 +356,38 @@ export default function UserProfile() {
     toast({
       title: t("user_profile.block_unavailable_title"),
       description: t("user_profile.block_unavailable_desc"),
+      variant: "destructive",
+    });
+  };
+
+  const attemptUnblockUser = async () => {
+    setUnblockConfirmOpen(false);
+    if (!me) {
+      navigate(`/login?redirect=/users/${userId}`);
+      return;
+    }
+    try {
+      const res = await fetch(apiUrl(`/api/users/${userId}/block`), {
+        method: "DELETE",
+        credentials: "include",
+        headers: csrfHeadersForUserMutations(),
+      });
+      if (res.ok) {
+        toast({ title: t("user_profile.unblock_success") });
+        queryClient.setQueryData<{ blockedByMe: boolean }>(userBlockStatusQueryKey, {
+          blockedByMe: false,
+        });
+        await queryClient.invalidateQueries({ queryKey: userBlockStatusQueryKey });
+        await invalidateUserPresenceBatchQueries(queryClient, [userId]);
+        return;
+      }
+    } catch {
+      /* network */
+    }
+    toast({
+      title: t("user_profile.block_unavailable_title"),
+      description: t("user_profile.block_unavailable_desc"),
+      variant: "destructive",
     });
   };
 
@@ -471,10 +564,23 @@ export default function UserProfile() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className={dropdownItemClass}
-                  onSelect={() => setBlockConfirmOpen(true)}
+                  onSelect={() =>
+                    blockStatus?.blockedByMe
+                      ? setUnblockConfirmOpen(true)
+                      : setBlockConfirmOpen(true)
+                  }
                 >
-                  <ShieldBan className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
-                  حظر المستخدم
+                  {blockStatus?.blockedByMe ? (
+                    <>
+                      <ShieldOff className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
+                      {t("user_profile.unblock_menu")}
+                    </>
+                  ) : (
+                    <>
+                      <ShieldBan className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
+                      {t("user_profile.block_confirm_cta")}
+                    </>
+                  )}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -552,6 +658,15 @@ export default function UserProfile() {
                 <h2 className="truncate text-xl font-bold text-foreground md:text-2xl">
                   {profile.name}
                 </h2>
+                {profilePresenceTargets.length > 0 ? (
+                  <div className="mt-1.5 w-full min-w-0">
+                    <UserPresenceBadge
+                      entry={profilePresenceEntry}
+                      isLoading={profilePresenceQ.isPending}
+                      variant="default"
+                    />
+                  </div>
+                ) : null}
                 {profile.city ? (
                   <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                     <MapPin className="h-3.5 w-3.5 shrink-0 text-primary/80" />
@@ -683,11 +798,14 @@ export default function UserProfile() {
                 : ""
         }
       >
-        <p className="text-sm leading-relaxed">
-          {statsSheet === "views"
-            ? t("profile.stats.sheet.empty_views_list")
-            : t("profile.stats.sheet.empty_follow_list")}
-        </p>
+        {statsSheet !== null ? (
+          <ProfileStatsListsPanel
+            sheet={statsSheet}
+            profileUserId={userId}
+            isSelf={Boolean(profile?.isSelf)}
+            viewerUserId={me?.id}
+          />
+        ) : null}
       </ProfileStatsDetailSheet>
 
       <ProfileAvatarPreviewDialog
@@ -830,6 +948,37 @@ export default function UserProfile() {
               )}
             >
               {t("user_profile.block_cancel")}
+            </AlertDialogCancel>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={unblockConfirmOpen} onOpenChange={setUnblockConfirmOpen}>
+        <AlertDialogContent dir="rtl" className={cn(alertSurface, "text-right")}>
+          <AlertDialogHeader className="space-y-2 text-right">
+            <AlertDialogTitle className="text-lg font-bold text-foreground">
+              {t("user_profile.unblock_confirm_title")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
+              {t("user_profile.unblock_confirm_desc")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-row-reverse flex-wrap gap-2 pt-4">
+            <button
+              type="button"
+              onClick={() => void attemptUnblockUser()}
+              className={cn(
+                "inline-flex h-11 min-w-[8rem] flex-1 items-center justify-center rounded-xl border border-primary/45 bg-primary/15 px-4 text-sm font-semibold text-primary shadow-[0_0_18px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 transition-colors hover:bg-primary/22 sm:flex-none",
+              )}
+            >
+              {t("user_profile.unblock_confirm_cta")}
+            </button>
+            <AlertDialogCancel
+              className={cn(
+                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-zinc-950/90 text-sm font-semibold text-foreground hover:bg-zinc-900 sm:flex-none",
+              )}
+            >
+              {t("user_profile.unblock_cancel")}
             </AlertDialogCancel>
           </div>
         </AlertDialogContent>

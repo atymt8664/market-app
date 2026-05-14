@@ -5,6 +5,7 @@ import {
   MapPin,
   Search,
   Check,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -22,11 +23,13 @@ import {
   filterCountriesByQuery,
   getMarketplaceCountryOptions,
 } from "@/lib/marketplace-location-countries";
-import { getCitiesByCountry } from "@/lib/signup-location-data";
+import {
+  allowsManualCityForCountry,
+  loadBundledCitiesWithRetry,
+} from "@/lib/locations/cities-loader";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 
-const COUNTRY_OPTIONS = getMarketplaceCountryOptions();
 const CITY_RESULTS_CAP = 120;
 
 type Step = 1 | 2;
@@ -46,6 +49,13 @@ export function LocationPicker({
 
   const [countryQuery, setCountryQuery] = useState("");
   const [cityQuery, setCityQuery] = useState("");
+  const [countryOptions, setCountryOptions] = useState<MarketplaceCountryOption[]>([]);
+  const [countryOptionsLoading, setCountryOptionsLoading] = useState(false);
+  const [cityList, setCityList] = useState<string[]>([]);
+  const [cityListLoad, setCityListLoad] = useState<
+    "idle" | "loading" | "error" | "ready"
+  >("idle");
+  const [cityListRetryNonce, setCityListRetryNonce] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -55,15 +65,44 @@ export function LocationPicker({
     setCityQuery("");
   }, [open]);
 
-  const filteredCountries = useMemo(
-    () => filterCountriesByQuery(COUNTRY_OPTIONS, countryQuery),
-    [countryQuery],
-  );
+  useEffect(() => {
+    if (!open) return;
+    setCountryOptionsLoading(true);
+    let cancelled = false;
+    void getMarketplaceCountryOptions()
+      .then((opts) => {
+        if (!cancelled) setCountryOptions(opts);
+      })
+      .finally(() => {
+        if (!cancelled) setCountryOptionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
-  const cityList = useMemo(() => {
-    if (!draftCountry) return [];
-    return getCitiesByCountry(draftCountry.code);
-  }, [draftCountry]);
+  useEffect(() => {
+    if (!draftCountry) {
+      setCityList([]);
+      setCityListLoad("idle");
+      return;
+    }
+    let cancelled = false;
+    setCityListLoad("loading");
+    void loadBundledCitiesWithRetry(draftCountry.code).then((r) => {
+      if (cancelled) return;
+      setCityList(r.cities);
+      setCityListLoad(r.loadFailed ? "error" : "ready");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [draftCountry?.code, cityListRetryNonce]);
+
+  const filteredCountries = useMemo(
+    () => filterCountriesByQuery(countryOptions, countryQuery),
+    [countryOptions, countryQuery],
+  );
 
   const filteredCities = useMemo(() => {
     const q = cityQuery.trim().toLowerCase();
@@ -72,6 +111,11 @@ export function LocationPicker({
       .filter((c) => c.toLowerCase().includes(q))
       .slice(0, CITY_RESULTS_CAP);
   }, [cityList, cityQuery]);
+
+  const draftAllowsManual = useMemo(
+    () => (draftCountry ? allowsManualCityForCountry(draftCountry.code) : false),
+    [draftCountry?.code],
+  );
 
   const handleClearLocation = () => {
     setCity("");
@@ -213,7 +257,11 @@ export function LocationPicker({
                       <Check className="h-4 w-4 shrink-0 text-primary" />
                     ) : null}
                   </button>
-                  {filteredCountries.length === 0 ? (
+                  {countryOptionsLoading ? (
+                    <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                      {t("location_picker.loading_countries")}
+                    </div>
+                  ) : filteredCountries.length === 0 ? (
                     <div className="px-4 py-10 text-center text-sm text-muted-foreground">
                       {t("location_picker.no_countries")}
                     </div>
@@ -253,7 +301,13 @@ export function LocationPicker({
                     <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       autoFocus
-                      placeholder={t("location_picker.search_city")}
+                      placeholder={
+                        draftAllowsManual &&
+                        cityList.length === 0 &&
+                        cityListLoad === "ready"
+                          ? t("location_picker.manual_city_placeholder")
+                          : t("location_picker.search_city")
+                      }
                       value={cityQuery}
                       onChange={(e) => setCityQuery(e.target.value)}
                       className="pr-10"
@@ -261,11 +315,58 @@ export function LocationPicker({
                     />
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {t("location_picker.search_city_hint")}
+                    {draftAllowsManual && cityList.length === 0 && cityListLoad === "ready"
+                      ? t("location_picker.manual_city_field_hint")
+                      : t("location_picker.search_city_hint")}
                   </p>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                  {cityQuery.trim().length < 2 ? (
+                  {cityListLoad === "loading" ? (
+                    <div className="flex flex-col items-center gap-3 px-6 py-14 text-center text-sm text-muted-foreground">
+                      <Loader2 className="h-9 w-9 animate-spin opacity-60" />
+                      <p>{t("location_picker.loading_cities")}</p>
+                    </div>
+                  ) : cityListLoad === "error" ? (
+                    <div className="flex flex-col items-center gap-3 px-6 py-12 text-center text-sm">
+                      <p className="text-muted-foreground">
+                        {t("location_picker.cities_load_error")}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-w-[8rem]"
+                        onClick={() => setCityListRetryNonce((n) => n + 1)}
+                      >
+                        {t("location_picker.cities_retry")}
+                      </Button>
+                    </div>
+                  ) : cityListLoad === "ready" && draftAllowsManual && cityList.length === 0 ? (
+                    <div className="space-y-4 px-4 py-8">
+                      <div className="rounded-lg border border-border bg-muted/15 p-4 text-center text-sm text-muted-foreground">
+                        <MapPin className="mx-auto mb-3 h-9 w-9 opacity-40" />
+                        <p>{t("location_picker.manual_city_hint")}</p>
+                        {cityQuery.trim().length >= 2 ? (
+                          <Button
+                            type="button"
+                            className="mt-4 w-full"
+                            variant="secondary"
+                            onClick={() => handlePickCity(cityQuery.trim())}
+                          >
+                            {t("location_picker.manual_city_confirm")}
+                          </Button>
+                        ) : (
+                          <p className="mt-3 text-xs text-muted-foreground">
+                            {t("location_picker.manual_city_min_chars")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : cityListLoad === "ready" && cityList.length === 0 && !draftAllowsManual ? (
+                    <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+                      <p>{t("location_picker.no_cities_data")}</p>
+                    </div>
+                  ) : cityQuery.trim().length < 2 ? (
                     <div className="flex flex-col items-center gap-2 px-6 py-12 text-center text-sm text-muted-foreground">
                       <MapPin className="h-10 w-10 opacity-40" />
                       <p>{t("location_picker.type_to_search")}</p>

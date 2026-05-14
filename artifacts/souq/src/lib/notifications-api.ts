@@ -1,4 +1,5 @@
 import { apiUrl } from "@/lib/api-url";
+import { getAuthProfileCsrfTokenForRequest } from "@workspace/api-client-react";
 
 export type AppNotification = {
   id: number;
@@ -75,13 +76,20 @@ async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
 }
 
 async function apiPatchJson<T>(path: string): Promise<T> {
+  const csrf = getAuthProfileCsrfTokenForRequest();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (typeof csrf === "string" && csrf.length >= 32) {
+    headers["X-CSRF-Token"] = csrf;
+  }
   let res: Response;
   try {
     res = await fetch(apiUrl(path), {
       method: "PATCH",
       credentials: "include",
       cache: "no-store",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: "{}",
     });
   } catch {

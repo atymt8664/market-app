@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { Country } from "country-state-city";
 import { useLocalStorage } from "./use-local-storage";
 import { GERMAN_CITIES } from "@/lib/german-cities";
+import { resolveCountryName } from "@/lib/locations/manifest-data";
 
 const germanSet = new Set(GERMAN_CITIES.map((c) => c.toLowerCase()));
 
@@ -23,11 +23,10 @@ export function useSelectedCity() {
 
   const displayLabel = useMemo(() => {
     if (!city) return null;
-    const fromCode = countryCode
-      ? Country.getCountryByCode(countryCode)?.name
-      : undefined;
-    if (fromCode) {
-      return `${city}, ${fromCode}`;
+    if (countryCode) {
+      const part =
+        resolveCountryName(countryCode) ?? countryCode.trim().toUpperCase();
+      return `${city}, ${part}`;
     }
     if (germanSet.has(city.toLowerCase())) {
       return `${city}, Germany`;

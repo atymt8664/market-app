@@ -55,3 +55,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Android Play upload keystore (Bubblewrap TWA) — never commit
+play-distribution/twa/souq-twa-android/*.keystore
+play-distribution/twa/souq-twa-android/*.jks

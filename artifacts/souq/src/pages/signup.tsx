@@ -43,9 +43,10 @@ import { useLocale } from "@/hooks/use-locale";
 import {
   SIGNUP_COUNTRIES,
   SIGNUP_COUNTRY_BY_CODE,
+  allowsManualCityForCountry,
   countryCodeToFlagEmoji,
-  getCitiesByCountry,
   getPhoneCodeFromCountry,
+  loadBundledCitiesWithRetry,
 } from "@/lib/signup-location-data";
 
 const schema = z
@@ -79,15 +80,6 @@ const schema = z
         code: z.ZodIssueCode.custom,
         path: ["confirmPassword"],
         message: "auth.validation.passwords_mismatch",
-      });
-    }
-    const country = SIGNUP_COUNTRY_BY_CODE[values.countryCode];
-    if (!country) return;
-    if (!getCitiesByCountry(country.code).includes(values.city)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["city"],
-        message: "auth.validation.city_required",
       });
     }
   });
@@ -125,15 +117,42 @@ export default function Signup() {
     },
   });
 
-  const selectedCountry = SIGNUP_COUNTRY_BY_CODE[form.watch("countryCode")];
-  const phoneCode = selectedCountry?.phoneCode ?? getPhoneCodeFromCountry(form.watch("countryCode"));
-  const countryCities = selectedCountry ? getCitiesByCountry(selectedCountry.code) : [];
+  const [countryCities, setCountryCities] = useState<string[]>([]);
+  const [cityListLoadState, setCityListLoadState] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >("idle");
+  const [cityListAllowsManual, setCityListAllowsManual] = useState(false);
+  const [cityListRetryNonce, setCityListRetryNonce] = useState(0);
+
+  const countryCode = form.watch("countryCode");
+  const selectedCountry = SIGNUP_COUNTRY_BY_CODE[countryCode];
+  const phoneCode = selectedCountry?.phoneCode ?? getPhoneCodeFromCountry(countryCode);
   const citySuggestions =
     cityQuery.trim().length < 2 || !selectedCountry
       ? []
       : countryCities.filter((city) =>
           city.toLowerCase().includes(cityQuery.trim().toLowerCase()),
         );
+
+  useEffect(() => {
+    if (!selectedCountry?.code) {
+      setCountryCities([]);
+      setCityListLoadState("idle");
+      setCityListAllowsManual(false);
+      return;
+    }
+    let cancelled = false;
+    setCityListLoadState("loading");
+    void loadBundledCitiesWithRetry(selectedCountry.code).then((r) => {
+      if (cancelled) return;
+      setCountryCities(r.cities);
+      setCityListAllowsManual(r.allowsManualCityEntry);
+      setCityListLoadState(r.loadFailed ? "error" : "ready");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCountry?.code, cityListRetryNonce]);
 
   useEffect(() => {
     if (rateLimitSeconds <= 0) return;
@@ -157,6 +176,20 @@ export default function Signup() {
     if (!citySelectedFromSuggestions || !data.city) {
       form.setError("city", { type: "manual", message: "auth.validation.city_required" });
       return;
+    }
+    const trimmedCity = data.city.trim();
+    const bundle = await loadBundledCitiesWithRetry(data.countryCode);
+    const manual = allowsManualCityForCountry(data.countryCode);
+    if (manual && (bundle.loadFailed || bundle.cities.length === 0)) {
+      if (trimmedCity.length < 2) {
+        form.setError("city", { type: "manual", message: "auth.validation.city_required" });
+        return;
+      }
+    } else {
+      if (!bundle.cities.includes(data.city)) {
+        form.setError("city", { type: "manual", message: "auth.validation.city_required" });
+        return;
+      }
     }
     setIsSubmitting(true);
     try {
@@ -439,7 +472,13 @@ export default function Signup() {
                           >
                             <Input
                               autoFocus
-                              placeholder={t("auth.signup.search_city")}
+                              placeholder={
+                                cityListAllowsManual &&
+                                countryCities.length === 0 &&
+                                cityListLoadState === "ready"
+                                  ? t("auth.signup.manual_city_placeholder")
+                                  : t("auth.signup.search_city")
+                              }
                               value={cityQuery}
                               onChange={(e) => {
                                 const value = e.target.value;
@@ -449,35 +488,94 @@ export default function Signup() {
                               }}
                               className={cn(AUTH_INPUT, "mb-2")}
                             />
-                            <div
-                              className="max-h-[min(50dvh,280px)] touch-pan-y space-y-2 overflow-y-auto overscroll-y-contain px-0.5 py-1"
-                              role="listbox"
-                              aria-label={t("auth.signup.city_list_aria")}
-                            >
-                              {(cityQuery.trim().length < 2 ? countryCities.slice(0, 80) : citySuggestions).map(
-                                (city) => (
-                                  <button
-                                    key={city}
-                                    type="button"
-                                    role="option"
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      setCityQuery(city);
-                                      field.onChange(city);
-                                      setCitySelectedFromSuggestions(true);
-                                      setCityPickerOpen(false);
-                                    }}
-                                    className={cn(
-                                      AUTH_CITY_CARD_ROW,
-                                      field.value === city &&
-                                        "border-primary/48 bg-zinc-900/95 shadow-[0_0_20px_-10px_hsl(var(--primary)/0.28)] ring-primary/22",
+                            {cityListLoadState === "loading" ? (
+                              <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                                {t("auth.signup.cities_loading")}
+                              </div>
+                            ) : cityListLoadState === "error" ? (
+                              <div className="space-y-3 rounded-lg border border-destructive/25 bg-destructive/5 p-4 text-center text-sm text-muted-foreground">
+                                <p>{t("auth.signup.cities_load_error")}</p>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                  }}
+                                  onClick={() => setCityListRetryNonce((n) => n + 1)}
+                                >
+                                  {t("auth.signup.cities_retry")}
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                {cityListAllowsManual && countryCities.length === 0 ? (
+                                  <div className="mb-2 rounded-lg border border-primary/20 bg-zinc-950/60 p-3 text-sm leading-relaxed text-muted-foreground">
+                                    <p>{t("auth.signup.manual_city_hint")}</p>
+                                    {cityQuery.trim().length >= 2 ? (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className={cn("mt-3 w-full border-primary/35")}
+                                        onMouseDown={(e) => {
+                                          e.preventDefault();
+                                          const v = cityQuery.trim();
+                                          setCityQuery(v);
+                                          field.onChange(v);
+                                          setCitySelectedFromSuggestions(true);
+                                          setCityPickerOpen(false);
+                                        }}
+                                      >
+                                        {t("auth.signup.manual_city_confirm")}
+                                      </Button>
+                                    ) : (
+                                      <p className="mt-2 text-xs text-muted-foreground/90">
+                                        {t("auth.signup.manual_city_min_chars")}
+                                      </p>
                                     )}
+                                  </div>
+                                ) : null}
+                                {countryCities.length === 0 && !cityListAllowsManual ? (
+                                  <div className="py-8 text-center text-sm text-muted-foreground">
+                                    {t("auth.signup.no_cities_for_country")}
+                                  </div>
+                                ) : countryCities.length > 0 ? (
+                                  <div
+                                    className="max-h-[min(50dvh,280px)] touch-pan-y space-y-2 overflow-y-auto overscroll-y-contain px-0.5 py-1"
+                                    role="listbox"
+                                    aria-label={t("auth.signup.city_list_aria")}
                                   >
-                                    <span className="min-w-0 flex-1 truncate text-right">{city}</span>
-                                  </button>
-                                ),
-                              )}
-                            </div>
+                                    {(cityQuery.trim().length < 2
+                                      ? countryCities.slice(0, 80)
+                                      : citySuggestions
+                                    ).map((city) => (
+                                      <button
+                                        key={city}
+                                        type="button"
+                                        role="option"
+                                        onMouseDown={(e) => {
+                                          e.preventDefault();
+                                          setCityQuery(city);
+                                          field.onChange(city);
+                                          setCitySelectedFromSuggestions(true);
+                                          setCityPickerOpen(false);
+                                        }}
+                                        className={cn(
+                                          AUTH_CITY_CARD_ROW,
+                                          field.value === city &&
+                                            "border-primary/48 bg-zinc-900/95 shadow-[0_0_20px_-10px_hsl(var(--primary)/0.28)] ring-primary/22",
+                                        )}
+                                      >
+                                        <span className="min-w-0 flex-1 truncate text-right">{city}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </>
+                            )}
                           </div>
                         )}
                       </div>

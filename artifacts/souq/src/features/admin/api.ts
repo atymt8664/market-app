@@ -13,6 +13,7 @@ import type {
   AdminUserDetails,
 } from "./types";
 import { apiUrl } from "@/lib/api-url";
+import { getAuthProfileCsrfTokenForRequest } from "@workspace/api-client-react";
 
 let adminCsrfToken: string | null = null;
 
@@ -52,6 +53,10 @@ async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
 
 export function getAdminMe(signal?: AbortSignal) {
   return apiGet<{ isAdmin: boolean }>("/api/admin/me", signal);
+}
+
+export function getAdminActiveAppUsersCount(signal?: AbortSignal) {
+  return apiGet<{ count: number }>("/api/admin/active-app-users-count", signal);
 }
 
 export type AdminAppSettings = {
@@ -209,9 +214,10 @@ export async function admin2faSetupConfirm(
     }),
   });
   const text = await res.text();
-  let parsed: { ok?: boolean; backupCodes?: string[]; error?: string } | null = null;
+  type Admin2faSetupConfirmJson = { ok?: boolean; backupCodes?: string[]; error?: string };
+  let parsed: Admin2faSetupConfirmJson | null = null;
   try {
-    parsed = text ? (JSON.parse(text) as typeof parsed) : null;
+    parsed = text ? (JSON.parse(text) as Admin2faSetupConfirmJson) : null;
   } catch {
     parsed = null;
   }
@@ -222,8 +228,8 @@ export async function admin2faSetupConfirm(
         : "فشل تأكيد المصادقة الثنائية";
     throw new Error(msg);
   }
-  const codes = Array.isArray(parsed?.backupCodes) ? parsed!.backupCodes! : [];
-  return { backupCodes: codes.filter((c) => typeof c === "string") };
+  const codes = Array.isArray(parsed?.backupCodes) ? parsed.backupCodes : [];
+  return { backupCodes: codes.filter((c: unknown) => typeof c === "string") };
 }
 
 export async function admin2faDisable(currentPassword: string, code: string): Promise<void> {
@@ -238,9 +244,10 @@ export async function admin2faDisable(currentPassword: string, code: string): Pr
     }),
   });
   const text = await res.text();
-  let parsed: { error?: string } | null = null;
+  type Admin2faDisableJson = { error?: string };
+  let parsed: Admin2faDisableJson | null = null;
   try {
-    parsed = text ? (JSON.parse(text) as typeof parsed) : null;
+    parsed = text ? (JSON.parse(text) as Admin2faDisableJson) : null;
   } catch {
     parsed = null;
   }
@@ -402,7 +409,14 @@ export async function createSupportTicket(payload: {
     method: "POST",
     credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: (() => {
+      const h = new Headers({ "Content-Type": "application/json" });
+      const userCsrf = getAuthProfileCsrfTokenForRequest();
+      if (typeof userCsrf === "string" && userCsrf.length >= 32) {
+        h.set("X-CSRF-Token", userCsrf);
+      }
+      return h;
+    })(),
     body: JSON.stringify(normalizedPayload),
   });
   if (!res.ok) {

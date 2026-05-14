@@ -21,10 +21,6 @@ import {
   Plus,
   Truck,
   ShieldAlert,
-  Zap,
-  TrendingUp,
-  BadgeCheck,
-  Info,
   X,
 } from "lucide-react";
 import { useUpload } from "@workspace/object-storage-web";
@@ -57,6 +53,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { CitySelect } from "@/components/city-select";
 import { CreateAdPreviewDialog } from "@/components/create-ad-preview-dialog";
 import { CreateAdImageGallery } from "@/components/create-ad-image-gallery";
+import { CreateAdPromotionTeaser } from "@/components/create-ad-promotion-teaser";
 import {
   buildAdDetailsPayload,
   parseStoredAdDetails,
@@ -177,14 +174,6 @@ interface ShippingMethod {
   priceText?: string;
   compactPrice?: string;
   logo: "hermes" | "dhl" | "dpd" | "ups" | "gls" | "other";
-}
-
-interface PromotionFeature {
-  id: string;
-  title: string;
-  description: string;
-  price: string;
-  icon: "highlight" | "boost" | "premium";
 }
 
 interface UploadFailureDetail {
@@ -614,33 +603,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     [locale],
   );
 
-  const promotionFeatures: PromotionFeature[] = useMemo(
-    () => [
-      {
-        id: "highlight",
-        title: t("create_ad.promotion.highlight_title"),
-        price: t("create_ad.promotion.highlight_price"),
-        description: t("create_ad.promotion.highlight_desc"),
-        icon: "highlight",
-      },
-      {
-        id: "daily_boost",
-        title: t("create_ad.promotion.daily_boost_title"),
-        price: t("create_ad.promotion.daily_boost_price"),
-        description: t("create_ad.promotion.daily_boost_desc"),
-        icon: "boost",
-      },
-      {
-        id: "premium_ad",
-        title: t("create_ad.promotion.premium_title"),
-        price: t("create_ad.promotion.premium_price"),
-        description: t("create_ad.promotion.premium_desc"),
-        icon: "premium",
-      },
-    ],
-    [locale],
-  );
-
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       const target = isEdit ? `/edit/${editId}` : "/new";
@@ -868,12 +830,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     return <Truck className="w-5 h-5 text-primary shrink-0" />;
   };
 
-  const renderPromotionIcon = (icon: PromotionFeature["icon"]) => {
-    if (icon === "boost") return <TrendingUp className="w-5 h-5 text-primary" />;
-    if (icon === "premium") return <BadgeCheck className="w-5 h-5 text-primary" />;
-    return <Zap className="w-5 h-5 text-primary" />;
-  };
-
   const applyCategorySelection = (
     mainName: string,
     subName: string,
@@ -965,7 +921,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
         size: fallbackFile?.size || 0,
         reason: supabaseReason,
       };
-      console.error("Image upload failed", detail);
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console -- image upload failure diagnostics (dev only)
+        console.error("Image upload failed", detail);
+      }
       const uploadError = new Error(supabaseReason);
       (uploadError as Error & { details?: UploadFailureDetail[] }).details = [
         detail,
@@ -1124,9 +1083,12 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           ? rawExt
           : "jpg";
         try {
-          console.log("[create-ad] uploading selected image to API (folder=ads)", {
-            hasUserId: true,
-          });
+          if (import.meta.env.DEV) {
+            // eslint-disable-next-line no-console
+            console.log("[create-ad] uploading selected image to API (folder=ads)", {
+              hasUserId: true,
+            });
+          }
           const result = await uploadFile(file, {
             folder: "ads",
             userId: user.id,
@@ -1140,7 +1102,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             URL.revokeObjectURL(previewUrl);
           }
         } catch (err) {
-          console.error("[create-ad] immediate image upload failed", err);
+          if (import.meta.env.DEV) {
+            // eslint-disable-next-line no-console
+            console.error("[create-ad] immediate image upload failed", err);
+          }
           toast({
             title: t("create_ad.upload.single_failed_title"),
             description:
@@ -1149,9 +1114,12 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           });
         }
       } else {
-        console.log(
-          "[create-ad] image preview only — sign in to upload; or upload runs when you publish",
-        );
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.log(
+            "[create-ad] image preview only — sign in to upload; or upload runs when you publish",
+          );
+        }
       }
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -1357,6 +1325,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       ? selectedShippingLabels
       : [t("create_ad.shipping.note_2")];
   const promotionsPreviewLines: string[] = [];
+  const promotePreviewHref = useMemo(() => {
+    const ret = isEdit && typeof editId === "number" ? `/edit/${editId}` : "/new";
+    return `/promote-preview?return=${encodeURIComponent(ret)}`;
+  }, [isEdit, editId]);
   const currencyLabelForPreview =
     CURRENCY_OPTIONS.find((c) => c.id === selectedCurrency)?.label ??
     selectedCurrency;
@@ -2288,51 +2260,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             <label className="block text-start text-sm font-medium">
               {t("create_ad.promotion.title")}
             </label>
-            <div className={adCardShell}>
-              <div className="mb-3 rounded-xl border border-primary/35 bg-primary/8 px-3 py-2.5 text-start">
-                <p className="text-sm font-semibold text-foreground">
-                  {t("create_ad.promotion.unavailable_title")}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                  {t("create_ad.promotion.unavailable_detail")}
-                </p>
-              </div>
-              <div
-                className="pointer-events-none space-y-0 opacity-[0.45]"
-                aria-hidden
-              >
-                {promotionFeatures.map((feature, index) => {
-                  const isLast = index === promotionFeatures.length - 1;
-                  return (
-                    <div
-                      key={feature.id}
-                      className={`w-full py-2 text-start ${
-                        !isLast ? "mb-1 border-b border-primary/15 pb-3" : ""
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex min-w-0 items-start gap-2">
-                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-primary/35" />
-                          <span className="mt-0.5">
-                            {renderPromotionIcon(feature.icon)}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium">{feature.title}</p>
-                            <p className="mt-0.5 text-xs text-zinc-500">
-                              {feature.description}
-                            </p>
-                            <p className="mt-1 text-xs font-semibold text-primary">
-                              {feature.price}
-                            </p>
-                          </div>
-                        </div>
-                        <Info className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <CreateAdPromotionTeaser isRtl={isRtl} previewHref={promotePreviewHref} />
           </section>
 
           <section className="space-y-3" dir={isRtl ? "rtl" : "ltr"}>

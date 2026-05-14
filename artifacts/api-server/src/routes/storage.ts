@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { requireAuth } from "../middlewares/require-auth";
+import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import { Readable } from "stream";
 import multer from "multer";
 import {
@@ -32,7 +33,12 @@ const getMissingConfigResponse = (error: MissingObjectStorageConfigError) => ({
   missingEnvVar: error.missingEnvVar,
 });
 
-router.post("/storage/uploads/ad-images", upload.array("images", 10), requireAuth, async (req: Request, res: Response) => {
+router.post(
+  "/storage/uploads/ad-images",
+  requireAuth,
+  requireUserCsrf,
+  upload.array("images", 10),
+  async (req: Request, res: Response) => {
   const userId = req.session.userId!;
 
   const files = (req.files as Express.Multer.File[] | undefined) ?? [];
@@ -180,7 +186,8 @@ router.post("/storage/uploads/ad-images", upload.array("images", 10), requireAut
       reason: safeReason,
     });
   }
-});
+  },
+);
 
 /**
  * GET /storage/public-objects/*

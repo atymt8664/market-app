@@ -1,4 +1,5 @@
-import type { Pool } from "pg";
+/** Narrow surface used from `pg.Pool` — avoids api-server depending on `@types/pg` resolution. */
+type SqlExecPool = { query: (text: string) => Promise<unknown> };
 
 /**
  * Idempotent DDL so production/staging DBs stay aligned with Drizzle schemas
@@ -33,6 +34,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ NULL;
 
 UPDATE users SET city = '' WHERE city IS NULL;
 UPDATE users SET email_verified = COALESCE(email_verified, false) WHERE email_verified IS NULL;
@@ -61,6 +63,6 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 CREATE INDEX IF NOT EXISTS idx_user_sessions_expire ON user_sessions (expire);
 `;
 
-export async function ensureCoreSchema(pool: Pool): Promise<void> {
+export async function ensureCoreSchema(pool: SqlExecPool): Promise<void> {
   await pool.query(CORE_SCHEMA_SQL);
 }

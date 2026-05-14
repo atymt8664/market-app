@@ -1,5 +1,6 @@
 export * from "./categories";
 export * from "./users";
+export * from "./user-blocks";
 export * from "./ads";
 export * from "./cities";
 export * from "./admin-activity-logs";

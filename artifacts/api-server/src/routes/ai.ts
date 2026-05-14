@@ -8,6 +8,7 @@ import OpenAI from "openai";
 import { ImproveDescriptionBody, SuggestPriceBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import { requireAuth } from "../middlewares/require-auth";
+import { requireUserCsrf } from "../middlewares/require-user-csrf";
 
 const router: IRouter = Router();
 const isProduction = process.env.NODE_ENV === "production";
@@ -108,7 +109,7 @@ function logAiError(scope: "improveDescription" | "suggestPrice", err: unknown) 
   );
 }
 
-router.post("/ai/improve-description", requireAuth, aiLimiter, async (req, res) => {
+router.post("/ai/improve-description", requireAuth, requireUserCsrf, aiLimiter, async (req, res) => {
   const body = ImproveDescriptionBody.parse(req.body);
   if (!openai) {
     aiUnavailable(res);
@@ -138,7 +139,7 @@ router.post("/ai/improve-description", requireAuth, aiLimiter, async (req, res) 
   }
 });
 
-router.post("/ai/suggest-price", requireAuth, aiLimiter, async (req, res) => {
+router.post("/ai/suggest-price", requireAuth, requireUserCsrf, aiLimiter, async (req, res) => {
   const body = SuggestPriceBody.parse(req.body);
   if (!openai) {
     aiUnavailable(res);

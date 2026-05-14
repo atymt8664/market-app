@@ -32,6 +32,8 @@ export const usersTable = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  /** Set when the user's last chat WebSocket disconnects (server-side). */
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
 });
 
 export const userFollowsTable = pgTable(

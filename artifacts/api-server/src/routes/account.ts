@@ -5,6 +5,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db, usersTable, notificationPreferencesTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/require-auth";
+import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import {
   collectUploadsPathsForUserAccount,
   deleteUserAccountInTransaction,
@@ -85,11 +86,11 @@ router.get("/account/notification-preferences", requireAuth, async (req, res, ne
         code: "NOTIFICATION_PREFS_SCHEMA_MISSING",
       });
     }
-    next(err);
+    return next(err);
   }
 });
 
-router.patch("/account/notification-preferences", requireAuth, async (req, res, next) => {
+router.patch("/account/notification-preferences", requireAuth, requireUserCsrf, async (req, res, next) => {
   try {
     const userId = req.session.userId!;
     const parsed = NotificationPreferencesPatchBody.safeParse(req.body);
@@ -154,77 +155,83 @@ router.patch("/account/notification-preferences", requireAuth, async (req, res, 
         code: "NOTIFICATION_PREFS_SCHEMA_MISSING",
       });
     }
-    next(err);
+    return next(err);
   }
 });
 
-router.post("/account/delete", deleteAccountLimiter, requireAuth, async (req, res) => {
-  if (req.session.isAdmin === true) {
-    res.status(403).json({ error: "لا يمكن حذف الحساب أثناء جلسة الإدارة" });
-    return;
-  }
-
-  const userId = req.session.userId!;
-  const parsed = DeleteAccountBody.safeParse(req.body);
-  if (!parsed.success) {
-    const msg = parsed.error.flatten().fieldErrors.password?.[0] ?? "بيانات غير صحيحة";
-    res.status(400).json({ error: msg });
-    return;
-  }
-  const password = parsed.data.password;
-
-  const [user] = await db
-    .select({
-      id: usersTable.id,
-      passwordHash: usersTable.passwordHash,
-    })
-    .from(usersTable)
-    .where(eq(usersTable.id, userId))
-    .limit(1);
-
-  if (!user) {
-    req.session.destroy(() => {
-      res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
-      res.status(200).json({ ok: true, alreadyDeleted: true });
-    });
-    return;
-  }
-
-  const passwordOk = await bcrypt.compare(password, user.passwordHash);
-  if (!passwordOk) {
-    res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة" });
-    return;
-  }
-
-  let storagePaths: string[] = [];
-  try {
-    storagePaths = await collectUploadsPathsForUserAccount(userId);
-  } catch (err) {
-    logger.warn({ err, userId }, "account delete: collect storage paths failed (continuing with DB delete)");
-  }
-
-  let deleted = false;
-  try {
-    deleted = await deleteUserAccountInTransaction(userId);
-  } catch (err) {
-    logger.error({ err, userId }, "account delete: transaction failed");
-    res.status(500).json({ error: "تعذر إكمال حذف الحساب" });
-    return;
-  }
-
-  await runBestEffortStorageCleanupForUser(userId, storagePaths);
-
-  req.session.destroy((destroyErr) => {
-    if (destroyErr) {
-      logger.warn({ err: destroyErr, userId }, "account delete: session.destroy failed");
+router.post(
+  "/account/delete",
+  deleteAccountLimiter,
+  requireAuth,
+  requireUserCsrf,
+  async (req, res) => {
+    if (req.session.isAdmin === true) {
+      res.status(403).json({ error: "لا يمكن حذف الحساب أثناء جلسة الإدارة" });
+      return;
     }
-    res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
-    res.status(200).json({
-      ok: true,
-      deleted,
-      alreadyDeleted: !deleted,
+
+    const userId = req.session.userId!;
+    const parsed = DeleteAccountBody.safeParse(req.body);
+    if (!parsed.success) {
+      const msg = parsed.error.flatten().fieldErrors.password?.[0] ?? "بيانات غير صحيحة";
+      res.status(400).json({ error: msg });
+      return;
+    }
+    const password = parsed.data.password;
+
+    const [user] = await db
+      .select({
+        id: usersTable.id,
+        passwordHash: usersTable.passwordHash,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+
+    if (!user) {
+      req.session.destroy(() => {
+        res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
+        res.status(200).json({ ok: true, alreadyDeleted: true });
+      });
+      return;
+    }
+
+    const passwordOk = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordOk) {
+      res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة" });
+      return;
+    }
+
+    let storagePaths: string[] = [];
+    try {
+      storagePaths = await collectUploadsPathsForUserAccount(userId);
+    } catch (err) {
+      logger.warn({ err, userId }, "account delete: collect storage paths failed (continuing with DB delete)");
+    }
+
+    let deleted = false;
+    try {
+      deleted = await deleteUserAccountInTransaction(userId);
+    } catch (err) {
+      logger.error({ err, userId }, "account delete: transaction failed");
+      res.status(500).json({ error: "تعذر إكمال حذف الحساب" });
+      return;
+    }
+
+    await runBestEffortStorageCleanupForUser(userId, storagePaths);
+
+    req.session.destroy((destroyErr) => {
+      if (destroyErr) {
+        logger.warn({ err: destroyErr, userId }, "account delete: session.destroy failed");
+      }
+      res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
+      res.status(200).json({
+        ok: true,
+        deleted,
+        alreadyDeleted: !deleted,
+      });
     });
-  });
-});
+  },
+);
 
 export default router;

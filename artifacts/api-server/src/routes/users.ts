@@ -12,9 +12,10 @@ import {
   usersTable,
   userFollowsTable,
   userViewsTable,
+  userBlocksTable,
   adsTable,
 } from "@workspace/db";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import {
   InvalidSupabaseServiceRoleKeyError,
   MissingSupabaseStorageConfigError,
@@ -24,6 +25,8 @@ import {
 } from "../lib/supabaseStorage";
 import { PUBLIC_AD_STATUSES } from "../lib/ad-visibility";
 import { requireAuth } from "../middlewares/require-auth";
+import { requireUserCsrf } from "../middlewares/require-user-csrf";
+import { isUserSocketConnected } from "../lib/realtime";
 
 const router: IRouter = Router();
 const avatarUpload = multer({
@@ -122,6 +125,283 @@ async function followStats(profileId: number, currentUserId?: number | null) {
   };
 }
 
+const MAX_PRESENCE_BATCH = 50;
+
+router.post("/users/presence-batch", requireAuth, async (req, res) => {
+  const me = req.session.userId!;
+  const raw = (req.body as { userIds?: unknown })?.userIds;
+  if (!Array.isArray(raw)) {
+    res.status(400).json({ error: "userIds مطلوب" });
+    return;
+  }
+  const idSet = new Set<number>();
+  for (const x of raw) {
+    const n = typeof x === "number" ? x : Number(x);
+    if (Number.isInteger(n) && n > 0 && n !== me) idSet.add(n);
+  }
+  const unique = [...idSet].slice(0, MAX_PRESENCE_BATCH);
+  if (unique.length === 0) {
+    res.json({ byUserId: {} as Record<string, unknown> });
+    return;
+  }
+
+  const blockRows = await db
+    .select({
+      blockerId: userBlocksTable.blockerId,
+      blockedId: userBlocksTable.blockedId,
+    })
+    .from(userBlocksTable)
+    .where(
+      or(
+        and(eq(userBlocksTable.blockerId, me), inArray(userBlocksTable.blockedId, unique)),
+        and(eq(userBlocksTable.blockedId, me), inArray(userBlocksTable.blockerId, unique)),
+      ),
+    );
+  const blockedTargets = new Set<number>();
+  for (const row of blockRows) {
+    blockedTargets.add(row.blockerId === me ? row.blockedId : row.blockerId);
+  }
+
+  const userRows = await db
+    .select({ id: usersTable.id, lastSeenAt: usersTable.lastSeenAt })
+    .from(usersTable)
+    .where(inArray(usersTable.id, unique));
+  const lastSeenMap = new Map(userRows.map((r) => [r.id, r.lastSeenAt]));
+
+  const byUserId: Record<
+    string,
+    { visibility: "hidden" } | { visibility: "full"; isOnline: boolean; lastSeenAt: string | null }
+  > = {};
+  for (const id of unique) {
+    if (blockedTargets.has(id)) {
+      byUserId[String(id)] = { visibility: "hidden" };
+      continue;
+    }
+    const ls = lastSeenMap.get(id) ?? null;
+    byUserId[String(id)] = {
+      visibility: "full",
+      isOnline: isUserSocketConnected(id),
+      lastSeenAt: ls ? ls.toISOString() : null,
+    };
+  }
+  res.json({ byUserId });
+});
+
+router.get("/users/:userId/block-status", requireAuth, async (req, res) => {
+  const targetId = parseUserId(req, res);
+  if (targetId === null) return;
+  const me = req.session.userId!;
+  if (me === targetId) {
+    res.status(400).json({
+      error: "لا يمكن طلب حالة الحظر لنفسك",
+      blockedByMe: false,
+    });
+    return;
+  }
+  const byMe = await db
+    .select({ id: userBlocksTable.id })
+    .from(userBlocksTable)
+    .where(
+      and(eq(userBlocksTable.blockerId, me), eq(userBlocksTable.blockedId, targetId)),
+    )
+    .limit(1);
+  const byThem = await db
+    .select({ id: userBlocksTable.id })
+    .from(userBlocksTable)
+    .where(
+      and(eq(userBlocksTable.blockerId, targetId), eq(userBlocksTable.blockedId, me)),
+    )
+    .limit(1);
+  res.json({ blockedByMe: Boolean(byMe[0]), blocksMe: Boolean(byThem[0]) });
+});
+
+router.post("/users/:userId/block", requireAuth, requireUserCsrf, async (req, res) => {
+  const targetId = parseUserId(req, res);
+  if (targetId === null) return;
+  const me = req.session.userId!;
+  if (me === targetId) {
+    res.status(400).json({ error: "لا يمكنك حظر نفسك", blocked: false });
+    return;
+  }
+  const exists = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.id, targetId))
+    .limit(1);
+  if (!exists[0]) {
+    res.status(404).json({ error: "المستخدم غير موجود", blocked: false });
+    return;
+  }
+  const inserted = await db
+    .insert(userBlocksTable)
+    .values({ blockerId: me, blockedId: targetId })
+    .onConflictDoNothing({
+      target: [userBlocksTable.blockerId, userBlocksTable.blockedId],
+    })
+    .returning({ id: userBlocksTable.id });
+  const createdNew = inserted.length > 0;
+  res.status(createdNew ? 201 : 200).json({
+    blocked: true,
+    created: createdNew,
+  });
+});
+
+router.delete("/users/:userId/block", requireAuth, requireUserCsrf, async (req, res) => {
+  const targetId = parseUserId(req, res);
+  if (targetId === null) return;
+  const me = req.session.userId!;
+  if (me === targetId) {
+    res.status(400).json({ error: "لا يمكنك إلغاء حظر نفسك" });
+    return;
+  }
+  const deleted = await db
+    .delete(userBlocksTable)
+    .where(
+      and(eq(userBlocksTable.blockerId, me), eq(userBlocksTable.blockedId, targetId)),
+    )
+    .returning({ id: userBlocksTable.id });
+  res.json({
+    blocked: false,
+    removed: deleted.length > 0,
+  });
+});
+
+router.get("/users/:userId/followers", async (req, res) => {
+  const targetId = parseUserId(req, res);
+  if (targetId === null) return;
+  const exists = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.id, targetId))
+    .limit(1);
+  if (!exists[0]) {
+    res.status(404).json({ error: "المستخدم غير موجود" });
+    return;
+  }
+  const rows = await db
+    .select({
+      userId: usersTable.id,
+      name: usersTable.name,
+      avatarUrl: usersTable.avatarUrl,
+    })
+    .from(userFollowsTable)
+    .innerJoin(usersTable, eq(usersTable.id, userFollowsTable.followerId))
+    .where(eq(userFollowsTable.followingId, targetId))
+    .orderBy(desc(userFollowsTable.createdAt))
+    .limit(200);
+  res.json(
+    rows.map((r) => ({
+      userId: r.userId,
+      name: r.name,
+      avatarUrl: r.avatarUrl ?? null,
+    })),
+  );
+});
+
+router.get("/users/:userId/following", async (req, res) => {
+  const targetId = parseUserId(req, res);
+  if (targetId === null) return;
+  const exists = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.id, targetId))
+    .limit(1);
+  if (!exists[0]) {
+    res.status(404).json({ error: "المستخدم غير موجود" });
+    return;
+  }
+  const rows = await db
+    .select({
+      userId: usersTable.id,
+      name: usersTable.name,
+      avatarUrl: usersTable.avatarUrl,
+    })
+    .from(userFollowsTable)
+    .innerJoin(usersTable, eq(usersTable.id, userFollowsTable.followingId))
+    .where(eq(userFollowsTable.followerId, targetId))
+    .orderBy(desc(userFollowsTable.createdAt))
+    .limit(200);
+  res.json(
+    rows.map((r) => ({
+      userId: r.userId,
+      name: r.name,
+      avatarUrl: r.avatarUrl ?? null,
+    })),
+  );
+});
+
+router.get("/users/:userId/profile-viewers", requireAuth, async (req, res) => {
+  const targetId = parseUserId(req, res);
+  if (targetId === null) return;
+  const me = req.session.userId!;
+  if (me !== targetId) {
+    res.status(403).json({ error: "عرض قائمة المشاهدين متاح لصاحب الملف فقط" });
+    return;
+  }
+  const exists = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.id, targetId))
+    .limit(1);
+  if (!exists[0]) {
+    res.status(404).json({ error: "المستخدم غير موجود" });
+    return;
+  }
+  const agg = await db.execute<{ viewer_key: string; last_at: unknown }>(
+    sql`
+      select viewer_key, max(created_at) as last_at
+      from user_views
+      where profile_id = ${targetId}
+      group by viewer_key
+      order by max(created_at) desc
+      limit 200
+    `,
+  );
+  const raw = agg.rows as Array<{ viewer_key: string; last_at: unknown }>;
+  const userIds = new Set<number>();
+  for (const row of raw) {
+    const m = /^u:(\d+)$/.exec(String(row.viewer_key));
+    if (m) userIds.add(Number(m[1]));
+  }
+  const idList = [...userIds];
+  const userRows =
+    idList.length > 0
+      ? await db.select().from(usersTable).where(inArray(usersTable.id, idList))
+      : [];
+  const userById = new Map(userRows.map((u) => [u.id, u]));
+  const items: Array<{
+    userId: number | null;
+    name: string;
+    avatarUrl: string | null;
+    lastViewedAt: string;
+  }> = [];
+  let anonymousDistinctCount = 0;
+  for (const row of raw) {
+    const key = String(row.viewer_key);
+    const lastRaw = row.last_at;
+    const lastAt =
+      lastRaw instanceof Date ? lastRaw : new Date(String(lastRaw ?? Date.now()));
+    const m = /^u:(\d+)$/.exec(key);
+    if (m) {
+      const uid = Number(m[1]);
+      const u = userById.get(uid);
+      if (u) {
+        items.push({
+          userId: uid,
+          name: u.name,
+          avatarUrl: u.avatarUrl ?? null,
+          lastViewedAt: lastAt.toISOString(),
+        });
+      } else {
+        anonymousDistinctCount += 1;
+      }
+    } else {
+      anonymousDistinctCount += 1;
+    }
+  }
+  res.json({ items, anonymousDistinctCount });
+});
+
 router.get("/users/:userId", async (req, res) => {
   const userId = parseUserId(req, res);
   if (userId === null) return;
@@ -184,7 +464,7 @@ router.post("/users/:userId/view", async (req, res) => {
   res.json({ profileViews: Number(row?.c ?? 0), counted });
 });
 
-router.post("/users/:userId/follow", requireAuth, async (req, res) => {
+router.post("/users/:userId/follow", requireAuth, requireUserCsrf, async (req, res) => {
   const userId = parseUserId(req, res);
   if (userId === null) return;
   const me = req.session.userId!;
@@ -215,7 +495,7 @@ router.post("/users/:userId/follow", requireAuth, async (req, res) => {
   });
 });
 
-router.delete("/users/:userId/follow", requireAuth, async (req, res) => {
+router.delete("/users/:userId/follow", requireAuth, requireUserCsrf, async (req, res) => {
   const userId = parseUserId(req, res);
   if (userId === null) return;
   const me = req.session.userId!;
@@ -238,6 +518,7 @@ router.delete("/users/:userId/follow", requireAuth, async (req, res) => {
 router.post(
   "/users/upload-avatar",
   requireAuth,
+  requireUserCsrf,
   avatarUpload.single("image"),
   async (req, res) => {
     const userId = req.session.userId!;

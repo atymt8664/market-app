@@ -74,9 +74,9 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
       clearAdminIdentityOnSession(req);
       return res.status(401).json({ error: "Unauthorized" });
     }
-    next();
+    return next();
   } catch (err) {
-    next(err);
+    return next(err);
   }
 }
 

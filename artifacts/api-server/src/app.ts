@@ -32,6 +32,8 @@ declare module "express-session" {
     admin2faSetupExpiresAt?: number;
     /** Failed admin-login TOTP attempts during pending step (cleared on success or lockout). */
     adminTotpFailedAttempts?: number;
+    /** CSRF token for logged-in user mutations (separate from `adminCsrfToken`). */
+    userCsrfToken?: string;
   }
 }
 

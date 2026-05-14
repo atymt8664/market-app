@@ -53,6 +53,7 @@ import {
   ACCOUNT_DISABLED_MESSAGE,
   destroySessionRespondBanned,
 } from "../middlewares/require-auth";
+import { ensureUserCsrfToken, requireUserCsrf } from "../middlewares/require-user-csrf";
 
 const router: IRouter = Router();
 
@@ -445,10 +446,11 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
   }
 
   req.session.userId = user.id;
-  res.json(await serializeUserMe(user));
+  const csrfToken = ensureUserCsrfToken(req);
+  res.json({ ...(await serializeUserMe(user)), csrfToken });
 });
 
-router.patch("/auth/me", async (req, res) => {
+router.patch("/auth/me", requireUserCsrf, async (req, res) => {
   const userId = req.session.userId;
   if (!userId) {
     res.status(401).json({ error: "غير مسجل الدخول" });
@@ -523,7 +525,7 @@ router.patch("/auth/me", async (req, res) => {
   res.json(await serializeUserMe(updated!));
 });
 
-router.post("/auth/change-password", async (req, res) => {
+router.post("/auth/change-password", requireUserCsrf, async (req, res) => {
   const userId = req.session.userId;
   if (!userId) {
     res.status(401).json({ error: "غير مسجل الدخول" });
@@ -567,7 +569,7 @@ router.post("/auth/change-password", async (req, res) => {
   res.json({ ok: true });
 });
 
-router.post("/auth/logout", (req, res) => {
+router.post("/auth/logout", requireUserCsrf, (req, res) => {
   req.session.destroy(() => {
     res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
     res.status(204).end();
@@ -594,7 +596,9 @@ router.get("/auth/me", async (req, res) => {
     destroySessionRespondBanned(req, res);
     return;
   }
-  res.json(await serializeUserMe(user));
+  const me = await serializeUserMe(user);
+  const csrfToken = ensureUserCsrfToken(req);
+  res.json({ ...me, csrfToken });
 });
 
 router.post("/auth/verify-email", verifyLimiter, async (req, res) => {
@@ -966,7 +970,7 @@ router.get("/admin/me", async (req, res, next) => {
 
     return res.status(401).json({ isAdmin: false });
   } catch (e) {
-    next(e);
+    return next(e);
   }
 });
 

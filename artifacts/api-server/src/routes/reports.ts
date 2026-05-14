@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, reportsTable, usersTable, adsTable, conversationsTable } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
+import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import { requireAdmin, requireAdminAccessGrant, requireAdminCsrf } from "../middlewares/require-admin";
 import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import { getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
@@ -40,7 +41,7 @@ function reportStatusNotificationPayload(status: string): { type: string; title:
 /**
  * إنشاء بلاغ
  */
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", requireAuth, requireUserCsrf, async (req, res) => {
   try {
     const reporterId = (req.session as any).userId;
 

@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
+import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import { requireAdmin, requireAdminAccessGrant, requireAdminCsrf } from "../middlewares/require-admin";
 import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import { getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
@@ -54,7 +55,7 @@ function normalizeSupportCategory(value: unknown): string {
   return ALLOWED_SUPPORT_CATEGORIES.has(normalized) ? normalized : "general";
 }
 
-router.post("/support/tickets", requireAuth, async (req, res) => {
+router.post("/support/tickets", requireAuth, requireUserCsrf, async (req, res) => {
   try {
     const userId = req.session.userId!;
     const rawBody =

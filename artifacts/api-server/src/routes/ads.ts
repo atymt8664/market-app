@@ -32,6 +32,7 @@ import { PUBLIC_AD_STATUSES, isPublicAdStatus } from "../lib/ad-visibility";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 import { requireAuth } from "../middlewares/require-auth";
+import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 
 const router: IRouter = Router();
@@ -166,14 +167,16 @@ router.get("/ads/featured", async (req, res) => {
   res.json(rows.map(serializeAd));
 });
 router.get("/admin/ads", requireAdminAccessGrant, requireAdmin, async (req, res) => {
-  const status = req.query.status as string | undefined;
+  const statusRaw = String(req.query.status ?? "").trim().toLowerCase();
   const q = (req.query.q as string | undefined)?.trim();
   const featuredRaw = req.query.featured as string | undefined;
 
   const clauses = [];
 
-  if (status) {
-    clauses.push(eq(adsTable.status, status));
+  /** Treat missing, "all", or unknown as no status filter (never `eq(status, "all")` — no such row). */
+  const adminAdStatuses = ["pending", "approved", "rejected", "hidden"] as const;
+  if (statusRaw && statusRaw !== "all" && (adminAdStatuses as readonly string[]).includes(statusRaw)) {
+    clauses.push(eq(adsTable.status, statusRaw));
   }
 
   if (q) {
@@ -419,7 +422,7 @@ function parseAdId(req: Request, res: Response): number | null {
   return parsed.data.adId;
 }
 
-router.post("/ads/:adId/like", requireAuth, async (req, res) => {
+router.post("/ads/:adId/like", requireAuth, requireUserCsrf, async (req, res) => {
   const adId = parseAdId(req, res);
   if (adId === null) return;
   const userId = req.session.userId!;
@@ -443,7 +446,7 @@ router.post("/ads/:adId/like", requireAuth, async (req, res) => {
   res.json(await reactionResponse(adLikesTable, adId, userId));
 });
 
-router.delete("/ads/:adId/like", requireAuth, async (req, res) => {
+router.delete("/ads/:adId/like", requireAuth, requireUserCsrf, async (req, res) => {
   const adId = parseAdId(req, res);
   if (adId === null) return;
   const userId = req.session.userId!;
@@ -453,7 +456,7 @@ router.delete("/ads/:adId/like", requireAuth, async (req, res) => {
   res.json(await reactionResponse(adLikesTable, adId, userId));
 });
 
-router.post("/ads/:adId/favorite", requireAuth, async (req, res) => {
+router.post("/ads/:adId/favorite", requireAuth, requireUserCsrf, async (req, res) => {
   const adId = parseAdId(req, res);
   if (adId === null) return;
   const userId = req.session.userId!;
@@ -479,7 +482,7 @@ router.post("/ads/:adId/favorite", requireAuth, async (req, res) => {
   res.json(await reactionResponse(adFavoritesTable, adId, userId));
 });
 
-router.delete("/ads/:adId/favorite", requireAuth, async (req, res) => {
+router.delete("/ads/:adId/favorite", requireAuth, requireUserCsrf, async (req, res) => {
   const adId = parseAdId(req, res);
   if (adId === null) return;
   const userId = req.session.userId!;
@@ -491,8 +494,14 @@ router.delete("/ads/:adId/favorite", requireAuth, async (req, res) => {
   res.json(await reactionResponse(adFavoritesTable, adId, userId));
 });
 
-router.post("/ads", requireAuth, async (req, res) => {
+router.post("/ads", requireAuth, requireUserCsrf, async (req, res) => {
   const body = CreateAdBody.parse(req.body);
+  const rawBody = req.body as Record<string, unknown>;
+  const rawDetails = rawBody["details"];
+  const details =
+    rawDetails && typeof rawDetails === "object" && !Array.isArray(rawDetails)
+      ? (rawDetails as Record<string, unknown>)
+      : {};
   const inserted = await db
     .insert(adsTable)
     .values({
@@ -512,8 +521,7 @@ router.post("/ads", requireAuth, async (req, res) => {
       subcategoryId: body.subcategoryId ?? null,
       sellerName: body.sellerName,
       sellerPhone: body.sellerPhone,
-      details:
-        body.details && typeof body.details === "object" ? body.details : {},
+      details,
     })
     .returning();
   const id = inserted[0]!.id;
@@ -521,7 +529,7 @@ router.post("/ads", requireAuth, async (req, res) => {
   res.status(201).json(serializeAd(rows[0]!));
 });
 
-router.patch("/ads/:adId", requireAuth, async (req, res) => {
+router.patch("/ads/:adId", requireAuth, requireUserCsrf, async (req, res) => {
   const adId = Number(req.params["adId"]);
   const existing = await db
     .select({ userId: adsTable.userId })
@@ -647,7 +655,7 @@ router.post("/ads/:adId/view", async (req, res) => {
   res.json({ views: fresh[0]?.views ?? 0, counted: inserted.length > 0 });
 });
 
-router.delete("/ads/:adId", requireAuth, async (req, res) => {
+router.delete("/ads/:adId", requireAuth, requireUserCsrf, async (req, res) => {
   const adId = Number(req.params["adId"]);
   if (!Number.isInteger(adId) || adId <= 0) {
     res.status(400).json({ error: "Invalid ad id" });

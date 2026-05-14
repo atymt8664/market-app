@@ -9,10 +9,16 @@ import {
   messageHidesTable,
   conversationHidesTable,
 } from "@workspace/db";
-import { and, asc, desc, eq, inArray, isNull, ne, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, notInArray, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
-import { broadcastToUser, isUserFocusedOnConversation } from "../lib/realtime";
+import { requireUserCsrf } from "../middlewares/require-user-csrf";
+import {
+  broadcastToUser,
+  broadcastTypingStoppedForSender,
+  isUserFocusedOnConversation,
+} from "../lib/realtime";
 import { isPublicAdStatus } from "../lib/ad-visibility";
+import { eitherUserBlocksTheOther } from "../lib/user-blocks";
 import {
   InvalidSupabaseServiceRoleKeyError,
   MissingSupabaseStorageConfigError,
@@ -23,6 +29,10 @@ import {
 } from "../lib/supabaseStorage";
 
 const router: IRouter = Router();
+
+/** أي حظر بين مستخدمين (بأي اتجاه) يمنع إنشاء محادثة جديدة وإرسال الرسائل. */
+const CHAT_USER_BLOCK_FORBIDDEN_MESSAGE =
+  "لا يمكن إرسال الرسائل بسبب وجود حظر بين المستخدمين";
 
 const chatImageUpload = multer({
   storage: multer.memoryStorage(),
@@ -56,7 +66,7 @@ function handleChatImageUploadError(err: unknown, res: Response): boolean {
   return false;
 }
 
-router.post("/conversations", requireAuth, async (req, res) => {
+router.post("/conversations", requireAuth, requireUserCsrf, async (req, res) => {
   const userId = req.session.userId!;
   const adId = Number((req.body as { adId?: unknown })?.adId);
   if (!Number.isInteger(adId) || adId <= 0) {
@@ -98,6 +108,11 @@ router.post("/conversations", requireAuth, async (req, res) => {
     .limit(1);
   if (existingFirst[0]) {
     res.json({ id: existingFirst[0].id });
+    return;
+  }
+
+  if (await eitherUserBlocksTheOther(userId, sellerId)) {
+    res.status(403).json({ error: CHAT_USER_BLOCK_FORBIDDEN_MESSAGE });
     return;
   }
 
@@ -265,6 +280,45 @@ async function loadConversation(convId: number, userId: number) {
   return { conv };
 }
 
+async function hideConversationForMeHandler(req: Request, res: Response): Promise<void> {
+  const userId = req.session.userId!;
+  const convId = Number(req.params["convId"]);
+  if (!Number.isInteger(convId) || convId <= 0) {
+    res.status(400).json({ error: "معرّف غير صالح" });
+    return;
+  }
+  const r = await loadConversation(convId, userId);
+  if ("error" in r) {
+    res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
+    return;
+  }
+  await db
+    .insert(conversationHidesTable)
+    .values({ userId, conversationId: convId })
+    .onConflictDoNothing();
+  res.json({ ok: true });
+}
+
+async function unhideConversationForMeHandler(req: Request, res: Response): Promise<void> {
+  const userId = req.session.userId!;
+  const convId = Number(req.params["convId"]);
+  if (!Number.isInteger(convId) || convId <= 0) {
+    res.status(400).json({ error: "معرّف غير صالح" });
+    return;
+  }
+  const r = await loadConversation(convId, userId);
+  if ("error" in r) {
+    res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
+    return;
+  }
+  await db
+    .delete(conversationHidesTable)
+    .where(
+      and(eq(conversationHidesTable.userId, userId), eq(conversationHidesTable.conversationId, convId)),
+    );
+  res.json({ ok: true });
+}
+
 router.get("/conversations/:convId", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
   const convId = Number(req.params["convId"]);
@@ -347,6 +401,7 @@ router.get("/conversations/:convId/messages", requireAuth, async (req, res) => {
 router.post(
   "/conversations/:convId/messages/upload-image",
   requireAuth,
+  requireUserCsrf,
   (req: Request, res: Response, next: NextFunction) => {
     chatImageUpload.single("image")(req, res, (err: unknown) => {
       if (err && handleChatImageUploadError(err, res)) return;
@@ -363,6 +418,12 @@ router.post(
     const r = await loadConversation(convId, userId);
     if ("error" in r) {
       res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
+      return;
+    }
+    const { conv } = r;
+    const peerId = conv.buyerId === userId ? conv.sellerId : conv.buyerId;
+    if (await eitherUserBlocksTheOther(userId, peerId)) {
+      res.status(403).json({ error: CHAT_USER_BLOCK_FORBIDDEN_MESSAGE });
       return;
     }
     const file = req.file;
@@ -423,7 +484,7 @@ router.post(
   },
 );
 
-router.post("/conversations/:convId/messages", requireAuth, async (req, res) => {
+router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, async (req, res) => {
   const userId = req.session.userId!;
   const convId = Number(req.params["convId"]);
   const raw = req.body as { body?: unknown; imageUrl?: unknown };
@@ -436,6 +497,12 @@ router.post("/conversations/:convId/messages", requireAuth, async (req, res) => 
     return;
   }
   const { conv } = r;
+
+  const peerId = conv.buyerId === userId ? conv.sellerId : conv.buyerId;
+  if (await eitherUserBlocksTheOther(userId, peerId)) {
+    res.status(403).json({ error: CHAT_USER_BLOCK_FORBIDDEN_MESSAGE });
+    return;
+  }
 
   let messageBody: string;
   let messageType: "text" | "image";
@@ -499,11 +566,12 @@ router.post("/conversations/:convId/messages", requireAuth, async (req, res) => 
   broadcastToUser(recipient, payload);
   // Echo to sender's other devices too.
   broadcastToUser(userId, payload);
+  broadcastTypingStoppedForSender(convId, userId);
 
   res.status(201).json(serializeMessage(created!));
 });
 
-router.post("/conversations/:convId/read", requireAuth, async (req, res) => {
+router.post("/conversations/:convId/read", requireAuth, requireUserCsrf, async (req, res) => {
   const userId = req.session.userId!;
   const convId = Number(req.params["convId"]);
   const r = await loadConversation(convId, userId);
@@ -534,44 +602,23 @@ router.post("/conversations/:convId/read", requireAuth, async (req, res) => {
   res.status(204).end();
 });
 
-router.post("/conversations/:convId/hide-for-me", requireAuth, async (req, res) => {
-  const userId = req.session.userId!;
-  const convId = Number(req.params["convId"]);
-  if (!Number.isInteger(convId) || convId <= 0) {
-    res.status(400).json({ error: "معرّف غير صالح" });
-    return;
-  }
-  const r = await loadConversation(convId, userId);
-  if ("error" in r) {
-    res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
-    return;
-  }
-  await db
-    .insert(conversationHidesTable)
-    .values({ userId, conversationId: convId })
-    .onConflictDoNothing();
-  res.json({ ok: true });
-});
+router.post(
+  "/conversations/:convId/hide-for-me",
+  requireAuth,
+  requireUserCsrf,
+  hideConversationForMeHandler,
+);
+router.post("/conversations/:convId/hide", requireAuth, requireUserCsrf, hideConversationForMeHandler);
+router.delete("/conversations/:convId/hide", requireAuth, requireUserCsrf, unhideConversationForMeHandler);
 
-router.post("/conversations/:convId/unhide-for-me", requireAuth, async (req, res) => {
-  const userId = req.session.userId!;
-  const convId = Number(req.params["convId"]);
-  if (!Number.isInteger(convId) || convId <= 0) {
-    res.status(400).json({ error: "معرّف غير صالح" });
-    return;
-  }
-  const r = await loadConversation(convId, userId);
-  if ("error" in r) {
-    res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
-    return;
-  }
-  await db
-    .delete(conversationHidesTable)
-    .where(and(eq(conversationHidesTable.userId, userId), eq(conversationHidesTable.conversationId, convId)));
-  res.json({ ok: true });
-});
+router.post(
+  "/conversations/:convId/unhide-for-me",
+  requireAuth,
+  requireUserCsrf,
+  unhideConversationForMeHandler,
+);
 
-router.post("/conversations/:convId/messages/hide-for-me", requireAuth, async (req, res) => {
+router.post("/conversations/:convId/messages/hide-for-me", requireAuth, requireUserCsrf, async (req, res) => {
   const userId = req.session.userId!;
   const convId = Number(req.params["convId"]);
   if (!Number.isInteger(convId) || convId <= 0) {
@@ -610,9 +657,5 @@ router.post("/conversations/:convId/messages/hide-for-me", requireAuth, async (r
     .onConflictDoNothing();
   res.json({ ok: true, hiddenCount: validIds.length });
 });
-
-// helper imports kept for completeness
-void or;
-void desc;
 
 export default router;

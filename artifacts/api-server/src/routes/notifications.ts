@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, notificationsTable } from "@workspace/db";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
+import { requireUserCsrf } from "../middlewares/require-user-csrf";
 
 const router: IRouter = Router();
 
@@ -19,7 +20,7 @@ router.get("/notifications/unread-count", requireAuth, async (req, res) => {
   res.json({ count: Number(row?.c ?? 0) });
 });
 
-router.patch("/notifications/read-all", requireAuth, async (req, res) => {
+router.patch("/notifications/read-all", requireAuth, requireUserCsrf, async (req, res) => {
   const userId = req.session.userId!;
   await db
     .update(notificationsTable)
@@ -33,7 +34,7 @@ router.patch("/notifications/read-all", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-router.patch("/notifications/:id/read", requireAuth, async (req, res) => {
+router.patch("/notifications/:id/read", requireAuth, requireUserCsrf, async (req, res) => {
   const userId = req.session.userId!;
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {

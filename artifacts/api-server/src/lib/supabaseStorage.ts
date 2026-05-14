@@ -340,7 +340,8 @@ function getSupabaseStorageClient(): SupabaseClient {
   return createClient(url, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: {
-      fetch: (input, init) => globalThis.fetch(input as RequestInfo, init as RequestInit),
+      fetch: (input, init) =>
+        globalThis.fetch(input as Parameters<typeof globalThis.fetch>[0], init as RequestInit),
     },
   });
 }

@@ -11,7 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { memo, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { t } from "@/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocale } from "@/hooks/use-locale";
@@ -95,7 +95,95 @@ const PriceBlock = memo(function PriceBlock({ ad, compact }: { ad: Ad; compact?:
   );
 });
 
-function AdCardInner({ ad, featured, variant: _variant, favoritesList }: AdCardProps) {
+type StatKind = "views" | "favorites" | "likes";
+
+const StatCell = memo(function StatCell({
+  kind,
+  value,
+  compact,
+}: {
+  kind: StatKind;
+  value: string;
+  compact?: boolean;
+}) {
+  const icon =
+    kind === "views" ? (
+      <Eye
+        className={compact ? "h-2.5 w-2.5" : "h-[11px] w-[11px]"}
+        strokeWidth={2}
+        aria-hidden
+      />
+    ) : kind === "favorites" ? (
+      <Star
+        className={compact ? "h-2.5 w-2.5" : "h-[11px] w-[11px]"}
+        strokeWidth={2}
+        aria-hidden
+      />
+    ) : (
+      <ThumbsUp
+        className={compact ? "h-2.5 w-2.5" : "h-[11px] w-[11px]"}
+        strokeWidth={2}
+        aria-hidden
+      />
+    );
+
+  return (
+    <span
+      className={cn(
+        "flex min-h-0 min-w-0 w-full items-center justify-center gap-0.5 text-primary/65 [&_svg]:text-primary/50",
+        compact && "text-[9px] text-primary/60",
+      )}
+    >
+      <span className="shrink-0 [&_svg]:block">{icon}</span>
+      <span className="min-w-0 truncate text-center tabular-nums">{value}</span>
+    </span>
+  );
+});
+
+type AdCardMemoProps = AdCardProps & { viewerAuthKey: string };
+
+/** يقلّل إعادة رسم الكرت عند إعادة رسم الأب مع نفس بيانات الإعلان (مرجع كائن متغيّر من الكاش). */
+function areAdCardPropsEqual(prev: AdCardMemoProps, next: AdCardMemoProps): boolean {
+  if (prev.viewerAuthKey !== next.viewerAuthKey) {
+    return false;
+  }
+  if (
+    prev.featured !== next.featured ||
+    prev.favoritesList !== next.favoritesList ||
+    prev.variant !== next.variant
+  ) {
+    return false;
+  }
+  const a = prev.ad;
+  const b = next.ad;
+  if (a === b) return true;
+  const curA =
+    (a.details as { selectedCurrency?: string } | undefined)?.selectedCurrency ?? "";
+  const curB =
+    (b.details as { selectedCurrency?: string } | undefined)?.selectedCurrency ?? "";
+  return (
+    a.id === b.id &&
+    a.title === b.title &&
+    a.price === b.price &&
+    a.priceType === b.priceType &&
+    a.city === b.city &&
+    (a.images?.[0] ?? "") === (b.images?.[0] ?? "") &&
+    a.views === b.views &&
+    a.favoriteCount === b.favoriteCount &&
+    a.likeCount === b.likeCount &&
+    a.isFavorited === b.isFavorited &&
+    a.createdAt === b.createdAt &&
+    curA === curB
+  );
+}
+
+function AdCardInner({
+  ad,
+  featured,
+  variant: _variant,
+  favoritesList,
+  viewerAuthKey: _viewerAuthKey,
+}: AdCardMemoProps) {
   const { locale } = useLocale();
   const numberLocale = locale === "de" ? "de-DE" : locale === "en" ? "en-US" : "ar";
   const queryClient = useQueryClient();
@@ -108,54 +196,61 @@ function AdCardInner({ ad, featured, variant: _variant, favoritesList }: AdCardP
 
   const isFavorite = Boolean(user && ad.isFavorited);
 
-  const toggleFavorite = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!user) {
-      navigate(`/login?redirect=${encodeURIComponent(locationPath || "/")}`);
-      return;
-    }
-    const prevFav = Boolean(ad.isFavorited);
-    const prevCount = ad.favoriteCount ?? 0;
-    const next = !prevFav;
+  const handleImageError = useCallback(() => {
+    setImageFailed(true);
+  }, []);
 
-    patchAdEngagementInCaches(queryClient, ad.id, {
-      isFavorited: next,
-      favoriteCount: Math.max(0, prevCount + (next ? 1 : -1)),
-    });
+  const toggleFavorite = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!user) {
+        navigate(`/login?redirect=${encodeURIComponent(locationPath || "/")}`);
+        return;
+      }
+      const prevFav = Boolean(ad.isFavorited);
+      const prevCount = ad.favoriteCount ?? 0;
+      const next = !prevFav;
 
-    const onError = () => {
       patchAdEngagementInCaches(queryClient, ad.id, {
-        isFavorited: prevFav,
-        favoriteCount: prevCount,
+        isFavorited: next,
+        favoriteCount: Math.max(0, prevCount + (next ? 1 : -1)),
       });
-      queryClient.invalidateQueries({ queryKey: getListFavoriteAdsQueryKey() });
-    };
 
-    const onSuccess = (data: { count: number; active: boolean }) => {
-      patchAdEngagementInCaches(queryClient, ad.id, {
-        isFavorited: data.active,
-        favoriteCount: data.count,
-      });
-      queryClient.setQueryData<Ad[]>(getListFavoriteAdsQueryKey(), (old) => {
-        if (data.active) {
-          if (old?.some((a) => a.id === ad.id)) return old;
-          return [
-            ...(old ?? []),
-            { ...ad, isFavorited: true, favoriteCount: data.count },
-          ];
-        }
-        return (old ?? []).filter((a) => a.id !== ad.id);
-      });
-      invalidateAdRelatedQueries(queryClient, ad.id);
-    };
+      const onError = () => {
+        patchAdEngagementInCaches(queryClient, ad.id, {
+          isFavorited: prevFav,
+          favoriteCount: prevCount,
+        });
+        queryClient.invalidateQueries({ queryKey: getListFavoriteAdsQueryKey() });
+      };
 
-    if (next) {
-      favMut.mutate({ adId: ad.id }, { onError, onSuccess });
-    } else {
-      unfavMut.mutate({ adId: ad.id }, { onError, onSuccess });
-    }
-  };
+      const onSuccess = (data: { count: number; active: boolean }) => {
+        patchAdEngagementInCaches(queryClient, ad.id, {
+          isFavorited: data.active,
+          favoriteCount: data.count,
+        });
+        queryClient.setQueryData<Ad[]>(getListFavoriteAdsQueryKey(), (old) => {
+          if (data.active) {
+            if (old?.some((a) => a.id === ad.id)) return old;
+            return [
+              ...(old ?? []),
+              { ...ad, isFavorited: true, favoriteCount: data.count },
+            ];
+          }
+          return (old ?? []).filter((a) => a.id !== ad.id);
+        });
+        invalidateAdRelatedQueries(queryClient, ad.id);
+      };
+
+      if (next) {
+        favMut.mutate({ adId: ad.id }, { onError, onSuccess });
+      } else {
+        unfavMut.mutate({ adId: ad.id }, { onError, onSuccess });
+      }
+    },
+    [ad, locationPath, navigate, queryClient, user, favMut, unfavMut],
+  );
 
   const hasImage = !!(ad.images && ad.images.length > 0 && ad.images[0]) && !imageFailed;
   const favCompact = Boolean(favoritesList);
@@ -207,10 +302,12 @@ function AdCardInner({ ad, featured, variant: _variant, favoritesList }: AdCardP
               src={ad.images[0]}
               alt={ad.title}
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
-              loading="lazy"
+              loading={featured ? "eager" : "lazy"}
               decoding="async"
+              draggable={false}
               sizes={imageSizes}
-              onError={() => setImageFailed(true)}
+              {...(featured ? { fetchPriority: "high" as const } : {})}
+              onError={handleImageError}
             />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-muted/95 via-muted/75 to-muted/55 px-2 dark:from-muted/85 dark:via-muted/60 dark:to-muted/45">
@@ -288,18 +385,18 @@ function AdCardInner({ ad, featured, variant: _variant, favoritesList }: AdCardP
               )}
             >
               <StatCell
+                kind="views"
                 compact={favCompact}
-                icon={<Eye className={favCompact ? "h-2.5 w-2.5" : "h-[11px] w-[11px]"} strokeWidth={2} />}
                 value={(ad.views ?? 0).toLocaleString(numberLocale)}
               />
               <StatCell
+                kind="favorites"
                 compact={favCompact}
-                icon={<Star className={favCompact ? "h-2.5 w-2.5" : "h-[11px] w-[11px]"} strokeWidth={2} />}
                 value={(ad.favoriteCount ?? 0).toLocaleString(numberLocale)}
               />
               <StatCell
+                kind="likes"
                 compact={favCompact}
-                icon={<ThumbsUp className={favCompact ? "h-2.5 w-2.5" : "h-[11px] w-[11px]"} strokeWidth={2} />}
                 value={(ad.likeCount ?? 0).toLocaleString(numberLocale)}
               />
             </div>
@@ -346,29 +443,13 @@ function AdCardInner({ ad, featured, variant: _variant, favoritesList }: AdCardP
   );
 }
 
-/** يقلّل إعادة الرسم عند تحديثات أعلى الصفحة (بحث، مدينة، إلخ) طالما مرجع `ad` من الكاش مستقر. */
-export const AdCard = memo(AdCardInner);
+const AdCardMemoized = memo(AdCardInner, areAdCardPropsEqual);
 
-function StatCell({
-  icon,
-  value,
-  compact,
-}: {
-  icon: React.ReactNode;
-  value: string;
-  compact?: boolean;
-}) {
-  return (
-    <span
-      className={cn(
-        "flex min-h-0 min-w-0 w-full items-center justify-center gap-0.5 text-primary/65 [&_svg]:text-primary/50",
-        compact && "text-[9px] text-primary/60",
-      )}
-    >
-      <span className="shrink-0 [&_svg]:block">{icon}</span>
-      <span className="min-w-0 truncate text-center tabular-nums">{value}</span>
-    </span>
-  );
+/** يعيد حساب مفتاح الجلسة خارج الـ memo حتى لا تبقى أزرار المفضلة/الحالة عالقة عند تسجيل الدخول أو الخروج. */
+export function AdCard(props: AdCardProps) {
+  const { user } = useAuth();
+  const viewerAuthKey = user ? `u:${user.id}` : "guest";
+  return <AdCardMemoized {...props} viewerAuthKey={viewerAuthKey} />;
 }
 
 export function AdCardSkeleton({

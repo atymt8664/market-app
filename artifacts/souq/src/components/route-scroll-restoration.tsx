@@ -8,11 +8,29 @@ import {
 
 const STORAGE_PREFIX = "souq:scroll:";
 
+/** يُزامن مع pathname من wouter (بدون بادئة BASE_URL) — وإلا مفتاح التخزين لا يطابق و`isAdDetail` يفشل بعد النشر تحت مسار فرعي. */
+function normalizeScrollRoutePathname(fullPathname: string): string {
+  const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+  let path =
+    base && fullPathname.startsWith(base)
+      ? fullPathname.slice(base.length)
+      : fullPathname;
+  if (!path || path === "") path = "/";
+  if (!path.startsWith("/")) path = `/${path}`;
+  return path;
+}
+
 function storageKey(routeKey: string): string {
   return STORAGE_PREFIX + routeKey;
 }
 
+/** تفاصيل إعلان — أي مقطع واحد بعد /ad/ (رقم أو معرف آخر من الخادم) */
+function isAdDetailPathname(pathname: string): boolean {
+  return /^\/ad\/[^/]+$/.test(pathname);
+}
+
 function readScroll(routeKey: string): number | null {
+  if (isAdDetailPathname(routeKey)) return null;
   try {
     const raw = sessionStorage.getItem(storageKey(routeKey));
     if (raw == null) return null;
@@ -24,6 +42,7 @@ function readScroll(routeKey: string): number | null {
 }
 
 function writeScroll(routeKey: string, y: number): void {
+  if (isAdDetailPathname(routeKey)) return;
   try {
     sessionStorage.setItem(storageKey(routeKey), String(Math.max(0, Math.round(y))));
   } catch {
@@ -51,21 +70,30 @@ function setViewportScrollY(y: number): void {
   window.scrollTo({ top, left: 0, behavior: "auto" });
 }
 
-/** تخزين التمرير حسب pathname فقط حتى الرجوع من صفحة فرعية لا يحسب استعلامًا مختلفًا كصفحة أخرى */
 function scrollRouteKey(): string {
-  return window.location.pathname;
+  return normalizeScrollRoutePathname(window.location.pathname);
 }
 
 function flushScrollPosition(): void {
-  writeScroll(scrollRouteKey(), getViewportScrollY());
+  const k = scrollRouteKey();
+  if (isAdDetailPathname(k)) return;
+  writeScroll(k, getViewportScrollY());
 }
 
-function scheduleRestore(y: number): void {
-  const apply = () => setViewportScrollY(y);
+/** كل تنقل جديد يلغي requestAnimationFrame/setTimeout السابقة لـ scheduleRestore حتى لا يُعاد سكرول قديم بعد setViewportScrollY(0). */
+let scrollRestoreGeneration = 0;
+
+function scheduleRestore(y: number, generation: number): void {
+  const apply = () => {
+    if (generation !== scrollRestoreGeneration) return;
+    setViewportScrollY(y);
+  };
   apply();
   requestAnimationFrame(() => {
+    if (generation !== scrollRestoreGeneration) return;
     apply();
     requestAnimationFrame(() => {
+      if (generation !== scrollRestoreGeneration) return;
       apply();
       window.setTimeout(apply, 0);
       window.setTimeout(apply, 50);
@@ -74,10 +102,29 @@ function scheduleRestore(y: number): void {
   });
 }
 
-function forceRestoreMatchesRoute(stored: string, currentKey: string): boolean {
-  if (currentKey === stored) return true;
-  if (currentKey.startsWith(`${stored}?`)) return true;
-  if (currentKey.startsWith(`${stored}#`)) return true;
+/** دخول صفحة إعلان (أمامي أو popstate): دائمًا أعلى النافذة — لا استعادة من sessionStorage. */
+function forceAdDetailTop(generation: number): void {
+  scheduleRestore(0, generation);
+  requestAnimationFrame(() => {
+    if (generation !== scrollRestoreGeneration) return;
+    setViewportScrollY(0);
+    window.setTimeout(() => {
+      if (generation !== scrollRestoreGeneration) return;
+      setViewportScrollY(0);
+    }, 32);
+  });
+}
+
+function forceRestoreMatchesRoute(storedRaw: string, currentKey: string): boolean {
+  const storedPath = normalizeScrollRoutePathname(
+    (storedRaw.split("?")[0] ?? storedRaw).split("#")[0],
+  );
+  const currentPath = normalizeScrollRoutePathname(
+    (currentKey.split("?")[0] ?? currentKey).split("#")[0],
+  );
+  if (currentPath === storedPath) return true;
+  if (currentKey.startsWith(`${storedPath}?`)) return true;
+  if (currentKey.startsWith(`${storedPath}#`)) return true;
   return false;
 }
 
@@ -86,7 +133,6 @@ export function RouteScrollRestoration() {
   const search = useSearch();
   const routeSignature = `${pathname}${search ? `?${search}` : ""}`;
   const popRef = useRef(false);
-  /** نفس مفتاح التخزين المستخدم في readScroll/writeScroll (pathname فقط) */
   const prevBrowserRouteKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -133,22 +179,46 @@ export function RouteScrollRestoration() {
 
   useEffect(() => {
     const onScroll = () => {
-      writeScroll(scrollRouteKey(), getViewportScrollY());
+      const k = scrollRouteKey();
+      if (isAdDetailPathname(k)) return;
+      writeScroll(k, getViewportScrollY());
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useLayoutEffect(() => {
+    scrollRestoreGeneration += 1;
+    const restoreGen = scrollRestoreGeneration;
+
     const key = scrollRouteKey();
     const isPop = popRef.current;
+
+    /**
+     * صفحة إعلان: دائمًا من الأعلى (تنقل أمامي أو popstate).
+     * لا قراءة/استعادة ولا حفظ لسكرول الإعلان في sessionStorage.
+     */
+    if (isAdDetailPathname(key)) {
+      if (isPop) {
+        popRef.current = false;
+        clearReturnTargetIfLandingHere(key);
+      }
+      try {
+        sessionStorage.removeItem(storageKey(key));
+      } catch {
+        /* ignore */
+      }
+      forceAdDetailTop(restoreGen);
+      prevBrowserRouteKeyRef.current = key;
+      return;
+    }
 
     if (isPop) {
       popRef.current = false;
       clearReturnTargetIfLandingHere(key);
       const y = readScroll(key);
       if (y !== null) {
-        scheduleRestore(y);
+        scheduleRestore(y, restoreGen);
       }
       prevBrowserRouteKeyRef.current = key;
       return;
@@ -164,7 +234,7 @@ export function RouteScrollRestoration() {
         }
         const y = readScroll(key);
         if (y !== null) {
-          scheduleRestore(y);
+          scheduleRestore(y, restoreGen);
         }
         prevBrowserRouteKeyRef.current = key;
         return;
@@ -180,7 +250,7 @@ export function RouteScrollRestoration() {
     if (prevKey !== null && prevKey !== key) {
       const y = readScroll(key);
       if (y !== null) {
-        scheduleRestore(y);
+        scheduleRestore(y, restoreGen);
       } else {
         setViewportScrollY(0);
       }

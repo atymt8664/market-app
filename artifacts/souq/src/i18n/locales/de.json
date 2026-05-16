@@ -980,6 +980,7 @@
   "location_picker.trigger": "📍 Land / Stadt",
   "location_picker.aria": "Ergebnisse nach Standort filtern",
   "location_picker.back_country": "Zur Länderauswahl",
+  "location_picker.close_sheet": "Standortauswahl schließen",
   "location_picker.city_title": "Stadt wählen",
   "location_picker.title": "Standortfilter",
   "location_picker.subtitle": "Wähle erst Land, dann Stadt für nähere Anzeigen",

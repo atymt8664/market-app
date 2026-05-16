@@ -79,7 +79,10 @@ export function useUserPresenceBatch(
     queryKey: ["userPresence", "batch", keyStr] as const,
     queryFn: ({ signal }) => fetchUserPresenceBatch(sorted, { signal }),
     enabled,
-    staleTime: 0,
+    /** يقلّل طلبات مزعجة عند تبديل التبويب دون إبطاء ظهور الحالة عند العودة (يتم الجلب إذا تجاوزت البيانات هذا العمر). */
+    staleTime: 15_000,
+    /** لا يُشغّل مؤقت polling في الخلفية — يخفّض الشبكة وعمل الواجهة عندما التبويب مخفي. */
+    refetchIntervalInBackground: false,
     refetchInterval: (q) => {
       const d = q.state.data;
       if (!d?.byUserId) return false;
@@ -91,8 +94,10 @@ export function useUserPresenceBatch(
           break;
         }
       }
-      return anyOnline ? 8000 : 20_000;
+      /** أبطأ قليلًا من السابق مع بقاء الإحساس بتحديث «متصل» (10s / 25s بدل 8s / 20s). */
+      return anyOnline ? 10_000 : 25_000;
     },
+    /** عند العودة للتبويب بعد إخفاء: جلب واحد إذا البيانات stale (انظر staleTime) بدل سلسلة refetch مع كل تركيز. */
     refetchOnWindowFocus: true,
   });
 }

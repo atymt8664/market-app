@@ -980,6 +980,7 @@
   "location_picker.trigger": "📍 Country / city",
   "location_picker.aria": "Filter results by location",
   "location_picker.back_country": "Back to country selection",
+  "location_picker.close_sheet": "Close location picker",
   "location_picker.city_title": "Choose city",
   "location_picker.title": "Location filter",
   "location_picker.subtitle": "Choose country then city to see closer ads",

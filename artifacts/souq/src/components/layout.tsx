@@ -146,6 +146,7 @@ function BottomNav() {
   const handleCreateClick = () => {
     const nextTarget = "/create-ad";
     logNavTap("create", nextTarget);
+    if (isLoading) return;
     if (!isAuthenticated) {
       showGuestToast(nextTarget);
       toGuestWelcome(nextTarget);
@@ -158,6 +159,7 @@ function BottomNav() {
   const handleProfileClick = () => {
     const nextTarget = "/profile";
     logNavTap("profile", nextTarget);
+    if (isLoading) return;
     if (!isAuthenticated) {
       showGuestToast(nextTarget);
       toGuestWelcome(nextTarget);
@@ -169,6 +171,7 @@ function BottomNav() {
   const handleMessagesClick = () => {
     const nextTarget = "/messages";
     logNavTap("messages", nextTarget);
+    if (isLoading) return;
     if (!isAuthenticated) {
       showGuestToast(nextTarget);
       toGuestWelcome(nextTarget);
@@ -179,6 +182,7 @@ function BottomNav() {
   const handleFavoritesClick = () => {
     const nextTarget = "/favorites";
     logNavTap("favorites", nextTarget);
+    if (isLoading) return;
     if (!isAuthenticated) {
       showGuestToast(nextTarget);
       toGuestWelcome(nextTarget);

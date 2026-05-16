@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import type { ProxyOptions } from "vite";
+import { visualizer } from "rollup-plugin-visualizer";
 
 const rawPort = process.env.PORT ?? "5173";
 const port = Number(rawPort) || 5173;
@@ -23,6 +24,11 @@ function souqManualChunks(id: string): string | undefined {
   if (norm.includes("node_modules/react-dom/")) return "vendor-react-dom";
   if (norm.includes("node_modules/react/")) return "vendor-react";
   if (norm.includes("node_modules/scheduler/")) return "vendor-react";
+  /** Used by Recharts (and others); keep with React so `vendor-recharts` does not depend on `vendor-misc` for this. */
+  if (norm.includes("node_modules/react-is/")) return "vendor-react";
+
+  /** Shared tiny util used by app + Recharts; keep out of `vendor-misc` to avoid `vendor-recharts` ↔ `vendor-misc` cycles. */
+  if (norm.includes("node_modules/clsx/")) return "vendor-react";
 
   if (norm.includes("node_modules/@tanstack/")) return "vendor-tanstack";
 
@@ -30,9 +36,34 @@ function souqManualChunks(id: string): string | undefined {
 
   if (norm.includes("node_modules/lucide-react/")) return "vendor-lucide";
 
+  /** Framer Motion ships core animation logic in separate packages; keep them with `framer-motion` (not `vendor-misc`). */
+  if (norm.includes("node_modules/motion-dom/")) return "vendor-framer-motion";
+  if (norm.includes("node_modules/motion-utils/")) return "vendor-framer-motion";
   if (norm.includes("node_modules/framer-motion/")) return "vendor-framer-motion";
 
   if (norm.includes("node_modules/recharts")) return "vendor-recharts";
+  /** Recharts pulls d3 + helpers into the graph unless assigned here (otherwise they land in `vendor-misc` via Rollup chunking). */
+  if (norm.includes("node_modules/d3-")) return "vendor-recharts";
+  if (norm.includes("node_modules/d3/")) return "vendor-recharts";
+  /**
+   * Lodash is a Recharts transitive dep. Assigning it to `vendor-recharts` created a Rollup
+   * circular chunk (`vendor-recharts` ↔ `vendor-misc`) because `vendor-misc` still needs lodash.
+   * A dedicated chunk removes lodash from `vendor-misc` without that cycle.
+   */
+  if (norm.includes("node_modules/lodash/")) return "vendor-lodash";
+  if (norm.includes("node_modules/react-smooth/")) return "vendor-recharts";
+  if (norm.includes("node_modules/decimal.js-light/")) return "vendor-recharts";
+  if (norm.includes("node_modules/fast-equals/")) return "vendor-recharts";
+  if (norm.includes("node_modules/eventemitter3/")) return "vendor-recharts";
+  /**
+   * Recharts / react-smooth / d3-array transitive deps that do not match `d3-*` paths
+   * (otherwise Rollup places them in `vendor-misc` and can create `vendor-recharts` ↔ `vendor-misc` cycles).
+   */
+  if (norm.includes("node_modules/internmap/")) return "vendor-recharts";
+  if (norm.includes("node_modules/prop-types/")) return "vendor-recharts";
+  if (norm.includes("node_modules/react-transition-group/")) return "vendor-recharts";
+  if (norm.includes("node_modules/tiny-invariant/")) return "vendor-recharts";
+  if (norm.includes("node_modules/victory-vendor/")) return "vendor-recharts";
 
   if (norm.includes("node_modules/react-hook-form/")) return "vendor-rhf";
   if (norm.includes("node_modules/@hookform/")) return "vendor-rhf";
@@ -112,6 +143,24 @@ export default defineConfig({
     },
     react(),
     tailwindcss(),
+    ...(process.env.BUNDLE_ANALYZE === "1"
+      ? [
+          visualizer({
+            filename: path.resolve(import.meta.dirname, "dist/bundle-stats.json"),
+            template: "raw-data",
+            gzipSize: true,
+            brotliSize: false,
+            open: false,
+          }),
+          visualizer({
+            filename: path.resolve(import.meta.dirname, "dist/bundle-stats.html"),
+            template: "treemap",
+            gzipSize: true,
+            brotliSize: false,
+            open: false,
+          }),
+        ]
+      : []),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [

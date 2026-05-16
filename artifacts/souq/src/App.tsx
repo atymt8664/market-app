@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
+import { ChatSocketProvider } from "@/contexts/chat-socket-context";
 
 const Categories = lazy(() => import("@/pages/categories"));
 const Category = lazy(() => import("@/pages/category"));
@@ -72,8 +73,9 @@ const GuestWelcome = lazy(() => import("@/pages/guest-welcome"));
 function Router() {
   return (
     <Layout>
-      <Suspense fallback={<RouteLoadingFallback />}>
-        <Switch>
+      <ChatSocketProvider>
+        <Suspense fallback={<RouteLoadingFallback />}>
+          <Switch>
           <Route path="/" component={Home} />
           <Route path="/categories" component={Categories} />
           <Route path="/category/:id" component={Category} />
@@ -130,8 +132,9 @@ function Router() {
           <Route path="/messages" component={Messages} />
           <Route path="/messages/:id" component={MessageThread} />
           <Route component={NotFound} />
-        </Switch>
-      </Suspense>
+          </Switch>
+        </Suspense>
+      </ChatSocketProvider>
     </Layout>
   );
 }

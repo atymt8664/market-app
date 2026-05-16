@@ -12,7 +12,7 @@ let cachedMarketplaceCountryOptions: MarketplaceCountryOption[] | null = null;
 /** Countries available in the home location filter (signup list minus overseas defaults). */
 export async function getMarketplaceCountryOptions(): Promise<MarketplaceCountryOption[]> {
   if (cachedMarketplaceCountryOptions) return cachedMarketplaceCountryOptions;
-  const excluded = new Set(["US", "CA"]);
+  const excluded = new Set(["US"]);
   const opts = SIGNUP_COUNTRIES.filter((c) => !excluded.has(c.code))
     .map((c) => {
       const row = lookupMarketplaceCountry(c.code);

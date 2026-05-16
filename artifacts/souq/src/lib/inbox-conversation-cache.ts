@@ -61,7 +61,15 @@ export function applyIncomingMessageToInboxCache(
       unreadCount: nextUnread,
     };
     const rest = old.filter((c) => c.id !== conversationId);
-    return [patched, ...rest].sort(
+    if (rest.length === 0) return [patched];
+
+    const patchedT = new Date(patched.lastMessageAt).getTime();
+    const firstT = new Date(rest[0]!.lastMessageAt).getTime();
+    /** غالبًا تكون آخر رسالة = أحدث وقت؛ نتجنب sort كامل على كل حدث realtime. */
+    if (patchedT >= firstT) {
+      return [patched, ...rest];
+    }
+    return [...rest, patched].sort(
       (a, b) =>
         new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime(),
     );

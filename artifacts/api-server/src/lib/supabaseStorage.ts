@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { normalizeAdImageForUpload } from "./normalize-ad-image";
 import { logger } from "./logger";
 
 const UPLOADS_BUCKET = (process.env["SUPABASE_UPLOADS_BUCKET"] || "uploads").trim();
@@ -422,13 +423,21 @@ export async function uploadAdImagesForUser(
   const urls: string[] = [];
 
   for (const file of files) {
+    let jpegBuffer: Buffer;
+    try {
+      jpegBuffer = await normalizeAdImageForUpload(file.buffer);
+    } catch (err) {
+      logger.error({ err, step: "normalizeAdImage" }, "Failed to normalize ad image buffer");
+      throw new Error("تعذر معالجة الصورة، يرجى تجربة صورة أخرى أو تنسيق مختلف");
+    }
+
     const objectPath = `ads/${userId}/${crypto.randomUUID()}.jpg`;
     let lastError: Error | null = null;
     let triedBucketRecovery = false;
 
     for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt += 1) {
-      const { error } = await supabase.storage.from(UPLOADS_BUCKET).upload(objectPath, file.buffer, {
-        contentType: file.mimetype || "image/jpeg",
+      const { error } = await supabase.storage.from(UPLOADS_BUCKET).upload(objectPath, jpegBuffer, {
+        contentType: "image/jpeg",
         upsert: false,
       });
 

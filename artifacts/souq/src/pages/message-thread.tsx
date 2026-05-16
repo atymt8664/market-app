@@ -1,11 +1,16 @@
 import { Link, Redirect, useLocation, useParams, useSearch } from "wouter";
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
 } from "react";
 import {
   useGetConversation,
@@ -108,7 +113,30 @@ const BUYER_QUICK_REPLIES_AR = [
   "هل يوجد شحن؟",
 ] as const;
 
-/** دمج رسالة واردة في القائمة دون إعادة كتابة الحقول */
+/** نفس ترتيب `.sort` السابق: createdAt تصاعديًا، ثم id عند التعادل. */
+function compareMessagesByCreatedAtThenId(a: ChatMessage, b: ChatMessage): number {
+  const ta = new Date(a.createdAt).getTime();
+  const tb = new Date(b.createdAt).getTime();
+  if (ta !== tb) return ta - tb;
+  return a.id - b.id;
+}
+
+/** إدراج رسالة في قائمة مرتبة مسبقًا — O(log n) بدل sort كامل. */
+function insertMessageSorted(list: ChatMessage[], incoming: ChatMessage): ChatMessage[] {
+  let lo = 0;
+  let hi = list.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (compareMessagesByCreatedAtThenId(list[mid]!, incoming) < 0) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return [...list.slice(0, lo), incoming, ...list.slice(lo)];
+}
+
+/** دمج رسالة واردة في القائمة دون إعادة ترتيب كامل عند الإدراج في النهاية. */
 function mergeMessagesIntoList(
   prev: ChatMessage[] | undefined,
   incoming: ChatMessage,
@@ -120,10 +148,18 @@ function mergeMessagesIntoList(
     next[idx] = { ...next[idx], ...incoming };
     return next;
   }
-  return [...list, incoming].sort(
-    (a, b) =>
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-  );
+  if (list.length === 0) {
+    return [incoming];
+  }
+  const last = list[list.length - 1]!;
+  if (compareMessagesByCreatedAtThenId(last, incoming) <= 0) {
+    return [...list, incoming];
+  }
+  const first = list[0]!;
+  if (compareMessagesByCreatedAtThenId(incoming, first) < 0) {
+    return [incoming, ...list];
+  }
+  return insertMessageSorted(list, incoming);
 }
 
 const SELLER_QUICK_REPLIES_AR = [
@@ -156,6 +192,206 @@ function splitMessageSegments(text: string): Array<{ kind: "text" | "link"; valu
   }
   return out;
 }
+
+function renderMessageRichText(raw: string, dirRtl: boolean): ReactNode {
+  const text = raw || "";
+  const segments = splitMessageSegments(text);
+  const hasLink = segments.some((s) => s.kind === "link");
+  const linkClass =
+    "break-all font-medium text-primary underline decoration-primary/45 underline-offset-[3px] [overflow-wrap:anywhere]";
+  if (!hasLink) {
+    return (
+      <span
+        dir={dirRtl ? "rtl" : "ltr"}
+        className="block whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white opacity-100 [overflow-wrap:anywhere] [-webkit-text-fill-color:#ffffff] [text-rendering:optimizeLegibility]"
+      >
+        {text}
+      </span>
+    );
+  }
+  return (
+    <div
+      dir={dirRtl ? "rtl" : "ltr"}
+      className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white opacity-100 [overflow-wrap:anywhere] [-webkit-text-fill-color:#ffffff] [text-rendering:optimizeLegibility]"
+    >
+      {segments.map((seg, idx) =>
+        seg.kind === "text" ? (
+          <span key={`t-${idx}`}>{seg.value}</span>
+        ) : (
+          <a
+            key={`l-${idx}`}
+            href={seg.value}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkClass}
+            dir={seg.value.startsWith("http") ? "ltr" : undefined}
+          >
+            {seg.value}
+          </a>
+        ),
+      )}
+    </div>
+  );
+}
+
+function renderBubbleDeliveryIcon(m: ChatMessage): ReactNode {
+  const iconClass = "h-2.5 w-2.5 shrink-0 stroke-[2.25]";
+  if (m.readAt) {
+    return (
+      <CheckCheck
+        className={`${iconClass} text-primary drop-shadow-[0_0_6px_hsl(var(--primary)/0.38)]`}
+        aria-hidden
+      />
+    );
+  }
+  if (m.deliveredAt) {
+    return (
+      <CheckCheck
+        className={`${iconClass} text-muted-foreground/85`}
+        aria-hidden
+      />
+    );
+  }
+  return <Check className={`${iconClass} text-muted-foreground/70`} aria-hidden />;
+}
+
+type MessageBubbleLocale = "ar" | "de" | "en";
+
+type ChatMessageBubbleRowProps = {
+  m: ChatMessage;
+  mine: boolean;
+  selectMode: boolean;
+  isSelected: boolean;
+  dirRtl: boolean;
+  locale: MessageBubbleLocale;
+  onRowPointerDown: (m: ChatMessage, e: PointerEvent) => void;
+  onRowPointerEnd: () => void;
+  onRowClick: (m: ChatMessage, e: MouseEvent) => void;
+  onRowKeyDown: (m: ChatMessage, e: KeyboardEvent) => void;
+};
+
+function chatMessageBubbleRowPropsAreEqual(
+  a: ChatMessageBubbleRowProps,
+  b: ChatMessageBubbleRowProps,
+): boolean {
+  return (
+    a.m === b.m &&
+    a.mine === b.mine &&
+    a.selectMode === b.selectMode &&
+    a.isSelected === b.isSelected &&
+    a.dirRtl === b.dirRtl &&
+    a.locale === b.locale
+  );
+}
+
+const ChatMessageBubbleRow = memo(function ChatMessageBubbleRow({
+  m,
+  mine,
+  selectMode,
+  isSelected,
+  dirRtl,
+  locale,
+  onRowPointerDown,
+  onRowPointerEnd,
+  onRowClick,
+  onRowKeyDown,
+}: ChatMessageBubbleRowProps) {
+  const plain = m.body ?? "";
+  const msgKind = m.messageType === "image" ? "image" : "text";
+  const isImageMsg = msgKind === "image" && Boolean(m.imageUrl);
+  const showText = plain.trim().length > 0;
+  const showBubbleContent = isImageMsg || showText;
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 max-w-[min(100%,85%)] items-end gap-2 sm:max-w-[80%] md:max-w-[72%]",
+        mine ? "flex-row-reverse self-end" : "flex-row self-start",
+      )}
+    >
+      {selectMode ? (
+        <span
+          className={cn(
+            "mb-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+            isSelected
+              ? "border-primary bg-primary/20 text-primary shadow-[0_0_12px_-6px_hsl(var(--primary)/0.45)]"
+              : "border-zinc-500 bg-[#0A0A0A] text-transparent",
+          )}
+          aria-hidden
+        >
+          <Check className="h-3.5 w-3.5 stroke-[3]" />
+        </span>
+      ) : null}
+      <div
+        role="button"
+        tabIndex={0}
+        onPointerDown={(e) => onRowPointerDown(m, e)}
+        onPointerUp={onRowPointerEnd}
+        onPointerCancel={onRowPointerEnd}
+        onPointerLeave={onRowPointerEnd}
+        onClick={(e) => onRowClick(m, e)}
+        onKeyDown={(e) => onRowKeyDown(m, e)}
+        className={cn(
+          "min-w-0 max-w-[min(100%,280px)] sm:max-w-[min(100%,300px)] md:max-w-[min(100%,320px)] touch-manipulation",
+          selectMode ? "cursor-pointer" : "cursor-default",
+          mine ? CHAT_SENT_OUTER : CHAT_RECV_OUTER,
+        )}
+      >
+        <div
+          className={cn(
+            "relative z-[2] px-3 pb-2 pt-2.5 md:px-3.5 md:pb-2.5 md:pt-3",
+            selectMode && "pointer-events-none",
+          )}
+        >
+          {!showBubbleContent ? (
+            <span className="text-sm text-zinc-400" aria-hidden>
+              —
+            </span>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {isImageMsg && m.imageUrl ? (
+                <a
+                  href={m.imageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
+                  <img
+                    src={m.imageUrl}
+                    alt=""
+                    className="max-h-64 w-full max-w-[min(100%,280px)] rounded-xl border border-primary/35 object-cover shadow-[0_0_22px_-12px_hsl(var(--primary)/0.45)] ring-1 ring-primary/20 sm:max-w-[300px]"
+                    loading="lazy"
+                    decoding="async"
+                    sizes="(max-width: 640px) min(100vw - 3rem, 280px), 300px"
+                  />
+                </a>
+              ) : null}
+              {showText ? renderMessageRichText(plain, dirRtl) : null}
+            </div>
+          )}
+          <div
+            className={`mt-1.5 flex items-center gap-0.5 ${mine ? "justify-end" : "justify-start"}`}
+            dir="ltr"
+          >
+            <time
+              dateTime={m.createdAt}
+              className="text-[10px] font-medium tabular-nums leading-none text-muted-foreground"
+            >
+              {formatMessageTimestamp(m.createdAt, locale)}
+            </time>
+            {mine && (
+              <span
+                className="inline-flex translate-y-[0.5px] items-center"
+                aria-hidden
+              >
+                {renderBubbleDeliveryIcon(m)}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}, chatMessageBubbleRowPropsAreEqual);
 
 async function postChatImageUpload(convId: number, file: File): Promise<string> {
   const fd = new FormData();
@@ -230,6 +466,11 @@ export default function MessageThread() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialScrollDoneRef = useRef(false);
+  const scrollAnchorConvRef = useRef<number | null>(null);
+  const rowPointerDownRef = useRef<(m: ChatMessage, e: PointerEvent) => void>(() => {});
+  const rowPointerEndRef = useRef<() => void>(() => {});
+  const rowClickRef = useRef<(m: ChatMessage, e: MouseEvent) => void>(() => {});
+  const rowKeyDownRef = useRef<(m: ChatMessage, e: KeyboardEvent) => void>(() => {});
   const typingHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingActiveSentRef = useRef(false);
   const typingStartDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -589,6 +830,27 @@ export default function MessageThread() {
     enterSelectWith(m.id);
   };
 
+  const onMessageRowKeyDown = (m: ChatMessage, e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (!selectMode) enterSelectWith(m.id);
+      else toggleSelected(m.id);
+    }
+  };
+
+  const stableRowPointerDown = useCallback((m: ChatMessage, e: React.PointerEvent) => {
+    rowPointerDownRef.current(m, e);
+  }, []);
+  const stableRowPointerEnd = useCallback(() => {
+    rowPointerEndRef.current();
+  }, []);
+  const stableRowClick = useCallback((m: ChatMessage, e: React.MouseEvent) => {
+    rowClickRef.current(m, e);
+  }, []);
+  const stableRowKeyDown = useCallback((m: ChatMessage, e: React.KeyboardEvent) => {
+    rowKeyDownRef.current(m, e);
+  }, []);
+
   const onDeleteSelectedForMe = () => {
     if (!selectedIds.size || !conversationOk) return;
     hideMessagesForMe.mutate(
@@ -626,16 +888,18 @@ export default function MessageThread() {
     });
   }, []);
 
-  /** مرة واحدة عند فتح المحادثة بعد وصول الرسائل — لا نربط التمرير بتغيّر messages بعد ذلك */
-  useEffect(() => {
-    initialScrollDoneRef.current = false;
-  }, [conversationId]);
-
+  /** مرة واحدة عند فتح المحادثة بعد وصول الرسائل — لا نربط التمرير بكل تغيّر مرجع messages. */
+  const messagesLength = messages?.length ?? 0;
   useLayoutEffect(() => {
-    if (!conversationOk || !messages?.length || initialScrollDoneRef.current) return;
+    if (!conversationOk || messagesLength === 0) return;
+    if (scrollAnchorConvRef.current !== conversationId) {
+      scrollAnchorConvRef.current = conversationId;
+      initialScrollDoneRef.current = false;
+    }
+    if (initialScrollDoneRef.current) return;
     initialScrollDoneRef.current = true;
     scrollToBottom();
-  }, [conversationOk, messages, conversationId, scrollToBottom]);
+  }, [conversationOk, conversationId, messagesLength, scrollToBottom]);
 
   useEffect(() => {
     if (!conversationOk) return;
@@ -891,69 +1155,10 @@ export default function MessageThread() {
     setQuickTipSeen(true);
   };
 
-  const renderRichText = (raw: string) => {
-    const text = raw || "";
-    const segments = splitMessageSegments(text);
-    const hasLink = segments.some((s) => s.kind === "link");
-    const linkClass =
-      "break-all font-medium text-primary underline decoration-primary/45 underline-offset-[3px] [overflow-wrap:anywhere]";
-    if (!hasLink) {
-      return (
-        <span
-          dir={dirRtl ? "rtl" : "ltr"}
-          className="block whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white opacity-100 [overflow-wrap:anywhere] [-webkit-text-fill-color:#ffffff] [text-rendering:optimizeLegibility]"
-        >
-          {text}
-        </span>
-      );
-    }
-    return (
-      <div
-        dir={dirRtl ? "rtl" : "ltr"}
-        className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white opacity-100 [overflow-wrap:anywhere] [-webkit-text-fill-color:#ffffff] [text-rendering:optimizeLegibility]"
-      >
-        {segments.map((seg, idx) =>
-          seg.kind === "text" ? (
-            <span key={`t-${idx}`}>{seg.value}</span>
-          ) : (
-            <a
-              key={`l-${idx}`}
-              href={seg.value}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={linkClass}
-              dir={seg.value.startsWith("http") ? "ltr" : undefined}
-            >
-              {seg.value}
-            </a>
-          ),
-        )}
-      </div>
-    );
-  };
-
-  const renderDeliveryIcon = (m: ChatMessage) => {
-    const iconClass = "h-2.5 w-2.5 shrink-0 stroke-[2.25]";
-    if (m.readAt) {
-      return (
-        <CheckCheck
-          className={`${iconClass} text-primary drop-shadow-[0_0_6px_hsl(var(--primary)/0.38)]`}
-          aria-hidden
-        />
-      );
-    }
-    if (m.deliveredAt) {
-      return (
-        <CheckCheck
-          className={`${iconClass} text-muted-foreground/85`}
-          aria-hidden
-        />
-      );
-    }
-    return (
-      <Check className={`${iconClass} text-muted-foreground/70`} aria-hidden />
-    );
-  };
+  rowPointerDownRef.current = onMessagePointerDown;
+  rowPointerEndRef.current = onMessagePointerEnd;
+  rowClickRef.current = onMessageClick;
+  rowKeyDownRef.current = onMessageRowKeyDown;
 
   return (
     <div
@@ -1145,112 +1350,21 @@ export default function MessageThread() {
                 </button>
               </div>
             ) : hasStoredMessages ? (
-              (messages ?? []).map((m: ChatMessage) => {
-                const mine = m.senderId === user!.id;
-                const plain = m.body ?? "";
-                const msgKind = m.messageType === "image" ? "image" : "text";
-                const isImageMsg = msgKind === "image" && Boolean(m.imageUrl);
-                const showText = plain.trim().length > 0;
-                const showBubbleContent = isImageMsg || showText;
-                const isSelected = selectedIds.has(m.id);
-                return (
-                  <div
-                    key={m.id}
-                    className={cn(
-                      "flex min-w-0 max-w-[min(100%,85%)] items-end gap-2 sm:max-w-[80%] md:max-w-[72%]",
-                      mine ? "flex-row-reverse self-end" : "flex-row self-start",
-                    )}
-                  >
-                    {selectMode ? (
-                      <span
-                        className={cn(
-                          "mb-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                          isSelected
-                            ? "border-primary bg-primary/20 text-primary shadow-[0_0_12px_-6px_hsl(var(--primary)/0.45)]"
-                            : "border-zinc-500 bg-[#0A0A0A] text-transparent",
-                        )}
-                        aria-hidden
-                      >
-                        <Check className="h-3.5 w-3.5 stroke-[3]" />
-                      </span>
-                    ) : null}
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onPointerDown={(e) => onMessagePointerDown(m, e)}
-                      onPointerUp={onMessagePointerEnd}
-                      onPointerCancel={onMessagePointerEnd}
-                      onPointerLeave={onMessagePointerEnd}
-                      onClick={(e) => onMessageClick(m, e)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          if (!selectMode) enterSelectWith(m.id);
-                          else toggleSelected(m.id);
-                        }
-                      }}
-                      className={cn(
-                        "min-w-0 max-w-[min(100%,280px)] sm:max-w-[min(100%,300px)] md:max-w-[min(100%,320px)] touch-manipulation",
-                        selectMode ? "cursor-pointer" : "cursor-default",
-                        mine ? CHAT_SENT_OUTER : CHAT_RECV_OUTER,
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "relative z-[2] px-3 pb-2 pt-2.5 md:px-3.5 md:pb-2.5 md:pt-3",
-                          selectMode && "pointer-events-none",
-                        )}
-                      >
-                        {!showBubbleContent ? (
-                          <span className="text-sm text-zinc-400" aria-hidden>
-                            —
-                          </span>
-                        ) : (
-                          <div className="flex flex-col gap-2">
-                            {isImageMsg && m.imageUrl ? (
-                              <a
-                                href={m.imageUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                              >
-                                <img
-                                  src={m.imageUrl}
-                                  alt=""
-                                  className="max-h-64 w-full max-w-[min(100%,280px)] rounded-xl border border-primary/35 object-cover shadow-[0_0_22px_-12px_hsl(var(--primary)/0.45)] ring-1 ring-primary/20 sm:max-w-[300px]"
-                                  loading="lazy"
-                                  decoding="async"
-                                  sizes="(max-width: 640px) min(100vw - 3rem, 280px), 300px"
-                                />
-                              </a>
-                            ) : null}
-                            {showText ? renderRichText(plain) : null}
-                          </div>
-                        )}
-                        <div
-                          className={`mt-1.5 flex items-center gap-0.5 ${mine ? "justify-end" : "justify-start"}`}
-                          dir="ltr"
-                        >
-                          <time
-                            dateTime={m.createdAt}
-                            className="text-[10px] font-medium tabular-nums leading-none text-muted-foreground"
-                          >
-                            {formatMessageTimestamp(m.createdAt, locale)}
-                          </time>
-                          {mine && (
-                            <span
-                              className="inline-flex translate-y-[0.5px] items-center"
-                              aria-hidden
-                            >
-                              {renderDeliveryIcon(m)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
+              (messages ?? []).map((m: ChatMessage) => (
+                <ChatMessageBubbleRow
+                  key={m.id}
+                  m={m}
+                  mine={m.senderId === user!.id}
+                  selectMode={selectMode}
+                  isSelected={selectedIds.has(m.id)}
+                  dirRtl={dirRtl}
+                  locale={locale as MessageBubbleLocale}
+                  onRowPointerDown={stableRowPointerDown}
+                  onRowPointerEnd={stableRowPointerEnd}
+                  onRowClick={stableRowClick}
+                  onRowKeyDown={stableRowKeyDown}
+                />
+              ))
             ) : (
               <div className="flex w-full flex-col items-center justify-center py-12 text-sm text-zinc-500">
                 {t("message_thread.empty_hint")}

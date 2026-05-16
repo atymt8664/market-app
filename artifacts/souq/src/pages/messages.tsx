@@ -1,18 +1,20 @@
 import { Link, Redirect } from "wouter";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import {
   useListConversations,
   getListConversationsQueryKey,
   getAuthProfileCsrfTokenForRequest,
   normalizePresenceUserIds,
   useUserPresenceBatch,
+  type ConversationListItem,
+  type UserPresenceEntry,
 } from "@workspace/api-client-react";
 import { UserPresenceBadge } from "@/components/user-presence-badge";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageCircle } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
-import { useChatSocket } from "@/hooks/use-chat-socket";
+import { useChatSocket, type ChatSocketEvent } from "@/hooks/use-chat-socket";
 import { useQueryClient } from "@tanstack/react-query";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -32,6 +34,91 @@ const emptyCardShell =
 
 const conversationRowClass =
   "flex items-center gap-3 rounded-2xl border border-primary/30 bg-zinc-950/75 p-3.5 shadow-[0_0_16px_-10px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10 transition-colors hover:border-primary/40 hover:bg-zinc-900/80 active:bg-zinc-900/90";
+
+function areInboxListRowsEqual(a: ConversationListItem, b: ConversationListItem): boolean {
+  return (
+    a === b ||
+    (a.id === b.id &&
+      a.lastMessageAt === b.lastMessageAt &&
+      (a.lastMessagePreview ?? "") === (b.lastMessagePreview ?? "") &&
+      a.unreadCount === b.unreadCount &&
+      a.otherName === b.otherName &&
+      a.adTitle === b.adTitle &&
+      (a.adImage ?? "") === (b.adImage ?? "") &&
+      a.otherId === b.otherId)
+  );
+}
+
+type MessagesInboxRowProps = {
+  conversation: ConversationListItem;
+  presenceEntry: UserPresenceEntry | undefined;
+  presenceLoading: boolean;
+};
+
+const MessagesInboxRow = memo(
+  function MessagesInboxRow({ conversation: c, presenceEntry, presenceLoading }: MessagesInboxRowProps) {
+    return (
+      <li>
+        <Link
+          href={`/messages/${c.id}`}
+          className={cn(conversationRowClass, "items-start")}
+          dir="rtl"
+        >
+          <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/20 bg-zinc-900">
+            {c.adImage ? (
+              <img
+                src={c.adImage}
+                alt=""
+                className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+                sizes="44px"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-primary/70">
+                <MessageCircle className="h-4 w-4" strokeWidth={2} />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1 text-right">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="truncate font-semibold">
+                {c.otherName || t("messages.user")}
+              </span>
+              <span className="shrink-0 text-[11px] text-primary/75 tabular-nums">
+                {formatRelativeTime(c.lastMessageAt)}
+              </span>
+            </div>
+            <div className="mt-1 w-full min-w-0">
+              <UserPresenceBadge
+                entry={presenceEntry}
+                isLoading={presenceLoading}
+                variant="compact"
+              />
+            </div>
+            <div className="truncate text-xs text-muted-foreground">{c.adTitle}</div>
+            <div className="mt-0.5 flex items-center gap-2">
+              <span
+                className={`truncate text-sm ${c.unreadCount > 0 ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+              >
+                {c.lastMessagePreview || t("messages.start_chat")}
+              </span>
+              {c.unreadCount > 0 && (
+                <span className="ms-auto shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground shadow-[0_0_10px_-4px_hsl(var(--primary)/0.35)]">
+                  {c.unreadCount}
+                </span>
+              )}
+            </div>
+          </div>
+        </Link>
+      </li>
+    );
+  },
+  (prev, next) =>
+    areInboxListRowsEqual(prev.conversation, next.conversation) &&
+    prev.presenceEntry === next.presenceEntry &&
+    prev.presenceLoading === next.presenceLoading,
+);
 
 export default function Messages() {
   const { user, isLoading: authLoading } = useAuth();
@@ -53,12 +140,18 @@ export default function Messages() {
 
   const visibleRows = useMemo(() => conversations ?? [], [conversations]);
 
+  /**
+   * سلسلة أولية (ليست useMemo بمرجع visibleRows) حتى لا يُعاد بناء قائمة presence
+   * عند كل تحديث للكاش طالما أزواج (id, otherId) لم تتغير.
+   */
+  const inboxPresenceFingerprint = visibleRows.map((c) => `${c.id}:${c.otherId}`).join("|");
+
   const inboxPresenceTargets = useMemo(
     () =>
       normalizePresenceUserIds(
         visibleRows.map((c) => c.otherId).filter((id) => typeof id === "number" && id > 0),
       ),
-    [visibleRows],
+    [inboxPresenceFingerprint],
   );
 
   const inboxPresenceQ = useUserPresenceBatch(inboxPresenceTargets, {
@@ -111,15 +204,20 @@ export default function Messages() {
     }
   };
 
-  useChatSocket((ev) => {
-    if (ev.type === "message" && user?.id) {
-      applyIncomingMessageToInboxCache(queryClient, {
-        myUserId: user.id,
-        conversationId: ev.conversationId,
-        message: ev.message,
-      });
-    }
-  });
+  const onInboxChatSocketEvent = useCallback(
+    (ev: ChatSocketEvent) => {
+      if (ev.type === "message" && user?.id) {
+        applyIncomingMessageToInboxCache(queryClient, {
+          myUserId: user.id,
+          conversationId: ev.conversationId,
+          message: ev.message,
+        });
+      }
+    },
+    [queryClient, user?.id],
+  );
+
+  useChatSocket(onInboxChatSocketEvent);
 
   if (!authLoading && !user) return <Redirect to="/guest-welcome?redirect=/messages" />;
 
@@ -157,62 +255,12 @@ export default function Messages() {
         ) : visibleRows && visibleRows.length > 0 ? (
           <ul className="flex w-full flex-col gap-2.5">
             {visibleRows.map((c) => (
-              <li key={c.id}>
-                <Link
-                  href={`/messages/${c.id}`}
-                  className={cn(conversationRowClass, "items-start")}
-                  dir="rtl"
-                >
-                  <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/20 bg-zinc-900">
-                    {c.adImage ? (
-                      <img
-                        src={c.adImage}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                        decoding="async"
-                        sizes="44px"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-primary/70">
-                        <MessageCircle className="h-4 w-4" strokeWidth={2} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1 text-right">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="truncate font-semibold">
-                        {c.otherName || t("messages.user")}
-                      </span>
-                      <span className="shrink-0 text-[11px] text-primary/75 tabular-nums">
-                        {formatRelativeTime(c.lastMessageAt)}
-                      </span>
-                    </div>
-                    <div className="mt-1 w-full min-w-0">
-                      <UserPresenceBadge
-                        entry={inboxPresenceQ.data?.byUserId[String(c.otherId)]}
-                        isLoading={inboxPresenceQ.isPending}
-                        variant="compact"
-                      />
-                    </div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {c.adTitle}
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-2">
-                      <span
-                        className={`truncate text-sm ${c.unreadCount > 0 ? "font-semibold text-foreground" : "text-muted-foreground"}`}
-                      >
-                        {c.lastMessagePreview || t("messages.start_chat")}
-                      </span>
-                      {c.unreadCount > 0 && (
-                        <span className="ms-auto shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground shadow-[0_0_10px_-4px_hsl(var(--primary)/0.35)]">
-                          {c.unreadCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              </li>
+              <MessagesInboxRow
+                key={c.id}
+                conversation={c}
+                presenceEntry={inboxPresenceQ.data?.byUserId[String(c.otherId)]}
+                presenceLoading={inboxPresenceQ.isPending}
+              />
             ))}
           </ul>
         ) : (

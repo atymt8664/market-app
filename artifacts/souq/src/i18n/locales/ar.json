@@ -988,6 +988,7 @@
   "location_picker.trigger": "📍 الدولة / المدينة",
   "location_picker.aria": "تصفية النتائج حسب الموقع",
   "location_picker.back_country": "العودة لاختيار الدولة",
+  "location_picker.close_sheet": "إغلاق اختيار الموقع",
   "location_picker.city_title": "اختر المدينة",
   "location_picker.title": "تصفية الموقع",
   "location_picker.subtitle": "اختر الدولة ثم المدينة لعرض إعلانات أقرب لك",

@@ -346,7 +346,7 @@ export default function Home() {
   );
 
   return (
-    <div className="flex min-h-0 w-full flex-col bg-[#0A0A0A]">
+    <main className="flex min-h-0 w-full flex-col bg-[#0A0A0A]">
       <HomeFeedHeader
         isRtl={isRtl}
         reserveBellSlot={reserveBellSlot}
@@ -370,6 +370,6 @@ export default function Home() {
         isLoadingRecommended={isLoadingRecommended}
         recommendedAds={recommendedAds}
       />
-    </div>
+    </main>
   );
 }

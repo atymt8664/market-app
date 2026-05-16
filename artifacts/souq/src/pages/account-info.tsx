@@ -90,7 +90,7 @@ export default function AccountInfoPage() {
         <button
           key={option.code}
           type="button"
-          onClick={() => setLocale(option.code)}
+          onClick={() => void setLocale(option.code)}
           className={`${SETTINGS_ROW_BUTTON} flex items-center justify-between ${
             locale === option.code
               ? "border-primary/40 bg-primary/[0.12] text-foreground shadow-[0_0_0_1px_rgba(182,227,86,0.1)]"

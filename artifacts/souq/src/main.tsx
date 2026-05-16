@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { ensureLocalesForActive } from "@/i18n";
 import { getApiBaseUrl } from "@/lib/api-url";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { queryClient } from "@/lib/query-client";
@@ -21,4 +22,6 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
   });
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+void ensureLocalesForActive().then(() => {
+  createRoot(document.getElementById("root")!).render(<App />);
+});

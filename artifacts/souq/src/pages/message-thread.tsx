@@ -106,13 +106,6 @@ const SELLER_QUICK_KEYS = [
   "message_thread.msg_qs_seller_6",
 ] as const;
 
-const BUYER_QUICK_REPLIES_AR = [
-  "هل المنتج ما زال متوفراً؟",
-  "هل السعر قابل للتفاوض؟",
-  "أين يمكن الاستلام؟",
-  "هل يوجد شحن؟",
-] as const;
-
 /** نفس ترتيب `.sort` السابق: createdAt تصاعديًا، ثم id عند التعادل. */
 function compareMessagesByCreatedAtThenId(a: ChatMessage, b: ChatMessage): number {
   const ta = new Date(a.createdAt).getTime();
@@ -161,13 +154,6 @@ function mergeMessagesIntoList(
   }
   return insertMessageSorted(list, incoming);
 }
-
-const SELLER_QUICK_REPLIES_AR = [
-  "نعم، المنتج متوفر",
-  "السعر قابل للتفاوض بشكل بسيط",
-  "يمكن الاستلام في [المدينة]",
-  "الشحن متاح",
-] as const;
 
 /** http(s) and in-app ad paths — safe split; text nodes rendered by React (escaped). */
 const LINK_SPLIT_RE = /https?:\/\/[^\s<>"']+|\/ad\/\d+\b/gi;
@@ -1137,10 +1123,7 @@ export default function MessageThread() {
     });
   };
 
-  const quickRepliesAr = conv?.isSeller
-    ? SELLER_QUICK_REPLIES_AR
-    : BUYER_QUICK_REPLIES_AR;
-  const quickReplies = dirRtl ? [...quickRepliesAr] : quickKeys.map((key) => t(key));
+  const quickReplies = quickKeys.map((key) => t(key));
 
   const dismissMenuTip = () => {
     setSeenFlag(CHAT_MENU_TIP_SEEN_KEY);

@@ -91,17 +91,6 @@ const DEVICE_SPEC_ALIASES: Record<DeviceSpecKeyRest, readonly string[]> = {
   ],
 };
 
-const DEVICE_SPEC_LABELS_AR: Record<
-  "manufacturer" | DeviceSpecKeyRest,
-  string
-> = {
-  manufacturer: "الشركة المصنعة",
-  color: "اللون",
-  condition: "الحالة",
-  storage: "السعة التخزينية",
-  accessories: "الجهاز والملحقات",
-};
-
 function coerceDeviceSpecString(value: unknown): string | null {
   if (value === undefined || value === null) return null;
   if (typeof value === "string") {
@@ -213,7 +202,7 @@ function buildDeviceInfoRowsFromDetailsOnly(detailsUnknown: unknown): {
   if (manufacturer) {
     rows.push({
       id: "device-spec:manufacturer",
-      label: DEVICE_SPEC_LABELS_AR.manufacturer,
+      label: "",
       value: manufacturer,
     });
   }
@@ -227,7 +216,7 @@ function buildDeviceInfoRowsFromDetailsOnly(detailsUnknown: unknown): {
     if (!value) continue;
     rows.push({
       id: `device-spec:${key}`,
-      label: DEVICE_SPEC_LABELS_AR[key],
+      label: "",
       value,
     });
   }

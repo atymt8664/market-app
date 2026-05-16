@@ -188,8 +188,7 @@ function FirstLaunchLanguageGate({ onDone }: { onDone: () => void }) {
         <button
           type="button"
           onClick={() => {
-            setLocale(selectedLocale);
-            onDone();
+            void setLocale(selectedLocale).then(onDone);
           }}
           className={cn(AUTH_ACCENT_OUTLINE_BTN, "mt-5 text-sm hover:bg-zinc-900")}
         >

@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="سوق العرب EU — بيع وشراء بين الأفراد" />
     <meta property="og:site_name" content="سوق العرب EU" />
     <meta property="og:type" content="website" />
@@ -19,11 +19,20 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/icons/pwa-icon-512.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/pwa-icon-192.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Noto+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preload" href="/fonts/cairo/cairo-600.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
+    <script>
+      (function () {
+        try {
+          var l = localStorage.getItem("app_locale");
+          if (l === "en" || l === "de") {
+            document.documentElement.lang = l;
+            document.documentElement.dir = "ltr";
+          }
+        } catch (e) {}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

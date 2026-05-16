@@ -1,27 +1,30 @@
-import ar from "@/i18n/locales/ar.json";
-import en from "@/i18n/locales/en.json";
-import de from "@/i18n/locales/de.json";
-
 export type Locale = "ar" | "en" | "de";
 type Dictionary = Record<string, string>;
 
-const dictionaries: Record<Locale, Dictionary> = {
-  ar,
-  en,
-  de,
-};
-
 const STORAGE_KEY = "app_locale";
 const listeners = new Set<() => void>();
+
+const localeLoaders: Record<Locale, () => Promise<{ default: Dictionary }>> = {
+  ar: () => import("./locales/ar.json"),
+  en: () => import("./locales/en.json"),
+  de: () => import("./locales/de.json"),
+};
+
+const dictionaries: Partial<Record<Locale, Dictionary>> = {};
+const loadPromises: Partial<Record<Locale, Promise<Dictionary>>> = {};
 
 function isLocale(value: string | null): value is Locale {
   return value === "ar" || value === "en" || value === "de";
 }
 
-function resolveInitialLocale(): Locale {
-  if (typeof window === "undefined") return "ar";
+function readSavedLocale(): Locale | null {
+  if (typeof window === "undefined") return null;
   const saved = localStorage.getItem(STORAGE_KEY);
-  return isLocale(saved) ? saved : "ar";
+  return isLocale(saved) ? saved : null;
+}
+
+function resolveInitialLocale(): Locale {
+  return readSavedLocale() ?? "ar";
 }
 
 let activeLocale: Locale = resolveInitialLocale();
@@ -34,23 +37,52 @@ function applyDocumentLocale(locale: Locale) {
 
 applyDocumentLocale(activeLocale);
 
+async function loadLocale(locale: Locale): Promise<Dictionary> {
+  const cached = dictionaries[locale];
+  if (cached) return cached;
+
+  const pending = loadPromises[locale];
+  if (pending) return pending;
+
+  const promise = localeLoaders[locale]().then((mod) => {
+    dictionaries[locale] = mod.default;
+    return mod.default;
+  });
+
+  loadPromises[locale] = promise;
+  return promise;
+}
+
+/** Active locale + Arabic fallback (for missing keys) before first React render. */
+export async function ensureLocalesForActive(): Promise<void> {
+  activeLocale = resolveInitialLocale();
+  applyDocumentLocale(activeLocale);
+  await loadLocale(activeLocale);
+  if (activeLocale !== "ar") {
+    await loadLocale("ar");
+  }
+}
+
 export function getLocale(): Locale {
   return activeLocale;
 }
 
-export function setLocale(locale: Locale) {
+export async function setLocale(locale: Locale): Promise<void> {
   const changed = activeLocale !== locale;
   activeLocale = locale;
   if (typeof window !== "undefined") {
     localStorage.setItem(STORAGE_KEY, locale);
   }
   applyDocumentLocale(locale);
+  await loadLocale(locale);
+  if (locale !== "ar") {
+    await loadLocale("ar");
+  }
   if (changed) listeners.forEach((listener) => listener());
 }
 
 export function hasSavedLocale(): boolean {
-  if (typeof window === "undefined") return false;
-  return isLocale(localStorage.getItem(STORAGE_KEY));
+  return readSavedLocale() !== null;
 }
 
 export function subscribeToLocale(listener: () => void): () => void {
@@ -59,8 +91,10 @@ export function subscribeToLocale(listener: () => void): () => void {
 }
 
 export function t(key: string, params?: Record<string, string | number>): string {
-  const fallback = dictionaries.ar[key] ?? key;
-  const raw = dictionaries[activeLocale][key];
+  const arDict = dictionaries.ar;
+  const fallback = arDict?.[key] ?? key;
+  const activeDict = dictionaries[activeLocale];
+  const raw = activeDict?.[key];
   const template = raw && raw.trim().length > 0 ? raw : fallback;
 
   if (!params) return template;

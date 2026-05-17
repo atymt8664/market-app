@@ -1,23 +1,8 @@
 const path = require("path");
-const fs = require("fs");
 const dotenv = require("dotenv");
-
-/**
- * Match `src/load-env.ts`: `artifacts/api-server/.env` then `.env.local` (override).
- * Do not rely on `process.cwd()` — `pnpm admin:reset-password` from the monorepo root
- * used to load the wrong `DATABASE_URL` when only `.env` differed from `.env.local`.
- */
-const apiServerRoot = path.resolve(__dirname, "..");
-dotenv.config({ path: path.join(apiServerRoot, ".env") });
-const envLocalPath = path.join(apiServerRoot, ".env.local");
-if (fs.existsSync(envLocalPath)) {
-  dotenv.config({ path: envLocalPath, override: true });
-}
-
-/** Last resort if DATABASE_URL is only in the monorepo root `.env`. */
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 if (!process.env.DATABASE_URL) {
-  const repoRoot = path.resolve(apiServerRoot, "..", "..");
-  dotenv.config({ path: path.join(repoRoot, ".env") });
+  dotenv.config({ path: path.resolve(process.cwd(), "artifacts/api-server/.env") });
 }
 const bcrypt = require("bcryptjs");
 const { Client } = require("pg");

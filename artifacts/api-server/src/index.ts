@@ -1,4 +1,4 @@
-import "./instrument-sentry";
+import "./load-env";
 import dns from "node:dns";
 import { createServer } from "http";
 import app from "./app";
@@ -60,7 +60,7 @@ async function start() {
     await prepareDatabase();
   } catch (err) {
     logger.error({ err }, "Database preparation failed");
-    const { captureUnhandledError, flushSentry } = await import("./lib/sentry");
+    const { captureUnhandledError } = await import("./lib/sentry");
     captureUnhandledError(err);
     await flushSentry(2000);
     process.exit(1);

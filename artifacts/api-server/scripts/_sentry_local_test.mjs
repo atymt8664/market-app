@@ -12,7 +12,9 @@ const apiRoot = path.resolve(__dirname, "..");
 process.chdir(apiRoot);
 process.env.NODE_ENV = process.env.NODE_ENV || "development";
 
-await import("../src/instrument-sentry.ts");
+await import("../src/load-env.ts");
+const { initSentry } = await import("../src/lib/sentry.ts");
+initSentry();
 
 const dsnConfigured = Boolean(process.env.SENTRY_DSN?.trim());
 if (!dsnConfigured) {

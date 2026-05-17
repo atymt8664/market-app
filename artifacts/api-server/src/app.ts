@@ -7,7 +7,7 @@ import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { observabilityMiddleware } from "./middlewares/observability";
-import { captureApiError, sentryRequestMiddleware } from "./lib/sentry";
+import { captureApiError, initSentry, sentryRequestMiddleware } from "./lib/sentry";
 import { createRequestId } from "./lib/observability/request-id";
 import {
   productionSafeErrorMessage,
@@ -46,6 +46,8 @@ declare module "express-session" {
 
 const app: Express = express();
 const isProduction = process.env.NODE_ENV === "production";
+
+initSentry();
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);

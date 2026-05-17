@@ -62,23 +62,26 @@ export function initSentry(): void {
   const integrations = [
     Sentry.inboundFiltersIntegration(),
     Sentry.linkedErrorsIntegration(),
-    Sentry.requestDataIntegration(),
     Sentry.onUncaughtExceptionIntegration(),
     Sentry.onUnhandledRejectionIntegration(),
-    Sentry.expressIntegration(),
   ];
 
-  Sentry.init({
-    dsn,
-    environment: resolveSentryEnvironment(),
-    release: resolveSentryRelease(),
-    tracesSampleRate: 0,
-    profilesSampleRate: 0,
-    sendDefaultPii: false,
-    defaultIntegrations: false,
-    integrations,
-    beforeSend: scrubEvent,
-  });
+  try {
+    Sentry.init({
+      dsn,
+      environment: resolveSentryEnvironment(),
+      release: resolveSentryRelease(),
+      tracesSampleRate: 0,
+      profilesSampleRate: 0,
+      sendDefaultPii: false,
+      defaultIntegrations: false,
+      integrations,
+      beforeSend: scrubEvent,
+    });
+  } catch (err) {
+    logger.error({ err }, "Sentry init failed — continuing without error monitoring");
+    return;
+  }
 
   enabled = true;
   logger.info(

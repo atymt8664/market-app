@@ -58,6 +58,16 @@ export const ListSubcategoriesResponse = zod.array(
  * @summary List ads with optional filters
  */
 export const listAdsQueryLimitDefault = 50;
+export const listAdsQueryLimitMax = 100;
+
+function clampListAdsQueryLimit(raw: unknown): number {
+  if (raw === undefined || raw === null || raw === "") {
+    return listAdsQueryLimitDefault;
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 1) return listAdsQueryLimitDefault;
+  return Math.min(Math.floor(n), listAdsQueryLimitMax);
+}
 
 export const ListAdsQueryParams = zod.object({
   q: zod.coerce.string().optional(),
@@ -73,10 +83,11 @@ export const ListAdsQueryParams = zod.object({
     .describe(
       "When set, return only ads owned by this user (public approved statuses)."
     ),
-  limit: zod.coerce
-    .number()
-    .min(1)
-    .max(100)
+  limit: zod
+    .preprocess(
+      (val) => clampListAdsQueryLimit(val),
+      zod.number().int().min(1).max(listAdsQueryLimitMax),
+    )
     .default(listAdsQueryLimitDefault),
   cursor: zod.coerce.string().optional(),
 });

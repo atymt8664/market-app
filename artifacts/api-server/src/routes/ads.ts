@@ -40,6 +40,7 @@ import {
   keysetWhereDesc,
   PAGINATION,
   parsePaginationQuery,
+  sanitizeQueryLimit,
   sendJsonArrayPage,
 } from "../lib/pagination";
 
@@ -428,11 +429,12 @@ router.get("/ads/:adId", async (req, res) => {
 
 router.get("/ads", async (req, res) => {
   try {
-    const q = ListAdsQueryParams.parse(req.query);
-    const pagination = parsePaginationQuery(
+    const query = sanitizeQueryLimit(
       req.query as Record<string, unknown>,
       PAGINATION.ADS,
     );
+    const q = ListAdsQueryParams.parse(query);
+    const pagination = parsePaginationQuery(query, PAGINATION.ADS);
     const conds = [] as ReturnType<typeof eq>[];
     conds.push(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]));
     if (q.userId !== undefined) conds.push(eq(adsTable.userId, q.userId));

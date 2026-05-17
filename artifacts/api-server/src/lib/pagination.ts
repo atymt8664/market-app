@@ -43,7 +43,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-/** Clamp client `limit` to profile bounds. */
+/** Clamp client `limit` to profile bounds (never throws). */
 export function clampLimit(
   raw: unknown,
   profile: LimitProfile,
@@ -54,6 +54,17 @@ export function clampLimit(
       : Number(raw);
   if (!Number.isFinite(n) || n < 1) return profile.default;
   return Math.min(Math.floor(n), profile.max);
+}
+
+/**
+ * Normalize `limit` on a query object before Zod parse (avoids .max() validation 500s).
+ * Other query keys are left unchanged.
+ */
+export function sanitizeQueryLimit(
+  query: Record<string, unknown>,
+  profile: LimitProfile,
+): Record<string, unknown> {
+  return { ...query, limit: clampLimit(query["limit"], profile) };
 }
 
 /** Decode opaque cursor (`base64url` JSON `{ t, id }`). Returns null if absent. */
@@ -89,7 +100,8 @@ export function parsePaginationQuery(
   query: Record<string, unknown>,
   profile: LimitProfile,
 ): ParsedPagination {
-  const limit = clampLimit(query["limit"], profile);
+  const safeQuery = sanitizeQueryLimit(query, profile);
+  const limit = safeQuery["limit"] as number;
   const cursorRaw = query["cursor"];
   const cursor =
     cursorRaw === undefined || cursorRaw === null || cursorRaw === ""

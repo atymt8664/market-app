@@ -8,14 +8,11 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node ./src/lib/pagination.test.mjs && node ./src/lib/ad-search-util.test.mjs && node ./src/lib/ad-reaction-counts.test.mjs && node ./src/lib/ads-list-query.test.mjs && node ./src/lib/observability/latency-tracker.test.mjs && node ./src/lib/observability/request-id.test.mjs && node ./src/lib/sentry.test.mjs && node ./src/lib/sentry-env.test.mjs",
-    "sentry:apply-dsn": "node ./scripts/apply-sentry-dsn.mjs",
-    "sentry:local-test": "node ./scripts/_sentry_local_test.mjs",
+    "test": "node ./src/lib/pagination.test.mjs && node ./src/lib/ad-search-util.test.mjs && node ./src/lib/ad-reaction-counts.test.mjs && node ./src/lib/ads-list-query.test.mjs && node ./src/lib/observability/latency-tracker.test.mjs && node ./src/lib/observability/request-id.test.mjs",
     "admin:reset-password": "node ./scripts/admin-reset-password.cjs"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",
-    "@sentry/node": "8.55.2",
     "@supabase/supabase-js": "^2.104.1",
     "@types/multer": "^2.1.0",
     "@workspace/api-zod": "workspace:*",

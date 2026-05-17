@@ -45,24 +45,16 @@ function applyDocumentLocale(locale: Locale) {
 
 applyDocumentLocale(activeLocale);
 
-function clearGateOnlyLocale(locale: Locale): void {
-  if (!gateOnlyLocales.has(locale)) return;
-  gateOnlyLocales.delete(locale);
-  delete dictionaries[locale];
-  delete loadPromises[locale];
-}
-
 async function loadLocale(locale: Locale): Promise<Dictionary> {
-  clearGateOnlyLocale(locale);
-
   const cached = dictionaries[locale];
-  if (cached) return cached;
+  if (cached && !gateOnlyLocales.has(locale)) return cached;
 
   const pending = loadPromises[locale];
   if (pending) return pending;
 
   const promise = localeLoaders[locale]().then((mod) => {
     dictionaries[locale] = mod.default;
+    gateOnlyLocales.delete(locale);
     return mod.default;
   });
 

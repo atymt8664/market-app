@@ -44,6 +44,7 @@ import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { formatMessageTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { STALE_PEER_BLOCK_MS } from "@/lib/query-stale-times";
 import { apiUrl } from "@/lib/api-url";
 import { useToast } from "@/hooks/use-toast";
 import { ChatThreadOverflowMenu } from "@/components/chat-thread-overflow-menu";
@@ -511,6 +512,8 @@ export default function MessageThread() {
       enabled: messagesQueryEnabled,
       staleTime: 60_000,
       gcTime: 30 * 60_000,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
     },
   });
 
@@ -541,7 +544,7 @@ export default function MessageThread() {
   } = useQuery({
     queryKey: peerBlockQueryKey,
     enabled: peerBlockQueryEnabled,
-    staleTime: 30_000,
+    staleTime: STALE_PEER_BLOCK_MS,
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const res = await fetch(apiUrl(`/api/users/${peerIdForBlock}/block-status`), {

@@ -22,14 +22,11 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import {
   useAuthLogout,
-  getAuthMeQueryKey,
-  getListMyAdsQueryKey,
-  getListFavoriteAdsQueryKey,
-  getListConversationsQueryKey,
   getAuthProfileCsrfTokenForRequest,
   clearAuthProfileCsrfToken,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { clearUserSessionQueries } from "@/lib/clear-session-query-cache";
 import { useAuth } from "@/hooks/use-auth";
 import { AvatarCircle } from "@/components/avatar-circle";
 import { Button } from "@/components/ui/button";
@@ -42,10 +39,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api-url";
 import { cn } from "@/lib/utils";
-import {
-  notificationsQueryKey,
-  unreadCountQueryKey,
-} from "@/hooks/use-notifications";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { isAccountVerified } from "@/lib/account-verification";
@@ -202,12 +195,7 @@ export default function Settings() {
       onSettled: async () => {
         // Keep UX prefs, but clear session-like local data.
         sessionStorage.clear();
-
-        queryClient.setQueryData(getAuthMeQueryKey(), null);
-        queryClient.removeQueries({ queryKey: getAuthMeQueryKey() });
-        queryClient.removeQueries({ queryKey: getListMyAdsQueryKey() });
-        await queryClient.invalidateQueries();
-
+        await clearUserSessionQueries(queryClient);
         navigate("/login");
       },
     });
@@ -234,14 +222,7 @@ export default function Settings() {
 
   const clearSessionAfterAccountDeletion = async () => {
     sessionStorage.clear();
-    queryClient.setQueryData(getAuthMeQueryKey(), null);
-    queryClient.removeQueries({ queryKey: getAuthMeQueryKey() });
-    queryClient.removeQueries({ queryKey: getListMyAdsQueryKey() });
-    queryClient.removeQueries({ queryKey: getListFavoriteAdsQueryKey() });
-    queryClient.removeQueries({ queryKey: getListConversationsQueryKey() });
-    queryClient.removeQueries({ queryKey: notificationsQueryKey });
-    queryClient.removeQueries({ queryKey: unreadCountQueryKey });
-    await queryClient.invalidateQueries();
+    await clearUserSessionQueries(queryClient);
   };
 
   const handleConfirmDeleteAccount = async () => {

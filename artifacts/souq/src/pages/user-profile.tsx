@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { AvatarCircle } from "@/components/avatar-circle";
 import { cn } from "@/lib/utils";
+import { STALE_AD_LIST_MS, STALE_PEER_BLOCK_MS } from "@/lib/query-stale-times";
 import {
   useGetUserProfile,
   getGetUserProfileQueryKey,
@@ -184,7 +185,13 @@ export default function UserProfile() {
   const adsKey = getListAdsQueryKey(listAdsParams);
   const { data: userAds, isLoading: adsLoading } = useListAds(
     listAdsParams,
-    { query: { queryKey: adsKey, enabled: profileQueryEnabled } },
+    {
+      query: {
+        queryKey: adsKey,
+        enabled: profileQueryEnabled,
+        staleTime: STALE_AD_LIST_MS,
+      },
+    },
   );
   const sellerAds = userAds ?? [];
 
@@ -199,6 +206,8 @@ export default function UserProfile() {
   const { data: blockStatus } = useQuery({
     queryKey: userBlockStatusQueryKey,
     enabled: blockStatusQueryEnabled,
+    staleTime: STALE_PEER_BLOCK_MS,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const res = await fetch(apiUrl(`/api/users/${userId}/block-status`), {
         credentials: "include",

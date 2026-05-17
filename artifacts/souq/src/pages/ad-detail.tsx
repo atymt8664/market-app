@@ -49,6 +49,7 @@ import { BuyerSafetyNote } from "@/components/buyer-safety-note";
 import { UserPresenceBadge } from "@/components/user-presence-badge";
 import { t, type Locale } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { STALE_AD_DETAIL_MS } from "@/lib/query-stale-times";
 import { AUTH_ACCENT_OUTLINE_BTN } from "@/lib/auth-page-styles";
 import {
   Sheet,
@@ -234,7 +235,11 @@ export default function AdDetail() {
   const queryClient = useQueryClient();
   const adKey = getGetAdQueryKey(id);
   const { data: ad, isLoading } = useGetAd(id, {
-    query: { enabled: !!id, queryKey: adKey },
+    query: {
+      enabled: !!id,
+      queryKey: adKey,
+      staleTime: STALE_AD_DETAIL_MS,
+    },
   });
 
   const sellerPresenceTargets = useMemo(() => {
@@ -265,7 +270,9 @@ export default function AdDetail() {
       {
         onSuccess: (data) => {
           setViewCount(data.views);
-          queryClient.invalidateQueries({ queryKey: adKey });
+          queryClient.setQueryData(adKey, (old) =>
+            old && typeof old === "object" ? { ...old, views: data.views } : old,
+          );
         },
         onError: () => {
           /* ignore */

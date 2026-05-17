@@ -17,7 +17,6 @@ import { t } from "@/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocale } from "@/hooks/use-locale";
 import {
-  invalidateAdRelatedQueries,
   patchAdEngagementInCaches,
 } from "@/lib/invalidate-ad-queries";
 
@@ -245,7 +244,6 @@ function AdCardInner({
           }
           return (old ?? []).filter((a) => a.id !== ad.id);
         });
-        invalidateAdRelatedQueries(queryClient, ad.id);
       };
 
       if (next) {

@@ -58,6 +58,7 @@ import { getPublicAdUrl, getPublicUserProfileUrl } from "@/lib/public-url";
 import { buildAdShareText, buildProfileShareText } from "@/lib/share-text";
 import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { cn } from "@/lib/utils";
+import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 import { stashPromoteAdPreview } from "@/lib/promote-ad-preview";
 import {
   AlertDialog,
@@ -182,6 +183,7 @@ export default function Profile() {
       queryKey: getListMyAdsQueryKey(),
       enabled: !!user,
       retry: false,
+      staleTime: STALE_USER_ADS_MS,
     },
   });
   const [activeTab, setActiveTab] = useState("my-ads");
@@ -194,6 +196,7 @@ export default function Profile() {
       queryKey: getListFavoriteAdsQueryKey(),
       enabled: !!user,
       retry: false,
+      staleTime: STALE_USER_ADS_MS,
     },
   });
   const favoriteAds = Array.isArray(favoriteAdsData) ? favoriteAdsData : [];
@@ -912,7 +915,13 @@ function ProfileDesktopAdCard({
         <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-muted">
           <ProfileAdStatusRibbon status={ad.status} />
           {ad.images?.[0] ? (
-            <img src={ad.images[0]} alt={ad.title} className="w-full h-full object-cover" loading="lazy" />
+            <img
+              src={ad.images[0]}
+              alt={ad.title}
+              className="w-full h-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
               {t("ad-card.no_image")}
@@ -1076,7 +1085,13 @@ function ProfileMobileAdCard({
         >
           <ProfileAdStatusRibbon status={ad.status} />
           {imageSrc ? (
-            <img src={imageSrc} alt={ad.title} className="w-full h-full object-cover" loading="lazy" />
+            <img
+              src={imageSrc}
+              alt={ad.title}
+              className="w-full h-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
           ) : (
             <div
               className="w-full h-full flex items-center justify-center text-[11px] text-muted-foreground"

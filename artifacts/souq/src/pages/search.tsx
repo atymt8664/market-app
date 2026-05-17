@@ -1,4 +1,6 @@
+import { keepPreviousData } from "@tanstack/react-query";
 import { useListAds, getListAdsQueryKey } from "@workspace/api-client-react";
+import { STALE_AD_LIST_MS } from "@/lib/query-stale-times";
 import { Link, useSearch } from "wouter";
 import { ArrowRight, Filter, Search as SearchIcon, Inbox } from "lucide-react";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
@@ -38,7 +40,7 @@ export default function Search() {
   const [query, setQuery] = useState(initialQ);
   const debouncedQuery = useDebounce(query, 500);
 
-  const { data: ads, isLoading } = useListAds(
+  const { data: ads, isPending, isFetching } = useListAds(
     { q: debouncedQuery || undefined, categoryId, subcategoryId },
     {
       query: {
@@ -47,9 +49,13 @@ export default function Search() {
           categoryId,
           subcategoryId,
         }),
+        staleTime: STALE_AD_LIST_MS,
+        placeholderData: keepPreviousData,
       },
     },
   );
+  const showAdsSkeleton = isPending && !ads;
+  const adsLoadingLabel = isFetching && !showAdsSkeleton;
 
   const searchIconSide = isRtl ? "left-2" : "right-2";
   const inputPad = isRtl ? "pl-8 pr-2" : "pl-2 pr-8";
@@ -127,7 +133,9 @@ export default function Search() {
             isRtl ? "text-right" : "text-left",
           )}
         >
-          {isLoading ? t("search.loading") : t("search.results_count", { count: ads?.length || 0 })}
+          {adsLoadingLabel
+            ? t("search.loading")
+            : t("search.results_count", { count: ads?.length || 0 })}
         </p>
 
         <div
@@ -136,7 +144,7 @@ export default function Search() {
             listingGridCardTone,
           )}
         >
-          {isLoading ? (
+          {showAdsSkeleton ? (
             Array.from({ length: 8 }).map((_, i) => (
               <AdCardSkeleton key={i} />
             ))

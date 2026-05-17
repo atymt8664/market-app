@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { applyIncomingMessageToInboxCache } from "@/lib/inbox-conversation-cache";
+import { STALE_CONVERSATIONS_MS } from "@/lib/query-stale-times";
 
 const emptyCardShell =
   "rounded-2xl border border-primary/40 bg-card/80 p-8 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/15 dark:bg-zinc-950/70 md:p-10";
@@ -128,8 +129,7 @@ export default function Messages() {
     query: {
       queryKey: getListConversationsQueryKey(),
       enabled: !!user,
-      /** يقلّل refetch المتكرر عند التنقل دون إبطاء التحديث عبر الـ socket/الإبطال الصريح */
-      staleTime: 20_000,
+      staleTime: STALE_CONVERSATIONS_MS,
     },
   });
   type HiddenConversation = NonNullable<typeof conversations>[number];

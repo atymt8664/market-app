@@ -3,6 +3,8 @@ import {
   useListSubcategories,
   useListCategories,
   getListAdsQueryKey,
+  getListCategoriesQueryKey,
+  getListSubcategoriesQueryKey,
 } from "@workspace/api-client-react";
 import { Link, useParams } from "wouter";
 import { ArrowRight, LayoutGrid } from "lucide-react";
@@ -14,6 +16,10 @@ import { useLocale } from "@/hooks/use-locale";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 import { CategoryIcon } from "@/components/category-icon";
 import { cn } from "@/lib/utils";
+import {
+  STALE_AD_LIST_MS,
+  STALE_CATEGORIES_MS,
+} from "@/lib/query-stale-times";
 import {
   SETTINGS_BACK_BUTTON,
   SETTINGS_HEADER_BAR,
@@ -42,14 +48,28 @@ export default function Category() {
   const params = useParams();
   const categoryId = Number(params.id);
 
-  const { data: categories } = useListCategories();
-  const { data: subcategories, isLoading: isLoadingSubs } = useListSubcategories(categoryId);
+  const { data: categories } = useListCategories({
+    query: {
+      queryKey: getListCategoriesQueryKey(),
+      staleTime: STALE_CATEGORIES_MS,
+    },
+  });
+  const { data: subcategories, isLoading: isLoadingSubs } = useListSubcategories(
+    categoryId,
+    {
+      query: {
+        queryKey: getListSubcategoriesQueryKey(categoryId),
+        staleTime: STALE_CATEGORIES_MS,
+      },
+    },
+  );
   const { data: ads, isLoading: isLoadingAds } = useListAds(
     { categoryId },
     {
       query: {
         enabled: !!categoryId,
         queryKey: getListAdsQueryKey({ categoryId }),
+        staleTime: STALE_AD_LIST_MS,
       },
     },
   );

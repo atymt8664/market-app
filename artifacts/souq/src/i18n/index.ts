@@ -108,10 +108,11 @@ export async function ensureLocalesForActive(): Promise<void> {
     return;
   }
 
-  await loadLocale(activeLocale);
+  const loads: Promise<Dictionary>[] = [loadLocale(activeLocale)];
   if (activeLocale !== "ar") {
-    await loadLocale("ar");
+    loads.push(loadLocale("ar"));
   }
+  await Promise.all(loads);
 }
 
 export function getLocale(): Locale {

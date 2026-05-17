@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Home, Heart, Plus, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,10 @@ import {
 } from "@workspace/api-client-react";
 import { scrollPopstateGuard } from "@/components/scroll-restoration-guard";
 import { useAfterFirstPaint } from "@/lib/after-first-paint";
+import {
+  STALE_CONVERSATIONS_MS,
+  STALE_USER_ADS_MS,
+} from "@/lib/query-stale-times";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -75,7 +80,7 @@ export function Layout({ children }: LayoutProps) {
   );
 }
 
-function BottomNav() {
+const BottomNav = memo(function BottomNav() {
   const [location, navigate] = useLocation();
   const search = useSearch();
   const { isAuthenticated, isLoading } = useAuth();
@@ -86,6 +91,7 @@ function BottomNav() {
     query: {
       queryKey: getListFavoriteAdsQueryKey(),
       enabled: isAuthenticated && !isLoading && secondaryQueriesReady,
+      staleTime: STALE_USER_ADS_MS,
       retry: false,
     },
   });
@@ -95,6 +101,7 @@ function BottomNav() {
     query: {
       queryKey: getListConversationsQueryKey(),
       enabled: isAuthenticated && !isLoading && secondaryQueriesReady,
+      staleTime: STALE_CONVERSATIONS_MS,
       retry: false,
     },
   });
@@ -288,7 +295,7 @@ function BottomNav() {
       </div>
     </nav>
   );
-}
+});
 
 function BottomNavSlot({
   isActive,

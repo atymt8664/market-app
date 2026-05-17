@@ -9,6 +9,7 @@ import { Redirect } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 
 /** نفس كروت البروفايل / نشر إعلان */
 const emptyCardShell =
@@ -22,6 +23,7 @@ export default function Favorites() {
       queryKey: getListFavoriteAdsQueryKey(),
       enabled: !!user,
       retry: false,
+      staleTime: STALE_USER_ADS_MS,
     },
   });
 
@@ -32,7 +34,7 @@ export default function Favorites() {
   return (
     <div className="flex min-h-[100svh] w-full flex-col bg-[#0A0A0A]">
       <header
-        className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 px-3 py-3 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)] backdrop-blur md:px-4 md:py-3.5"
+        className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 px-3 py-3 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)] md:backdrop-blur md:px-4 md:py-3.5"
         dir="rtl"
       >
         <h1 className="flex items-center gap-2 text-lg font-bold text-foreground md:text-xl">

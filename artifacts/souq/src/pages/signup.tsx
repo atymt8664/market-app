@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { ArrowRight, ChevronDown, Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 import { motion } from "framer-motion";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Form,
   FormControl,
@@ -90,7 +89,6 @@ export default function Signup() {
   const { locale } = useLocale();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
@@ -255,7 +253,6 @@ export default function Signup() {
         throw new Error(resp?.error || "auth.signup.failed");
       }
 
-      await queryClient.invalidateQueries();
       localStorage.setItem("email", resp.email || data.email);
       toast({
         title: t("auth.signup.success_title"),

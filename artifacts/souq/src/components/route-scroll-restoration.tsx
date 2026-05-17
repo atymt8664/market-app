@@ -83,6 +83,7 @@ function flushScrollPosition(): void {
 /** كل تنقل جديد يلغي requestAnimationFrame/setTimeout السابقة لـ scheduleRestore حتى لا يُعاد سكرول قديم بعد setViewportScrollY(0). */
 let scrollRestoreGeneration = 0;
 
+/** rAF + one delayed pass — enough for lazy routes without triple scroll jank (7B). */
 function scheduleRestore(y: number, generation: number): void {
   const apply = () => {
     if (generation !== scrollRestoreGeneration) return;
@@ -95,9 +96,7 @@ function scheduleRestore(y: number, generation: number): void {
     requestAnimationFrame(() => {
       if (generation !== scrollRestoreGeneration) return;
       apply();
-      window.setTimeout(apply, 0);
       window.setTimeout(apply, 50);
-      window.setTimeout(apply, 150);
     });
   });
 }

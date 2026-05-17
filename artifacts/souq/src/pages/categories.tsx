@@ -1,4 +1,7 @@
-import { useListCategories } from "@workspace/api-client-react";
+import {
+  getListCategoriesQueryKey,
+  useListCategories,
+} from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { ChevronLeft, ArrowRight, LayoutGrid } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
@@ -7,6 +10,7 @@ import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 import { cn } from "@/lib/utils";
+import { STALE_CATEGORIES_MS } from "@/lib/query-stale-times";
 import { Button } from "@/components/ui/button";
 import {
   SETTINGS_BACK_BUTTON,
@@ -46,7 +50,12 @@ export default function Categories() {
     isError,
     refetch,
     isFetching,
-  } = useListCategories();
+  } = useListCategories({
+    query: {
+      queryKey: getListCategoriesQueryKey(),
+      staleTime: STALE_CATEGORIES_MS,
+    },
+  });
 
   const hasArabicText = (value?: string | null) =>
     !!value && /[\u0600-\u06FF]/.test(value);

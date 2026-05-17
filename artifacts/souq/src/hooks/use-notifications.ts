@@ -11,6 +11,7 @@ import {
   markNotificationRead,
   type AppNotification,
 } from "@/lib/notifications-api";
+import { STALE_UNREAD_NOTIFICATIONS_MS } from "@/lib/query-stale-times";
 
 export const notificationsQueryKey = ["notifications", "list"] as const;
 export const unreadCountQueryKey = ["notifications", "unread-count"] as const;
@@ -25,8 +26,9 @@ export function useNotificationsQuery(
     queryKey: notificationsQueryKey,
     queryFn: ({ signal }) => getNotifications(signal),
     retry: false,
+    staleTime: STALE_UNREAD_NOTIFICATIONS_MS,
+    refetchOnWindowFocus: false,
     ...options,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -39,8 +41,9 @@ export function useUnreadNotificationsCountQuery(
     queryKey: unreadCountQueryKey,
     queryFn: ({ signal }) => getUnreadNotificationsCount(signal),
     retry: false,
+    staleTime: STALE_UNREAD_NOTIFICATIONS_MS,
+    refetchOnWindowFocus: false,
     ...options,
-    refetchOnWindowFocus: true,
   });
 }
 

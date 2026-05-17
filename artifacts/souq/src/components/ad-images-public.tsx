@@ -1,10 +1,10 @@
 /**
  * Read-only image gallery for public ad detail.
  * Not used on create/edit flows — those use CreateAdImageGallery.
+ * CSS transitions only (7B — keeps framer-motion off ad-detail critical path).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
@@ -19,9 +19,7 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
   const isAr = locale === "ar";
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
-  /** Large preview index — mirrors create/edit hero; thumbnails update this without opening fullscreen. */
   const [heroIndex, setHeroIndex] = useState(0);
-  const [slideDir, setSlideDir] = useState<1 | -1>(1);
   const touchStartXRef = useRef<number | null>(null);
   const viewerIndexRef = useRef(viewerIndex);
   viewerIndexRef.current = viewerIndex;
@@ -45,13 +43,11 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
 
   const nextImage = useCallback(() => {
     if (count <= 1) return;
-    setSlideDir(1);
     setViewerIndex((prev) => (prev + 1) % count);
   }, [count]);
 
   const prevImage = useCallback(() => {
     if (count <= 1) return;
-    setSlideDir(-1);
     setViewerIndex((prev) => (prev === 0 ? count - 1 : prev - 1));
   }, [count]);
 
@@ -80,11 +76,7 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
   };
 
   if (count === 0) {
-    return (
-      <div className="w-full aspect-[4/3] sm:aspect-[16/10] max-h-[380px] rounded-2xl overflow-hidden bg-muted/60 border border-border flex items-center justify-center text-muted-foreground text-xs sm:text-sm">
-        {t("ad_images_public.no_images")}
-      </div>
-    );
+    return motionlessEmpty();
   }
 
   return (
@@ -101,26 +93,19 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
           )}
           aria-label={t("ad_images_public.open_gallery")}
         >
-          <AnimatePresence initial={false} mode="wait">
-            <motion.img
-              key={heroSrc}
-              src={heroSrc}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-              loading={heroIndex === 0 ? "eager" : "lazy"}
-              decoding="async"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, min(820px, 94vw)"
-              initial={{ opacity: 0.88 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0.88 }}
-              transition={{ duration: 0.2 }}
-            />
-          </AnimatePresence>
+          <img
+            key={heroSrc}
+            src={heroSrc}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-200"
+            loading={heroIndex === 0 ? "eager" : "lazy"}
+            decoding="async"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, min(820px, 94vw)"
+          />
           <span
             dir="ltr"
             className={cn(
               "absolute z-10 rounded-md bg-black/85 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-white shadow-md ring-1 ring-white/10 backdrop-blur-sm",
-              /* Physical bottom-left; header controls are top-only */
               "left-3 bottom-[max(0.5rem,env(safe-area-inset-bottom))]",
             )}
             aria-live="polite"
@@ -187,12 +172,11 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
             >
               <X className="h-5 w-5" />
             </button>
-            <span dir="ltr" className="tabular-nums text-sm font-medium text-white">
+            <span dir="ltr" className="text-sm font-medium tabular-nums text-white">
               {viewerIndex + 1} / {count}
             </span>
             <div className="h-10 w-10 shrink-0" aria-hidden />
           </div>
-
           <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-0 pb-[env(safe-area-inset-bottom)]">
             <button
               type="button"
@@ -206,38 +190,31 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
               <ChevronLeft className="h-6 w-6" />
             </button>
 
-            <AnimatePresence initial={false} custom={slideDir} mode="wait">
-              <motion.div
-                key={viewerIndex}
-                custom={slideDir}
-                initial={{ opacity: 0, x: slideDir * 28 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: slideDir * -28 }}
-                transition={{ duration: 0.22, ease: [0.33, 1, 0.68, 1] }}
-                className="flex max-h-[min(78vh,calc(100dvh-8rem))] max-w-[94vw] items-center justify-center"
-              >
-                <img
-                  src={images[viewerIndex]}
-                  alt={t("ad_images_public.image_alt", { title, index: viewerIndex + 1 })}
-                  className="max-h-[min(78vh,calc(100dvh-8rem))] max-w-[94vw] select-none object-contain"
-                  loading="eager"
-                  decoding="async"
-                  sizes="94vw"
-                  onClick={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => {
-                    touchStartXRef.current = e.changedTouches[0]?.clientX ?? null;
-                  }}
-                  onTouchEnd={(e) => {
-                    const startX = touchStartXRef.current;
-                    const endX = e.changedTouches[0]?.clientX;
-                    if (startX === null || typeof endX !== "number") return;
-                    const deltaX = endX - startX;
-                    if (deltaX > 48) prevImage();
-                    if (deltaX < -48) nextImage();
-                  }}
-                />
-              </motion.div>
-            </AnimatePresence>
+            <div
+              key={viewerIndex}
+              className="flex max-h-[min(78vh,calc(100dvh-8rem))] max-w-[94vw] items-center justify-center transition-opacity duration-200"
+            >
+              <img
+                src={images[viewerIndex]}
+                alt={t("ad_images_public.image_alt", { title, index: viewerIndex + 1 })}
+                className="max-h-[min(78vh,calc(100dvh-8rem))] max-w-[94vw] select-none object-contain"
+                loading="eager"
+                decoding="async"
+                sizes="94vw"
+                onClick={(e) => e.stopPropagation()}
+                onTouchStart={(e) => {
+                  touchStartXRef.current = e.changedTouches[0]?.clientX ?? null;
+                }}
+                onTouchEnd={(e) => {
+                  const startX = touchStartXRef.current;
+                  const endX = e.changedTouches[0]?.clientX;
+                  if (startX === null || typeof endX !== "number") return;
+                  const deltaX = endX - startX;
+                  if (deltaX > 48) prevImage();
+                  if (deltaX < -48) nextImage();
+                }}
+              />
+            </div>
 
             <button
               type="button"
@@ -258,5 +235,13 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
         </div>
       )}
     </>
+  );
+}
+
+function motionlessEmpty() {
+  return (
+    <div className="flex aspect-[4/3] max-h-[380px] w-full items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted/60 text-xs text-muted-foreground sm:aspect-[16/10] sm:text-sm">
+      {t("ad_images_public.no_images")}
+    </div>
   );
 }

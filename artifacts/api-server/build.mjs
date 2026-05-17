@@ -65,6 +65,8 @@ async function buildAll() {
       "@swc/*",
       "@aws-sdk/*",
       "@azure/*",
+      "@sentry/node",
+      "@sentry/*",
       "@opentelemetry/*",
       "@google-cloud/*",
       "@google/*",

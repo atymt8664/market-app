@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
-import { Heart, MapPin, Eye, ThumbsUp, Star, ImageIcon } from "lucide-react";
+import { Heart, MapPin, Eye, ThumbsUp, Star } from "lucide-react";
+import { AdCardNoImagePlaceholder } from "@/components/ad-card-no-image-placeholder";
 import { formatRelativeTime, formatPrice, formatCurrencyAmount } from "@/lib/format";
 import {
   useFavoriteAd,
@@ -24,6 +25,8 @@ export interface AdCardProps {
   ad: Ad;
   /** Fixed width for horizontal carousel (featured strip). */
   featured?: boolean;
+  /** First visible featured card: eager decode for perceived load (strip only). */
+  featuredLead?: boolean;
   /**
    * Legacy prop — all cards use the same compact vertical tile.
    * Kept for call-site compatibility (`variant="grid"`).
@@ -149,6 +152,7 @@ function areAdCardPropsEqual(prev: AdCardMemoProps, next: AdCardMemoProps): bool
   }
   if (
     prev.featured !== next.featured ||
+    prev.featuredLead !== next.featuredLead ||
     prev.favoritesList !== next.favoritesList ||
     prev.variant !== next.variant
   ) {
@@ -180,6 +184,7 @@ function areAdCardPropsEqual(prev: AdCardMemoProps, next: AdCardMemoProps): bool
 function AdCardInner({
   ad,
   featured,
+  featuredLead,
   variant: _variant,
   favoritesList,
   viewerAuthKey: _viewerAuthKey,
@@ -291,7 +296,7 @@ function AdCardInner({
         {/* Image — صفحة المفضلة: ارتفاع ثابت أصغر؛ باقي الصفحات: aspect 4/3 */}
         <div
           className={cn(
-            "relative w-full shrink-0 overflow-hidden bg-muted/40",
+            "relative w-full shrink-0 overflow-hidden bg-zinc-950/80",
             favCompact
               ? "h-[88px] sm:h-[96px] md:h-[104px]"
               : "aspect-[4/3]",
@@ -301,27 +306,20 @@ function AdCardInner({
             <img
               src={ad.images[0]}
               alt={ad.title}
-              className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
-              loading={featured ? "eager" : "lazy"}
+              className={cn(
+                "absolute inset-0 h-full w-full object-cover",
+                !featured &&
+                  "transition-transform duration-300 ease-out group-hover:scale-[1.02]",
+              )}
+              loading={featured && featuredLead ? "eager" : "lazy"}
               decoding="async"
+              fetchPriority={featured && featuredLead ? "high" : undefined}
               draggable={false}
               sizes={imageSizes}
-              {...(featured ? { fetchPriority: "high" as const } : {})}
               onError={handleImageError}
             />
           ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-muted/95 via-muted/75 to-muted/55 px-2 dark:from-muted/85 dark:via-muted/60 dark:to-muted/45">
-              <div className="rounded-full bg-background/30 p-2 opacity-50 ring-1 ring-border/35 dark:bg-background/12">
-                <ImageIcon
-                  className="h-5 w-5 text-muted-foreground/45"
-                  strokeWidth={1.5}
-                  aria-hidden
-                />
-              </div>
-              <span className="mt-2 max-w-[95%] text-center text-[10px] leading-tight text-muted-foreground/50">
-                {t("ad-card.no_image")}
-              </span>
-            </div>
+            <AdCardNoImagePlaceholder />
           )}
           <button
             type="button"

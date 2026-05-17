@@ -17,7 +17,8 @@ import { CategoryIcon } from "@/components/category-icon";
 import { LocationPicker } from "@/components/location-picker";
 import { NotificationBell } from "@/components/notification-bell";
 import { Input } from "@/components/ui/input";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
+import { HomeFeaturedDivider } from "@/components/home-featured-divider";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
 import { useSelectedCity } from "@/hooks/use-selected-city";
@@ -52,7 +53,7 @@ const locationPickerTriggerClassName = cn(
 );
 
 const featuredStripClassName = cn(
-  "mx-auto flex w-full max-w-screen-xl gap-3 px-4 pb-1 md:gap-3.5 md:px-6 lg:px-8",
+  "mx-auto flex w-max max-w-none gap-3 px-4 pb-0 md:gap-3.5 md:pb-1 md:px-6 lg:px-8",
   homeAdCardTone,
 );
 
@@ -189,8 +190,8 @@ const HomeFeedSections = memo(function HomeFeedSections({
   return (
     <>
       {/* Categories Horizontal Scroll */}
-      <section className="py-4">
-        <div className="mx-auto mb-3 flex w-full max-w-screen-xl items-center justify-between px-4 md:px-6 lg:px-8">
+      <section className="pt-3 pb-1 max-md:pb-0.5 md:py-4">
+        <div className="mx-auto mb-2 flex w-full max-w-screen-xl items-center justify-between px-4 max-md:mb-2 md:mb-3 md:px-6 lg:px-8">
           <h2 className="text-base font-semibold tracking-tight text-foreground md:text-lg">{t("home.categories")}</h2>
           <Link
             href="/categories"
@@ -199,18 +200,18 @@ const HomeFeedSections = memo(function HomeFeedSections({
             {t("home.view_all")} <ChevronLeft className="w-4 h-4" />
           </Link>
         </div>
-        <ScrollArea className="w-full whitespace-nowrap" dir={isRtl ? "rtl" : "ltr"}>
-          <div className="mx-auto w-full max-w-screen-xl flex gap-4 px-4 md:px-6 lg:px-8 pb-2">
+        <HorizontalScrollStrip dir={isRtl ? "rtl" : "ltr"}>
+          <div className="mx-auto flex w-max max-w-none gap-4 px-4 pb-1 max-md:pb-0.5 md:pb-2 md:px-6 lg:px-8">
             {isLoadingCategories
               ? CATEGORY_SKELETON_KEYS.map((i) => (
-                  <div key={i} className="flex flex-col items-center gap-2">
+                  <div key={i} className="flex shrink-0 flex-col items-center gap-2">
                     <div className="w-16 h-16 rounded-full bg-muted animate-pulse" />
                     <div className="w-12 h-3 bg-muted animate-pulse rounded" />
                   </div>
                 ))
               : Array.isArray(categories) &&
                 categories.map((cat) => (
-                  <Link key={cat.id} href={`/category/${cat.id}`}>
+                  <Link key={cat.id} href={`/category/${cat.id}`} className="shrink-0">
                     <div className="flex flex-col items-center gap-2 group cursor-pointer">
                       <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/35 bg-zinc-950/75 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-transform group-active:scale-95">
                         <CategoryIcon name={cat.icon} className="w-7 h-7" />
@@ -222,36 +223,45 @@ const HomeFeedSections = memo(function HomeFeedSections({
                   </Link>
                 ))}
           </div>
-          <ScrollBar orientation="horizontal" className="hidden" />
-        </ScrollArea>
+        </HorizontalScrollStrip>
       </section>
 
+      <HomeFeaturedDivider isRtl={isRtl} placement="featured-top" />
+
       {/* Featured Ads */}
-      <section className="border-b border-primary/15 bg-zinc-950/40 py-4 md:py-5">
-        <div className="mx-auto mb-3 w-full max-w-screen-xl px-4 md:mb-3.5 md:px-6 lg:px-8">
+      <section className="bg-zinc-950/40 pb-1.5 pt-1 max-md:pb-1 max-md:pt-0.5 md:py-5">
+        <div className="mx-auto mb-2 w-full max-w-screen-xl px-4 md:mb-3.5 md:px-6 lg:px-8">
           <h2 className="text-base font-semibold tracking-tight text-foreground md:text-lg">{t("home.featured_ads")}</h2>
         </div>
-        <ScrollArea className="w-full whitespace-nowrap" dir={isRtl ? "rtl" : "ltr"}>
-          <div className={featuredStripClassName}>
+        <HorizontalScrollStrip dir={isRtl ? "rtl" : "ltr"}>
+          <div className={featuredStripClassName} dir={isRtl ? "rtl" : "ltr"}>
             {isLoadingFeatured ? (
               FEATURED_SKELETON_KEYS.map((i) => (
                 <AdCardSkeleton key={i} featured />
               ))
             ) : Array.isArray(featuredAds) && featuredAds.length ? (
-              featuredAds.map((ad) => <AdCard key={ad.id} ad={ad} featured />)
+              featuredAds.map((ad, index) => (
+                <AdCard
+                  key={ad.id}
+                  ad={ad}
+                  featured
+                  featuredLead={index === 0}
+                />
+              ))
             ) : (
               <div className="w-full py-6 text-center text-sm text-muted-foreground">
                 {t("home.no_featured_ads")}
               </div>
             )}
           </div>
-          <ScrollBar orientation="horizontal" className="hidden" />
-        </ScrollArea>
+        </HorizontalScrollStrip>
       </section>
 
+      <HomeFeaturedDivider isRtl={isRtl} placement="featured-bottom" />
+
       {/* Recommended Ads Grid */}
-      <section className="mx-auto w-full max-w-screen-xl px-4 py-5 md:px-6 md:py-6 lg:px-8">
-        <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground md:mb-4 md:text-lg">{t("home.recommended")}</h2>
+      <section className="mx-auto w-full max-w-screen-xl px-4 pb-5 pt-1 max-md:pt-0 md:px-6 md:py-6 lg:px-8">
+        <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground md:mb-4 md:text-lg">{t("home.recommended")}</h2>
 
         <div className={recommendedGridClassName}>
           {isLoadingRecommended ? (

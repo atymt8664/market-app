@@ -93,6 +93,27 @@ function souqManualChunks(id: string): string | undefined {
   return "vendor-misc";
 }
 
+/**
+ * 6B-2: drop non-critical modulepreloads on first navigation (keep react/react-dom).
+ * Chunks still load on demand — only parallel prefetch is reduced for Gate/Home cold start.
+ */
+const DEFERRED_MODULE_PRELOAD = /vendor-(?:radix|date-fns|lucide|floating-ui)-/;
+
+function trimNonCriticalModulePreloads(): { name: string; transformIndexHtml: { order: "post"; handler: (html: string) => string } } {
+  return {
+    name: "souq-trim-modulepreload",
+    transformIndexHtml: {
+      order: "post",
+      handler(html: string) {
+        return html.replace(
+          /\s*<link rel="modulepreload" crossorigin href="(\/assets\/[^"]+)"\s*>\s*/g,
+          (match, href: string) => (DEFERRED_MODULE_PRELOAD.test(href) ? "" : match),
+        );
+      },
+    },
+  };
+}
+
 /** Forward browser Host so express-session Set-Cookie targets the public origin (e.g. trycloudflare.com), not localhost. */
 const apiProxy: ProxyOptions = {
   target: apiProxyTarget,
@@ -143,6 +164,7 @@ export default defineConfig({
     },
     react(),
     tailwindcss(),
+    trimNonCriticalModulePreloads(),
     ...(process.env.BUNDLE_ANALYZE === "1"
       ? [
           visualizer({

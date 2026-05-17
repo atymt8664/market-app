@@ -4,11 +4,13 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useUnreadNotificationsCountQuery } from "@/hooks/use-notifications";
 import { t } from "@/i18n";
+import { useAfterFirstPaint } from "@/lib/after-first-paint";
 
 export function NotificationBell({ className }: { className?: string } = {}) {
   const { user, isLoading: authLoading } = useAuth();
+  const secondaryQueriesReady = useAfterFirstPaint();
   const { data } = useUnreadNotificationsCountQuery({
-    enabled: !!user && !authLoading,
+    enabled: !!user && !authLoading && secondaryQueriesReady,
     retry: false,
   });
 

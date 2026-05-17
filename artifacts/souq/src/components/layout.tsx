@@ -11,6 +11,7 @@ import {
   getListConversationsQueryKey,
 } from "@workspace/api-client-react";
 import { scrollPopstateGuard } from "@/components/scroll-restoration-guard";
+import { useAfterFirstPaint } from "@/lib/after-first-paint";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -79,11 +80,12 @@ function BottomNav() {
   const search = useSearch();
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+  const secondaryQueriesReady = useAfterFirstPaint();
 
   const { data: favoriteAds } = useListFavoriteAds({
     query: {
       queryKey: getListFavoriteAdsQueryKey(),
-      enabled: isAuthenticated && !isLoading,
+      enabled: isAuthenticated && !isLoading && secondaryQueriesReady,
       retry: false,
     },
   });
@@ -92,7 +94,7 @@ function BottomNav() {
   const { data: conversations } = useListConversations({
     query: {
       queryKey: getListConversationsQueryKey(),
-      enabled: isAuthenticated && !isLoading,
+      enabled: isAuthenticated && !isLoading && secondaryQueriesReady,
       retry: false,
     },
   });

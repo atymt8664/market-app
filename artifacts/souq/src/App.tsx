@@ -4,6 +4,7 @@ import { queryClient } from "@/lib/query-client";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useAfterFirstPaint } from "@/lib/after-first-paint";
 import { Layout } from "@/components/layout";
 import { RouteLoadingFallback } from "@/components/route-loading-fallback";
 import { RouteScrollRestoration } from "@/components/route-scroll-restoration";
@@ -213,6 +214,7 @@ function isPublicDataSafetyPath(pathname: string): boolean {
 
 function App() {
   const [showFirstLaunchSelector, setShowFirstLaunchSelector] = useState(false);
+  const afterFirstPaint = useAfterFirstPaint();
 
   useEffect(() => {
     if (typeof window !== "undefined" && isPublicDataSafetyPath(window.location.pathname)) {
@@ -222,19 +224,21 @@ function App() {
     setShowFirstLaunchSelector(!hasSavedLocale());
   }, []);
 
+  const main = showFirstLaunchSelector ? (
+    <FirstLaunchLanguageGate onDone={() => setShowFirstLaunchSelector(false)} />
+  ) : (
+    <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+      <RouteScrollRestoration />
+      <Router />
+    </WouterRouter>
+  );
+
+  const wrapTooltips = !showFirstLaunchSelector && afterFirstPaint;
+
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        {showFirstLaunchSelector ? (
-          <FirstLaunchLanguageGate onDone={() => setShowFirstLaunchSelector(false)} />
-        ) : (
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <RouteScrollRestoration />
-            <Router />
-          </WouterRouter>
-        )}
-        <Toaster />
-      </TooltipProvider>
+      {wrapTooltips ? <TooltipProvider>{main}</TooltipProvider> : main}
+      {afterFirstPaint ? <Toaster /> : null}
     </QueryClientProvider>
   );
 }

@@ -1,5 +1,10 @@
+import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
+
 export type Locale = "ar" | "en" | "de";
 type Dictionary = Record<string, string>;
+
+/** Defer full locale download until Gate first paint is done (6B-1). */
+const GATE_FULL_LOCALE_PREFETCH_IDLE_MS = 2500;
 
 const STORAGE_KEY = "app_locale";
 const listeners = new Set<() => void>();
@@ -88,7 +93,10 @@ export async function ensureLocalesForActive(): Promise<void> {
     if (activeLocale !== "ar") {
       await loadGateLocale("ar");
     }
-    prefetchFullLocalesInBackground();
+    scheduleAfterFirstPaint(
+      () => prefetchFullLocalesInBackground(),
+      GATE_FULL_LOCALE_PREFETCH_IDLE_MS,
+    );
     return;
   }
 

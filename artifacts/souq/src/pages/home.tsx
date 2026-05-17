@@ -18,7 +18,8 @@ import { LocationPicker } from "@/components/location-picker";
 import { NotificationBell } from "@/components/notification-bell";
 import { Input } from "@/components/ui/input";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
 import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useAuth } from "@/hooks/use-auth";
@@ -283,25 +284,43 @@ export default function Home() {
     false,
   );
 
-  const { data: categories, isLoading: isLoadingCategories } =
+  const { data: categories, isLoading: isLoadingCategories, isFetched: categoriesFetched } =
     useListCategories({
       query: {
         queryKey: getListCategoriesQueryKey(),
         staleTime: HOME_STALE_CATEGORIES_MS,
       },
     });
-  const { data: featuredAds, isLoading: isLoadingFeatured } =
+
+  const [featuredQueryEnabled, setFeaturedQueryEnabled] = useState(false);
+  useEffect(() => {
+    if (!categoriesFetched) return;
+    const frameId = requestAnimationFrame(() => setFeaturedQueryEnabled(true));
+    return () => cancelAnimationFrame(frameId);
+  }, [categoriesFetched]);
+
+  const { data: featuredAds, isLoading: isLoadingFeatured, isFetched: featuredFetched } =
     useListFeaturedAds({
       query: {
         queryKey: getListFeaturedAdsQueryKey(),
+        enabled: featuredQueryEnabled,
         staleTime: HOME_STALE_FEATURED_MS,
       },
     });
+
+  const [recommendedQueryEnabled, setRecommendedQueryEnabled] = useState(false);
+  useEffect(() => {
+    if (!featuredQueryEnabled) return;
+    return scheduleAfterFirstPaint(() => setRecommendedQueryEnabled(true), 600);
+  }, [featuredQueryEnabled]);
+
+  const recommendedFeedEnabled = recommendedQueryEnabled && featuredFetched;
+
   const { data: defaultRecommended, isLoading: isLoadingDefaultRec } =
     useListRecommendedAds({
       query: {
         queryKey: getListRecommendedAdsQueryKey(),
-        enabled: !city,
+        enabled: recommendedFeedEnabled && !city,
         staleTime: HOME_STALE_FEED_MS,
       },
     });
@@ -310,13 +329,15 @@ export default function Home() {
     {
       query: {
         queryKey: getListAdsQueryKey({ city, limit: 20 }),
-        enabled: !!city,
+        enabled: recommendedFeedEnabled && !!city,
         staleTime: HOME_STALE_FEED_MS,
       },
     },
   );
   const recommendedAds = city ? cityAds : defaultRecommended;
-  const isLoadingRecommended = city ? isLoadingCityAds : isLoadingDefaultRec;
+  const isLoadingFeaturedUi = !featuredQueryEnabled || isLoadingFeatured;
+  const isLoadingRecommended =
+    !recommendedFeedEnabled || (city ? isLoadingCityAds : isLoadingDefaultRec);
 
   const brandParts = useMemo(() => {
     const brandFull = t("app.brand");
@@ -365,7 +386,7 @@ export default function Home() {
         locale={locale}
         isLoadingCategories={isLoadingCategories}
         categories={categories}
-        isLoadingFeatured={isLoadingFeatured}
+        isLoadingFeatured={isLoadingFeaturedUi}
         featuredAds={featuredAds}
         isLoadingRecommended={isLoadingRecommended}
         recommendedAds={recommendedAds}

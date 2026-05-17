@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/node";
-import type { Express, NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { logger } from "./logger";
 import {
   getSentryDsn,
@@ -52,7 +52,7 @@ function scrubEvent(event: Sentry.ErrorEvent): Sentry.ErrorEvent | null {
  * Initialize Sentry error monitoring (no performance tracing).
  * No-op when SENTRY_DSN is unset — production stays healthy without Sentry.
  */
-export function initSentry(_app?: Express): void {
+export function initSentry(): void {
   const dsn = getSentryDsn();
   if (!dsn) {
     logger.info("Sentry disabled (SENTRY_DSN not set)");

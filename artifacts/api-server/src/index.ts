@@ -1,8 +1,9 @@
-import "./load-env";
+import "./instrument-sentry";
 import dns from "node:dns";
 import { createServer } from "http";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { flushSentry } from "./lib/sentry";
 import { instrumentPgPool } from "./lib/observability";
 import { attachWebSocketServer } from "./lib/realtime";
 import { prepareDatabase } from "./lib/prepare-database";
@@ -82,5 +83,15 @@ async function start() {
     logger.info({ port }, "Server listening");
   });
 }
+
+function registerSentryShutdownFlush(): void {
+  const flush = () => {
+    void flushSentry(2000);
+  };
+  process.once("SIGTERM", flush);
+  process.once("SIGINT", flush);
+}
+
+registerSentryShutdownFlush();
 
 void start();

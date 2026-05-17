@@ -12,7 +12,7 @@ const apiRoot = path.resolve(__dirname, "..");
 process.chdir(apiRoot);
 process.env.NODE_ENV = process.env.NODE_ENV || "development";
 
-await import("../src/load-env.ts");
+await import("../src/instrument-sentry.ts");
 
 const dsnConfigured = Boolean(process.env.SENTRY_DSN?.trim());
 if (!dsnConfigured) {
@@ -25,10 +25,9 @@ if (process.env.NODE_ENV === "production") {
   process.exit(1);
 }
 
-const { initSentry, captureSentryTestError, flushSentry, getSentryStatus, isSentryEnabled } =
+const { captureSentryTestError, flushSentry, getSentryStatus, isSentryEnabled } =
   await import("../src/lib/sentry.ts");
 
-initSentry();
 if (!isSentryEnabled()) {
   console.error("FAIL: Sentry did not initialize despite SENTRY_DSN being set");
   process.exit(1);

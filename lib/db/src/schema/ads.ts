@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { categoriesTable, subcategoriesTable } from "./categories";
 import { usersTable } from "./users";
+import { tsvector } from "./ads-search";
 
 export const adsTable = pgTable("ads", {
   id: serial("id").primaryKey(),
@@ -37,6 +38,8 @@ export const adsTable = pgTable("ads", {
   featured: boolean("featured").notNull().default(false),
   status: text("status").notNull().default("pending"),
   views: integer("views").notNull().default(0),
+  /** Multilingual FTS document (trigger-maintained). */
+  searchVector: tsvector("search_vector"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -1,5 +1,5 @@
 import type { Response } from "express";
-import { and, eq, gt, lt, or, type SQL } from "drizzle-orm";
+import { and, eq, gt, lt, or, sql, type SQL } from "drizzle-orm";
 import type { AnyColumn } from "drizzle-orm";
 
 /** Hard caps per list endpoint (Phase 7A.2). */
@@ -21,7 +21,7 @@ export const PAGINATION = {
 
 export type LimitProfile = { default: number; max: number };
 
-export type DecodedCursor = { at: Date; id: number };
+export type DecodedCursor = { at: Date; id: number; /** FTS relevance (Phase 7A.4) */ r?: number };
 
 export type ParsedPagination = {
   limit: number;
@@ -80,20 +80,25 @@ export function decodeCursor(raw: unknown): DecodedCursor | null {
     const idRaw = parsed["id"];
     const at = new Date(String(atRaw));
     const id = Number(idRaw);
+    const rRaw = parsed["r"];
+    const r =
+      rRaw === undefined || rRaw === null ? undefined : Number(rRaw);
     if (Number.isNaN(at.getTime()) || !Number.isInteger(id) || id <= 0) {
       return null;
     }
-    return { at, id };
+    if (r !== undefined && !Number.isFinite(r)) return null;
+    return r !== undefined ? { at, id, r } : { at, id };
   } catch {
     return null;
   }
 }
 
-export function encodeCursor(at: Date, id: number): string {
-  return Buffer.from(
-    JSON.stringify({ t: at.toISOString(), id }),
-    "utf8",
-  ).toString("base64url");
+export function encodeCursor(at: Date, id: number, r?: number): string {
+  const payload =
+    r !== undefined && Number.isFinite(r)
+      ? { t: at.toISOString(), id, r }
+      : { t: at.toISOString(), id };
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
 }
 
 export function parsePaginationQuery(
@@ -132,6 +137,27 @@ export function keysetWhereDesc(
   )!;
 }
 
+/** Keyset for `ORDER BY search_rank DESC, created_at DESC, id DESC`. */
+export function keysetWhereSearchDesc(
+  rankExpr: SQL,
+  createdAtCol: AnyColumn,
+  idCol: AnyColumn,
+  cursor: DecodedCursor & { r: number },
+): SQL {
+  return or(
+    sql`${rankExpr} < ${cursor.r}`,
+    and(
+      sql`${rankExpr} = ${cursor.r}`,
+      lt(createdAtCol, cursor.at),
+    ),
+    and(
+      sql`${rankExpr} = ${cursor.r}`,
+      eq(createdAtCol, cursor.at),
+      lt(idCol, cursor.id),
+    ),
+  )!;
+}
+
 /** Keyset predicate for `ORDER BY created_at ASC, id ASC` (next page = newer rows). */
 export function keysetWhereAsc(
   createdAtCol: AnyColumn,
@@ -152,8 +178,11 @@ export function finalizePage<T>(
   const hasMore = rows.length > limit;
   const items = hasMore ? rows.slice(0, limit) : rows;
   const last = items[items.length - 1];
+  const lastCursor = last ? pickCursor(last) : null;
   const nextCursor =
-    hasMore && last ? encodeCursor(pickCursor(last).at, pickCursor(last).id) : null;
+    hasMore && lastCursor
+      ? encodeCursor(lastCursor.at, lastCursor.id, lastCursor.r)
+      : null;
   return {
     items,
     meta: { limit, hasMore, nextCursor },

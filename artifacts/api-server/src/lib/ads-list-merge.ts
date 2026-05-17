@@ -9,6 +9,8 @@ export type AdListQueryRow = {
   favoriteCount: number;
   isLiked: boolean;
   isFavorited: boolean;
+  /** Internal — FTS rank for search pagination (not serialized). */
+  searchRank?: number;
 };
 
 type AdCoreRow = {
@@ -25,12 +27,14 @@ export function mergeAdListRows(
   favoriteCountByAdId: Map<number, number>,
   likedAdIds: Set<number>,
   favoritedAdIds: Set<number>,
+  searchRankByAdId?: Map<number, number>,
 ): AdListQueryRow[] {
   const byId = new Map(adRows.map((row) => [row.ads.id, row]));
   const merged: AdListQueryRow[] = [];
   for (const id of pageIds) {
     const core = byId.get(id);
     if (!core) continue;
+    const searchRank = searchRankByAdId?.get(id);
     merged.push({
       ads: core.ads,
       categoryName: core.categoryName,
@@ -39,6 +43,7 @@ export function mergeAdListRows(
       favoriteCount: favoriteCountByAdId.get(id) ?? 0,
       isLiked: likedAdIds.has(id),
       isFavorited: favoritedAdIds.has(id),
+      ...(searchRank !== undefined ? { searchRank } : {}),
     });
   }
   return merged;

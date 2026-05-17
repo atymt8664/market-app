@@ -10,6 +10,7 @@ import {
   adViewsTable,
   adLikesTable,
   adFavoritesTable,
+  adReactionCountsTable,
   categoriesTable,
   subcategoriesTable,
 } from "@workspace/db";
@@ -44,6 +45,12 @@ import {
   sendJsonArrayPage,
 } from "../lib/pagination";
 import { fetchAdsList } from "../lib/ads-list-query";
+import { buildAdSearchWhereParts } from "../lib/ad-search";
+import {
+  applyReactionToggle,
+  ensureCounterRow,
+  useDenormalizedReactionCounters,
+} from "../lib/ad-reaction-counts";
 
 const router: IRouter = Router();
 let ensureAdsDetailsColumnPromise: Promise<void> | null = null;
@@ -400,25 +407,23 @@ router.get("/ads", async (req, res) => {
     const conds = [] as ReturnType<typeof eq>[];
     conds.push(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]));
     if (q.userId !== undefined) conds.push(eq(adsTable.userId, q.userId));
-    if (q.q) {
-      const pat = `%${q.q}%`;
-      const like = or(
-        ilike(adsTable.title, pat),
-        ilike(adsTable.description, pat),
-      );
-      if (like) conds.push(like);
-    }
+
+    const { textSearch, extraConditions } = buildAdSearchWhereParts({
+      q: q.q,
+      city: q.city,
+    });
+    for (const c of extraConditions) conds.push(c);
+
     if (q.categoryId !== undefined)
       conds.push(eq(adsTable.categoryId, q.categoryId));
     if (q.subcategoryId !== undefined)
       conds.push(eq(adsTable.subcategoryId, q.subcategoryId));
-    if (q.city) conds.push(ilike(adsTable.city, `%${q.city}%`));
     if (q.minPrice !== undefined)
       conds.push(gte(adsTable.price, q.minPrice.toString()));
     if (q.maxPrice !== undefined)
       conds.push(lte(adsTable.price, q.maxPrice.toString()));
     if (q.type) conds.push(eq(adsTable.type, q.type));
-    if (pagination.cursor) {
+    if (pagination.cursor && !textSearch) {
       conds.push(keysetWhereDesc(adsTable.createdAt, adsTable.id, pagination.cursor));
     }
 
@@ -428,11 +433,16 @@ router.get("/ads", async (req, res) => {
       currentUserId: req.session.userId ?? null,
       where,
       limit: pagination.fetchLimit,
+      textSearch,
+      searchCursor: textSearch ? pagination.cursor : null,
     });
 
     const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
       at: row.ads.createdAt,
       id: row.ads.id,
+      ...(textSearch && row.searchRank !== undefined
+        ? { r: row.searchRank }
+        : {}),
     }));
     sendJsonArrayPage(res, items.map(serializeAd), meta);
   } catch (err) {
@@ -442,10 +452,28 @@ router.get("/ads", async (req, res) => {
 });
 
 async function reactionResponse(
+  kind: "like" | "favorite",
   table: typeof adLikesTable | typeof adFavoritesTable,
   adId: number,
   userId: number,
 ) {
+  if (useDenormalizedReactionCounters()) {
+    const col =
+      kind === "like"
+        ? adReactionCountsTable.likeCount
+        : adReactionCountsTable.favoriteCount;
+    const [counter] = await db
+      .select({ c: col })
+      .from(adReactionCountsTable)
+      .where(eq(adReactionCountsTable.adId, adId))
+      .limit(1);
+    const [{ active }] = (
+      await db.execute<{ active: boolean }>(
+        sql`select exists(select 1 from ${table} where ad_id = ${adId} and user_id = ${userId}) as active`,
+      )
+    ).rows as Array<{ active: boolean }>;
+    return { count: Number(counter?.c ?? 0), active: !!active };
+  }
   const [{ count }] = (
     await db.execute<{ count: number }>(
       sql`select count(*)::int as count from ${table} where ad_id = ${adId}`,
@@ -485,21 +513,38 @@ router.post("/ads/:adId/like", requireAuth, requireUserCsrf, async (req, res) =>
     res.status(404).json({ error: "Ad not found" });
     return;
   }
+  if (useDenormalizedReactionCounters()) {
+    res.json(
+      await applyReactionToggle({ kind: "like", adId, userId, action: "add" }),
+    );
+    return;
+  }
   await db
     .insert(adLikesTable)
     .values({ adId, userId })
     .onConflictDoNothing({ target: [adLikesTable.adId, adLikesTable.userId] });
-  res.json(await reactionResponse(adLikesTable, adId, userId));
+  res.json(await reactionResponse("like", adLikesTable, adId, userId));
 });
 
 router.delete("/ads/:adId/like", requireAuth, requireUserCsrf, async (req, res) => {
   const adId = parseAdId(req, res);
   if (adId === null) return;
   const userId = req.session.userId!;
+  if (useDenormalizedReactionCounters()) {
+    res.json(
+      await applyReactionToggle({
+        kind: "like",
+        adId,
+        userId,
+        action: "remove",
+      }),
+    );
+    return;
+  }
   await db
     .delete(adLikesTable)
     .where(and(eq(adLikesTable.adId, adId), eq(adLikesTable.userId, userId)));
-  res.json(await reactionResponse(adLikesTable, adId, userId));
+  res.json(await reactionResponse("like", adLikesTable, adId, userId));
 });
 
 router.post("/ads/:adId/favorite", requireAuth, requireUserCsrf, async (req, res) => {
@@ -519,25 +564,47 @@ router.post("/ads/:adId/favorite", requireAuth, requireUserCsrf, async (req, res
     res.status(404).json({ error: "Ad not found" });
     return;
   }
+  if (useDenormalizedReactionCounters()) {
+    res.json(
+      await applyReactionToggle({
+        kind: "favorite",
+        adId,
+        userId,
+        action: "add",
+      }),
+    );
+    return;
+  }
   await db
     .insert(adFavoritesTable)
     .values({ adId, userId })
     .onConflictDoNothing({
       target: [adFavoritesTable.adId, adFavoritesTable.userId],
     });
-  res.json(await reactionResponse(adFavoritesTable, adId, userId));
+  res.json(await reactionResponse("favorite", adFavoritesTable, adId, userId));
 });
 
 router.delete("/ads/:adId/favorite", requireAuth, requireUserCsrf, async (req, res) => {
   const adId = parseAdId(req, res);
   if (adId === null) return;
   const userId = req.session.userId!;
+  if (useDenormalizedReactionCounters()) {
+    res.json(
+      await applyReactionToggle({
+        kind: "favorite",
+        adId,
+        userId,
+        action: "remove",
+      }),
+    );
+    return;
+  }
   await db
     .delete(adFavoritesTable)
     .where(
       and(eq(adFavoritesTable.adId, adId), eq(adFavoritesTable.userId, userId)),
     );
-  res.json(await reactionResponse(adFavoritesTable, adId, userId));
+  res.json(await reactionResponse("favorite", adFavoritesTable, adId, userId));
 });
 
 router.post("/ads", requireAuth, requireUserCsrf, async (req, res) => {
@@ -571,6 +638,9 @@ router.post("/ads", requireAuth, requireUserCsrf, async (req, res) => {
     })
     .returning();
   const id = inserted[0]!.id;
+  if (useDenormalizedReactionCounters()) {
+    await ensureCounterRow(id);
+  }
   const rows = await fetchAdsList({
     currentUserId: null,
     where: eq(adsTable.id, id),

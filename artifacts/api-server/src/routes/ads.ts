@@ -43,6 +43,7 @@ import {
   sanitizeQueryLimit,
   sendJsonArrayPage,
 } from "../lib/pagination";
+import { fetchAdsList } from "../lib/ads-list-query";
 
 const router: IRouter = Router();
 let ensureAdsDetailsColumnPromise: Promise<void> | null = null;
@@ -130,49 +131,15 @@ function viewerKeyFor(req: Parameters<typeof requireAuth>[0]): string {
   );
 }
 
-const baseSelect = (currentUserId?: number | null) =>
-  db
-    .select({
-      ads: adsTable,
-      status: adsTable.status,
-      categoryName: categoriesTable.name,
-      subcategoryName: subcategoriesTable.name,
-      likeCount:
-        sql<number>`(select count(*) from ad_likes where ad_likes.ad_id = ${adsTable.id})`.as(
-          "like_count",
-        ),
-      favoriteCount:
-        sql<number>`(select count(*) from ad_favorites where ad_favorites.ad_id = ${adsTable.id})`.as(
-          "favorite_count",
-        ),
-      isLiked: currentUserId
-        ? sql<boolean>`exists(select 1 from ad_likes where ad_likes.ad_id = ${adsTable.id} and ad_likes.user_id = ${currentUserId})`.as(
-            "is_liked",
-          )
-        : sql<boolean>`false`.as("is_liked"),
-      isFavorited: currentUserId
-        ? sql<boolean>`exists(select 1 from ad_favorites where ad_favorites.ad_id = ${adsTable.id} and ad_favorites.user_id = ${currentUserId})`.as(
-            "is_favorited",
-          )
-        : sql<boolean>`false`.as("is_favorited"),
-    })
-    .from(adsTable)
-    .leftJoin(categoriesTable, eq(categoriesTable.id, adsTable.categoryId))
-    .leftJoin(
-      subcategoriesTable,
-      eq(subcategoriesTable.id, adsTable.subcategoryId),
-    );
-
 router.get("/ads/featured", async (req, res) => {
-  const rows = await baseSelect(req.session.userId ?? null)
-    .where(
-      and(
-        eq(adsTable.featured, true),
-        inArray(adsTable.status, [...PUBLIC_AD_STATUSES]),
-      ),
-    )
-    .orderBy(desc(adsTable.createdAt))
-    .limit(10);
+  const rows = await fetchAdsList({
+    currentUserId: req.session.userId ?? null,
+    where: and(
+      eq(adsTable.featured, true),
+      inArray(adsTable.status, [...PUBLIC_AD_STATUSES]),
+    ),
+    limit: 10,
+  });
   res.json(rows.map(serializeAd));
 });
 router.get("/admin/ads", requireAdminAccessGrant, requireAdmin, async (req, res) => {
@@ -221,18 +188,15 @@ router.get("/admin/ads", requireAdminAccessGrant, requireAdmin, async (req, res)
     clauses.push(keysetWhereDesc(adsTable.createdAt, adsTable.id, pagination.cursor));
   }
 
-  let query: any = baseSelect(null);
-  if (clauses.length > 0) {
-    query = query.where(and(...clauses));
-  }
+  const rows = await fetchAdsList({
+    currentUserId: null,
+    where: clauses.length > 0 ? and(...clauses) : undefined,
+    limit: pagination.fetchLimit,
+  });
 
-  const rows = await query
-    .orderBy(desc(adsTable.createdAt), desc(adsTable.id))
-    .limit(pagination.fetchLimit);
-
-  const { items, meta } = finalizePage(rows, pagination.limit, (ad: any) => ({
-    at: ad.ads.createdAt as Date,
-    id: ad.ads.id as number,
+  const { items, meta } = finalizePage(rows, pagination.limit, (ad) => ({
+    at: ad.ads.createdAt,
+    id: ad.ads.id,
   }));
 
   return sendJsonArrayPage(
@@ -291,11 +255,11 @@ router.delete("/admin/ads/:id", requireAdminAccessGrant, requireAdmin, requireAd
 });
 
 router.get("/ads/recommended", async (req, res) => {
-  const rows = await baseSelect(req.session.userId ?? null)
-    .where(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]))
-    .orderBy(desc(adsTable.createdAt))
-    .limit(20);
-
+  const rows = await fetchAdsList({
+    currentUserId: req.session.userId ?? null,
+    where: inArray(adsTable.status, [...PUBLIC_AD_STATUSES]),
+    limit: 20,
+  });
   res.json(rows.map(serializeAd));
 });
 
@@ -359,10 +323,11 @@ router.get("/ads/mine", requireAuth, async (req, res) => {
     if (pagination.cursor) {
       conds.push(keysetWhereDesc(adsTable.createdAt, adsTable.id, pagination.cursor));
     }
-    const rows = await baseSelect(req.session.userId)
-      .where(and(...conds))
-      .orderBy(desc(adsTable.createdAt), desc(adsTable.id))
-      .limit(pagination.fetchLimit);
+    const rows = await fetchAdsList({
+      currentUserId: req.session.userId,
+      where: and(...conds),
+      limit: pagination.fetchLimit,
+    });
     const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
       at: row.ads.createdAt,
       id: row.ads.id,
@@ -385,17 +350,12 @@ router.get("/ads/favorites", requireAuth, async (req, res) => {
     if (pagination.cursor) {
       conds.push(keysetWhereDesc(adsTable.createdAt, adsTable.id, pagination.cursor));
     }
-    const rows = await baseSelect(userId)
-      .innerJoin(
-        adFavoritesTable,
-        and(
-          eq(adFavoritesTable.adId, adsTable.id),
-          eq(adFavoritesTable.userId, userId),
-        ),
-      )
-      .where(and(...conds))
-      .orderBy(desc(adsTable.createdAt), desc(adsTable.id))
-      .limit(pagination.fetchLimit);
+    const rows = await fetchAdsList({
+      currentUserId: userId,
+      favoritesForUserId: userId,
+      where: and(...conds),
+      limit: pagination.fetchLimit,
+    });
     const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
       at: row.ads.createdAt,
       id: row.ads.id,
@@ -409,9 +369,11 @@ router.get("/ads/favorites", requireAuth, async (req, res) => {
 
 router.get("/ads/:adId", async (req, res) => {
   const params = GetAdParams.parse({ adId: Number(req.params["adId"]) });
-  const rows = await baseSelect(req.session.userId ?? null)
-    .where(eq(adsTable.id, params.adId))
-    .limit(1);
+  const rows = await fetchAdsList({
+    currentUserId: req.session.userId ?? null,
+    where: eq(adsTable.id, params.adId),
+    limit: 1,
+  });
   const row = rows[0];
   if (!row) {
     res.status(404).json({ error: "Ad not found" });
@@ -462,10 +424,11 @@ router.get("/ads", async (req, res) => {
 
     const where = conds.length ? and(...conds) : undefined;
 
-    const rows = await baseSelect(req.session.userId ?? null)
-      .where(where as never)
-      .orderBy(desc(adsTable.createdAt), desc(adsTable.id))
-      .limit(pagination.fetchLimit);
+    const rows = await fetchAdsList({
+      currentUserId: req.session.userId ?? null,
+      where,
+      limit: pagination.fetchLimit,
+    });
 
     const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
       at: row.ads.createdAt,
@@ -608,7 +571,11 @@ router.post("/ads", requireAuth, requireUserCsrf, async (req, res) => {
     })
     .returning();
   const id = inserted[0]!.id;
-  const rows = await baseSelect().where(eq(adsTable.id, id)).limit(1);
+  const rows = await fetchAdsList({
+    currentUserId: null,
+    where: eq(adsTable.id, id),
+    limit: 1,
+  });
   res.status(201).json(serializeAd(rows[0]!));
 });
 
@@ -687,9 +654,11 @@ router.patch("/ads/:adId", requireAuth, requireUserCsrf, async (req, res) => {
     })
     .where(eq(adsTable.id, adId));
 
-  const rows = await baseSelect(req.session.userId ?? null)
-    .where(eq(adsTable.id, adId))
-    .limit(1);
+  const rows = await fetchAdsList({
+    currentUserId: req.session.userId ?? null,
+    where: eq(adsTable.id, adId),
+    limit: 1,
+  });
 
   res.json(serializeAd(rows[0]!));
 });

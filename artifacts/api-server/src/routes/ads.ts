@@ -639,9 +639,7 @@ router.post("/ads/:adId/view", async (req, res) => {
   const inserted = await db
     .insert(adViewsTable)
     .values({ adId, viewerKey: key })
-    .onConflictDoNothing({
-      target: [adViewsTable.adId, adViewsTable.viewerKey],
-    })
+    .onConflictDoNothing()
     .returning({ id: adViewsTable.id });
   if (inserted.length > 0) {
     await db

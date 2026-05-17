@@ -3,6 +3,14 @@ import { db, notificationsTable } from "@workspace/db";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireUserCsrf } from "../middlewares/require-user-csrf";
+import {
+  finalizePage,
+  handlePaginationError,
+  keysetWhereDesc,
+  PAGINATION,
+  parsePaginationQuery,
+  sendJsonArrayPage,
+} from "../lib/pagination";
 
 const router: IRouter = Router();
 
@@ -57,26 +65,51 @@ router.patch("/notifications/:id/read", requireAuth, requireUserCsrf, async (req
 });
 
 router.get("/notifications", requireAuth, async (req, res) => {
-  const userId = req.session.userId!;
-  const rows = await db
-    .select()
-    .from(notificationsTable)
-    .where(eq(notificationsTable.userId, userId))
-    .orderBy(desc(notificationsTable.createdAt))
-    .limit(100);
-  res.json(
-    rows.map((n) => ({
+  try {
+    const userId = req.session.userId!;
+    const pagination = parsePaginationQuery(
+      req.query as Record<string, unknown>,
+      PAGINATION.NOTIFICATIONS,
+    );
+    const conds = [eq(notificationsTable.userId, userId)];
+    if (pagination.cursor) {
+      conds.push(
+        keysetWhereDesc(
+          notificationsTable.createdAt,
+          notificationsTable.id,
+          pagination.cursor,
+        ),
+      );
+    }
+    const rows = await db
+      .select()
+      .from(notificationsTable)
+      .where(and(...conds))
+      .orderBy(desc(notificationsTable.createdAt), desc(notificationsTable.id))
+      .limit(pagination.fetchLimit);
+    const { items, meta } = finalizePage(rows, pagination.limit, (n) => ({
+      at: n.createdAt,
       id: n.id,
-      type: n.type,
-      title: n.title,
-      body: n.body,
-      entityType: n.entityType ?? null,
-      entityId: n.entityId ?? null,
-      metadata: n.metadata ?? null,
-      readAt: n.readAt ? n.readAt.toISOString() : null,
-      createdAt: n.createdAt.toISOString(),
-    })),
-  );
+    }));
+    sendJsonArrayPage(
+      res,
+      items.map((n) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        body: n.body,
+        entityType: n.entityType ?? null,
+        entityId: n.entityId ?? null,
+        metadata: n.metadata ?? null,
+        readAt: n.readAt ? n.readAt.toISOString() : null,
+        createdAt: n.createdAt.toISOString(),
+      })),
+      meta,
+    );
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
 });
 
 export default router;

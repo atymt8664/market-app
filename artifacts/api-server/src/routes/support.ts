@@ -14,6 +14,14 @@ import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import { getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
+import {
+  finalizePage,
+  handlePaginationError,
+  keysetWhereDesc,
+  PAGINATION,
+  parsePaginationQuery,
+  sendJsonArrayPage,
+} from "../lib/pagination";
 
 const router = Router();
 const ALLOWED_SUPPORT_CATEGORIES = new Set([
@@ -175,140 +183,247 @@ router.post("/support/tickets", requireAuth, requireUserCsrf, async (req, res) =
 });
 
 router.get("/support/tickets/mine", requireAuth, async (req, res) => {
-  const userId = req.session.userId!;
-  const tickets = await db
-    .select({
-      id: supportTicketsTable.id,
-      userId: supportTicketsTable.userId,
-      category: supportTicketsTable.category,
-      subject: supportTicketsTable.subject,
-      status: supportTicketsTable.status,
-      priority: supportTicketsTable.priority,
-      relatedAdId: supportTicketsTable.relatedAdId,
-      relatedUserId: supportTicketsTable.relatedUserId,
-      createdAt: supportTicketsTable.createdAt,
-      updatedAt: supportTicketsTable.updatedAt,
-    })
-    .from(supportTicketsTable)
-    .where(eq(supportTicketsTable.userId, userId))
-    .orderBy(desc(supportTicketsTable.createdAt));
+  try {
+    const userId = req.session.userId!;
+    const pagination = parsePaginationQuery(
+      req.query as Record<string, unknown>,
+      PAGINATION.SUPPORT_TICKETS,
+    );
+    const conds = [eq(supportTicketsTable.userId, userId)];
+    if (pagination.cursor) {
+      conds.push(
+        keysetWhereDesc(
+          supportTicketsTable.createdAt,
+          supportTicketsTable.id,
+          pagination.cursor,
+        ),
+      );
+    }
+    const tickets = await db
+      .select({
+        id: supportTicketsTable.id,
+        userId: supportTicketsTable.userId,
+        category: supportTicketsTable.category,
+        subject: supportTicketsTable.subject,
+        status: supportTicketsTable.status,
+        priority: supportTicketsTable.priority,
+        relatedAdId: supportTicketsTable.relatedAdId,
+        relatedUserId: supportTicketsTable.relatedUserId,
+        createdAt: supportTicketsTable.createdAt,
+        updatedAt: supportTicketsTable.updatedAt,
+      })
+      .from(supportTicketsTable)
+      .where(and(...conds))
+      .orderBy(desc(supportTicketsTable.createdAt), desc(supportTicketsTable.id))
+      .limit(pagination.fetchLimit);
 
-  return res.json(
-    tickets.map((ticket) => ({
-      ...ticket,
-      createdAt: ticket.createdAt ? ticket.createdAt.toISOString() : null,
-      updatedAt: ticket.updatedAt ? ticket.updatedAt.toISOString() : null,
-    })),
-  );
+    const { items, meta } = finalizePage(tickets, pagination.limit, (ticket) => ({
+      at: ticket.createdAt,
+      id: ticket.id,
+    }));
+    return sendJsonArrayPage(
+      res,
+      items.map((ticket) => ({
+        ...ticket,
+        createdAt: ticket.createdAt ? ticket.createdAt.toISOString() : null,
+        updatedAt: ticket.updatedAt ? ticket.updatedAt.toISOString() : null,
+      })),
+      meta,
+    );
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
 });
 
 router.get("/support/tickets/:id/messages", requireAuth, async (req, res) => {
-  const userId = req.session.userId!;
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: "Invalid ticket id" });
+  try {
+    const userId = req.session.userId!;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: "Invalid ticket id" });
+    }
+
+    const [ticket] = await db
+      .select({ id: supportTicketsTable.id, userId: supportTicketsTable.userId })
+      .from(supportTicketsTable)
+      .where(eq(supportTicketsTable.id, id))
+      .limit(1);
+    if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+    if (ticket.userId !== userId) return res.status(403).json({ error: "Forbidden" });
+
+    const pagination = parsePaginationQuery(
+      req.query as Record<string, unknown>,
+      PAGINATION.SUPPORT_MESSAGES,
+    );
+    const conds = [eq(supportTicketMessagesTable.ticketId, id)];
+    if (pagination.cursor) {
+      conds.push(
+        keysetWhereDesc(
+          supportTicketMessagesTable.createdAt,
+          supportTicketMessagesTable.id,
+          pagination.cursor,
+        ),
+      );
+    }
+    const messages = await db
+      .select({
+        id: supportTicketMessagesTable.id,
+        ticketId: supportTicketMessagesTable.ticketId,
+        userId: supportTicketMessagesTable.userId,
+        adminId: supportTicketMessagesTable.adminId,
+        message: supportTicketMessagesTable.message,
+        createdAt: supportTicketMessagesTable.createdAt,
+      })
+      .from(supportTicketMessagesTable)
+      .where(and(...conds))
+      .orderBy(
+        desc(supportTicketMessagesTable.createdAt),
+        desc(supportTicketMessagesTable.id),
+      )
+      .limit(pagination.fetchLimit);
+
+    const { items, meta } = finalizePage(messages, pagination.limit, (item) => ({
+      at: item.createdAt,
+      id: item.id,
+    }));
+    return sendJsonArrayPage(
+      res,
+      items.map((item) => ({
+        ...item,
+        createdAt: item.createdAt ? item.createdAt.toISOString() : null,
+      })),
+      meta,
+    );
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
   }
-
-  const [ticket] = await db
-    .select({ id: supportTicketsTable.id, userId: supportTicketsTable.userId })
-    .from(supportTicketsTable)
-    .where(eq(supportTicketsTable.id, id))
-    .limit(1);
-  if (!ticket) return res.status(404).json({ error: "Ticket not found" });
-  if (ticket.userId !== userId) return res.status(403).json({ error: "Forbidden" });
-
-  const messages = await db
-    .select({
-      id: supportTicketMessagesTable.id,
-      ticketId: supportTicketMessagesTable.ticketId,
-      userId: supportTicketMessagesTable.userId,
-      adminId: supportTicketMessagesTable.adminId,
-      message: supportTicketMessagesTable.message,
-      createdAt: supportTicketMessagesTable.createdAt,
-    })
-    .from(supportTicketMessagesTable)
-    .where(eq(supportTicketMessagesTable.ticketId, id))
-    .orderBy(desc(supportTicketMessagesTable.createdAt));
-
-  return res.json(
-    messages.map((item) => ({
-      ...item,
-      createdAt: item.createdAt ? item.createdAt.toISOString() : null,
-    })),
-  );
 });
 
 router.get("/admin/support/tickets", requireAdminAccessGrant, requireAdmin, async (req, res) => {
-  const status = String(req.query.status || "").trim();
-  const q = String(req.query.q || "").trim();
+  try {
+    const status = String(req.query.status || "").trim();
+    const q = String(req.query.q || "").trim();
+    const pagination = parsePaginationQuery(
+      req.query as Record<string, unknown>,
+      PAGINATION.SUPPORT_TICKETS,
+    );
+    const rows = await db
+      .select({
+        id: supportTicketsTable.id,
+        userId: supportTicketsTable.userId,
+        userName: usersTable.name,
+        userEmail: usersTable.email,
+        userAvatarUrl: usersTable.avatarUrl,
+        category: supportTicketsTable.category,
+        subject: supportTicketsTable.subject,
+        status: supportTicketsTable.status,
+        priority: supportTicketsTable.priority,
+        relatedAdId: supportTicketsTable.relatedAdId,
+        relatedUserId: supportTicketsTable.relatedUserId,
+        createdAt: supportTicketsTable.createdAt,
+        updatedAt: supportTicketsTable.updatedAt,
+      })
+      .from(supportTicketsTable)
+      .leftJoin(usersTable, eq(usersTable.id, supportTicketsTable.userId))
+      .where(
+        and(
+          status ? eq(supportTicketsTable.status, status) : undefined,
+          q
+            ? or(
+                ilike(supportTicketsTable.subject, `%${q}%`),
+                ilike(supportTicketsTable.category, `%${q}%`),
+                ilike(usersTable.name, `%${q}%`),
+                ilike(usersTable.email, `%${q}%`),
+              )
+            : undefined,
+          pagination.cursor
+            ? keysetWhereDesc(
+                supportTicketsTable.createdAt,
+                supportTicketsTable.id,
+                pagination.cursor,
+              )
+            : undefined,
+        ),
+      )
+      .orderBy(desc(supportTicketsTable.createdAt), desc(supportTicketsTable.id))
+      .limit(pagination.fetchLimit);
 
-  const rows = await db
-    .select({
-      id: supportTicketsTable.id,
-      userId: supportTicketsTable.userId,
-      userName: usersTable.name,
-      userEmail: usersTable.email,
-      userAvatarUrl: usersTable.avatarUrl,
-      category: supportTicketsTable.category,
-      subject: supportTicketsTable.subject,
-      status: supportTicketsTable.status,
-      priority: supportTicketsTable.priority,
-      relatedAdId: supportTicketsTable.relatedAdId,
-      relatedUserId: supportTicketsTable.relatedUserId,
-      createdAt: supportTicketsTable.createdAt,
-      updatedAt: supportTicketsTable.updatedAt,
-    })
-    .from(supportTicketsTable)
-    .leftJoin(usersTable, eq(usersTable.id, supportTicketsTable.userId))
-    .where(
-      and(
-        status ? eq(supportTicketsTable.status, status) : undefined,
-        q
-          ? or(
-              ilike(supportTicketsTable.subject, `%${q}%`),
-              ilike(supportTicketsTable.category, `%${q}%`),
-              ilike(usersTable.name, `%${q}%`),
-              ilike(usersTable.email, `%${q}%`),
-            )
-          : undefined,
-      ),
-    )
-    .orderBy(desc(supportTicketsTable.createdAt));
-
-  return res.json(
-    rows.map((row) => ({
-      ...row,
-      createdAt: row.createdAt ? row.createdAt.toISOString() : null,
-      updatedAt: row.updatedAt ? row.updatedAt.toISOString() : null,
-    })),
-  );
+    const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
+      at: row.createdAt,
+      id: row.id,
+    }));
+    return sendJsonArrayPage(
+      res,
+      items.map((row) => ({
+        ...row,
+        createdAt: row.createdAt ? row.createdAt.toISOString() : null,
+        updatedAt: row.updatedAt ? row.updatedAt.toISOString() : null,
+      })),
+      meta,
+    );
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
 });
 
 router.get("/admin/support/tickets/:id/messages", requireAdminAccessGrant, requireAdmin, async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: "Invalid ticket id" });
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: "Invalid ticket id" });
+    }
+
+    const pagination = parsePaginationQuery(
+      req.query as Record<string, unknown>,
+      PAGINATION.SUPPORT_MESSAGES,
+    );
+    const conds = [eq(supportTicketMessagesTable.ticketId, id)];
+    if (pagination.cursor) {
+      conds.push(
+        keysetWhereDesc(
+          supportTicketMessagesTable.createdAt,
+          supportTicketMessagesTable.id,
+          pagination.cursor,
+        ),
+      );
+    }
+
+    const messages = await db
+      .select({
+        id: supportTicketMessagesTable.id,
+        ticketId: supportTicketMessagesTable.ticketId,
+        userId: supportTicketMessagesTable.userId,
+        adminId: supportTicketMessagesTable.adminId,
+        message: supportTicketMessagesTable.message,
+        createdAt: supportTicketMessagesTable.createdAt,
+      })
+      .from(supportTicketMessagesTable)
+      .where(and(...conds))
+      .orderBy(
+        desc(supportTicketMessagesTable.createdAt),
+        desc(supportTicketMessagesTable.id),
+      )
+      .limit(pagination.fetchLimit);
+
+    const { items, meta } = finalizePage(messages, pagination.limit, (item) => ({
+      at: item.createdAt,
+      id: item.id,
+    }));
+    return sendJsonArrayPage(
+      res,
+      items.map((item) => ({
+        ...item,
+        createdAt: item.createdAt ? item.createdAt.toISOString() : null,
+      })),
+      meta,
+    );
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
   }
-
-  const messages = await db
-    .select({
-      id: supportTicketMessagesTable.id,
-      ticketId: supportTicketMessagesTable.ticketId,
-      userId: supportTicketMessagesTable.userId,
-      adminId: supportTicketMessagesTable.adminId,
-      message: supportTicketMessagesTable.message,
-      createdAt: supportTicketMessagesTable.createdAt,
-    })
-    .from(supportTicketMessagesTable)
-    .where(eq(supportTicketMessagesTable.ticketId, id))
-    .orderBy(desc(supportTicketMessagesTable.createdAt));
-
-  return res.json(
-    messages.map((item) => ({
-      ...item,
-      createdAt: item.createdAt ? item.createdAt.toISOString() : null,
-    })),
-  );
 });
 
 router.patch("/admin/support/tickets/:id", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {

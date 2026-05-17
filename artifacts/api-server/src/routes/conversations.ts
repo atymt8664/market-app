@@ -20,6 +20,14 @@ import {
 import { isPublicAdStatus } from "../lib/ad-visibility";
 import { eitherUserBlocksTheOther } from "../lib/user-blocks";
 import {
+  finalizePage,
+  handlePaginationError,
+  keysetWhereAsc,
+  PAGINATION,
+  parsePaginationQuery,
+  sendJsonArrayPage,
+} from "../lib/pagination";
+import {
   InvalidSupabaseServiceRoleKeyError,
   MissingSupabaseStorageConfigError,
   SupabaseStorageBucketNotFoundError,
@@ -154,10 +162,39 @@ router.post("/conversations", requireAuth, requireUserCsrf, async (req, res) => 
   }
 });
 
+function mapConversationListRows(rows: Array<Record<string, unknown>>) {
+  return rows.map((r) => ({
+    id: Number(r["id"]),
+    adId: Number(r["ad_id"]),
+    adTitle: String(r["ad_title"]),
+    adImage: (r["ad_image"] as string | null) ?? null,
+    otherId: Number(r["other_id"]),
+    otherName: String(r["other_name"]),
+    lastMessageAt:
+      r["last_message_at"] instanceof Date
+        ? (r["last_message_at"] as Date).toISOString()
+        : String(r["last_message_at"]),
+    lastMessagePreview: (r["last_message_preview"] as string | null) ?? null,
+    lastMessageSenderId:
+      r["last_message_sender_id"] === null
+        ? null
+        : Number(r["last_message_sender_id"]),
+    unreadCount: Number(r["unread_count"]) || 0,
+  }));
+}
+
 router.get("/conversations", requireAuth, async (req, res) => {
+  try {
   const userId = req.session.userId!;
+  const pagination = parsePaginationQuery(
+    req.query as Record<string, unknown>,
+    PAGINATION.CONVERSATIONS,
+  );
   const buyer = sql`coalesce(buyer.name, '')`;
   const seller = sql`coalesce(seller.name, '')`;
+  const cursorFilter = pagination.cursor
+    ? sql`and (c.last_message_at, c.id) < (${pagination.cursor.at}, ${pagination.cursor.id})`
+    : sql``;
   const rows = await db.execute<{
     id: number;
     ad_id: number;
@@ -191,30 +228,37 @@ router.get("/conversations", requireAuth, async (req, res) => {
         select 1 from conversation_hides ch
         where ch.conversation_id = c.id and ch.user_id = ${userId}
       )
-    order by c.last_message_at desc
-    limit 100
+      ${cursorFilter}
+    order by c.last_message_at desc, c.id desc
+    limit ${pagination.fetchLimit}
   `);
-  const data = (rows.rows as Array<Record<string, unknown>>).map((r) => ({
+  const raw = rows.rows as Array<Record<string, unknown>>;
+  const { items, meta } = finalizePage(raw, pagination.limit, (r) => ({
+    at:
+      r["last_message_at"] instanceof Date
+        ? (r["last_message_at"] as Date)
+        : new Date(String(r["last_message_at"])),
     id: Number(r["id"]),
-    adId: Number(r["ad_id"]),
-    adTitle: String(r["ad_title"]),
-    adImage: (r["ad_image"] as string | null) ?? null,
-    otherId: Number(r["other_id"]),
-    otherName: String(r["other_name"]),
-    lastMessageAt: r["last_message_at"] instanceof Date
-      ? (r["last_message_at"] as Date).toISOString()
-      : String(r["last_message_at"]),
-    lastMessagePreview: (r["last_message_preview"] as string | null) ?? null,
-    lastMessageSenderId: r["last_message_sender_id"] === null ? null : Number(r["last_message_sender_id"]),
-    unreadCount: Number(r["unread_count"]) || 0,
   }));
-  res.json(data);
+  sendJsonArrayPage(res, mapConversationListRows(items), meta);
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
 });
 
 router.get("/conversations/hidden", requireAuth, async (req, res) => {
+  try {
   const userId = req.session.userId!;
+  const pagination = parsePaginationQuery(
+    req.query as Record<string, unknown>,
+    PAGINATION.CONVERSATIONS,
+  );
   const buyer = sql`coalesce(buyer.name, '')`;
   const seller = sql`coalesce(seller.name, '')`;
+  const cursorFilter = pagination.cursor
+    ? sql`and (c.last_message_at, c.id) < (${pagination.cursor.at}, ${pagination.cursor.id})`
+    : sql``;
   const rows = await db.execute<{
     id: number;
     ad_id: number;
@@ -248,24 +292,23 @@ router.get("/conversations/hidden", requireAuth, async (req, res) => {
         select 1 from conversation_hides ch
         where ch.conversation_id = c.id and ch.user_id = ${userId}
       )
-    order by c.last_message_at desc
-    limit 100
+      ${cursorFilter}
+    order by c.last_message_at desc, c.id desc
+    limit ${pagination.fetchLimit}
   `);
-  const data = (rows.rows as Array<Record<string, unknown>>).map((r) => ({
+  const raw = rows.rows as Array<Record<string, unknown>>;
+  const { items, meta } = finalizePage(raw, pagination.limit, (r) => ({
+    at:
+      r["last_message_at"] instanceof Date
+        ? (r["last_message_at"] as Date)
+        : new Date(String(r["last_message_at"])),
     id: Number(r["id"]),
-    adId: Number(r["ad_id"]),
-    adTitle: String(r["ad_title"]),
-    adImage: (r["ad_image"] as string | null) ?? null,
-    otherId: Number(r["other_id"]),
-    otherName: String(r["other_name"]),
-    lastMessageAt: r["last_message_at"] instanceof Date
-      ? (r["last_message_at"] as Date).toISOString()
-      : String(r["last_message_at"]),
-    lastMessagePreview: (r["last_message_preview"] as string | null) ?? null,
-    lastMessageSenderId: r["last_message_sender_id"] === null ? null : Number(r["last_message_sender_id"]),
-    unreadCount: Number(r["unread_count"]) || 0,
   }));
-  res.json(data);
+  sendJsonArrayPage(res, mapConversationListRows(items), meta);
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
 });
 
 async function loadConversation(convId: number, userId: number) {
@@ -351,8 +394,13 @@ router.get("/conversations/:convId", requireAuth, async (req, res) => {
 });
 
 router.get("/conversations/:convId/messages", requireAuth, async (req, res) => {
+  try {
   const userId = req.session.userId!;
   const convId = Number(req.params["convId"]);
+  const pagination = parsePaginationQuery(
+    req.query as Record<string, unknown>,
+    PAGINATION.MESSAGES,
+  );
   const r = await loadConversation(convId, userId);
   if ("error" in r) {
     res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
@@ -385,17 +433,30 @@ router.get("/conversations/:convId/messages", requireAuth, async (req, res) => {
     .innerJoin(messagesTable, eq(messagesTable.id, messageHidesTable.messageId))
     .where(and(eq(messageHidesTable.userId, userId), eq(messagesTable.conversationId, convId)));
   const hiddenIds = hiddenRows.map((h) => h.messageId);
-  const msgWhere =
+  const msgConds = [
     hiddenIds.length > 0
       ? and(eq(messagesTable.conversationId, convId), notInArray(messagesTable.id, hiddenIds))
-      : eq(messagesTable.conversationId, convId);
+      : eq(messagesTable.conversationId, convId),
+  ];
+  if (pagination.cursor) {
+    msgConds.push(keysetWhereAsc(messagesTable.createdAt, messagesTable.id, pagination.cursor));
+  }
+  const msgWhere = and(...msgConds);
   const rows = await db
     .select()
     .from(messagesTable)
     .where(msgWhere)
-    .orderBy(asc(messagesTable.createdAt))
-    .limit(200);
-  res.json(rows.map(serializeMessage));
+    .orderBy(asc(messagesTable.createdAt), asc(messagesTable.id))
+    .limit(pagination.fetchLimit);
+  const { items, meta } = finalizePage(rows, pagination.limit, (m) => ({
+    at: m.createdAt,
+    id: m.id,
+  }));
+  sendJsonArrayPage(res, items.map(serializeMessage), meta);
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
 });
 
 router.post(

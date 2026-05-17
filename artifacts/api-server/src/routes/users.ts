@@ -27,6 +27,15 @@ import { PUBLIC_AD_STATUSES } from "../lib/ad-visibility";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import { isUserSocketConnected } from "../lib/realtime";
+import {
+  clampLimit,
+  finalizePage,
+  handlePaginationError,
+  keysetWhereDesc,
+  PAGINATION,
+  parsePaginationQuery,
+  sendJsonArrayPage,
+} from "../lib/pagination";
 
 const router: IRouter = Router();
 const avatarUpload = multer({
@@ -267,67 +276,123 @@ router.delete("/users/:userId/block", requireAuth, requireUserCsrf, async (req, 
 });
 
 router.get("/users/:userId/followers", async (req, res) => {
-  const targetId = parseUserId(req, res);
-  if (targetId === null) return;
-  const exists = await db
-    .select({ id: usersTable.id })
-    .from(usersTable)
-    .where(eq(usersTable.id, targetId))
-    .limit(1);
-  if (!exists[0]) {
-    res.status(404).json({ error: "المستخدم غير موجود" });
-    return;
+  try {
+    const targetId = parseUserId(req, res);
+    if (targetId === null) return;
+    const exists = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.id, targetId))
+      .limit(1);
+    if (!exists[0]) {
+      res.status(404).json({ error: "المستخدم غير موجود" });
+      return;
+    }
+    const pagination = parsePaginationQuery(
+      req.query as Record<string, unknown>,
+      PAGINATION.SOCIAL,
+    );
+    const rows = await db
+      .select({
+        userId: usersTable.id,
+        name: usersTable.name,
+        avatarUrl: usersTable.avatarUrl,
+        followCreatedAt: userFollowsTable.createdAt,
+        followId: userFollowsTable.id,
+      })
+      .from(userFollowsTable)
+      .innerJoin(usersTable, eq(usersTable.id, userFollowsTable.followerId))
+      .where(
+        and(
+          eq(userFollowsTable.followingId, targetId),
+          pagination.cursor
+            ? keysetWhereDesc(
+                userFollowsTable.createdAt,
+                userFollowsTable.id,
+                pagination.cursor,
+              )
+            : undefined,
+        ),
+      )
+      .orderBy(desc(userFollowsTable.createdAt), desc(userFollowsTable.id))
+      .limit(pagination.fetchLimit);
+    const { items, meta } = finalizePage(rows, pagination.limit, (r) => ({
+      at: r.followCreatedAt,
+      id: r.followId,
+    }));
+    sendJsonArrayPage(
+      res,
+      items.map((r) => ({
+        userId: r.userId,
+        name: r.name,
+        avatarUrl: r.avatarUrl ?? null,
+      })),
+      meta,
+    );
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
   }
-  const rows = await db
-    .select({
-      userId: usersTable.id,
-      name: usersTable.name,
-      avatarUrl: usersTable.avatarUrl,
-    })
-    .from(userFollowsTable)
-    .innerJoin(usersTable, eq(usersTable.id, userFollowsTable.followerId))
-    .where(eq(userFollowsTable.followingId, targetId))
-    .orderBy(desc(userFollowsTable.createdAt))
-    .limit(200);
-  res.json(
-    rows.map((r) => ({
-      userId: r.userId,
-      name: r.name,
-      avatarUrl: r.avatarUrl ?? null,
-    })),
-  );
 });
 
 router.get("/users/:userId/following", async (req, res) => {
-  const targetId = parseUserId(req, res);
-  if (targetId === null) return;
-  const exists = await db
-    .select({ id: usersTable.id })
-    .from(usersTable)
-    .where(eq(usersTable.id, targetId))
-    .limit(1);
-  if (!exists[0]) {
-    res.status(404).json({ error: "المستخدم غير موجود" });
-    return;
+  try {
+    const targetId = parseUserId(req, res);
+    if (targetId === null) return;
+    const exists = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.id, targetId))
+      .limit(1);
+    if (!exists[0]) {
+      res.status(404).json({ error: "المستخدم غير موجود" });
+      return;
+    }
+    const pagination = parsePaginationQuery(
+      req.query as Record<string, unknown>,
+      PAGINATION.SOCIAL,
+    );
+    const rows = await db
+      .select({
+        userId: usersTable.id,
+        name: usersTable.name,
+        avatarUrl: usersTable.avatarUrl,
+        followCreatedAt: userFollowsTable.createdAt,
+        followId: userFollowsTable.id,
+      })
+      .from(userFollowsTable)
+      .innerJoin(usersTable, eq(usersTable.id, userFollowsTable.followingId))
+      .where(
+        and(
+          eq(userFollowsTable.followerId, targetId),
+          pagination.cursor
+            ? keysetWhereDesc(
+                userFollowsTable.createdAt,
+                userFollowsTable.id,
+                pagination.cursor,
+              )
+            : undefined,
+        ),
+      )
+      .orderBy(desc(userFollowsTable.createdAt), desc(userFollowsTable.id))
+      .limit(pagination.fetchLimit);
+    const { items, meta } = finalizePage(rows, pagination.limit, (r) => ({
+      at: r.followCreatedAt,
+      id: r.followId,
+    }));
+    sendJsonArrayPage(
+      res,
+      items.map((r) => ({
+        userId: r.userId,
+        name: r.name,
+        avatarUrl: r.avatarUrl ?? null,
+      })),
+      meta,
+    );
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
   }
-  const rows = await db
-    .select({
-      userId: usersTable.id,
-      name: usersTable.name,
-      avatarUrl: usersTable.avatarUrl,
-    })
-    .from(userFollowsTable)
-    .innerJoin(usersTable, eq(usersTable.id, userFollowsTable.followingId))
-    .where(eq(userFollowsTable.followerId, targetId))
-    .orderBy(desc(userFollowsTable.createdAt))
-    .limit(200);
-  res.json(
-    rows.map((r) => ({
-      userId: r.userId,
-      name: r.name,
-      avatarUrl: r.avatarUrl ?? null,
-    })),
-  );
 });
 
 router.get("/users/:userId/profile-viewers", requireAuth, async (req, res) => {
@@ -347,6 +412,7 @@ router.get("/users/:userId/profile-viewers", requireAuth, async (req, res) => {
     res.status(404).json({ error: "المستخدم غير موجود" });
     return;
   }
+  const viewerLimit = clampLimit(req.query.limit, PAGINATION.SOCIAL);
   const agg = await db.execute<{ viewer_key: string; last_at: unknown }>(
     sql`
       select viewer_key, max(created_at) as last_at
@@ -354,7 +420,7 @@ router.get("/users/:userId/profile-viewers", requireAuth, async (req, res) => {
       where profile_id = ${targetId}
       group by viewer_key
       order by max(created_at) desc
-      limit 200
+      limit ${viewerLimit}
     `,
   );
   const raw = agg.rows as Array<{ viewer_key: string; last_at: unknown }>;

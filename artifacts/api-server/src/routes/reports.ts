@@ -8,6 +8,14 @@ import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import { getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
+import {
+  finalizePage,
+  handlePaginationError,
+  keysetWhereDesc,
+  PAGINATION,
+  parsePaginationQuery,
+  sendJsonArrayPage,
+} from "../lib/pagination";
 
 const router = Router();
 
@@ -203,39 +211,61 @@ router.post("/", requireAuth, requireUserCsrf, async (req, res) => {
 /**
  * جلب البلاغات للأدمن
  */
-router.get("/admin", requireAdminAccessGrant, requireAdmin, async (_req, res) => {
-  const reports = await db
-    .select({
-      id: reportsTable.id,
-      reporterId: reportsTable.reporterId,
-      reporterName: usersTable.name,
-      reporterEmail: usersTable.email,
-      targetUserId: reportsTable.targetUserId,
-      targetAdId: reportsTable.targetAdId,
-      relatedConversationId: reportsTable.relatedConversationId,
-      reason: reportsTable.reason,
-      description: reportsTable.description,
-      status: reportsTable.status,
-      createdAt: reportsTable.createdAt,
-    })
-    .from(reportsTable)
-    .leftJoin(usersTable, eq(usersTable.id, reportsTable.reporterId))
-    .orderBy(desc(reportsTable.createdAt));
+router.get("/admin", requireAdminAccessGrant, requireAdmin, async (req, res) => {
+  try {
+    const pagination = parsePaginationQuery(
+      req.query as Record<string, unknown>,
+      PAGINATION.ADMIN_REPORTS,
+    );
+    const reports = await db
+      .select({
+        id: reportsTable.id,
+        reporterId: reportsTable.reporterId,
+        reporterName: usersTable.name,
+        reporterEmail: usersTable.email,
+        targetUserId: reportsTable.targetUserId,
+        targetAdId: reportsTable.targetAdId,
+        relatedConversationId: reportsTable.relatedConversationId,
+        reason: reportsTable.reason,
+        description: reportsTable.description,
+        status: reportsTable.status,
+        createdAt: reportsTable.createdAt,
+      })
+      .from(reportsTable)
+      .leftJoin(usersTable, eq(usersTable.id, reportsTable.reporterId))
+      .where(
+        pagination.cursor
+          ? keysetWhereDesc(reportsTable.createdAt, reportsTable.id, pagination.cursor)
+          : undefined,
+      )
+      .orderBy(desc(reportsTable.createdAt), desc(reportsTable.id))
+      .limit(pagination.fetchLimit);
 
-  return res.json(
-    reports.map((report) => ({
-      ...report,
-      relatedConversationId: report.relatedConversationId ?? null,
-      targetType: report.targetAdId
-        ? "ad"
-        : report.targetUserId
-          ? "user"
-          : report.relatedConversationId
-            ? "conversation"
-            : "unknown",
-      createdAt: report.createdAt ? report.createdAt.toISOString() : null,
-    })),
-  );
+    const { items, meta } = finalizePage(reports, pagination.limit, (report) => ({
+      at: report.createdAt ?? new Date(0),
+      id: report.id,
+    }));
+
+    return sendJsonArrayPage(
+      res,
+      items.map((report) => ({
+        ...report,
+        relatedConversationId: report.relatedConversationId ?? null,
+        targetType: report.targetAdId
+          ? "ad"
+          : report.targetUserId
+            ? "user"
+            : report.relatedConversationId
+              ? "conversation"
+              : "unknown",
+        createdAt: report.createdAt ? report.createdAt.toISOString() : null,
+      })),
+      meta,
+    );
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
 });
 
 router.patch("/admin/:id/status", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {

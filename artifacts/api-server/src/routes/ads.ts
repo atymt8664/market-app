@@ -34,6 +34,14 @@ import { logger } from "../lib/logger";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
+import {
+  finalizePage,
+  handlePaginationError,
+  keysetWhereDesc,
+  PAGINATION,
+  parsePaginationQuery,
+  sendJsonArrayPage,
+} from "../lib/pagination";
 
 const router: IRouter = Router();
 let ensureAdsDetailsColumnPromise: Promise<void> | null = null;
@@ -198,19 +206,41 @@ router.get("/admin/ads", requireAdminAccessGrant, requireAdmin, async (req, res)
     clauses.push(eq(adsTable.featured, false));
   }
 
-  let query: any = baseSelect(null);
+  let pagination;
+  try {
+    pagination = parsePaginationQuery(
+      req.query as Record<string, unknown>,
+      PAGINATION.ADS_ADMIN,
+    );
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
+  if (pagination.cursor) {
+    clauses.push(keysetWhereDesc(adsTable.createdAt, adsTable.id, pagination.cursor));
+  }
 
+  let query: any = baseSelect(null);
   if (clauses.length > 0) {
     query = query.where(and(...clauses));
   }
 
-  const rows = await query.orderBy(desc(adsTable.createdAt)).limit(100);
+  const rows = await query
+    .orderBy(desc(adsTable.createdAt), desc(adsTable.id))
+    .limit(pagination.fetchLimit);
 
-  return res.json(
-    rows.map((ad: any) => ({
+  const { items, meta } = finalizePage(rows, pagination.limit, (ad: any) => ({
+    at: ad.ads.createdAt as Date,
+    id: ad.ads.id as number,
+  }));
+
+  return sendJsonArrayPage(
+    res,
+    items.map((ad: any) => ({
       ...serializeAd(ad),
       status: (ad as any).status,
     })),
+    meta,
   );
 });
 
@@ -319,25 +349,61 @@ router.get("/ads/stats", async (_req, res) => {
 });
 
 router.get("/ads/mine", requireAuth, async (req, res) => {
-  const rows = await baseSelect(req.session.userId)
-    .where(eq(adsTable.userId, req.session.userId!))
-    .orderBy(desc(adsTable.createdAt));
-  res.json(rows.map(serializeAd));
+  try {
+    const pagination = parsePaginationQuery(
+      req.query as Record<string, unknown>,
+      PAGINATION.ADS_MINE,
+    );
+    const conds = [eq(adsTable.userId, req.session.userId!)];
+    if (pagination.cursor) {
+      conds.push(keysetWhereDesc(adsTable.createdAt, adsTable.id, pagination.cursor));
+    }
+    const rows = await baseSelect(req.session.userId)
+      .where(and(...conds))
+      .orderBy(desc(adsTable.createdAt), desc(adsTable.id))
+      .limit(pagination.fetchLimit);
+    const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
+      at: row.ads.createdAt,
+      id: row.ads.id,
+    }));
+    sendJsonArrayPage(res, items.map(serializeAd), meta);
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
 });
 
 router.get("/ads/favorites", requireAuth, async (req, res) => {
-  const userId = req.session.userId!;
-  const rows = await baseSelect(userId)
-    .innerJoin(
-      adFavoritesTable,
-      and(
-        eq(adFavoritesTable.adId, adsTable.id),
-        eq(adFavoritesTable.userId, userId),
-      ),
-    )
-    .where(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]))
-    .orderBy(desc(adsTable.createdAt));
-  res.json(rows.map(serializeAd));
+  try {
+    const userId = req.session.userId!;
+    const pagination = parsePaginationQuery(
+      req.query as Record<string, unknown>,
+      PAGINATION.ADS_MINE,
+    );
+    const conds = [inArray(adsTable.status, [...PUBLIC_AD_STATUSES])];
+    if (pagination.cursor) {
+      conds.push(keysetWhereDesc(adsTable.createdAt, adsTable.id, pagination.cursor));
+    }
+    const rows = await baseSelect(userId)
+      .innerJoin(
+        adFavoritesTable,
+        and(
+          eq(adFavoritesTable.adId, adsTable.id),
+          eq(adFavoritesTable.userId, userId),
+        ),
+      )
+      .where(and(...conds))
+      .orderBy(desc(adsTable.createdAt), desc(adsTable.id))
+      .limit(pagination.fetchLimit);
+    const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
+      at: row.ads.createdAt,
+      id: row.ads.id,
+    }));
+    sendJsonArrayPage(res, items.map(serializeAd), meta);
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
 });
 
 router.get("/ads/:adId", async (req, res) => {
@@ -361,38 +427,53 @@ router.get("/ads/:adId", async (req, res) => {
 });
 
 router.get("/ads", async (req, res) => {
-  const q = ListAdsQueryParams.parse(req.query);
-  const conds = [] as ReturnType<typeof eq>[];
-  conds.push(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]));
-  if (q.userId !== undefined) conds.push(eq(adsTable.userId, q.userId));
-  if (q.q) {
-    const pat = `%${q.q}%`;
-    const like = or(
-      ilike(adsTable.title, pat),
-      ilike(adsTable.description, pat),
+  try {
+    const q = ListAdsQueryParams.parse(req.query);
+    const pagination = parsePaginationQuery(
+      req.query as Record<string, unknown>,
+      PAGINATION.ADS,
     );
-    if (like) conds.push(like);
+    const conds = [] as ReturnType<typeof eq>[];
+    conds.push(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]));
+    if (q.userId !== undefined) conds.push(eq(adsTable.userId, q.userId));
+    if (q.q) {
+      const pat = `%${q.q}%`;
+      const like = or(
+        ilike(adsTable.title, pat),
+        ilike(adsTable.description, pat),
+      );
+      if (like) conds.push(like);
+    }
+    if (q.categoryId !== undefined)
+      conds.push(eq(adsTable.categoryId, q.categoryId));
+    if (q.subcategoryId !== undefined)
+      conds.push(eq(adsTable.subcategoryId, q.subcategoryId));
+    if (q.city) conds.push(ilike(adsTable.city, `%${q.city}%`));
+    if (q.minPrice !== undefined)
+      conds.push(gte(adsTable.price, q.minPrice.toString()));
+    if (q.maxPrice !== undefined)
+      conds.push(lte(adsTable.price, q.maxPrice.toString()));
+    if (q.type) conds.push(eq(adsTable.type, q.type));
+    if (pagination.cursor) {
+      conds.push(keysetWhereDesc(adsTable.createdAt, adsTable.id, pagination.cursor));
+    }
+
+    const where = conds.length ? and(...conds) : undefined;
+
+    const rows = await baseSelect(req.session.userId ?? null)
+      .where(where as never)
+      .orderBy(desc(adsTable.createdAt), desc(adsTable.id))
+      .limit(pagination.fetchLimit);
+
+    const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
+      at: row.ads.createdAt,
+      id: row.ads.id,
+    }));
+    sendJsonArrayPage(res, items.map(serializeAd), meta);
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
   }
-  if (q.categoryId !== undefined)
-    conds.push(eq(adsTable.categoryId, q.categoryId));
-  if (q.subcategoryId !== undefined)
-    conds.push(eq(adsTable.subcategoryId, q.subcategoryId));
-  if (q.city) conds.push(ilike(adsTable.city, `%${q.city}%`));
-  if (q.minPrice !== undefined)
-    conds.push(gte(adsTable.price, q.minPrice.toString()));
-  if (q.maxPrice !== undefined)
-    conds.push(lte(adsTable.price, q.maxPrice.toString()));
-  if (q.type) conds.push(eq(adsTable.type, q.type));
-
-  const where = conds.length ? and(...conds) : undefined;
-  const limit = q.limit ?? 50;
-
-  const rows = await baseSelect(req.session.userId ?? null)
-    .where(where as never)
-    .orderBy(desc(adsTable.createdAt))
-    .limit(limit);
-
-  res.json(rows.map(serializeAd));
 });
 
 async function reactionResponse(

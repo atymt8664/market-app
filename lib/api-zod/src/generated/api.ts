@@ -73,7 +73,12 @@ export const ListAdsQueryParams = zod.object({
     .describe(
       "When set, return only ads owned by this user (public approved statuses)."
     ),
-  limit: zod.coerce.number().default(listAdsQueryLimitDefault),
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(100)
+    .default(listAdsQueryLimitDefault),
+  cursor: zod.coerce.string().optional(),
 });
 
 export const ListAdsResponseItem = zod.object({

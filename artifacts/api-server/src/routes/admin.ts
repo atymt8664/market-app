@@ -22,6 +22,16 @@ import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import { getSessionClearCookieOptions, SESSION_COOKIE_NAME } from "../lib/session-cookie";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
+import {
+  clampLimit,
+  finalizePage,
+  handlePaginationError,
+  keysetWhereDesc,
+  PAGINATION,
+  parsePaginationQuery,
+  sendJsonArrayPage,
+  setPaginationHeaders,
+} from "../lib/pagination";
 
 const router = Router();
 const citiesTable = pgTable("cities", {
@@ -879,7 +889,12 @@ router.post("/admin/change-password", requireAdmin, requireAdminCsrf, async (req
   return;
 });
 
-router.get("/admin/reports", requireAdmin, async (_req, res) => {
+router.get("/admin/reports", requireAdmin, async (req, res) => {
+  try {
+  const pagination = parsePaginationQuery(
+    req.query as Record<string, unknown>,
+    PAGINATION.ADMIN_REPORTS,
+  );
   const reportReporter = alias(usersTable, "admin_reports_list_reporter");
   const reportAdOwner = alias(usersTable, "admin_reports_list_ad_owner");
   const reportTargetUser = alias(usersTable, "admin_reports_list_target_user");
@@ -910,10 +925,22 @@ router.get("/admin/reports", requireAdmin, async (_req, res) => {
     .leftJoin(adsTable, eq(adsTable.id, reportsTable.targetAdId))
     .leftJoin(reportAdOwner, eq(reportAdOwner.id, adsTable.userId))
     .leftJoin(reportTargetUser, eq(reportTargetUser.id, reportsTable.targetUserId))
-    .orderBy(desc(reportsTable.createdAt));
+    .where(
+      pagination.cursor
+        ? keysetWhereDesc(reportsTable.createdAt, reportsTable.id, pagination.cursor)
+        : undefined,
+    )
+    .orderBy(desc(reportsTable.createdAt), desc(reportsTable.id))
+    .limit(pagination.fetchLimit);
 
-  return res.json(
-    reports.map((report) => ({
+  const { items, meta } = finalizePage(reports, pagination.limit, (report) => ({
+    at: report.createdAt ?? new Date(0),
+    id: report.id,
+  }));
+
+  return sendJsonArrayPage(
+    res,
+    items.map((report) => ({
       ...report,
       targetType: report.targetAdId
         ? "ad"
@@ -924,7 +951,12 @@ router.get("/admin/reports", requireAdmin, async (_req, res) => {
             : "unknown",
       createdAt: report.createdAt ? report.createdAt.toISOString() : null,
     })),
+    meta,
   );
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
 });
 
 router.patch("/admin/reports/:id/status", requireAdmin, requireAdminCsrf, async (req, res) => {
@@ -1024,8 +1056,13 @@ router.patch("/admin/reports/:id/status", requireAdmin, requireAdminCsrf, async 
 });
 
 router.get("/admin/users", requireAdmin, async (req, res) => {
+  try {
   const q = String(req.query.q || "").trim();
   const status = String(req.query.status || "all").trim().toLowerCase();
+  const pagination = parsePaginationQuery(
+    req.query as Record<string, unknown>,
+    PAGINATION.ADMIN_USERS,
+  );
 
   const rows = await db
     .select({
@@ -1050,12 +1087,22 @@ router.get("/admin/users", requireAdmin, async (req, res) => {
               ilike(usersTable.email, `%${q}%`),
             )
           : undefined,
+        pagination.cursor
+          ? keysetWhereDesc(usersTable.createdAt, usersTable.id, pagination.cursor)
+          : undefined,
       ),
     )
-    .orderBy(desc(usersTable.createdAt));
+    .orderBy(desc(usersTable.createdAt), desc(usersTable.id))
+    .limit(pagination.fetchLimit);
 
-  return res.json(
-    rows.map((row) => ({
+  const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
+    at: row.createdAt,
+    id: row.id,
+  }));
+
+  return sendJsonArrayPage(
+    res,
+    items.map((row) => ({
       id: row.id,
       name: row.name,
       email: row.email,
@@ -1063,7 +1110,12 @@ router.get("/admin/users", requireAdmin, async (req, res) => {
       status: row.isBanned ? "banned" : "active",
       createdAt: row.createdAt ? row.createdAt.toISOString() : null,
     })),
+    meta,
   );
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
 });
 
 router.get("/admin/users/:id", requireAdmin, async (req, res) => {
@@ -1239,8 +1291,13 @@ router.patch("/admin/users/:id", requireAdmin, requireAdminCsrf, async (req, res
 });
 
 router.get("/admin/logs", requireAdmin, async (req, res) => {
+  try {
   await ensureAdminLogsReady();
 
+  const pagination = parsePaginationQuery(
+    req.query as Record<string, unknown>,
+    PAGINATION.ADMIN_LOGS,
+  );
   const actionType = String(req.query.actionType || "all").trim().toLowerCase();
   const targetType = String(req.query.targetType || "all").trim().toLowerCase();
   const q = String(req.query.q || "").trim();
@@ -1281,6 +1338,13 @@ router.get("/admin/logs", requireAdmin, async (req, res) => {
           sql`cast(${adminActivityLogsTable.actorAdminId} as text) ilike ${`%${q}%`}`,
         )
       : undefined,
+    pagination.cursor
+      ? keysetWhereDesc(
+          adminActivityLogsTable.createdAt,
+          adminActivityLogsTable.id,
+          pagination.cursor,
+        )
+      : undefined,
   );
 
   const rows = await db
@@ -1295,11 +1359,17 @@ router.get("/admin/logs", requireAdmin, async (req, res) => {
     })
     .from(adminActivityLogsTable)
     .where(where)
-    .orderBy(desc(adminActivityLogsTable.createdAt))
-    .limit(300);
+    .orderBy(desc(adminActivityLogsTable.createdAt), desc(adminActivityLogsTable.id))
+    .limit(pagination.fetchLimit);
 
-  return res.json(
-    rows.map((row) => ({
+  const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
+    at: row.createdAt,
+    id: row.id,
+  }));
+
+  return sendJsonArrayPage(
+    res,
+    items.map((row) => ({
       id: row.id,
       actionType: row.action,
       actor: row.actorAdminId !== null ? `admin#${row.actorAdminId}` : "admin#unknown",
@@ -1311,7 +1381,12 @@ router.get("/admin/logs", requireAdmin, async (req, res) => {
           : String(row.details ?? ""),
       createdAt: row.createdAt ? row.createdAt.toISOString() : null,
     })),
+    meta,
   );
+  } catch (err) {
+    if (handlePaginationError(err, res)) return;
+    throw err;
+  }
 });
 
 router.get("/admin/categories", requireAdmin, async (req, res) => {
@@ -1651,6 +1726,8 @@ router.get("/admin/cities", requireAdmin, async (req, res) => {
     .trim()
     .toUpperCase();
   const status = String(req.query.status || "all").trim().toLowerCase();
+  const cityLimit = clampLimit(req.query.limit, PAGINATION.ADMIN_CITIES);
+  const cityFetchLimit = cityLimit + 1;
 
   const rows = await db
     .select({
@@ -1683,20 +1760,29 @@ router.get("/admin/cities", requireAdmin, async (req, res) => {
       ),
     )
     .groupBy(citiesTable.id)
-    .orderBy(asc(citiesTable.countryName), asc(citiesTable.name), asc(citiesTable.id));
+    .orderBy(asc(citiesTable.countryName), asc(citiesTable.name), asc(citiesTable.id))
+    .limit(cityFetchLimit);
+
+  const hasMoreCities = rows.length > cityLimit;
+  const cityRows = hasMoreCities ? rows.slice(0, cityLimit) : rows;
 
   const countries = Array.from(
     new Map(
-      rows.map((row) => [
+      cityRows.map((row) => [
         row.countryCode,
         { code: row.countryCode, name: row.countryName },
       ]),
     ).values(),
   ).sort((a, b) => a.name.localeCompare(b.name));
 
+  setPaginationHeaders(res, {
+    limit: cityLimit,
+    hasMore: hasMoreCities,
+    nextCursor: null,
+  });
   return res.json({
     countries,
-    cities: rows.map((row) => ({
+    cities: cityRows.map((row) => ({
       id: row.id,
       name: row.name,
       countryCode: row.countryCode,

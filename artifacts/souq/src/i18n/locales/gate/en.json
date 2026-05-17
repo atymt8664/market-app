@@ -1,0 +1,10 @@
+{
+  "language.option.ar": "Arabic",
+  "language.option.en": "English",
+  "language.option.de": "Deutsch",
+  "first_launch.title": "Choose app language",
+  "first_launch.subtitle": "Select the language you prefer for Souq Al Arab.",
+  "first_launch.recommended": "Default",
+  "first_launch.note": "You can change the language later from Settings",
+  "first_launch.confirm": "Continue"
+}

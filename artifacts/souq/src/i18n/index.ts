@@ -10,8 +10,16 @@ const localeLoaders: Record<Locale, () => Promise<{ default: Dictionary }>> = {
   de: () => import("./locales/de.json"),
 };
 
+/** First-launch gate only — 8 keys, ~1 KB gzip vs full locale chunks. */
+const gateLocaleLoaders: Record<Locale, () => Promise<{ default: Dictionary }>> = {
+  ar: () => import("./locales/gate/ar.json"),
+  en: () => import("./locales/gate/en.json"),
+  de: () => import("./locales/gate/de.json"),
+};
+
 const dictionaries: Partial<Record<Locale, Dictionary>> = {};
 const loadPromises: Partial<Record<Locale, Promise<Dictionary>>> = {};
+const gateOnlyLocales = new Set<Locale>();
 
 function isLocale(value: string | null): value is Locale {
   return value === "ar" || value === "en" || value === "de";
@@ -37,7 +45,16 @@ function applyDocumentLocale(locale: Locale) {
 
 applyDocumentLocale(activeLocale);
 
+function clearGateOnlyLocale(locale: Locale): void {
+  if (!gateOnlyLocales.has(locale)) return;
+  gateOnlyLocales.delete(locale);
+  delete dictionaries[locale];
+  delete loadPromises[locale];
+}
+
 async function loadLocale(locale: Locale): Promise<Dictionary> {
+  clearGateOnlyLocale(locale);
+
   const cached = dictionaries[locale];
   if (cached) return cached;
 
@@ -53,10 +70,36 @@ async function loadLocale(locale: Locale): Promise<Dictionary> {
   return promise;
 }
 
+async function loadGateLocale(locale: Locale): Promise<Dictionary> {
+  const cached = dictionaries[locale];
+  if (cached && !gateOnlyLocales.has(locale)) return cached;
+
+  const mod = await gateLocaleLoaders[locale]();
+  dictionaries[locale] = mod.default;
+  gateOnlyLocales.add(locale);
+  return mod.default;
+}
+
+function prefetchFullLocalesInBackground(): void {
+  void loadLocale(activeLocale).then(() => {
+    if (activeLocale !== "ar") void loadLocale("ar");
+  });
+}
+
 /** Active locale + Arabic fallback (for missing keys) before first React render. */
 export async function ensureLocalesForActive(): Promise<void> {
   activeLocale = resolveInitialLocale();
   applyDocumentLocale(activeLocale);
+
+  if (typeof window !== "undefined" && !hasSavedLocale()) {
+    await loadGateLocale(activeLocale);
+    if (activeLocale !== "ar") {
+      await loadGateLocale("ar");
+    }
+    prefetchFullLocalesInBackground();
+    return;
+  }
+
   await loadLocale(activeLocale);
   if (activeLocale !== "ar") {
     await loadLocale("ar");

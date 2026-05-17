@@ -59,6 +59,9 @@ async function start() {
     await prepareDatabase();
   } catch (err) {
     logger.error({ err }, "Database preparation failed");
+    const { captureUnhandledError, flushSentry } = await import("./lib/sentry");
+    captureUnhandledError(err);
+    await flushSentry(2000);
     process.exit(1);
   }
 

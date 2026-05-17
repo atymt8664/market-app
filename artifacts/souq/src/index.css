@@ -1,4 +1,4 @@
-@import "./fonts.css";
+@import "./fonts-critical.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";

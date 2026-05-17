@@ -1,25 +1,28 @@
 import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
+import gateAr from "./locales/gate/ar.json";
+import gateDe from "./locales/gate/de.json";
+import gateEn from "./locales/gate/en.json";
 
 export type Locale = "ar" | "en" | "de";
 type Dictionary = Record<string, string>;
 
-/** Defer full locale download until Gate first paint is done (6B-1). */
+/** Defer full locale download until Gate first paint is done (6B-1 / 7A.6). */
 const GATE_FULL_LOCALE_PREFETCH_IDLE_MS = 2500;
 
 const STORAGE_KEY = "app_locale";
 const listeners = new Set<() => void>();
 
+/** Inlined gate copy — no async chunk on first-launch critical path (7A.6). */
+const GATE_LOCALES: Record<Locale, Dictionary> = {
+  ar: gateAr,
+  en: gateEn,
+  de: gateDe,
+};
+
 const localeLoaders: Record<Locale, () => Promise<{ default: Dictionary }>> = {
   ar: () => import("./locales/ar.json"),
   en: () => import("./locales/en.json"),
   de: () => import("./locales/de.json"),
-};
-
-/** First-launch gate only — 8 keys, ~1 KB gzip vs full locale chunks. */
-const gateLocaleLoaders: Record<Locale, () => Promise<{ default: Dictionary }>> = {
-  ar: () => import("./locales/gate/ar.json"),
-  en: () => import("./locales/gate/en.json"),
-  de: () => import("./locales/gate/de.json"),
 };
 
 const dictionaries: Partial<Record<Locale, Dictionary>> = {};
@@ -50,6 +53,24 @@ function applyDocumentLocale(locale: Locale) {
 
 applyDocumentLocale(activeLocale);
 
+function applyGateLocale(locale: Locale): void {
+  dictionaries[locale] = GATE_LOCALES[locale];
+  gateOnlyLocales.add(locale);
+}
+
+/**
+ * Synchronous gate strings for first launch — call before React render (7A.6).
+ * Removes dynamic `gate/*.json` chunks from LCP critical path.
+ */
+export function seedFirstLaunchLocales(): void {
+  activeLocale = resolveInitialLocale();
+  applyDocumentLocale(activeLocale);
+  applyGateLocale(activeLocale);
+  if (activeLocale !== "ar") {
+    applyGateLocale("ar");
+  }
+}
+
 async function loadLocale(locale: Locale): Promise<Dictionary> {
   const cached = dictionaries[locale];
   if (cached && !gateOnlyLocales.has(locale)) return cached;
@@ -67,16 +88,6 @@ async function loadLocale(locale: Locale): Promise<Dictionary> {
   return promise;
 }
 
-async function loadGateLocale(locale: Locale): Promise<Dictionary> {
-  const cached = dictionaries[locale];
-  if (cached && !gateOnlyLocales.has(locale)) return cached;
-
-  const mod = await gateLocaleLoaders[locale]();
-  dictionaries[locale] = mod.default;
-  gateOnlyLocales.add(locale);
-  return mod.default;
-}
-
 function prefetchFullLocalesInBackground(): void {
   void loadLocale(activeLocale).then(() => {
     if (activeLocale !== "ar") void loadLocale("ar");
@@ -89,10 +100,7 @@ export async function ensureLocalesForActive(): Promise<void> {
   applyDocumentLocale(activeLocale);
 
   if (typeof window !== "undefined" && !hasSavedLocale()) {
-    await loadGateLocale(activeLocale);
-    if (activeLocale !== "ar") {
-      await loadGateLocale("ar");
-    }
+    seedFirstLaunchLocales();
     scheduleAfterFirstPaint(
       () => prefetchFullLocalesInBackground(),
       GATE_FULL_LOCALE_PREFETCH_IDLE_MS,

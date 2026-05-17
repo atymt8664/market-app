@@ -1,0 +1,17 @@
+/* First paint: Cairo 400 (body) + 600 (semibold UI) — gate LCP path (7A.6) */
+
+@font-face {
+  font-family: "Cairo";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/cairo/cairo-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Cairo";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/cairo/cairo-600.woff2") format("woff2");
+}

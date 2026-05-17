@@ -18,8 +18,9 @@ import {
 } from "@/lib/auth-page-styles";
 import { cn } from "@/lib/utils";
 import NotFound from "@/pages/not-found";
-import Home from "@/pages/home";
 import { ChatSocketProvider } from "@/contexts/chat-socket-context";
+
+const Home = lazy(() => import("@/pages/home"));
 
 const Categories = lazy(() => import("@/pages/categories"));
 const Category = lazy(() => import("@/pages/category"));
@@ -161,7 +162,7 @@ function FirstLaunchLanguageGate({ onDone }: { onDone: () => void }) {
   return (
     <div className={cn(AUTH_PAGE_BG, "items-center justify-center px-4 py-10")}>
       <div className={cn(AUTH_CARD, "w-full max-w-md")}>
-        <h1 className="text-lg font-bold text-foreground">{t("first_launch.title")}</h1>
+        <h1 className="text-lg font-semibold text-foreground">{t("first_launch.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("first_launch.subtitle")}</p>
         <div className="mt-4 space-y-1.5">
           {options.map((option) => (
@@ -171,7 +172,7 @@ function FirstLaunchLanguageGate({ onDone }: { onDone: () => void }) {
               onClick={() => setSelectedLocale(option.code)}
               className={cn(
                 AUTH_SELECT_ROW,
-                "py-3 text-start font-medium",
+                "py-3 text-start",
                 option.code === selectedLocale && "border-primary/40 bg-zinc-900/90 shadow-[0_0_14px_-10px_hsl(var(--primary)/0.25)]",
               )}
             >
@@ -237,7 +238,9 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {wrapTooltips ? <TooltipProvider>{main}</TooltipProvider> : main}
+      <main id="main-content">
+        {wrapTooltips ? <TooltipProvider>{main}</TooltipProvider> : main}
+      </main>
       {afterFirstPaint ? <Toaster /> : null}
     </QueryClientProvider>
   );

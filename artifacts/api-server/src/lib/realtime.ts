@@ -8,6 +8,13 @@ import connectPgSimple from "connect-pg-simple";
 import { db, pool, conversationsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
+import {
+  recordWsAuthFailure,
+  recordWsConnect,
+  recordWsDisconnect,
+  recordWsMessage,
+  syncWsUsersGauge,
+} from "./observability";
 import { getSessionSecret } from "./session-secret";
 import { SESSION_COOKIE_NAME } from "./session-cookie";
 import { eitherUserBlocksTheOther } from "./user-blocks";
@@ -230,6 +237,8 @@ export function attachWebSocketServer(httpServer: HttpServer): void {
 
     const userId = await resolveUserIdFromRequest(req);
     if (!userId) {
+      recordWsAuthFailure();
+      logger.warn({ path: "/api/ws" }, "websocket auth rejected");
       socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
       socket.destroy();
       return;
@@ -243,7 +252,11 @@ export function attachWebSocketServer(httpServer: HttpServer): void {
   });
 
   wss.on("connection", (ws) => {
+    recordWsConnect();
+    syncWsUsersGauge(userSockets.size);
+
     ws.on("message", (raw) => {
+      recordWsMessage();
       const uid = wsUserId.get(ws);
       // Heartbeat / ping handling — clients can send {type:"ping"}; we just echo {type:"pong"}.
       try {
@@ -299,6 +312,7 @@ function register(userId: number, ws: WebSocket) {
     userSockets.set(userId, set);
   }
   set.add(ws);
+  syncWsUsersGauge(userSockets.size);
   ws.on("close", () => {
     clearConversationFocusForSocket(ws, userId);
     set!.delete(ws);
@@ -307,5 +321,7 @@ function register(userId: number, ws: WebSocket) {
       void markUserLastSeenAt(userId);
     }
     wsUserId.delete(ws);
+    recordWsDisconnect();
+    syncWsUsersGauge(userSockets.size);
   });
 }

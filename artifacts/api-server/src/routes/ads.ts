@@ -45,7 +45,10 @@ import {
   sendJsonArrayPage,
 } from "../lib/pagination";
 import { fetchAdsList } from "../lib/ads-list-query";
-import { buildAdSearchWhereParts } from "../lib/ad-search";
+import { buildAdSearchWhereParts, useFtsAdSearch } from "../lib/ad-search";
+import { OBSERVABILITY } from "../lib/observability/config";
+import { recordSearchRequest } from "../lib/observability/metrics";
+import { timed } from "../lib/observability/timed";
 import {
   applyReactionToggle,
   ensureCounterRow,
@@ -428,14 +431,39 @@ router.get("/ads", async (req, res) => {
     }
 
     const where = conds.length ? and(...conds) : undefined;
+    const searchQuery = q.q?.trim() ?? "";
 
-    const rows = await fetchAdsList({
-      currentUserId: req.session.userId ?? null,
-      where,
-      limit: pagination.fetchLimit,
-      textSearch,
-      searchCursor: textSearch ? pagination.cursor : null,
-    });
+    const { result: rows, durationMs: listDurationMs } = await timed(() =>
+      fetchAdsList({
+        currentUserId: req.session.userId ?? null,
+        where,
+        limit: pagination.fetchLimit,
+        textSearch,
+        searchCursor: textSearch ? pagination.cursor : null,
+      }),
+    );
+
+    if (searchQuery.length > 0) {
+      const searchMode = textSearch ? (useFtsAdSearch() ? "fts" : "ilike") : "none";
+      recordSearchRequest({
+        durationMs: listDurationMs,
+        resultCount: rows.length,
+        mode: searchMode,
+        queryLength: searchQuery.length,
+      });
+      if (listDurationMs >= OBSERVABILITY.slowSearchMs) {
+        logger.warn(
+          {
+            requestId: req.id,
+            durationMs: Math.round(listDurationMs),
+            searchMode,
+            queryLength: searchQuery.length,
+            resultCount: rows.length,
+          },
+          "slow ad search",
+        );
+      }
+    }
 
     const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
       at: row.ads.createdAt,

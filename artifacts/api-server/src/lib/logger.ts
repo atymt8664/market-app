@@ -21,6 +21,15 @@ export const logger = pino({
     "req.body.totp",
     "req.body.totpCode",
     "req.body.otpauth",
+    "req.body.email",
+    "req.body.phone",
+    "req.body.sellerPhone",
+    "DATABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SESSION_SECRET",
+    "ADMIN_ACCESS_KEY",
+    "OPENAI_API_KEY",
+    "RESEND_API_KEY",
   ],
   ...(isProduction
     ? {}

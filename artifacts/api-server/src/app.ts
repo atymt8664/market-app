@@ -6,6 +6,12 @@ import connectPgSimple from "connect-pg-simple";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { observabilityMiddleware } from "./middlewares/observability";
+import { createRequestId } from "./lib/observability/request-id";
+import {
+  productionSafeErrorMessage,
+  sendClientError,
+} from "./lib/observability/client-error";
 import { createCorsOriginHandler } from "./lib/cors-allowlist";
 import { getSessionCookieSecure, getSessionSameSite, SESSION_COOKIE_NAME } from "./lib/session-cookie";
 import { getSessionSecret } from "./lib/session-secret";
@@ -43,9 +49,20 @@ const isProduction = process.env.NODE_ENV === "production";
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
+app.use(observabilityMiddleware);
+
 app.use(
   pinoHttp({
     logger,
+    genReqId(req) {
+      return typeof req.id === "string" && req.id.length > 0 ? req.id : createRequestId();
+    },
+    customProps(req) {
+      return { requestId: req.id };
+    },
+    customSuccessMessage(req, res) {
+      return `${req.method} ${req.url?.split("?")[0]} ${res.statusCode}`;
+    },
     serializers: {
       req(req) {
         return {
@@ -76,8 +93,9 @@ app.use(
       "X-Admin-Access-Key",
       "X-CSRF-Token",
       "X-Requested-With",
+      "X-Request-Id",
     ],
-    exposedHeaders: ["X-CSRF-Token"],
+    exposedHeaders: ["X-CSRF-Token", "X-Request-Id"],
     maxAge: 86_400,
   }),
 );
@@ -114,8 +132,9 @@ app.use(
 
 app.use("/api", router);
 
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  logger.error({ err }, "Unhandled API error");
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const requestId = typeof req.id === "string" ? req.id : undefined;
+  logger.error({ err, requestId }, "Unhandled API error");
   const e = err as { statusCode?: number; status?: number; message?: string };
   const statusCode =
     typeof e?.statusCode === "number"
@@ -126,25 +145,13 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (res.headersSent) return;
   if (isProduction) {
     if (statusCode >= 500) {
-      res.status(statusCode).json({ error: "Internal Server Error" });
+      sendClientError(res, req, statusCode, "Internal Server Error");
       return;
     }
-    const msg = typeof e?.message === "string" ? e.message.trim() : "";
-    const safeClientMessage =
-      msg.length > 0 &&
-      msg.length < 500 &&
-      !/^\s*error\s*:/i.test(msg) &&
-      !msg.includes("at ") &&
-      !msg.includes(".ts") &&
-      !msg.includes(".js:");
-    res.status(statusCode).json({
-      error: safeClientMessage ? msg : "Request failed",
-    });
+    sendClientError(res, req, statusCode, productionSafeErrorMessage(err));
     return;
   }
-  res.status(statusCode).json({
-    error: e?.message || "Request failed",
-  });
+  sendClientError(res, req, statusCode, e?.message || "Request failed");
 });
 
 export default app;

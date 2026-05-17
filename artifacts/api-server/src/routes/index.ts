@@ -14,10 +14,12 @@ import admin2faRouter from "./admin-2fa";
 import supportRouter from "./support";
 import notificationsRouter from "./notifications";
 import accountRouter from "./account";
+import observabilityRouter from "./observability";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(observabilityRouter);
 router.use(categoriesRouter);
 router.use(adsRouter);
 router.use(aiRouter);

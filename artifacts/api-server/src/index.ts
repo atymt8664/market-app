@@ -3,6 +3,7 @@ import dns from "node:dns";
 import { createServer } from "http";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { instrumentPgPool } from "./lib/observability";
 import { attachWebSocketServer } from "./lib/realtime";
 import { prepareDatabase } from "./lib/prepare-database";
 import { runSupabaseStorageStartupProbe } from "./lib/supabaseStorage";
@@ -24,6 +25,8 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+instrumentPgPool();
 
 const server = createServer(app);
 attachWebSocketServer(server);

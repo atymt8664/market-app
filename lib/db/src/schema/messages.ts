@@ -55,6 +55,8 @@ export const messagesTable = pgTable("messages", {
   /** Set when the recipient's client receives the message (in-thread/focus or first sync). */
   deliveredAt: timestamp("delivered_at", { withTimezone: true }),
   readAt: timestamp("read_at", { withTimezone: true }),
+  /** Set when the sender deletes the message for everyone (thread tombstone). */
+  deletedForEveryoneAt: timestamp("deleted_for_everyone_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -278,3 +278,22 @@
     inset: -1px;
   }
 }
+
+/* Promo video recording page — fullscreen 9:16, no app chrome */
+html.promo-video-root,
+html.promo-video-root body,
+html.promo-video-root #main-content {
+  margin: 0;
+  padding: 0;
+  min-height: 100svh;
+  background: #000;
+  overflow: hidden;
+}
+
+body.promo-video-recording {
+  cursor: none;
+}
+
+body.promo-video-recording * {
+  cursor: none !important;
+}

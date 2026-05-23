@@ -17,7 +17,6 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
-  MapPin,
   Share2,
   Heart,
   Copy,
@@ -27,20 +26,21 @@ import {
   ThumbsUp,
   Star,
   Flag,
+  MapPin,
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { useAuth } from "@/hooks/use-auth";
 import { formatRelativeTime, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { CreateAdImageGallery } from "@/components/create-ad-image-gallery";
+import { AdImagesPublic } from "@/components/ad-images-public";
 import { getPublicAdUrl } from "@/lib/public-url";
 import { buildAdShareText } from "@/lib/share-text";
 import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { parseStoredAdDetails } from "@/lib/ad-stored-details";
 import { AD_SHIPPING_LABELS } from "@/lib/ad-meta-labels";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/hooks/use-locale";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 import { useQueryClient } from "@tanstack/react-query";
@@ -50,6 +50,8 @@ import { UserPresenceBadge } from "@/components/user-presence-badge";
 import { t, type Locale } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { STALE_AD_DETAIL_MS } from "@/lib/query-stale-times";
+import { createFavoriteToggleHandlers } from "@/lib/invalidate-ad-queries";
+import { prefetchConversationThread } from "@/lib/prefetch-conversation-thread";
 import { AUTH_ACCENT_OUTLINE_BTN } from "@/lib/auth-page-styles";
 import {
   Sheet,
@@ -57,6 +59,12 @@ import {
   SheetDescription,
   SheetTitle,
 } from "@/components/ui/sheet";
+
+const AdDetailLocationCard = lazy(() =>
+  import("@/components/ad-detail-location-card").then((m) => ({
+    default: m.AdDetailLocationCard,
+  })),
+);
 
 function normalizeAdDetailsRaw(raw: unknown): unknown {
   if (typeof raw === "string") {
@@ -388,20 +396,20 @@ export default function AdDetail() {
 
   const handleToggleFavorite = () => {
     if (!ad || !requireLogin()) return;
-    const prev = {
-      isFavorited: ad.isFavorited,
-      favoriteCount: ad.favoriteCount,
-    };
     const willFav = !ad.isFavorited;
-    patchAd({
-      isFavorited: willFav,
-      favoriteCount: ad.favoriteCount + (willFav ? 1 : -1),
-    });
-    const onSuccess = (data: { count: number; active: boolean }) =>
-      patchAd({ isFavorited: data.active, favoriteCount: data.count });
-    const onError = () => patchAd(prev);
-    if (willFav) favMut.mutate({ adId: ad.id }, { onSuccess, onError });
-    else unfavMut.mutate({ adId: ad.id }, { onSuccess, onError });
+    const handlers = createFavoriteToggleHandlers(queryClient, ad);
+    handlers.optimistic(willFav);
+    if (willFav) {
+      favMut.mutate(
+        { adId: ad.id },
+        { onSuccess: handlers.onSuccess, onError: handlers.onError },
+      );
+    } else {
+      unfavMut.mutate(
+        { adId: ad.id },
+        { onSuccess: handlers.onSuccess, onError: handlers.onError },
+      );
+    }
   };
 
   const startConversation = useStartConversation();
@@ -421,11 +429,12 @@ export default function AdDetail() {
     startConversation.mutate(
       { data: { adId: ad.id } },
       {
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
           const draft = t("ad_detail.message_draft", {
             title: ad.title,
             url: getPublicAdUrl(ad.id),
           });
+          await prefetchConversationThread(queryClient, data.id);
           navigate(
             `/messages/${data.id}?draft=${encodeURIComponent(draft)}`,
           );
@@ -555,18 +564,24 @@ export default function AdDetail() {
 
   const pageMax =
     "mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6";
+  /** عناوين أقسام — mini-card مثل Create Ad */
+  const adDetailSectionHeading = cn(
+    "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-card/80 px-2 py-px",
+    "text-sm font-semibold leading-tight tracking-tight text-foreground",
+    "shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 dark:bg-zinc-950/70",
+  );
   /** كرت العنوان/السعر/الموقع — نفس روح الإحصائيات ومعلومات الجهاز (lime + glow) */
   const heroTitlePriceSurface =
     "rounded-2xl border border-primary/40 bg-card/80 p-4 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 dark:bg-zinc-950/70 md:p-5";
   /** شريط إحصائيات: حدود lime خفيفة + خلفية داكنة (متناسق مع مرجع الصفحة) */
   const statsStripSurface =
     "rounded-2xl border border-primary/40 bg-muted/25 p-1 shadow-[0_0_28px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 dark:bg-zinc-950/70";
-  /** كرت «معلومات الجهاز» — dark + lime خفيف + glow بسيط (متناسق مع شريط الإحصائيات) */
+  /** كروت أقسام المحتوى — مدمجة */
   const deviceInfoShell =
-    "rounded-2xl border border-primary/40 bg-card/80 p-4 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 dark:bg-zinc-950/70 md:p-5";
+    "rounded-2xl border border-primary/40 bg-card/80 p-3 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/15 dark:bg-zinc-950/70";
   /** بطاقة مواصفة داخل الشبكة */
   const deviceSpecTile =
-    "flex min-h-[5.25rem] flex-col justify-start gap-1.5 rounded-xl border border-primary/32 bg-muted/20 p-3.5 text-right shadow-[0_0_18px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12 dark:bg-black/40";
+    "flex min-h-[3.75rem] flex-col justify-start gap-0.5 rounded-xl border border-primary/30 bg-muted/20 p-2.5 text-right shadow-[0_0_14px_-12px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10 dark:bg-black/40";
   /** أزرار علوية فوق المعرض: دائرة داكنة + حدود lime + أيقونة primary + توهج خفيف */
   const floatingHeaderBtn =
     "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-card/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
@@ -649,12 +664,7 @@ export default function AdDetail() {
           </div>
         </div>
         {/* معرض الصور — مطابق لعرض الإنشاء المحلي */}
-        <CreateAdImageGallery
-          readOnly
-          uploadedImages={ad.images ?? []}
-          maxImages={Math.max(ad.images?.length ?? 0, 1)}
-          isSubmittingUploads={false}
-        />
+        <AdImagesPublic images={ad.images ?? []} title={ad.title} />
       </div>
 
       <div className={`${pageMax} py-2 md:py-4`}>
@@ -680,11 +690,21 @@ export default function AdDetail() {
                 </span>
               </div>
             )}
-            <div className="mt-3 flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
-              <span>{ad.city}</span>
-              <span className="opacity-50">·</span>
-              <span>{formatRelativeTime(ad.createdAt)}</span>
+            <div className="mt-3 space-y-1.5">
+              {ad.city?.trim() ? (
+                <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground">
+                  <MapPin
+                    className="h-4 w-4 shrink-0 text-primary/90"
+                    strokeWidth={2.25}
+                  />
+                  <span className="font-medium text-foreground/90">
+                    {ad.city.trim()}
+                  </span>
+                </div>
+              ) : null}
+              <div className="flex justify-end text-sm text-muted-foreground">
+                {formatRelativeTime(ad.createdAt)}
+              </div>
             </div>
           </div>
 
@@ -766,18 +786,18 @@ export default function AdDetail() {
           {deviceInfoRows.length > 0 ? (
             <div
               data-testid="ad-device-info-section"
-              className={cn(deviceInfoShell, "text-sm")}
+              className={cn(deviceInfoShell, "space-y-2 text-sm")}
             >
-              <h3 className="mb-4 text-right text-base font-semibold tracking-tight text-foreground md:text-lg">
+              <span className={cn(adDetailSectionHeading, "mb-0")}>
                 {t("ad_detail.device_info")}
-              </h3>
-              <ul className="grid grid-cols-2 gap-3">
+              </span>
+              <ul className="grid grid-cols-2 gap-2">
                 {deviceInfoRows.map((row) => (
                   <li key={row.id} className={deviceSpecTile}>
-                    <p className="text-[11px] font-medium leading-tight text-muted-foreground">
+                    <p className="text-[10px] font-medium leading-tight text-muted-foreground">
                       {row.label}
                     </p>
-                    <p className="text-[15px] font-bold leading-snug text-foreground break-words">
+                    <p className="text-sm font-bold leading-snug text-foreground break-words">
                       {row.value}
                     </p>
                   </li>
@@ -787,10 +807,10 @@ export default function AdDetail() {
           ) : null}
 
           {/* 2 — الوصف */}
-          <div className={cn(deviceInfoShell, "text-sm")}>
-            <h3 className="mb-3 text-right text-base font-semibold text-foreground">
+          <div className={cn(deviceInfoShell, "space-y-2 text-sm")}>
+            <span className={cn(adDetailSectionHeading, "mb-0")}>
               {t("ad_detail.description")}
-            </h3>
+            </span>
             {descRaw ? (
               <>
                 <p
@@ -821,10 +841,10 @@ export default function AdDetail() {
           </div>
 
           {/* 3 — الشحن والتسليم */}
-          <div className={cn(deviceInfoShell, "text-sm")}>
-            <h3 className="mb-3 text-right text-base font-semibold text-foreground">
+          <div className={cn(deviceInfoShell, "space-y-2 text-sm")}>
+            <span className={cn(adDetailSectionHeading, "mb-0")}>
               {t("ad_detail.shipping_delivery")}
-            </h3>
+            </span>
             {shippingPickupOnly ? (
               <p className="text-right leading-relaxed text-foreground/88">
                 {t("ad_detail.pickup_only")}
@@ -843,10 +863,10 @@ export default function AdDetail() {
           </div>
 
           {/* 4 — كرت البائع */}
-          <section className={cn(deviceInfoShell, "text-sm", "space-y-3")}>
-            <h3 className="text-right text-base font-semibold text-foreground">
+          <section className={cn(deviceInfoShell, "space-y-2.5 text-sm")}>
+            <span className={cn(adDetailSectionHeading, "mb-0")}>
               {t("ad_detail.seller_info")}
-            </h3>
+            </span>
 
             <div className="space-y-3.5">
               <div className={cn(sellerInnerShell, "space-y-3")}>
@@ -1004,7 +1024,19 @@ export default function AdDetail() {
             </div>
           </section>
 
-          {/* 5 — التحذير الأمني (خارج كرت البائع) */}
+          {/* 5 — موقع الإعلان (خريطة المدينة فقط — فوق التحذير الأمني) */}
+          <Suspense
+            fallback={
+              <div
+                className="h-[5.75rem] w-full animate-pulse rounded-2xl border border-primary/30 bg-zinc-950/60"
+                aria-hidden
+              />
+            }
+          >
+            <AdDetailLocationCard city={ad.city ?? ""} />
+          </Suspense>
+
+          {/* 6 — التحذير الأمني (خارج كرت البائع) */}
           <BuyerSafetyNote
             className={cn("w-full", deviceInfoShell, "text-sm")}
           />

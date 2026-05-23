@@ -23,3 +23,9 @@ export const STALE_UNREAD_NOTIFICATIONS_MS = 30 * 1000;
 
 /** Peer block / moderation status in chat. */
 export const STALE_PEER_BLOCK_MS = 30 * 1000;
+
+/** Thread messages list — matches message-thread React Query tuning. */
+export const STALE_THREAD_MESSAGES_MS = 60 * 1000;
+
+/** Thread messages cache retention. */
+export const GC_THREAD_MESSAGES_MS = 30 * 60 * 1000;

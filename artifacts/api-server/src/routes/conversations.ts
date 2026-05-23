@@ -9,7 +9,7 @@ import {
   messageHidesTable,
   conversationHidesTable,
 } from "@workspace/db";
-import { and, asc, eq, inArray, isNull, ne, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne, notInArray, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import {
@@ -35,6 +35,12 @@ import {
   isTrustedChatImagePublicUrlForUser,
   uploadChatImageForUser,
 } from "../lib/supabaseStorage";
+import {
+  CHAT_LOCATION_MESSAGE_TYPE,
+  chatLocationPreviewLabel,
+  isValidChatCoordinates,
+  stringifyChatLocationBody,
+} from "../lib/chat-location-message";
 
 const router: IRouter = Router();
 
@@ -48,7 +54,12 @@ const chatImageUpload = multer({
 });
 
 function serializeMessage(m: typeof messagesTable.$inferSelect) {
-  const mt = m.messageType === "image" ? "image" : "text";
+  const mt =
+    m.messageType === "image"
+      ? "image"
+      : m.messageType === CHAT_LOCATION_MESSAGE_TYPE
+        ? CHAT_LOCATION_MESSAGE_TYPE
+        : "text";
   return {
     id: m.id,
     conversationId: m.conversationId,
@@ -58,6 +69,9 @@ function serializeMessage(m: typeof messagesTable.$inferSelect) {
     imageUrl: m.imageUrl ?? null,
     deliveredAt: m.deliveredAt ? m.deliveredAt.toISOString() : null,
     readAt: m.readAt ? m.readAt.toISOString() : null,
+    deletedForEveryoneAt: m.deletedForEveryoneAt
+      ? m.deletedForEveryoneAt.toISOString()
+      : null,
     createdAt: m.createdAt.toISOString(),
   };
 }
@@ -323,6 +337,112 @@ async function loadConversation(convId: number, userId: number) {
   return { conv };
 }
 
+async function syncConversationPreviewAfterMessageChange(convId: number): Promise<void> {
+  const [last] = await db
+    .select()
+    .from(messagesTable)
+    .where(eq(messagesTable.conversationId, convId))
+    .orderBy(desc(messagesTable.createdAt), desc(messagesTable.id))
+    .limit(1);
+  if (!last) {
+    await db
+      .update(conversationsTable)
+      .set({
+        lastMessagePreview: null,
+        lastMessageSenderId: null,
+      })
+      .where(eq(conversationsTable.id, convId));
+    return;
+  }
+  const preview = last.deletedForEveryoneAt
+    ? "تم حذف هذه الرسالة"
+    : last.messageType === "image"
+      ? last.body.trim()
+        ? last.body.slice(0, 200)
+        : "صورة"
+      : last.messageType === CHAT_LOCATION_MESSAGE_TYPE
+        ? chatLocationPreviewLabel()
+        : last.body.slice(0, 200);
+  await db
+    .update(conversationsTable)
+    .set({
+      lastMessageAt: last.createdAt,
+      lastMessagePreview: preview,
+      lastMessageSenderId: last.senderId,
+    })
+    .where(eq(conversationsTable.id, convId));
+}
+
+async function deleteMessagesForEveryoneHandler(req: Request, res: Response): Promise<void> {
+  const userId = req.session.userId!;
+  const convId = Number(req.params["convId"]);
+  if (!Number.isInteger(convId) || convId <= 0) {
+    res.status(400).json({ error: "معرّف غير صالح" });
+    return;
+  }
+  const r = await loadConversation(convId, userId);
+  if ("error" in r) {
+    res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
+    return;
+  }
+  const raw = req.body as { messageIds?: unknown };
+  if (!Array.isArray(raw.messageIds) || raw.messageIds.length === 0) {
+    res.status(400).json({ error: "messageIds مطلوب" });
+    return;
+  }
+  const ids = [...new Set(raw.messageIds.map((x) => Number(x)))].filter(
+    (n) => Number.isInteger(n) && n > 0,
+  );
+  if (!ids.length) {
+    res.status(400).json({ error: "لا توجد معرّفات صالحة" });
+    return;
+  }
+  const ownedRows = await db
+    .select({ id: messagesTable.id })
+    .from(messagesTable)
+    .where(
+      and(
+        eq(messagesTable.conversationId, convId),
+        eq(messagesTable.senderId, userId),
+        inArray(messagesTable.id, ids),
+      ),
+    );
+  const ownedIds = ownedRows.map((row) => row.id);
+  if (!ownedIds.length) {
+    res.status(400).json({ error: "لا يمكن حذف رسائل ليست منك" });
+    return;
+  }
+  const deletedAt = new Date();
+  await db
+    .update(messagesTable)
+    .set({ deletedForEveryoneAt: deletedAt })
+    .where(
+      and(
+        eq(messagesTable.conversationId, convId),
+        inArray(messagesTable.id, ownedIds),
+        isNull(messagesTable.deletedForEveryoneAt),
+      ),
+    );
+  await syncConversationPreviewAfterMessageChange(convId);
+  const { conv } = r;
+  const peerId = conv.buyerId === userId ? conv.sellerId : conv.buyerId;
+  const deletedAtIso = deletedAt.toISOString();
+  const payload = {
+    type: "messages_removed" as const,
+    conversationId: convId,
+    messageIds: ownedIds,
+    deletedForEveryoneAt: deletedAtIso,
+  };
+  broadcastToUser(peerId, payload);
+  broadcastToUser(userId, payload);
+  res.json({
+    ok: true,
+    deletedCount: ownedIds.length,
+    messageIds: ownedIds,
+    deletedForEveryoneAt: deletedAtIso,
+  });
+}
+
 async function hideConversationForMeHandler(req: Request, res: Response): Promise<void> {
   const userId = req.session.userId!;
   const convId = Number(req.params["convId"]);
@@ -545,12 +665,32 @@ router.post(
   },
 );
 
+/** Specific sub-path before POST `/messages` so Express never treats it as an unknown sibling. */
+router.post(
+  "/conversations/:convId/messages/delete-for-everyone",
+  requireAuth,
+  requireUserCsrf,
+  deleteMessagesForEveryoneHandler,
+);
+
 router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, async (req, res) => {
   const userId = req.session.userId!;
   const convId = Number(req.params["convId"]);
-  const raw = req.body as { body?: unknown; imageUrl?: unknown };
+  const raw = req.body as {
+    body?: unknown;
+    imageUrl?: unknown;
+    latitude?: unknown;
+    longitude?: unknown;
+  };
   const imageUrlRaw = typeof raw.imageUrl === "string" ? raw.imageUrl.trim() : "";
   const body = String(raw.body ?? "").trim();
+  const latNum = Number(raw.latitude);
+  const lngNum = Number(raw.longitude);
+  const hasLocation =
+    raw.latitude !== undefined &&
+    raw.longitude !== undefined &&
+    Number.isFinite(latNum) &&
+    Number.isFinite(lngNum);
 
   const r = await loadConversation(convId, userId);
   if ("error" in r) {
@@ -566,10 +706,26 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
   }
 
   let messageBody: string;
-  let messageType: "text" | "image";
+  let messageType: "text" | "image" | typeof CHAT_LOCATION_MESSAGE_TYPE;
   let imageUrl: string | null;
 
-  if (imageUrlRaw) {
+  if (hasLocation) {
+    if (imageUrlRaw) {
+      res.status(400).json({ error: "لا يمكن إرسال صورة وموقع في رسالة واحدة" });
+      return;
+    }
+    if (body) {
+      res.status(400).json({ error: "لا يمكن إرسال نص وموقع في رسالة واحدة" });
+      return;
+    }
+    if (!isValidChatCoordinates(latNum, lngNum)) {
+      res.status(400).json({ error: "إحداثيات الموقع غير صالحة" });
+      return;
+    }
+    messageBody = stringifyChatLocationBody(latNum, lngNum);
+    messageType = CHAT_LOCATION_MESSAGE_TYPE;
+    imageUrl = null;
+  } else if (imageUrlRaw) {
     if (!isTrustedChatImagePublicUrlForUser(imageUrlRaw, userId)) {
       res.status(400).json({ error: "رابط الصورة غير صالح" });
       return;
@@ -601,7 +757,9 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
   const lastPreview =
     messageType === "image"
       ? (messageBody ? messageBody.slice(0, 200) : "صورة")
-      : messageBody.slice(0, 200);
+      : messageType === CHAT_LOCATION_MESSAGE_TYPE
+        ? chatLocationPreviewLabel()
+        : messageBody.slice(0, 200);
 
   const [created] = await db
     .insert(messagesTable)

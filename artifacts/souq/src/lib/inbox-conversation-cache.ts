@@ -8,15 +8,18 @@ export type InboxRealtimeMessageFields = {
   createdAt: string;
   readAt: string | null;
   body: string;
-  messageType?: "text" | "image";
+  messageType?: "text" | "image" | "location";
 };
 
-/** Mirrors server `lastPreview` in conversations route (image + text). */
+/** Mirrors server `lastPreview` in conversations route (image + text + location). */
 export function lastPreviewFromChatMessage(m: InboxRealtimeMessageFields): string {
   const mt = m.messageType ?? "text";
   if (mt === "image") {
     const b = m.body?.trim();
     return b ? b.slice(0, 200) : "صورة";
+  }
+  if (mt === "location") {
+    return "📍 موقع";
   }
   return (m.body ?? "").slice(0, 200);
 }

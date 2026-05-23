@@ -758,7 +758,7 @@ export const ListMessagesResponseItem = zod.object({
   conversationId: zod.number(),
   senderId: zod.number(),
   body: zod.string(),
-  messageType: zod.enum(["text", "image"]),
+  messageType: zod.enum(["text", "image", "location"]),
   imageUrl: zod.string().nullish(),
   deliveredAt: zod.coerce.date().nullish(),
   readAt: zod.coerce.date().nullish(),
@@ -776,6 +776,8 @@ export const SendMessageBody = zod
   .object({
     body: zod.string().max(sendMessageBodyBodyMax).optional(),
     imageUrl: zod.string().nullish(),
+    latitude: zod.number().min(-90).max(90).optional(),
+    longitude: zod.number().min(-180).max(180).optional(),
   })
   .describe(
     "Send either a text message (`body` non-empty) or an image message (`imageUrl` set to a URL returned from POST \/conversations\/{convId}\/messages\/upload-image). Optional caption with image.\n"
@@ -833,6 +835,7 @@ export const ImproveDescriptionBody = zod.object({
 });
 
 export const ImproveDescriptionResponse = zod.object({
+  title: zod.string(),
   description: zod.string(),
 });
 

@@ -27,10 +27,10 @@ import {
   useAuthUpdateProfile,
   getAuthMeQueryKey,
   useListFavoriteAds,
-  getListFavoriteAdsQueryKey,
   type Ad,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
 import { useUpload } from "@workspace/object-storage-web";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -193,7 +193,7 @@ export default function Profile() {
   >(null);
   const { data: favoriteAdsData, isLoading: favoritesLoading } = useListFavoriteAds({
     query: {
-      queryKey: getListFavoriteAdsQueryKey(),
+      queryKey: favoritesListQueryKey(),
       enabled: !!user,
       retry: false,
       staleTime: STALE_USER_ADS_MS,

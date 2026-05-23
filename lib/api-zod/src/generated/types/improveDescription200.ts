@@ -7,5 +7,6 @@
  */
 
 export type ImproveDescription200 = {
+  title: string;
   description: string;
 };

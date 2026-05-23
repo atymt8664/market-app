@@ -14,4 +14,6 @@ export type SendMessageBody = {
   /** @maxLength 2000 */
   body?: string;
   imageUrl?: string | null;
+  latitude?: number;
+  longitude?: number;
 };

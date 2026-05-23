@@ -1,0 +1,19 @@
+# Parallel production API on loopback :3002 — Railway remains public fallback until DNS/Vercel switch.
+# Requires /opt/souq-arab/config/api.env.production filled. Does not bind public ports.
+
+name: souq-arab-api-prod-shadow
+
+services:
+  api-prod-shadow:
+    image: ${SOUQ_PROD_IMAGE:-souq-api:production-candidate}
+    restart: "no"
+    ports:
+      - "127.0.0.1:3002:3001"
+    env_file:
+      - /opt/souq-arab/config/api.env.production
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3001/api/healthz 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s

@@ -11,18 +11,19 @@ import {
   type Category,
 } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
-import { Search, ChevronLeft, X } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
 import { CategoryIcon } from "@/components/category-icon";
-import { LocationPicker } from "@/components/location-picker";
+import { MarketplaceSearchBar } from "@/components/marketplace-search-bar";
 import { NotificationBell } from "@/components/notification-bell";
-import { Input } from "@/components/ui/input";
 import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
 import { HomeFeaturedDivider } from "@/components/home-featured-divider";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
 import { useSelectedCity } from "@/hooks/use-selected-city";
-import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useSearchLocation } from "@/hooks/use-search-location";
+import { searchLocationCityForFeed } from "@/lib/search-location";
+import { filterHomeFeedAds } from "@/lib/home-feed-ads";
 import { useAuth } from "@/hooks/use-auth";
 import { t } from "@/i18n";
 import type { Locale } from "@/i18n";
@@ -33,7 +34,7 @@ import { cn } from "@/lib/utils";
 /** توحيد كروت الإعلانات مع ad-detail / user-profile (طبقة أب فقط) */
 /** على الموبايل ظل أخف قليلًا لتقليل تكلفة التركيب أثناء التمرير؛ md+ يبقى كما كان. */
 const homeAdCardTone =
-  "[&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-card/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] max-md:[&_article]:shadow-[0_0_12px_-14px_hsl(var(--primary)/0.09)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:dark:bg-zinc-950/70 [&_article]:hover:border-primary/40 [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55";
+  "[&>div]:h-full [&_article]:flex [&_article]:h-full [&_article]:flex-col [&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-card/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] max-md:[&_article]:shadow-[0_0_12px_-14px_hsl(var(--primary)/0.09)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:dark:bg-zinc-950/70 [&_article]:transition-[transform,border-color,box-shadow] [&_article]:duration-200 [&_article]:ease-out [&_article]:hover:border-primary/45 [&_article]:hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.2)] [&_article]:active:scale-[0.985] [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55 [&_article_button]:transition-transform [&_article_button]:active:scale-95";
 
 /** React Query: تقليل إعادة الجلب عند التنقل للرئيسية دون المساس بـ invalidate بعد الطفرات/الأدمن. */
 const HOME_STALE_CATEGORIES_MS = 10 * 60 * 1000;
@@ -46,117 +47,64 @@ const GRID_SKELETON_KEYS = [
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
 ] as const;
 
-const locationPickerTriggerClassName = cn(
-  "h-8 max-w-[9.25rem] justify-center gap-1 rounded-2xl border border-solid border-primary/40 bg-zinc-950/90 px-2 py-0 text-[11px] leading-none",
-  "shadow-[0_0_14px_-10px_hsl(var(--primary)/0.38)] ring-1 ring-primary/14",
-  "sm:max-w-[10.5rem]",
-);
-
+/** No mx-auto — centering made the first featured card look mid-screen in RTL scroll. */
 const featuredStripClassName = cn(
-  "mx-auto flex w-max max-w-none gap-3 px-4 pb-0 md:gap-3.5 md:pb-1 md:px-6 lg:px-8",
+  "flex w-max max-w-none items-stretch justify-start gap-3 px-4 pb-0.5 md:gap-3.5 md:pb-1 md:px-6 lg:px-8",
   homeAdCardTone,
 );
 
 const recommendedGridClassName = cn(
-  "grid grid-cols-2 items-start gap-2.5 md:grid-cols-3 md:gap-3 xl:grid-cols-4 xl:gap-3.5 2xl:grid-cols-5 2xl:gap-4",
+  "grid grid-cols-2 items-stretch gap-x-2 gap-y-2 md:grid-cols-3 md:gap-x-2.5 md:gap-y-2.5 xl:grid-cols-4 xl:gap-x-3 xl:gap-y-2.5 2xl:grid-cols-5 2xl:gap-x-3.5 2xl:gap-y-3",
   homeAdCardTone,
+);
+
+/** Section titles only — inline mini-chip; same type size/margins as before. */
+const homeSectionHeading = cn(
+  "inline-flex max-w-full items-center rounded-2xl border border-primary/30 bg-zinc-950/55 px-2 py-px",
+  "text-base font-semibold leading-tight tracking-tight text-foreground md:text-lg",
+  "shadow-[0_0_14px_-14px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10",
+);
+
+/** Category name under icon — single-line pill; fixed row height, width fits up to max. */
+const homeCategoryLabelPill = cn(
+  "inline-flex h-4 max-h-4 w-fit min-w-0 max-w-[6.75rem] items-center justify-center rounded-full",
+  "border border-primary/20 bg-zinc-950/50 px-1.5",
+  "text-xs font-medium leading-none text-foreground/90 truncate whitespace-nowrap",
+  "shadow-[0_0_10px_-12px_hsl(var(--primary)/0.1)] ring-1 ring-primary/5",
 );
 
 type HomeFeedHeaderProps = {
   isRtl: boolean;
   reserveBellSlot: boolean;
-  locationHintDismissed: boolean;
-  onDismissLocationHint: () => void;
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
   onSearchSubmit: (e: React.FormEvent) => void;
-  brandMain: string;
-  brandFull: string;
-  brandHasEuSuffix: boolean;
 };
 
 const HomeFeedHeader = memo(function HomeFeedHeader({
   isRtl,
   reserveBellSlot,
-  locationHintDismissed,
-  onDismissLocationHint,
   searchQuery,
   onSearchQueryChange,
   onSearchSubmit,
-  brandMain,
-  brandFull,
-  brandHasEuSuffix,
 }: HomeFeedHeaderProps) {
   return (
     <header
       className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]"
       dir={isRtl ? "rtl" : "ltr"}
     >
-      <div className="mx-auto flex w-full max-w-screen-xl flex-col gap-2 overflow-x-hidden px-3 py-2 md:gap-2 md:px-6 md:py-2.5 lg:px-8">
-        <div className="flex min-h-9 w-full min-w-0 items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <h1
-              dir={isRtl ? "rtl" : "ltr"}
-              className="min-w-0 flex-1 truncate text-lg font-bold leading-snug tracking-tight text-foreground sm:text-xl"
-            >
-              {brandHasEuSuffix ? (
-                <>
-                  <span className="text-foreground">{brandMain}</span>{" "}
-                  <span className="font-bold text-primary">EU</span>
-                </>
-              ) : (
-                brandFull
-              )}
-            </h1>
-            <div className="shrink-0 flex items-center gap-1.5">
-              <LocationPicker triggerClassName={locationPickerTriggerClassName} />
-              {reserveBellSlot ? <NotificationBell /> : null}
-            </div>
-          </div>
-        </div>
-
-        {!locationHintDismissed ? (
-          <div className="flex items-start gap-1.5 rounded-2xl border border-primary/28 bg-zinc-950/75 px-2.5 py-2 text-[11px] leading-snug text-zinc-400 ring-1 ring-primary/10 transition-colors">
-            <span className="min-w-0 flex-1">
-              {t("home.location_hint_prefix")}{" "}
-              <span className="font-medium text-foreground/85">{t("home.location_picker")}</span>{" "}
-              {t("home.location_hint_suffix")}
-            </span>
-            <button
-              type="button"
-              onClick={onDismissLocationHint}
-              className="shrink-0 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-              aria-label={t("home.hide_hint")}
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+      <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2 overflow-x-hidden px-3 py-2.5 md:px-6 md:py-3 lg:px-8">
+        <MarketplaceSearchBar
+          isRtl={isRtl}
+          value={searchQuery}
+          onChange={onSearchQueryChange}
+          onSubmit={onSearchSubmit}
+        />
+        {reserveBellSlot ? (
+          <div className="shrink-0">
+            <NotificationBell />
           </div>
         ) : null}
-
-        <div
-          className="flex items-center rounded-2xl border border-primary/30 bg-zinc-950/75 px-2.5 py-1.5 ring-1 ring-primary/10 transition-colors focus-within:border-primary/45 focus-within:ring-primary/15"
-          role="search"
-        >
-          <form
-            onSubmit={onSearchSubmit}
-            className="relative flex min-h-0 w-full min-w-0 items-center"
-          >
-            <label className="sr-only">{t("home.search_label")}</label>
-            <Search
-              className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground opacity-90"
-              aria-hidden
-            />
-            <Input
-              type="search"
-              enterKeyHint="search"
-              autoComplete="off"
-              placeholder={t("home.search_placeholder")}
-              className="h-7 w-full border-0 bg-transparent py-0 pr-8 pl-0.5 text-[13px] leading-tight text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-              value={searchQuery}
-              onChange={(e) => onSearchQueryChange(e.target.value)}
-            />
-          </form>
-        </div>
       </div>
     </header>
   );
@@ -192,7 +140,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
       {/* Categories Horizontal Scroll */}
       <section className="pt-3 pb-1 max-md:pb-0.5 md:py-4">
         <div className="mx-auto mb-2 flex w-full max-w-screen-xl items-center justify-between px-4 max-md:mb-2 md:mb-3 md:px-6 lg:px-8">
-          <h2 className="text-base font-semibold tracking-tight text-foreground md:text-lg">{t("home.categories")}</h2>
+          <h2 className={homeSectionHeading}>{t("home.categories")}</h2>
           <Link
             href="/categories"
             className="text-primary text-sm font-medium flex items-center"
@@ -206,7 +154,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
               ? CATEGORY_SKELETON_KEYS.map((i) => (
                   <div key={i} className="flex shrink-0 flex-col items-center gap-2">
                     <div className="w-16 h-16 rounded-full bg-muted animate-pulse" />
-                    <div className="w-12 h-3 bg-muted animate-pulse rounded" />
+                    <div className="h-4 w-12 max-w-[6.75rem] rounded-full bg-muted/60 animate-pulse" />
                   </div>
                 ))
               : Array.isArray(categories) &&
@@ -216,7 +164,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
                       <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/35 bg-zinc-950/75 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-transform group-active:scale-95">
                         <CategoryIcon name={cat.icon} className="w-7 h-7" />
                       </div>
-                      <span className="text-xs font-medium text-center w-16 truncate">
+                      <span className={homeCategoryLabelPill}>
                         {getCreateAdTaxonomyLabel(locale, cat.name)}
                       </span>
                     </div>
@@ -229,9 +177,9 @@ const HomeFeedSections = memo(function HomeFeedSections({
       <HomeFeaturedDivider isRtl={isRtl} placement="featured-top" />
 
       {/* Featured Ads */}
-      <section className="bg-zinc-950/40 pb-1.5 pt-1 max-md:pb-1 max-md:pt-0.5 md:py-5">
-        <div className="mx-auto mb-2 w-full max-w-screen-xl px-4 md:mb-3.5 md:px-6 lg:px-8">
-          <h2 className="text-base font-semibold tracking-tight text-foreground md:text-lg">{t("home.featured_ads")}</h2>
+      <section className="min-w-0 bg-zinc-950/40 pb-1.5 pt-1 max-md:pb-1 max-md:pt-0.5 md:py-5">
+        <div className="mx-auto mb-2 w-full max-w-screen-xl px-4 md:mb-3 md:px-6 lg:px-8">
+          <h2 className={homeSectionHeading}>{t("home.featured_ads")}</h2>
         </div>
         <HorizontalScrollStrip dir={isRtl ? "rtl" : "ltr"}>
           <div className={featuredStripClassName} dir={isRtl ? "rtl" : "ltr"}>
@@ -260,16 +208,22 @@ const HomeFeedSections = memo(function HomeFeedSections({
       <HomeFeaturedDivider isRtl={isRtl} placement="featured-bottom" />
 
       {/* Recommended Ads Grid */}
-      <section className="mx-auto w-full max-w-screen-xl px-4 pb-5 pt-1 max-md:pt-0 md:px-6 md:py-6 lg:px-8">
-        <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground md:mb-4 md:text-lg">{t("home.recommended")}</h2>
+      <section className="mx-auto w-full max-w-screen-xl px-4 pb-4 pt-1.5 max-md:pb-3.5 max-md:pt-1 md:px-6 md:py-5 lg:px-8">
+        <h2 className={cn(homeSectionHeading, "mb-2 md:mb-3")}>{t("home.recommended")}</h2>
 
         <div className={recommendedGridClassName}>
           {isLoadingRecommended ? (
             GRID_SKELETON_KEYS.map((i) => (
-              <AdCardSkeleton key={i} />
+              <div key={i} className="h-full min-h-0">
+                <AdCardSkeleton />
+              </div>
             ))
           ) : Array.isArray(recommendedAds) && recommendedAds.length ? (
-            recommendedAds.map((ad) => <AdCard key={ad.id} ad={ad} />)
+            recommendedAds.map((ad) => (
+              <div key={ad.id} className="h-full min-h-0">
+                <AdCard ad={ad} />
+              </div>
+            ))
           ) : (
             <div className="col-span-full text-sm text-muted-foreground text-center py-8">
               {t("home.no_ads")}
@@ -287,13 +241,13 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const { city } = useSelectedCity();
+  const { location: searchLocation } = useSearchLocation();
+  const feedCity = useMemo(
+    () => searchLocationCityForFeed(city, searchLocation),
+    [city, searchLocation],
+  );
   const { user, isLoading: authLoading } = useAuth();
   const reserveBellSlot = Boolean(user && !authLoading);
-  const [locationHintDismissed, setLocationHintDismissed] = useLocalStorage(
-    "location_filter_hint_dismissed",
-    false,
-  );
-
   const { data: categories, isLoading: isLoadingCategories, isFetched: categoriesFetched } =
     useListCategories({
       query: {
@@ -309,7 +263,7 @@ export default function Home() {
     return () => cancelAnimationFrame(frameId);
   }, [categoriesFetched]);
 
-  const { data: featuredAds, isLoading: isLoadingFeatured, isFetched: featuredFetched } =
+  const { data: featuredAds, isLoading: isLoadingFeatured } =
     useListFeaturedAds({
       query: {
         queryKey: getListFeaturedAdsQueryKey(),
@@ -320,46 +274,54 @@ export default function Home() {
 
   const [recommendedQueryEnabled, setRecommendedQueryEnabled] = useState(false);
   useEffect(() => {
-    if (!featuredQueryEnabled) return;
-    return scheduleAfterFirstPaint(() => setRecommendedQueryEnabled(true), 600);
-  }, [featuredQueryEnabled]);
+    if (!categoriesFetched) return;
+    return scheduleAfterFirstPaint(() => setRecommendedQueryEnabled(true), 400);
+  }, [categoriesFetched]);
 
-  const recommendedFeedEnabled = recommendedQueryEnabled && featuredFetched;
+  const recommendedFeedEnabled = recommendedQueryEnabled;
 
-  const { data: defaultRecommended, isLoading: isLoadingDefaultRec } =
+  const { data: defaultRecommended, isLoading: isLoadingDefaultRec, isFetched: defaultRecFetched } =
     useListRecommendedAds({
       query: {
         queryKey: getListRecommendedAdsQueryKey(),
-        enabled: recommendedFeedEnabled && !city,
+        enabled: recommendedFeedEnabled,
         staleTime: HOME_STALE_FEED_MS,
       },
     });
-  const { data: cityAds, isLoading: isLoadingCityAds } = useListAds(
-    { city, limit: 20 },
+  const { data: cityAds, isLoading: isLoadingCityAds, isFetched: cityAdsFetched } = useListAds(
+    { city: feedCity, limit: 20 },
     {
       query: {
-        queryKey: getListAdsQueryKey({ city, limit: 20 }),
-        enabled: recommendedFeedEnabled && !!city,
+        queryKey: getListAdsQueryKey({ city: feedCity, limit: 20 }),
+        enabled: recommendedFeedEnabled && !!feedCity,
         staleTime: HOME_STALE_FEED_MS,
       },
     },
   );
-  const recommendedAds = city ? cityAds : defaultRecommended;
+
+  const recommendedAdsRaw = useMemo(() => {
+    if (feedCity) {
+      if (Array.isArray(cityAds) && cityAds.length > 0) return cityAds;
+      if (cityAdsFetched) return defaultRecommended ?? [];
+    }
+    return defaultRecommended;
+  }, [feedCity, cityAds, cityAdsFetched, defaultRecommended]);
+
+  const featuredAdsForHome = useMemo(
+    () => filterHomeFeedAds(featuredAds),
+    [featuredAds],
+  );
+  const recommendedAds = useMemo(
+    () => filterHomeFeedAds(recommendedAdsRaw),
+    [recommendedAdsRaw],
+  );
+
   const isLoadingFeaturedUi = !featuredQueryEnabled || isLoadingFeatured;
   const isLoadingRecommended =
-    !recommendedFeedEnabled || (city ? isLoadingCityAds : isLoadingDefaultRec);
-
-  const brandParts = useMemo(() => {
-    const brandFull = t("app.brand");
-    const brandEuMatch = brandFull.match(/^(.*)\sEU$/);
-    const brandMain = brandEuMatch?.[1]?.trimEnd() ?? brandFull;
-    const brandHasEuSuffix = Boolean(brandEuMatch);
-    return { brandFull, brandMain, brandHasEuSuffix };
-  }, [locale]);
-
-  const onDismissLocationHint = useCallback(() => {
-    setLocationHintDismissed(true);
-  }, []);
+    !recommendedFeedEnabled ||
+    (feedCity
+      ? !cityAdsFetched && !defaultRecFetched
+      : isLoadingDefaultRec);
 
   const onSearchQueryChange = useCallback((value: string) => {
     setSearchQuery(value);
@@ -369,11 +331,11 @@ export default function Home() {
     (e: React.FormEvent) => {
       e.preventDefault();
       if (searchQuery.trim()) {
-        const cityParam = city ? `&city=${encodeURIComponent(city)}` : "";
+        const cityParam = feedCity ? `&city=${encodeURIComponent(feedCity)}` : "";
         setLocation(`/search?q=${encodeURIComponent(searchQuery)}${cityParam}`);
       }
     },
-    [searchQuery, city, setLocation],
+    [searchQuery, feedCity, setLocation],
   );
 
   return (
@@ -381,14 +343,9 @@ export default function Home() {
       <HomeFeedHeader
         isRtl={isRtl}
         reserveBellSlot={reserveBellSlot}
-        locationHintDismissed={locationHintDismissed}
-        onDismissLocationHint={onDismissLocationHint}
         searchQuery={searchQuery}
         onSearchQueryChange={onSearchQueryChange}
         onSearchSubmit={handleSearch}
-        brandMain={brandParts.brandMain}
-        brandFull={brandParts.brandFull}
-        brandHasEuSuffix={brandParts.brandHasEuSuffix}
       />
 
       <HomeFeedSections
@@ -397,7 +354,7 @@ export default function Home() {
         isLoadingCategories={isLoadingCategories}
         categories={categories}
         isLoadingFeatured={isLoadingFeaturedUi}
-        featuredAds={featuredAds}
+        featuredAds={featuredAdsForHome}
         isLoadingRecommended={isLoadingRecommended}
         recommendedAds={recommendedAds}
       />

@@ -20,31 +20,56 @@ import {
   useSendMessage,
   useHideMessagesForMe,
   getAuthProfileCsrfTokenForRequest,
+  getListConversationsQueryKey,
   invalidateUserPresenceBatchQueries,
   useUserPresenceBatch,
   type Message as ChatMessage,
+  type SendMessageBody,
   ApiError,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowRight,
+  Ban,
   Check,
   CheckCheck,
-  ImagePlus,
   Loader2,
   Send,
-  Trash2,
   X,
 } from "lucide-react";
 import { useChatSocket } from "@/hooks/use-chat-socket";
+import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
 import { applyIncomingMessageToInboxCache } from "@/lib/inbox-conversation-cache";
+import { deleteMessagesForEveryone } from "@/lib/chat-delete-for-everyone";
+import {
+  getChatMessageCopyText,
+  selectionHasCopyableMessages,
+} from "@/lib/chat-message-copy";
+import { copyTextToClipboard } from "@/lib/copy-text";
+import { isMessageDeletedForEveryone } from "@/lib/chat-message-deleted";
+import { ChatSelectionActionBar } from "@/components/chat-selection-action-bar";
+import {
+  ChatComposerAttachButton,
+  ChatComposerAttachmentSheet,
+  type ChatAttachmentKind,
+} from "@/components/chat-composer-attachment-sheet";
+import { CHAT_COMPOSER_FIELD_SHELL, CHAT_COMPOSER_TEXTAREA } from "@/lib/chat-composer-styles";
+import { ChatLocationMessageCard } from "@/components/chat-location-message-card";
+import {
+  CHAT_LOCATION_MESSAGE_TYPE,
+  parseChatLocationBody,
+} from "@/lib/chat-location-message";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { formatMessageTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { STALE_PEER_BLOCK_MS } from "@/lib/query-stale-times";
+import {
+  GC_THREAD_MESSAGES_MS,
+  STALE_PEER_BLOCK_MS,
+  STALE_THREAD_MESSAGES_MS,
+} from "@/lib/query-stale-times";
 import { apiUrl } from "@/lib/api-url";
 import { useToast } from "@/hooks/use-toast";
 import { ChatThreadOverflowMenu } from "@/components/chat-thread-overflow-menu";
@@ -283,11 +308,20 @@ const ChatMessageBubbleRow = memo(function ChatMessageBubbleRow({
   onRowClick,
   onRowKeyDown,
 }: ChatMessageBubbleRowProps) {
+  const deletedForEveryone = isMessageDeletedForEveryone(m);
   const plain = m.body ?? "";
-  const msgKind = m.messageType === "image" ? "image" : "text";
-  const isImageMsg = msgKind === "image" && Boolean(m.imageUrl);
-  const showText = plain.trim().length > 0;
-  const showBubbleContent = isImageMsg || showText;
+  const isImageMsg = m.messageType === "image" && Boolean(m.imageUrl);
+  const locationPayload = parseChatLocationBody(plain, m.messageType);
+  const isLocationMsg =
+    String(m.messageType) === CHAT_LOCATION_MESSAGE_TYPE && locationPayload != null;
+  const showText = !deletedForEveryone && !isLocationMsg && plain.trim().length > 0;
+  const showBubbleContent =
+    deletedForEveryone || isImageMsg || isLocationMsg || showText;
+  const deletedLabel = deletedForEveryone
+    ? mine
+      ? t("message_thread.deleted_for_everyone_by_me")
+      : t("message_thread.deleted_for_everyone_by_peer")
+    : null;
   return (
     <div
       className={cn(
@@ -329,12 +363,34 @@ const ChatMessageBubbleRow = memo(function ChatMessageBubbleRow({
             selectMode && "pointer-events-none",
           )}
         >
-          {!showBubbleContent ? (
+          {deletedForEveryone && deletedLabel ? (
+            <div
+              className={cn(
+                "flex min-w-0 items-center gap-2 text-sm italic text-zinc-400",
+                dirRtl ? "flex-row-reverse text-right" : "text-left",
+              )}
+            >
+              <Ban
+                className="h-4 w-4 shrink-0 text-zinc-500"
+                aria-hidden
+              />
+              <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                {deletedLabel}
+              </span>
+            </div>
+          ) : !showBubbleContent ? (
             <span className="text-sm text-zinc-400" aria-hidden>
               —
             </span>
           ) : (
             <div className="flex flex-col gap-2">
+              {isLocationMsg && locationPayload ? (
+                <ChatLocationMessageCard
+                  location={locationPayload}
+                  mine={mine}
+                  dirRtl={dirRtl}
+                />
+              ) : null}
               {isImageMsg && m.imageUrl ? (
                 <a
                   href={m.imageUrl}
@@ -450,7 +506,12 @@ export default function MessageThread() {
   const [body, setBody] = useState("");
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [locationSendBusy, setLocationSendBusy] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileAttachInputRef = useRef<HTMLInputElement>(null);
+  const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [attachSheetOpen, setAttachSheetOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialScrollDoneRef = useRef(false);
   const scrollAnchorConvRef = useRef<number | null>(null);
@@ -481,6 +542,9 @@ export default function MessageThread() {
   );
   const [inlineUnblockConfirmOpen, setInlineUnblockConfirmOpen] = useState(false);
   const [inlineUnblockPending, setInlineUnblockPending] = useState(false);
+  const [selectionActionBusy, setSelectionActionBusy] = useState(false);
+
+  useAutoResizeTextarea(composerTextareaRef, body);
 
   const pendingImagePreviewUrl = useMemo(() => {
     if (!pendingImageFile) return null;
@@ -510,8 +574,8 @@ export default function MessageThread() {
     query: {
       queryKey: getListMessagesQueryKey(convIdForQuery),
       enabled: messagesQueryEnabled,
-      staleTime: 60_000,
-      gcTime: 30 * 60_000,
+      staleTime: STALE_THREAD_MESSAGES_MS,
+      gcTime: GC_THREAD_MESSAGES_MS,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
     },
@@ -526,11 +590,16 @@ export default function MessageThread() {
     return [];
   }, [messagesRaw]);
 
+  /** Secondary thread queries run only after the messages request has settled (success or error). */
+  const secondaryQueriesReady =
+    messagesQueryEnabled && !isPending && (messagesRaw !== undefined || isError);
+
   otherUserIdRef.current = conv?.otherId;
 
   const peerIdForBlock = conv?.otherId;
   const peerBlockQueryKey = ["userBlockStatus", peerIdForBlock ?? 0, user?.id ?? 0] as const;
   const peerBlockQueryEnabled =
+    secondaryQueriesReady &&
     Boolean(user) &&
     typeof peerIdForBlock === "number" &&
     peerIdForBlock > 0 &&
@@ -563,7 +632,10 @@ export default function MessageThread() {
     [conv?.otherId],
   );
   const peerPresenceQ = useUserPresenceBatch(peerPresenceTargets, {
-    enabled: messagesQueryEnabled && peerPresenceTargets.length > 0,
+    enabled:
+      secondaryQueriesReady &&
+      messagesQueryEnabled &&
+      peerPresenceTargets.length > 0,
   });
   const peerPresenceEntry = peerPresenceQ.data?.byUserId[String(conv?.otherId ?? "")];
 
@@ -613,8 +685,43 @@ export default function MessageThread() {
     });
   }, [user, peerIdForBlock, peerBlockQueryKey, queryClient, toast, t]);
 
+  const removeMessagesFromCache = useCallback(
+    (ids: number[]) => {
+      if (!ids.length) return;
+      const idSet = new Set(ids);
+      queryClient.setQueryData<ChatMessage[]>(
+        getListMessagesQueryKey(convIdForQuery),
+        (old) => (old ?? []).filter((m) => !idSet.has(m.id)),
+      );
+    },
+    [queryClient, convIdForQuery],
+  );
+
+  const markMessagesDeletedForEveryoneInCache = useCallback(
+    (ids: number[], deletedAt: string) => {
+      if (!ids.length || !deletedAt) return;
+      const idSet = new Set(ids);
+      queryClient.setQueryData<ChatMessage[]>(
+        getListMessagesQueryKey(convIdForQuery),
+        (old) =>
+          (old ?? []).map((m) =>
+            idSet.has(m.id) ? { ...m, deletedForEveryoneAt: deletedAt } : m,
+          ),
+      );
+    },
+    [queryClient, convIdForQuery],
+  );
+
   const { send: wsSend } = useChatSocket((ev) => {
     if (!conversationOk) return;
+    if (ev.type === "messages_removed" && ev.conversationId === conversationId) {
+      if (ev.deletedForEveryoneAt) {
+        markMessagesDeletedForEveryoneInCache(ev.messageIds, ev.deletedForEveryoneAt);
+      } else {
+        removeMessagesFromCache(ev.messageIds);
+      }
+      return;
+    }
     if (ev.type === "message" && ev.conversationId === conversationId) {
       queryClient.setQueryData<ChatMessage[]>(
         getListMessagesQueryKey(convIdForQuery),
@@ -811,21 +918,104 @@ export default function MessageThread() {
       longPressConsumedRef.current = false;
       return;
     }
-    if (selectMode) {
-      e.preventDefault();
-      toggleSelected(m.id);
-      return;
-    }
-    enterSelectWith(m.id);
+    if (!selectMode) return;
+    e.preventDefault();
+    toggleSelected(m.id);
   };
 
   const onMessageRowKeyDown = (m: ChatMessage, e: React.KeyboardEvent) => {
+    if (!selectMode) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      if (!selectMode) enterSelectWith(m.id);
-      else toggleSelected(m.id);
+      toggleSelected(m.id);
     }
   };
+
+  const canDeleteSelectedForEveryone = useMemo(() => {
+    if (!user || !selectedIds.size || !messages?.length) return false;
+    return [...selectedIds].some((id) => {
+      const m = messages.find((x) => x.id === id);
+      return (
+        m != null &&
+        m.senderId === user.id &&
+        !isMessageDeletedForEveryone(m)
+      );
+    });
+  }, [user, selectedIds, messages]);
+
+  const canCopySelected = useMemo(
+    () => selectionHasCopyableMessages(messages, selectedIds),
+    [messages, selectedIds],
+  );
+
+  const onCopySelected = useCallback(async () => {
+    if (!selectedIds.size || !canCopySelected) return;
+    const texts = (messages ?? [])
+      .filter((m) => selectedIds.has(m.id))
+      .map((m) => getChatMessageCopyText(m))
+      .filter((line): line is string => line != null && line.length > 0);
+    if (!texts.length) {
+      toast({
+        title: t("message_thread.select_copy_empty"),
+        variant: "destructive",
+      });
+      return;
+    }
+    const payload = texts.join("\n");
+    const ok = await copyTextToClipboard(payload);
+    if (!ok) {
+      toast({
+        title: t("message_thread.select_copy_failed"),
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({ title: t("message_thread.select_copy_done") });
+    exitSelectMode();
+  }, [selectedIds, messages, canCopySelected, toast, t, exitSelectMode]);
+
+  const onDeleteSelectedForEveryone = useCallback(async () => {
+    if (!conversationOk || !user || !selectedIds.size) return;
+    const mineIds = [...selectedIds].filter((id) => {
+      const m = messages?.find((x) => x.id === id);
+      return m != null && m.senderId === user.id;
+    });
+    if (!mineIds.length) return;
+    setSelectionActionBusy(true);
+    try {
+      const result = await deleteMessagesForEveryone(conversationId, mineIds);
+      if (result.deletedForEveryoneAt) {
+        markMessagesDeletedForEveryoneInCache(
+          result.messageIds,
+          result.deletedForEveryoneAt,
+        );
+      } else {
+        removeMessagesFromCache(result.messageIds);
+      }
+      exitSelectMode();
+      void queryClient.invalidateQueries({ queryKey: getListConversationsQueryKey() });
+    } catch (err: unknown) {
+      toast({
+        title: t("message_thread.delete_for_everyone_failed"),
+        description: err instanceof Error && err.message ? err.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setSelectionActionBusy(false);
+    }
+  }, [
+    conversationOk,
+    user,
+    selectedIds,
+    messages,
+    conversationId,
+    removeMessagesFromCache,
+    markMessagesDeletedForEveryoneInCache,
+    exitSelectMode,
+    queryClient,
+    toast,
+    t,
+  ]);
 
   const stableRowPointerDown = useCallback((m: ChatMessage, e: React.PointerEvent) => {
     rowPointerDownRef.current(m, e);
@@ -841,11 +1031,13 @@ export default function MessageThread() {
   }, []);
 
   const onDeleteSelectedForMe = () => {
-    if (!selectedIds.size || !conversationOk) return;
+    if (!selectedIds.size || !conversationOk || selectionActionBusy) return;
+    setSelectionActionBusy(true);
     hideMessagesForMe.mutate(
       { convId: conversationId, data: { messageIds: [...selectedIds] } },
       {
         onSuccess: () => {
+          removeMessagesFromCache([...selectedIds]);
           exitSelectMode();
           void queryClient.invalidateQueries({
             queryKey: getListMessagesQueryKey(convIdForQuery),
@@ -857,6 +1049,9 @@ export default function MessageThread() {
             description: err instanceof Error && err.message ? err.message : undefined,
             variant: "destructive",
           });
+        },
+        onSettled: () => {
+          setSelectionActionBusy(false);
         },
       },
     );
@@ -1077,10 +1272,7 @@ export default function MessageThread() {
     );
   };
 
-  const onImageSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = "";
-    if (!f) return;
+  const applyPickedImageFile = (f: File) => {
     if (composerLocked) {
       toast({
         title: t("message_thread.chat_send_blocked_toast_title"),
@@ -1106,7 +1298,130 @@ export default function MessageThread() {
     setPendingImageFile(f);
   };
 
-  const busy = send.isPending || uploadBusy;
+  const onImageSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    applyPickedImageFile(f);
+  };
+
+  const busy = send.isPending || uploadBusy || locationSendBusy;
+
+  const sendLocationMessage = (latitude: number, longitude: number) => {
+    if (!conversationOk || !user || composerLocked) return;
+    setLocationSendBusy(true);
+    send.mutate(
+      {
+        convId: conversationId,
+        data: { latitude, longitude } satisfies SendMessageBody,
+      },
+      {
+        onSuccess: (newMsg) => {
+          scrollToBottom();
+          queryClient.setQueryData<ChatMessage[]>(
+            getListMessagesQueryKey(convIdForQuery),
+            (old) => mergeMessagesIntoList(old, newMsg),
+          );
+        },
+        onError: (err: unknown) => {
+          if (err instanceof ApiError && err.status === 403) {
+            void queryClient.invalidateQueries({ queryKey: peerBlockQueryKey });
+            void invalidateUserPresenceBatchQueries(queryClient, peerPresenceTargets);
+            toast({
+              title: t("message_thread.chat_send_blocked_toast_title"),
+              description:
+                err.message || t("message_thread.chat_send_blocked_toast_body"),
+              variant: "destructive",
+            });
+            return;
+          }
+          toast({
+            title: t("message_thread.location_send_failed"),
+            description: err instanceof Error && err.message ? err.message : undefined,
+            variant: "destructive",
+          });
+        },
+        onSettled: () => setLocationSendBusy(false),
+      },
+    );
+  };
+
+  const onAttachmentSelect = (kind: ChatAttachmentKind) => {
+    if (composerLocked || busy) return;
+    if (kind === "camera") {
+      cameraInputRef.current?.click();
+      return;
+    }
+    if (kind === "gallery") {
+      galleryInputRef.current?.click();
+      return;
+    }
+    if (kind === "location") {
+      if (typeof window !== "undefined" && !window.isSecureContext) {
+        toast({
+          title: t("message_thread.attach_location_insecure"),
+          description: t("message_thread.attach_location_insecure_hint"),
+          variant: "destructive",
+        });
+        return;
+      }
+      if (typeof navigator === "undefined" || !navigator.geolocation) {
+        toast({
+          title: t("message_thread.attach_location_unsupported"),
+          variant: "destructive",
+        });
+        return;
+      }
+      setLocationSendBusy(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          sendLocationMessage(pos.coords.latitude, pos.coords.longitude);
+        },
+        (err) => {
+          setLocationSendBusy(false);
+          const code = err?.code;
+          if (code === 1) {
+            toast({
+              title: t("message_thread.attach_location_denied"),
+              variant: "destructive",
+            });
+            return;
+          }
+          if (code === 3) {
+            toast({
+              title: t("message_thread.attach_location_timeout"),
+              variant: "destructive",
+            });
+            return;
+          }
+          toast({
+            title: t("message_thread.attach_location_unavailable"),
+            variant: "destructive",
+          });
+        },
+        { enableHighAccuracy: true, timeout: 12_000, maximumAge: 0 },
+      );
+      return;
+    }
+    if (kind === "file") {
+      fileAttachInputRef.current?.click();
+    }
+  };
+
+  const onGenericFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    if (f.type.startsWith("image/")) {
+      applyPickedImageFile(f);
+      return;
+    }
+    toast({
+      title: t("message_thread.attach_file_unsupported"),
+      variant: "destructive",
+    });
+  };
+
   const canSend = Boolean(body.trim() || pendingImageFile);
 
   const quickKeys = conv?.isSeller ? SELLER_QUICK_KEYS : BUYER_QUICK_KEYS;
@@ -1208,7 +1523,7 @@ export default function MessageThread() {
                     </span>
                   </div>
                 ) : null}
-                {peerPresenceTargets.length > 0 ? (
+                {peerPresenceTargets.length > 0 && secondaryQueriesReady && !showPeerTyping ? (
                   <div className="w-full min-w-0 max-w-full shrink-0">
                     <UserPresenceBadge
                       entry={peerPresenceEntry}
@@ -1358,33 +1673,18 @@ export default function MessageThread() {
             )}
         </div>
         {selectMode ? (
-        <div
-          className="flex w-full shrink-0 items-center justify-between gap-3 border-t border-primary/28 bg-[#0A0A0A] py-3 shadow-[0_-6px_28px_-10px_rgba(0,0,0,0.55)]"
-          dir={dirRtl ? "rtl" : "ltr"}
-        >
-          <p className="min-w-0 text-sm font-medium text-zinc-200">
-            {t("message_thread.select_count", { count: selectedIds.size })}
-          </p>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => exitSelectMode()}
-              className="rounded-xl border border-primary/35 bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_0_16px_-12px_hsl(var(--primary)/0.15)] ring-1 ring-primary/10 transition-colors hover:border-primary/55 hover:bg-zinc-900"
-            >
-              {t("message_thread.select_cancel")}
-            </button>
-            <button
-              type="button"
-              disabled={!selectedIds.size || hideMessagesForMe.isPending}
-              onClick={() => onDeleteSelectedForMe()}
-              className="inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-950/35 px-4 py-2.5 text-sm font-bold text-red-100 shadow-[0_0_18px_-12px_rgba(239,68,68,0.35)] transition-colors hover:border-red-500/55 hover:bg-red-950/50 disabled:pointer-events-none disabled:opacity-40"
-            >
-              <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
-              {hideMessagesForMe.isPending ? "…" : t("message_thread.select_delete")}
-            </button>
-          </div>
-        </div>
-      ) : null}
+          <ChatSelectionActionBar
+            dirRtl={dirRtl}
+            selectedCount={selectedIds.size}
+            canDeleteForEveryone={canDeleteSelectedForEveryone}
+            canCopy={canCopySelected}
+            busy={selectionActionBusy || hideMessagesForMe.isPending}
+            onDeleteForMe={onDeleteSelectedForMe}
+            onDeleteForEveryone={() => void onDeleteSelectedForEveryone()}
+            onCopy={() => void onCopySelected()}
+            onCancel={exitSelectMode}
+          />
+        ) : null}
       </div>
       <form
         onSubmit={handleSend}
@@ -1394,34 +1694,32 @@ export default function MessageThread() {
         )}
       >
         <div className="mx-auto flex w-full max-w-[820px] flex-col gap-2">
-          {peerTyping ? (
-            <div
-              className="flex items-center gap-2 rounded-lg border border-primary/15 bg-zinc-950 px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.12)]"
-              role="status"
-              aria-live="polite"
-            >
-              <span className="flex gap-1" aria-hidden>
-                <span className="h-1 w-1 animate-pulse rounded-full bg-primary/80" />
-                <span
-                  className="h-1 w-1 animate-pulse rounded-full bg-primary/60"
-                  style={{ animationDelay: "120ms" }}
-                />
-                <span
-                  className="h-1 w-1 animate-pulse rounded-full bg-primary/45"
-                  style={{ animationDelay: "240ms" }}
-                />
-              </span>
-              <span>{t("message_thread.typing")}</span>
-            </div>
-          ) : null}
           <input
-            ref={fileInputRef}
+            ref={galleryInputRef}
             type="file"
             accept="image/jpeg,image/png,image/gif,image/webp"
             className="sr-only"
             aria-hidden
             tabIndex={-1}
             onChange={onImageSelected}
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            capture="environment"
+            className="sr-only"
+            aria-hidden
+            tabIndex={-1}
+            onChange={onImageSelected}
+          />
+          <input
+            ref={fileAttachInputRef}
+            type="file"
+            className="sr-only"
+            aria-hidden
+            tabIndex={-1}
+            onChange={onGenericFileSelected}
           />
           {pendingImagePreviewUrl ? (
             <div className="flex items-center gap-2 rounded-xl border border-primary/25 bg-zinc-950 p-2 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.14)]">
@@ -1508,37 +1806,30 @@ export default function MessageThread() {
               ) : null}
             </>
           )}
-          <div className="flex items-end gap-2">
-          <div className="flex flex-1 items-end gap-2 rounded-full border border-primary/20 bg-[rgba(0,0,0,0.6)] px-3 py-2 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.24)]">
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend(e as unknown as React.FormEvent);
-                }
-              }}
-              placeholder={t("message_thread.placeholder")}
-              rows={1}
-              disabled={composerLocked}
-              className="max-h-32 flex-1 resize-none bg-transparent px-0 py-0.5 text-sm text-white placeholder:text-zinc-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
-          <button
-            type="button"
-            disabled={busy || composerLocked}
-            onClick={() => fileInputRef.current?.click()}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-zinc-950 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.35)] transition-[transform,box-shadow] hover:border-primary/65 hover:bg-zinc-900 active:scale-[0.98] disabled:opacity-50"
-            aria-label={t("message_thread.attach_image")}
-          >
-            {uploadBusy ? (
-              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-            ) : (
-              <ImagePlus className="h-5 w-5" aria-hidden />
-            )}
-          </button>
-          <button
+          <div className="flex min-w-0 items-end gap-2">
+            <div className={CHAT_COMPOSER_FIELD_SHELL} dir={dirRtl ? "rtl" : "ltr"}>
+              <ChatComposerAttachButton
+                dirRtl={dirRtl}
+                disabled={busy || composerLocked}
+                onClick={() => setAttachSheetOpen(true)}
+              />
+              <textarea
+                ref={composerTextareaRef}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend(e as unknown as React.FormEvent);
+                  }
+                }}
+                placeholder={t("message_thread.placeholder")}
+                rows={1}
+                disabled={composerLocked}
+                className={CHAT_COMPOSER_TEXTAREA}
+              />
+            </div>
+            <button
             type="submit"
             disabled={busy || !canSend || composerLocked}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-black shadow-[0_0_16px_-8px_hsl(var(--primary)/0.52)] transition-[transform,box-shadow] hover:shadow-[0_0_20px_-8px_hsl(var(--primary)/0.62)] active:scale-[0.98] disabled:opacity-50"
@@ -1553,6 +1844,14 @@ export default function MessageThread() {
           </div>
         </div>
       </form>
+
+      <ChatComposerAttachmentSheet
+        open={attachSheetOpen}
+        onOpenChange={setAttachSheetOpen}
+        dirRtl={dirRtl}
+        disabled={busy || composerLocked}
+        onSelect={onAttachmentSelect}
+      />
 
       <AlertDialog
         open={inlineUnblockConfirmOpen}

@@ -29,6 +29,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { applyIncomingMessageToInboxCache } from "@/lib/inbox-conversation-cache";
 import { STALE_CONVERSATIONS_MS } from "@/lib/query-stale-times";
+import { prefetchConversationThread } from "@/lib/prefetch-conversation-thread";
 
 const emptyCardShell =
   "rounded-2xl border border-primary/40 bg-card/80 p-8 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/15 dark:bg-zinc-950/70 md:p-10";
@@ -54,16 +55,23 @@ type MessagesInboxRowProps = {
   conversation: ConversationListItem;
   presenceEntry: UserPresenceEntry | undefined;
   presenceLoading: boolean;
+  onPrefetchThread: (convId: number) => void;
 };
 
 const MessagesInboxRow = memo(
-  function MessagesInboxRow({ conversation: c, presenceEntry, presenceLoading }: MessagesInboxRowProps) {
+  function MessagesInboxRow({
+    conversation: c,
+    presenceEntry,
+    presenceLoading,
+    onPrefetchThread,
+  }: MessagesInboxRowProps) {
     return (
       <li>
         <Link
           href={`/messages/${c.id}`}
           className={cn(conversationRowClass, "items-start")}
           dir="rtl"
+          onPointerDown={() => onPrefetchThread(c.id)}
         >
           <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/20 bg-zinc-900">
             {c.adImage ? (
@@ -118,7 +126,8 @@ const MessagesInboxRow = memo(
   (prev, next) =>
     areInboxListRowsEqual(prev.conversation, next.conversation) &&
     prev.presenceEntry === next.presenceEntry &&
-    prev.presenceLoading === next.presenceLoading,
+    prev.presenceLoading === next.presenceLoading &&
+    prev.onPrefetchThread === next.onPrefetchThread,
 );
 
 export default function Messages() {
@@ -204,6 +213,13 @@ export default function Messages() {
     }
   };
 
+  const prefetchThread = useCallback(
+    (convId: number) => {
+      void prefetchConversationThread(queryClient, convId);
+    },
+    [queryClient],
+  );
+
   const onInboxChatSocketEvent = useCallback(
     (ev: ChatSocketEvent) => {
       if (ev.type === "message" && user?.id) {
@@ -260,6 +276,7 @@ export default function Messages() {
                 conversation={c}
                 presenceEntry={inboxPresenceQ.data?.byUserId[String(c.otherId)]}
                 presenceLoading={inboxPresenceQ.isPending}
+                onPrefetchThread={prefetchThread}
               />
             ))}
           </ul>

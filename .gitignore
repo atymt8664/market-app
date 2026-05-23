@@ -62,3 +62,32 @@ play-distribution/twa/souq-twa-android/*.jks
 
 # Mis-copied local path / store screenshots accidentally dropped under souq (not app source)
 artifacts/souq/UsersAbutymDownloads*
+
+.vercel
+
+# Release-excluded local artifacts (never commit)
+.phase*-build-context.tgz
+*.tgz
+artifacts/souq/.lighthouse-*
+artifacts/souq/.lh-*
+artifacts/souq/.audit-*/
+artifacts/souq/promo-video/
+artifacts/souq/public/promo-video/
+artifacts/souq/public/campaign-assets/
+artifacts/souq/src/promo-video/
+artifacts/souq/src/pages/promo-video.tsx
+artifacts/souq/src/public/
+google-play-publish-kit/
+play-distribution/
+artifacts/api-server/scripts/.phase*/
+artifacts/api-server/scripts/_*
+artifacts/souq/scripts/e2e-*
+artifacts/souq/scripts/*-verify.mjs
+artifacts/souq/scripts/*-audit.mjs
+artifacts/souq/scripts/home-*
+artifacts/souq/scripts/prod-smoke-*
+artifacts/souq/scripts/phase8-*
+artifacts/souq/scripts/compare-*
+artifacts/souq/scripts/generate-*
+artifacts/souq/scripts/gen-*
+scripts/

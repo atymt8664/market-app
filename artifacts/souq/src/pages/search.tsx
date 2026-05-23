@@ -2,9 +2,10 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { useListAds, getListAdsQueryKey } from "@workspace/api-client-react";
 import { STALE_AD_LIST_MS } from "@/lib/query-stale-times";
 import { Link, useSearch } from "wouter";
-import { ArrowRight, Filter, Search as SearchIcon, Inbox } from "lucide-react";
+import { ArrowRight, Filter, Inbox } from "lucide-react";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
-import { Input } from "@/components/ui/input";
+import { MarketplaceSearchBar } from "@/components/marketplace-search-bar";
+import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { motion } from "framer-motion";
@@ -39,15 +40,19 @@ export default function Search() {
 
   const [query, setQuery] = useState(initialQ);
   const debouncedQuery = useDebounce(query, 500);
+  const { city } = useSelectedCity();
+  const cityFromUrl = searchParams.get("city")?.trim() || undefined;
+  const filterCity = cityFromUrl || city || undefined;
 
   const { data: ads, isPending, isFetching } = useListAds(
-    { q: debouncedQuery || undefined, categoryId, subcategoryId },
+    { q: debouncedQuery || undefined, categoryId, subcategoryId, city: filterCity },
     {
       query: {
         queryKey: getListAdsQueryKey({
           q: debouncedQuery || undefined,
           categoryId,
           subcategoryId,
+          city: filterCity,
         }),
         staleTime: STALE_AD_LIST_MS,
         placeholderData: keepPreviousData,
@@ -57,8 +62,9 @@ export default function Search() {
   const showAdsSkeleton = isPending && !ads;
   const adsLoadingLabel = isFetching && !showAdsSkeleton;
 
-  const searchIconSide = isRtl ? "left-2" : "right-2";
-  const inputPad = isRtl ? "pl-8 pr-2" : "pl-2 pr-8";
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+  };
 
   return (
     <motion.div
@@ -81,36 +87,16 @@ export default function Search() {
                 <ArrowRight className="h-5 w-5" />
               </button>
             </Link>
-            <div
-              className={cn(
-                "relative min-w-0 flex-1",
-                "flex items-center rounded-2xl border border-primary/30 bg-zinc-950/75 px-2.5 py-1.5 ring-1 ring-primary/10",
-                "transition-colors focus-within:border-primary/45 focus-within:ring-primary/15",
-              )}
-              role="search"
-            >
-              <SearchIcon
-                className={cn(
-                  "pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground opacity-90",
-                  searchIconSide,
-                )}
-                aria-hidden
-              />
-              <Input
-                type="search"
-                enterKeyHint="search"
-                autoComplete="off"
-                placeholder={t("search.placeholder")}
-                className={cn(
-                  "h-9 w-full border-0 bg-transparent py-0 text-[13px] leading-tight text-foreground shadow-none",
-                  "placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0",
-                  inputPad,
-                )}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                autoFocus
-              />
-            </div>
+            <MarketplaceSearchBar
+              isRtl={isRtl}
+              value={query}
+              onChange={setQuery}
+              onSubmit={handleSearchSubmit}
+              placeholder={t("search.placeholder")}
+              searchLabel={t("search.placeholder")}
+              autoFocus
+              className="min-w-0 flex-1"
+            />
             <button
               type="button"
               className={cn(

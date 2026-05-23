@@ -7,6 +7,7 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import OpenAI from "openai";
 import { ImproveDescriptionBody, SuggestPriceBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
+import { improveAdCopy, logImproveError, resolveAiKind } from "../lib/ai-text";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireUserCsrf } from "../middlewares/require-user-csrf";
 
@@ -27,19 +28,16 @@ const aiLimiter = rateLimit({
   },
 });
 
-/** Non-empty key from integration-specific or standard OpenAI env names. */
 function resolveOpenAiApiKey(): string | undefined {
   const fromIntegration = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"]?.trim();
   const fromStandard = process.env["OPENAI_API_KEY"]?.trim();
-  const key = fromIntegration || fromStandard;
-  return key || undefined;
+  return fromIntegration || fromStandard || undefined;
 }
 
 function resolveOpenAiBaseUrl(): string | undefined {
   const fromIntegration = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"]?.trim();
   const fromStandard = process.env["OPENAI_BASE_URL"]?.trim();
-  const url = fromIntegration || fromStandard;
-  return url || undefined;
+  return fromIntegration || fromStandard || undefined;
 }
 
 function createOpenAiClient(): OpenAI | null {
@@ -49,7 +47,6 @@ function createOpenAiClient(): OpenAI | null {
   return new OpenAI({
     apiKey,
     ...(baseURL ? { baseURL } : {}),
-    /** Avoid long hangs when the model/network stalls in local dev. */
     timeout: 45_000,
     maxRetries: 0,
   });
@@ -57,13 +54,12 @@ function createOpenAiClient(): OpenAI | null {
 
 const openai = createOpenAiClient();
 
-/** Valid OpenAI chat model; override via OPENAI_CHAT_MODEL. Avoid invalid names (they surface as failed requests). */
 const OPENAI_CHAT_MODEL =
   process.env["OPENAI_CHAT_MODEL"]?.trim() || "gpt-4o-mini";
 
-if (!openai) {
+if (!resolveAiKind()) {
   logger.info(
-    "AI routes are disabled: set AI_INTEGRATIONS_OPENAI_API_KEY or OPENAI_API_KEY in the API server environment.",
+    "AI routes are disabled: set GEMINI_API_KEY (preferred) or OPENAI_API_KEY / AI_INTEGRATIONS_OPENAI_API_KEY on the API server.",
   );
 }
 
@@ -84,7 +80,7 @@ function aiRequestFailed(res: Response) {
   });
 }
 
-function logAiError(scope: "improveDescription" | "suggestPrice", err: unknown) {
+function logSuggestPriceError(err: unknown) {
   const e = err as {
     status?: unknown;
     code?: unknown;
@@ -94,47 +90,38 @@ function logAiError(scope: "improveDescription" | "suggestPrice", err: unknown) 
   };
   logger.error(
     {
-      scope,
+      scope: "suggestPrice",
       aiErrorStatus: typeof e?.status === "number" ? e.status : null,
       aiErrorCode: typeof e?.code === "string" ? e.code : null,
       aiErrorType: typeof e?.type === "string" ? e.type : null,
       aiErrorName: typeof e?.name === "string" ? e.name : null,
-      // Keep diagnostics without leaking provider messages/prompts/secrets.
       aiErrorKind:
         typeof e?.message === "string" && /invalid[_-]?api[_-]?key/i.test(e.message)
           ? "invalid_api_key"
           : "provider_request_failed",
     },
-    `${scope} failed`,
+    "suggestPrice failed",
   );
 }
 
 router.post("/ai/improve-description", requireAuth, requireUserCsrf, aiLimiter, async (req, res) => {
   const body = ImproveDescriptionBody.parse(req.body);
-  if (!openai) {
+  if (!resolveAiKind()) {
     aiUnavailable(res);
     return;
   }
   try {
-    const r = await openai.chat.completions.create({
-      model: OPENAI_CHAT_MODEL,
-      max_completion_tokens: 1200,
-      messages: [
-        {
-          role: "system",
-          content:
-            "أنت مساعد لكتابة إعلانات سوق مستعمل باللغة العربية. مهمتك تحسين وصف الإعلان: اجعله واضحًا، موجزًا، جذابًا، وصادقًا. استخدم فقرات قصيرة ونقاط عند الحاجة. لا تخترع معلومات غير موجودة. لا تستخدم رموز تعبيرية. أعد فقط الوصف المحسن دون مقدمات.",
-        },
-        {
-          role: "user",
-          content: `العنوان: ${body.title}\n${body.category ? `التصنيف: ${body.category}\n` : ""}الوصف الحالي:\n${body.description}\n\nأعد كتابة الوصف بشكل أفضل.`,
-        },
-      ],
+    const improved = await improveAdCopy({
+      title: body.title,
+      description: body.description,
+      category: body.category,
     });
-    const description = r.choices[0]?.message?.content?.trim() ?? body.description;
-    res.json({ description });
+    res.json({
+      title: improved.title,
+      description: improved.description,
+    });
   } catch (err) {
-    logAiError("improveDescription", err);
+    logImproveError(err);
     aiRequestFailed(res);
   }
 });
@@ -169,7 +156,7 @@ router.post("/ai/suggest-price", requireAuth, requireUserCsrf, aiLimiter, async 
       reasoning: parsed.reasoning ?? "",
     });
   } catch (err) {
-    logAiError("suggestPrice", err);
+    logSuggestPriceError(err);
     aiRequestFailed(res);
   }
 });

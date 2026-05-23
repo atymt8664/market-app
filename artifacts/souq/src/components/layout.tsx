@@ -7,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { t } from "@/i18n";
 import {
   useListFavoriteAds,
-  getListFavoriteAdsQueryKey,
   useListConversations,
   getListConversationsQueryKey,
 } from "@workspace/api-client-react";
@@ -17,6 +16,7 @@ import {
   STALE_CONVERSATIONS_MS,
   STALE_USER_ADS_MS,
 } from "@/lib/query-stale-times";
+import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -89,7 +89,7 @@ const BottomNav = memo(function BottomNav() {
 
   const { data: favoriteAds } = useListFavoriteAds({
     query: {
-      queryKey: getListFavoriteAdsQueryKey(),
+      queryKey: favoritesListQueryKey(),
       enabled: isAuthenticated && !isLoading && secondaryQueriesReady,
       staleTime: STALE_USER_ADS_MS,
       retry: false,

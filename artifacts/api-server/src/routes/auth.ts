@@ -16,6 +16,7 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 
 import {
+  AuthForgotPasswordBody,
   AuthLoginBody,
   AuthVerifyEmailBody,
   AuthResendVerificationBody,
@@ -690,13 +691,12 @@ router.post("/auth/resend-verification", verifyLimiter, async (req, res) => {
 });
 
 router.post("/auth/forgot-password", passwordResetLimiter, async (req, res) => {
-  const body = req.body as { email?: unknown };
-  const email =
-    typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  if (!email || !email.includes("@")) {
+  const parsed = AuthForgotPasswordBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
     res.status(400).json({ error: "بريد إلكتروني غير صحيح" });
     return;
   }
+  const email = parsed.data.email.trim().toLowerCase();
   const rows = await db
     .select()
     .from(usersTable)
@@ -741,7 +741,10 @@ router.post("/auth/forgot-password", passwordResetLimiter, async (req, res) => {
 });
 
 router.post("/auth/reset-password", passwordResetLimiter, async (req, res) => {
-  const body = req.body as { token?: unknown; password?: unknown };
+  const body =
+    req.body && typeof req.body === "object" && !Array.isArray(req.body)
+      ? (req.body as { token?: unknown; password?: unknown })
+      : {};
   const token = typeof body.token === "string" ? body.token : "";
   const password = typeof body.password === "string" ? body.password : "";
   const invalidPassword =

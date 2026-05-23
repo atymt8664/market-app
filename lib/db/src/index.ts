@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
+import { resolvePgPoolConfig } from "./pool-config";
 
 const { Pool } = pg;
 
@@ -18,8 +19,13 @@ const useSsl =
   lower.includes("sslmode=require") ||
   process.env["PGSSLMODE"] === "require";
 
+const poolConfig = resolvePgPoolConfig();
+
 export const pool = new Pool({
   connectionString,
+  max: poolConfig.max,
+  idleTimeoutMillis: poolConfig.idleTimeoutMillis,
+  connectionTimeoutMillis: poolConfig.connectionTimeoutMillis,
   ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 pool.on("connect", (client) => {

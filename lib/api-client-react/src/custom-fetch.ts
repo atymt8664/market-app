@@ -253,6 +253,8 @@ const CONV_POST_MESSAGES_ONLY = /^\/api\/conversations\/\d+\/messages$/;
 const CONV_POST_MESSAGES_UPLOAD_IMAGE = /^\/api\/conversations\/\d+\/messages\/upload-image$/;
 const CONV_POST_READ = /^\/api\/conversations\/\d+\/read$/;
 const CONV_POST_MESSAGES_HIDE_FOR_ME = /^\/api\/conversations\/\d+\/messages\/hide-for-me$/;
+const CONV_POST_MESSAGES_DELETE_FOR_EVERYONE =
+  /^\/api\/conversations\/\d+\/messages\/delete-for-everyone$/;
 const CONV_POST_HIDE_OR_HIDE_FOR_ME = /^\/api\/conversations\/\d+\/(hide|hide-for-me)$/;
 const CONV_POST_UNHIDE_FOR_ME = /^\/api\/conversations\/\d+\/unhide-for-me$/;
 const CONV_DELETE_HIDE = /^\/api\/conversations\/\d+\/hide$/;
@@ -266,6 +268,7 @@ function isUserConversationsMutation(method: string, url: string): boolean {
   if (m === "POST" && CONV_POST_MESSAGES_UPLOAD_IMAGE.test(p)) return true;
   if (m === "POST" && CONV_POST_READ.test(p)) return true;
   if (m === "POST" && CONV_POST_MESSAGES_HIDE_FOR_ME.test(p)) return true;
+  if (m === "POST" && CONV_POST_MESSAGES_DELETE_FOR_EVERYONE.test(p)) return true;
   if (m === "POST" && CONV_POST_HIDE_OR_HIDE_FOR_ME.test(p)) return true;
   if (m === "POST" && CONV_POST_UNHIDE_FOR_ME.test(p)) return true;
   if (m === "DELETE" && CONV_DELETE_HIDE.test(p)) return true;

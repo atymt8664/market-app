@@ -1000,11 +1000,13 @@ paths:
             schema:
               type: object
               description: >
-                Send either a text message (`body` non-empty) or an image message (`imageUrl` set to a URL
-                returned from POST /conversations/{convId}/messages/upload-image). Optional caption with image.
+                Send a text message (`body`), an image (`imageUrl` from upload-image), or a location
+                (`latitude` + `longitude`, no body/image). Types are mutually exclusive.
               properties:
                 body: { type: string, maxLength: 2000 }
                 imageUrl: { type: string, nullable: true }
+                latitude: { type: number, minimum: -90, maximum: 90 }
+                longitude: { type: number, minimum: -180, maximum: 180 }
       responses:
         "201":
           description: Created
@@ -1150,13 +1152,14 @@ paths:
                 category: { type: string }
       responses:
         "200":
-          description: Improved description
+          description: Improved title and description (Arabic)
           content:
             application/json:
               schema:
                 type: object
-                required: [description]
+                required: [title, description]
                 properties:
+                  title: { type: string }
                   description: { type: string }
 
   /ai/suggest-price:
@@ -1453,10 +1456,11 @@ components:
         conversationId: { type: integer }
         senderId: { type: integer }
         body: { type: string }
-        messageType: { type: string, enum: [text, image] }
+        messageType: { type: string, enum: [text, image, location] }
         imageUrl: { type: string, nullable: true }
         deliveredAt: { type: string, format: date-time, nullable: true }
         readAt: { type: string, format: date-time, nullable: true }
+        deletedForEveryoneAt: { type: string, format: date-time, nullable: true }
         createdAt: { type: string, format: date-time }
 
     CreateAdInput:

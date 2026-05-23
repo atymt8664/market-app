@@ -1,0 +1,12 @@
+# Docker build context = repo root; paths relative to context root.
+**/node_modules
+**/.git
+**/.env
+**/.env.*
+!infra/hetzner/**/api.env*.example
+**/dist
+artifacts/souq
+play-distribution
+**/.cursor
+**/*.log
+**/.lighthouse*

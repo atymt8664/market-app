@@ -12,4 +12,5 @@ export type MessageMessageType =
 export const MessageMessageType = {
   text: "text",
   image: "image",
+  location: "location",
 } as const;

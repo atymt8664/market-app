@@ -17,8 +17,9 @@ export function HorizontalScrollStrip({
   return (
     <div
       className={cn(
-        "w-full overflow-x-auto overflow-y-hidden",
+        "w-full min-w-0 overflow-x-auto overflow-y-hidden",
         "overscroll-x-contain",
+        "scroll-smooth",
         "[-webkit-overflow-scrolling:touch]",
         "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,

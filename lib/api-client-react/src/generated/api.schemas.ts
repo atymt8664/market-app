@@ -248,6 +248,7 @@ export type MessageMessageType =
 export const MessageMessageType = {
   text: "text",
   image: "image",
+  location: "location",
 } as const;
 
 export interface Message {
@@ -259,6 +260,7 @@ export interface Message {
   imageUrl?: string | null;
   deliveredAt?: string | null;
   readAt?: string | null;
+  deletedForEveryoneAt?: string | null;
   createdAt: string;
 }
 
@@ -358,6 +360,8 @@ export type SendMessageBody = {
   /** @maxLength 2000 */
   body?: string;
   imageUrl?: string | null;
+  latitude?: number;
+  longitude?: number;
 };
 
 export type HideConversationForMe200 = {
@@ -385,6 +389,7 @@ export type ImproveDescriptionBody = {
 };
 
 export type ImproveDescription200 = {
+  title: string;
   description: string;
 };
 

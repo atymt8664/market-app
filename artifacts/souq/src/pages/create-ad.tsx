@@ -47,13 +47,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { CitySelect } from "@/components/city-select";
 import { CreateAdPreviewDialog } from "@/components/create-ad-preview-dialog";
 import { CreateAdImageGallery } from "@/components/create-ad-image-gallery";
 import { CreateAdPromotionTeaser } from "@/components/create-ad-promotion-teaser";
+import { CreateAdDraggableAiFab } from "@/components/create-ad-draggable-ai-fab";
+import {
+  CreateAdImproveDialog,
+  type CreateAdImproveProposal,
+} from "@/components/create-ad-improve-dialog";
 import {
   buildAdDetailsPayload,
   parseStoredAdDetails,
@@ -62,17 +67,52 @@ import { cn } from "@/lib/utils";
 import { SETTINGS_PRIMARY_BUTTON } from "@/components/settings-shell";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
+import { useSelectedCity } from "@/hooks/use-selected-city";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
+import { GERMAN_CITIES } from "@/lib/german-cities";
 
 /** هوية dark/lime — نفس روح ad-detail / profile */
 const adCardShell =
-  "rounded-2xl border border-primary/40 bg-zinc-950/75 p-4 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-5";
+  "rounded-2xl border border-primary/40 bg-zinc-950/75 p-3 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-4";
 const adCardShellCompact =
-  "rounded-2xl border border-primary/35 bg-zinc-950/70 p-3 shadow-[0_0_18px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10";
+  "rounded-2xl border border-primary/35 bg-zinc-950/70 p-2 shadow-[0_0_18px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10 md:p-2.5";
 const adInputClass =
   "border border-primary/30 bg-zinc-950/90 text-foreground placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0 focus-visible:ring-offset-[#0A0A0A]";
 const adHeaderBackBtn =
   "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/55 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 active:opacity-90";
+
+/** عناوين أقسام — نفس أسلوب Home (إعلانات مميزة / موصى لك / التصنيفات) */
+const createAdSectionHeading = cn(
+  "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-card/80 px-2 py-px",
+  "text-sm font-semibold leading-tight tracking-tight text-foreground md:text-base",
+  "shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 dark:bg-zinc-950/70",
+);
+
+/** عنوان الصفحة في الهيدر — أوضح قليلًا ليتناسب مع زر الرجوع (h-11) دون تكبير الهيدر */
+const createAdPageTitleHeading = cn(
+  createAdSectionHeading,
+  "px-2.5 py-0.5 text-base font-semibold md:px-3 md:py-1 md:text-lg",
+);
+
+/**
+ * حجز نهاية التمرير — يطابق `layout.tsx` (64/72px + safe-area) + تنفس (~1.5rem).
+ * margin سالب على الجذر يلغي padding الـ Layout المكرر؛ spacer داخل النموذج يضمن ظهور «معاينة» كاملة.
+ */
+const createAdPageLayoutBottomCancel =
+  "-mb-[calc(64px+env(safe-area-inset-bottom,0px))] md:-mb-[calc(72px+env(safe-area-inset-bottom,0px))]";
+/** زرّان h-11 + فجوة + تنفس فوق الشريط السفلي — دون فراغ زائد أسفل «معاينة» */
+const createAdScrollEndSpacer =
+  "min-h-[calc(7rem+env(safe-area-inset-bottom,0px))] md:min-h-[calc(7.25rem+env(safe-area-inset-bottom,0px))]";
+
+const MARKETPLACE_COUNTRY_CODE = "DE";
+const germanCitySet = new Set(
+  GERMAN_CITIES.map((name) => name.trim().toLowerCase()),
+);
+
+function isGermanMarketplaceCity(city: string): boolean {
+  const trimmed = city.trim();
+  return trimmed.length >= 2 && germanCitySet.has(trimmed.toLowerCase());
+}
 
 /** Bottom sheets على صفحة إنشاء إعلان — خلفية داكنة + حدود lime */
 const createAdSheetContentBase =
@@ -82,7 +122,7 @@ const createAdSheetCloseBtn =
 
 function CreateAdSheetHeader({ title }: { title: string }) {
   return (
-    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-primary/20 px-4 pb-3 pt-4">
+    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-primary/20 px-4 pb-2.5 pt-3">
       <SheetTitle className="m-0 flex-1 text-right text-base font-semibold leading-tight text-white">
         {title}
       </SheetTitle>
@@ -534,8 +574,11 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const { countryCode: savedMarketCountryCode } = useSelectedCity();
   const queryClient = useQueryClient();
   const isEdit = typeof editId === "number";
+  const accountCountryCode =
+    savedMarketCountryCode.trim().toUpperCase() || MARKETPLACE_COUNTRY_CODE;
 
   const fieldErrorMsg = (msg: string | undefined) => {
     if (!msg) return null;
@@ -647,6 +690,11 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const [sellerSafetyAccepted, setSellerSafetyAccepted] = useState(false);
   const [safetyNoticeExpanded, setSafetyNoticeExpanded] = useState(false);
   const [showAiImproveHint, setShowAiImproveHint] = useState(true);
+  const [improveDialogOpen, setImproveDialogOpen] = useState(false);
+  const [improveProposal, setImproveProposal] =
+    useState<CreateAdImproveProposal | null>(null);
+  const [improveOriginal, setImproveOriginal] =
+    useState<CreateAdImproveProposal>({ title: "", description: "" });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isSubmittingUploads, setIsSubmittingUploads] = useState(false);
@@ -671,7 +719,8 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       type: "offer",
       categoryId: 0,
       subcategoryId: null,
-      city: user?.city || "",
+      city:
+        user?.city && isGermanMarketplaceCity(user.city) ? user.city.trim() : "",
       sellerName: user?.name || "",
       sellerPhone: user?.phone || "",
       images: [],
@@ -722,10 +771,61 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       if (!form.getValues("sellerName")) form.setValue("sellerName", user.name);
       if (!form.getValues("sellerPhone"))
         form.setValue("sellerPhone", user.phone);
-      if (!form.getValues("city") && user.city)
-        form.setValue("city", user.city);
+      const profileCity = user.city?.trim() ?? "";
+      if (!form.getValues("city") && profileCity && isGermanMarketplaceCity(profileCity)) {
+        form.setValue("city", profileCity, { shouldValidate: true });
+      }
     }
   }, [user, isEdit, form]);
+
+  const validateCityBeforePublish = useCallback((): boolean => {
+    const cityTrim = form.getValues("city")?.trim() ?? "";
+
+    if (
+      savedMarketCountryCode.trim() &&
+      accountCountryCode !== MARKETPLACE_COUNTRY_CODE
+    ) {
+      toast({
+        title: t("create_ad.city.country_mismatch_title"),
+        description: t("create_ad.city.country_mismatch_desc"),
+        variant: "destructive",
+      });
+      form.setError("city", {
+        type: "manual",
+        message: "create_ad.city.country_mismatch_desc",
+      });
+      return false;
+    }
+
+    if (!cityTrim) {
+      toast({
+        title: t("create_ad.city.missing_title"),
+        description: t("create_ad.city.missing_desc"),
+        variant: "destructive",
+      });
+      form.setError("city", {
+        type: "manual",
+        message: "create_ad.validation.city_required",
+      });
+      return false;
+    }
+
+    if (!isGermanMarketplaceCity(cityTrim)) {
+      toast({
+        title: t("create_ad.city.invalid_title"),
+        description: t("create_ad.city.invalid_desc"),
+        variant: "destructive",
+      });
+      form.setError("city", {
+        type: "manual",
+        message: "create_ad.validation.city_not_in_market",
+      });
+      return false;
+    }
+
+    form.clearErrors("city");
+    return true;
+  }, [accountCountryCode, form, savedMarketCountryCode, toast]);
 
   const watchTitle = form.watch("title");
   const watchDesc = form.watch("description");
@@ -934,6 +1034,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   };
 
   const onSubmit = async (data: CreateAdFormValues) => {
+    if (!validateCityBeforePublish()) {
+      return;
+    }
+
     if (!sellerSafetyAccepted) {
       toast({
         title: t("create_ad.safety.accept_required_before_publish"),
@@ -1146,41 +1250,43 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   }, []);
 
   const handleImproveDescription = () => {
+    const currentTitle = form.getValues("title")?.trim() || "";
     const currentDescription = form.getValues("description")?.trim() || "";
-    if (!currentDescription) {
+    const canImprove =
+      currentTitle.length >= 3 || currentDescription.length >= 10;
+    if (!canImprove) {
       toast({
-        title: t("create_ad.ai.write_description_first"),
+        title: t("create_ad.ai.need_title_or_description"),
         variant: "destructive",
       });
       return;
     }
 
+    const original: CreateAdImproveProposal = {
+      title: currentTitle,
+      description: currentDescription,
+    };
+    setImproveOriginal(original);
+    setImproveProposal(null);
+    setImproveDialogOpen(true);
+
     improveDescMutation.mutate(
       {
         data: {
-          title: watchTitle,
-          description: currentDescription,
+          title: currentTitle || watchTitle || "إعلان",
+          description: currentDescription || "وصف الإعلان",
           category: selectedCategory?.name,
         },
       },
       {
         onSuccess: (res) => {
-          const improvedFromApi = res.description?.trim() || "";
-          const didChange =
-            improvedFromApi.length > 0 && improvedFromApi !== currentDescription;
-          if (didChange) {
-            form.setValue("description", improvedFromApi, {
-              shouldValidate: true,
-            });
-            toast({ title: t("create_ad.ai.improved_success") });
-          } else {
-            toast({
-              title: t("create_ad.ai.description_unchanged_title"),
-              description: t("create_ad.ai.description_unchanged_hint"),
-            });
-          }
+          setImproveProposal({
+            title: res.title?.trim() || original.title,
+            description: res.description?.trim() || original.description,
+          });
         },
         onError: (err) => {
+          setImproveDialogOpen(false);
           const errMsg = err instanceof Error ? err.message : String(err);
           const errProbe = `${err instanceof Error ? err.name : ""} ${errMsg}`;
           const aborted =
@@ -1213,6 +1319,33 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
         },
       },
     );
+  };
+
+  const handleApplyImproveProposal = () => {
+    if (!improveProposal) return;
+    const titleChanged =
+      improveProposal.title.trim() !== improveOriginal.title.trim();
+    const descChanged =
+      improveProposal.description.trim() !==
+      improveOriginal.description.trim();
+    if (titleChanged) {
+      form.setValue("title", improveProposal.title, { shouldValidate: true });
+    }
+    if (descChanged) {
+      form.setValue("description", improveProposal.description, {
+        shouldValidate: true,
+      });
+    }
+    setImproveDialogOpen(false);
+    setImproveProposal(null);
+    if (titleChanged || descChanged) {
+      toast({ title: t("create_ad.ai.improved_applied") });
+    } else {
+      toast({
+        title: t("create_ad.ai.description_unchanged_title"),
+        description: t("create_ad.ai.description_unchanged_hint"),
+      });
+    }
   };
 
   const handleSuggestPrice = () => {
@@ -1395,14 +1528,21 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   }, []);
 
   return (
-    <div className="flex min-h-0 w-full flex-col bg-[#0A0A0A] pb-28">
+    <div
+      className={cn(
+        "flex min-h-0 w-full flex-col bg-[#0A0A0A]",
+        createAdPageLayoutBottomCancel,
+      )}
+    >
       <header
         className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]"
         dir={isRtl ? "rtl" : "ltr"}
       >
-        <div className="mx-auto flex w-full max-w-[900px] items-center justify-between gap-3 px-4 py-3 md:max-w-[760px] md:px-6 lg:max-w-[860px]">
-          <h1 className="min-w-0 flex-1 text-start text-lg font-bold text-foreground">
-            {isEdit ? t("create_ad.edit_title") : t("create_ad.create_title")}
+        <div className="mx-auto flex w-full max-w-[900px] items-center justify-between gap-3 px-4 py-2 md:max-w-[760px] md:px-6 md:py-2.5 lg:max-w-[860px]">
+          <h1 className="min-w-0 flex-1 text-start">
+            <span className={createAdPageTitleHeading}>
+              {isEdit ? t("create_ad.edit_title") : t("create_ad.create_title")}
+            </span>
           </h1>
           <Link href="/" className="shrink-0">
             <button
@@ -1419,9 +1559,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-4 flex flex-col gap-4"
+          className="mx-auto flex w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-2.5 flex flex-col gap-2.5 md:gap-3 md:py-3"
         >
-          <section className="space-y-2.5" dir={isRtl ? "rtl" : "ltr"}>
+          <section className="space-y-2" dir={isRtl ? "rtl" : "ltr"}>
             <input
               ref={fileInputRef}
               type="file"
@@ -1430,7 +1570,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               className="hidden"
               onChange={(e) => handleFilesSelected(e.target.files)}
             />
-            <div className={cn(adCardShell, "space-y-3")}>
+            <div className={cn(adCardShell, "space-y-2")}>
               <CreateAdImageGallery
                 uploadedImages={uploadedImages}
                 maxImages={MAX_IMAGES}
@@ -1476,11 +1616,11 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     </div>
                   ))}
                 </div>
-                <div className="px-4 pb-6 pt-2">
+                <div className="px-4 pb-4 pt-1.5">
                   <SheetClose asChild>
                     <Button
                       type="button"
-                      className="h-12 w-full rounded-full border border-primary/45 bg-zinc-950/80 text-base font-semibold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-zinc-900/90 active:opacity-90"
+                      className="h-11 w-full rounded-full border border-primary/45 bg-zinc-950/80 text-base font-semibold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-zinc-900/90 active:opacity-90"
                       onClick={() => setPhotoTipsOpen(false)}
                     >
                       {t("common.got_it")}
@@ -1492,7 +1632,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </div>
           </section>
 
-          <div className={adCardShell}>
+          <div className={adCardShellCompact}>
             <FormField
               control={form.control}
               name="type"
@@ -1502,7 +1642,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     <RadioGroup
                       onValueChange={field.onChange}
                       value={field.value}
-                      className="flex flex-wrap items-center gap-5"
+                      className="flex flex-wrap items-center gap-4"
                       dir={isRtl ? "rtl" : "ltr"}
                     >
                       <FormItem className="flex items-center gap-2 space-y-0">
@@ -1528,14 +1668,14 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             />
           </div>
 
-          <section className="space-y-3" dir={isRtl ? "rtl" : "ltr"}>
-            <div className={cn(adCardShell, "space-y-3")}>
+          <section className="space-y-2" dir={isRtl ? "rtl" : "ltr"}>
+            <div className={cn(adCardShell, "space-y-1.5")}>
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field, fieldState }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs font-medium text-zinc-400">
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className={cn(createAdSectionHeading, "mb-0")}>
                       {t("create_ad.title.heading")}
                     </FormLabel>
                     <FormControl>
@@ -1548,7 +1688,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         {...field}
                       />
                     </FormControl>
-                    <div className="mt-1 text-start text-xs text-zinc-500">
+                    <div className="mt-0.5 text-start text-xs leading-none text-zinc-500">
                       {field.value.length}/65
                     </div>
                     {fieldState.error?.message ? (
@@ -1560,11 +1700,11 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 )}
               />
 
-              <div className="space-y-2">
-                <label className="block text-start text-xs font-medium text-zinc-400">
+              <div className="space-y-1.5">
+                <label className={cn(createAdSectionHeading, "mb-0 block w-fit text-start")}>
                   {t("create_ad.category.title")}
                 </label>
-                <p className="min-h-4 text-start text-xs text-primary/90">
+                <p className="min-h-0 text-start text-xs text-primary/90 empty:hidden">
                   {resolvedCategoryPathLabel}
                 </p>
                 <Sheet open={categorySheetOpen} onOpenChange={setCategorySheetOpen}>
@@ -1594,7 +1734,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     dir={isRtl ? "rtl" : "ltr"}
                   >
                     <CreateAdSheetHeader title={t("create_ad.category.sheet_title")} />
-                    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3">
+                    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-2.5">
                       {!pickerMain ? (
                         CATEGORY_TREE.map((main) => (
                           <button
@@ -1698,21 +1838,21 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 control={form.control}
                 name="description"
                 render={({ field, fieldState }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs font-medium text-zinc-400">
+                  <FormItem className="space-y-1.5 pb-0">
+                    <FormLabel className={cn(createAdSectionHeading, "mb-0")}>
                       {t("create_ad.description.title")}
                     </FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder={t("create_ad.description.placeholder")}
                         className={cn(
-                          "h-28 max-h-[120px] min-h-[100px] resize-none rounded-xl px-3 py-2 text-start",
+                          "h-[5.5rem] max-h-[104px] min-h-[5rem] resize-none rounded-xl px-3 py-1.5 text-start",
                           adInputClass,
                         )}
                         {...field}
                       />
                     </FormControl>
-                    <div className="mt-1 text-start text-xs text-zinc-500">
+                    <div className="mt-0.5 text-start text-xs leading-none text-zinc-500">
                       {field.value.length}/4000
                     </div>
                     {fieldState.error?.message ? (
@@ -1727,7 +1867,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           </section>
 
           {activeDynamicFields.length > 0 && (
-            <section className="space-y-2.5" dir={isRtl ? "rtl" : "ltr"}>
+            <section className="space-y-2" dir={isRtl ? "rtl" : "ltr"}>
               <p className="text-sm font-medium text-foreground">
                 {t("create_ad.dynamic.title")}
               </p>
@@ -1736,8 +1876,8 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   const current = dynamicFieldValues[field.id] ?? "";
                   const fieldLabel = getCreateAdTaxonomyLabel(locale, field.label);
                   return (
-                    <div key={field.id} className={cn(adCardShellCompact, "px-3 py-2.5")}>
-                      <label className="mb-1.5 block text-xs text-zinc-400">
+                    <div key={field.id} className={cn(adCardShellCompact, "px-3 py-2")}>
+                      <label className="mb-1 block text-xs text-zinc-400">
                         {fieldLabel}
                       </label>
                       <Sheet>
@@ -1775,7 +1915,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                               field: fieldLabel,
                             })}
                           />
-                          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-6 pt-2">
+                          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-4 pt-1.5">
                             <SheetClose asChild>
                               <button
                                 type="button"
@@ -1831,34 +1971,34 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </section>
           )}
 
-          <section className="space-y-2.5" dir={isRtl ? "rtl" : "ltr"}>
+          <section className="space-y-1.5" dir={isRtl ? "rtl" : "ltr"}>
             <Sheet open={shippingSheetOpen} onOpenChange={setShippingSheetOpen}>
               <SheetTrigger asChild>
                 <button
                   type="button"
                   className={cn(
                     adCardShellCompact,
-                    "w-full py-3 text-start transition-colors hover:border-primary/45",
+                    "w-full py-2.5 text-start transition-colors hover:border-primary/45",
                   )}
                 >
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-sm font-medium">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className={createAdSectionHeading}>
                       {t("create_ad.shipping.methods_title")}
-                    </p>
+                    </span>
                     <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
                   </div>
                   {pickupOnly ? (
-                    <div className="rounded-lg border border-primary/25 bg-zinc-950/60 px-2.5 py-2">
+                    <div className="rounded-lg border border-primary/25 bg-zinc-950/60 px-2.5 py-1.5">
                       <p className="text-sm font-medium">
                         {t("create_ad.shipping.pickup_only")}
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       {collapsedShippingMethods.map((method) => (
                         <div
                           key={method.id}
-                          className="rounded-lg border border-primary/20 bg-zinc-950/50 px-2.5 py-2"
+                          className="rounded-lg border border-primary/20 bg-zinc-950/50 px-2.5 py-1.5"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex min-w-0 items-center gap-2">
@@ -1888,7 +2028,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 dir={isRtl ? "rtl" : "ltr"}
               >
                 <CreateAdSheetHeader title={t("create_ad.shipping.methods_title")} />
-                <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+                <div className="flex-1 space-y-2 overflow-y-auto px-4 py-2.5">
                   <div className="space-y-1 rounded-xl border border-primary/25 bg-zinc-950/70 px-3 py-2 text-xs text-zinc-500">
                     <p>{t("create_ad.shipping.note_1")}</p>
                     <p>{t("create_ad.shipping.note_2")}</p>
@@ -1968,7 +2108,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     </div>
                   </button>
                 </div>
-                <div className="border-t border-primary/20 p-4">
+                <div className="border-t border-primary/20 p-3">
                   <button
                     type="button"
                     className={cn(
@@ -1991,17 +2131,17 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </p>
           </section>
 
-          <section className="space-y-3" dir={isRtl ? "rtl" : "ltr"}>
-            <div className={cn(adCardShell, "space-y-3")}>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-3">
+          <section className="space-y-1.5" dir={isRtl ? "rtl" : "ltr"}>
+            <div className={cn(adCardShell, "space-y-1.5")}>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-2">
                   <FormField
                     control={form.control}
                     name="price"
                     render={({ field, fieldState }) => (
-                      <FormItem>
-                        <div className="flex justify-between items-center mb-2">
-                          <FormLabel className="text-start block">
+                      <FormItem className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2 mb-0">
+                          <FormLabel className={cn(createAdSectionHeading, "mb-0")}>
                             {t("create_ad.price.title")}
                           </FormLabel>
                           {watchTitle && watchPriceType !== "free" && (
@@ -2025,7 +2165,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                             type="number"
                             placeholder={t("create_ad.price.amount")}
                             className={cn(
-                              "h-12 rounded-xl text-start",
+                              "h-11 rounded-xl text-start",
                               adInputClass,
                             )}
                             {...field}
@@ -2050,9 +2190,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   />
                 </div>
 
-                <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-3">
-                  <div className="space-y-2">
-                    <label className="block text-start text-sm font-medium">
+                <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-2">
+                  <div className="space-y-1.5">
+                    <label className={cn(createAdSectionHeading, "mb-0 block w-fit text-start")}>
                       {t("create_ad.price.currency")}
                     </label>
                     <Sheet
@@ -2062,7 +2202,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       <SheetTrigger asChild>
                         <button
                           type="button"
-                          className="flex h-12 w-full items-center justify-between rounded-xl border border-primary/35 bg-zinc-950/80 px-3 text-sm text-foreground hover:border-primary/50"
+                          className="flex h-11 w-full items-center justify-between rounded-xl border border-primary/35 bg-zinc-950/80 px-3 text-sm text-foreground hover:border-primary/50"
                         >
                           <span>
                             {CURRENCY_OPTIONS.find(
@@ -2079,7 +2219,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         dir={isRtl ? "rtl" : "ltr"}
                       >
                         <CreateAdSheetHeader title={t("create_ad.price.choose_currency")} />
-                        <div className="space-y-2 overflow-y-auto px-4 pb-6 pt-2">
+                        <div className="space-y-2 overflow-y-auto px-4 pb-4 pt-1.5">
                           {CURRENCY_OPTIONS.map((currency) => {
                             const picked = selectedCurrency === currency.id;
                             return (
@@ -2118,13 +2258,13 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-3">
+              <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-2">
                 <FormField
                   control={form.control}
                   name="priceType"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="mb-2 block text-start">
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className={cn(createAdSectionHeading, "mb-0 block w-fit text-start")}>
                         {t("create_ad.price.type")}
                       </FormLabel>
                       <Sheet
@@ -2134,7 +2274,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         <SheetTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-12 w-full items-center justify-between rounded-xl border border-primary/35 bg-zinc-950/80 px-3 text-sm text-foreground hover:border-primary/50"
+                            className="flex h-11 w-full items-center justify-between rounded-xl border border-primary/35 bg-zinc-950/80 px-3 text-sm text-foreground hover:border-primary/50"
                           >
                             <span>
                               {field.value === "fixed" &&
@@ -2156,7 +2296,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                           dir={isRtl ? "rtl" : "ltr"}
                         >
                           <CreateAdSheetHeader title={t("create_ad.price.choose_type")} />
-                          <div className="space-y-2 overflow-y-auto px-4 pb-6 pt-2">
+                          <div className="space-y-2 overflow-y-auto px-4 pb-4 pt-1.5">
                             {(
                               [
                                 { id: "fixed", labelKey: "create_ad.price_type.fixed" },
@@ -2213,19 +2353,19 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </div>
           </section>
 
-          <section className="space-y-2.5" dir={isRtl ? "rtl" : "ltr"}>
-            <label className="block text-start text-sm font-medium">
+          <section className="space-y-1.5" dir={isRtl ? "rtl" : "ltr"}>
+            <label className={cn(createAdSectionHeading, "mb-0 block w-fit text-start")}>
               {t("create_ad.direct_buy.title")}
             </label>
-            <div className={adCardShell}>
+            <div className={cn(adCardShellCompact, "space-y-1.5")}>
               <RadioGroup
                 value={directBuy}
                 onValueChange={(value) => setDirectBuy(value as "yes" | "no")}
-                className="space-y-3"
+                className="space-y-1.5"
                 dir={isRtl ? "rtl" : "ltr"}
               >
-                <div className="space-y-3">
-                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-zinc-950/60 px-3 py-3">
+                <div className="space-y-1.5">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-zinc-950/60 px-3 py-2">
                     <RadioGroupItem
                       value="yes"
                       className="data-[state=checked]:border-primary [&>span>svg]:fill-primary"
@@ -2235,7 +2375,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     </span>
                   </label>
                   {directBuy === "yes" && (
-                    <div className="rounded-xl border border-primary/40 bg-primary/10 px-3 py-3 text-xs text-foreground/90 space-y-1.5">
+                    <div className="rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-xs leading-snug text-foreground/90 space-y-1">
                       <p>{t("create_ad.direct_buy.yes_note_1")}</p>
                       <p>{t("create_ad.direct_buy.yes_note_2")}</p>
                       <p>{t("create_ad.direct_buy.yes_note_3")}</p>
@@ -2243,7 +2383,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   )}
                 </div>
 
-                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-zinc-950/60 px-3 py-3">
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-zinc-950/60 px-3 py-2">
                   <RadioGroupItem
                     value="no"
                     className="data-[state=checked]:border-primary [&>span>svg]:fill-primary"
@@ -2256,85 +2396,81 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </div>
           </section>
 
-          <section className="space-y-2.5" dir={isRtl ? "rtl" : "ltr"}>
-            <label className="block text-start text-sm font-medium">
+          <section className="space-y-1.5" dir={isRtl ? "rtl" : "ltr"}>
+            <label className={cn(createAdSectionHeading, "mb-0 block w-fit text-start")}>
               {t("create_ad.promotion.title")}
             </label>
             <CreateAdPromotionTeaser isRtl={isRtl} previewHref={promotePreviewHref} />
           </section>
 
-          <section className="space-y-3" dir={isRtl ? "rtl" : "ltr"}>
-            <div className="space-y-2">
-              <p className="text-start text-sm font-medium">
+          <section className="space-y-1.5" dir={isRtl ? "rtl" : "ltr"}>
+            <div className="space-y-1.5">
+              <label className={cn(createAdSectionHeading, "mb-0 block w-fit text-start")}>
                 {t("create_ad.contact.title")}
-              </p>
-              <div className={adCardShell}>
-                <div className="mb-3">
-                  <FormField
-                    control={form.control}
-                    name="sellerName"
-                    render={({ field, fieldState }) => (
-                      <FormItem>
-                        <FormLabel className="text-start block">
-                          {t("create_ad.contact.name")}
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder={t("create_ad.contact.name_placeholder")}
-                            className={cn(
-                              "h-12 rounded-xl text-start",
-                              adInputClass,
-                            )}
-                            {...field}
-                          />
-                        </FormControl>
-                        {fieldState.error?.message ? (
-                          <p className="text-[0.8rem] font-medium text-destructive text-start">
-                            {fieldErrorMsg(fieldState.error.message)}
-                          </p>
-                        ) : null}
-                      </FormItem>
-                    )}
-                  />
-                </div>
+              </label>
+              <div className={cn(adCardShell, "space-y-2")}>
+                <FormField
+                  control={form.control}
+                  name="sellerName"
+                  render={({ field, fieldState }) => (
+                    <FormItem className="space-y-1">
+                      <FormLabel className="block text-start text-xs text-zinc-400">
+                        {t("create_ad.contact.name")}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={t("create_ad.contact.name_placeholder")}
+                          className={cn(
+                            "h-11 rounded-xl text-start",
+                            adInputClass,
+                          )}
+                          {...field}
+                        />
+                      </FormControl>
+                      {fieldState.error?.message ? (
+                        <p className="text-[0.8rem] font-medium text-destructive text-start">
+                          {fieldErrorMsg(fieldState.error.message)}
+                        </p>
+                      ) : null}
+                    </FormItem>
+                  )}
+                />
 
-                <div className="mb-3">
-                  <FormField
-                    control={form.control}
-                    name="sellerPhone"
-                    render={({ field, fieldState }) => (
-                      <FormItem>
-                        <FormLabel className="text-start block">
-                          {t("create_ad.contact.phone")}
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="tel"
-                            placeholder={t("create_ad.contact.phone_placeholder")}
-                            dir="ltr"
-                            className={cn(
-                              "h-12 rounded-xl text-start",
-                              adInputClass,
-                            )}
-                            {...field}
-                          />
-                        </FormControl>
-                        {fieldState.error?.message ? (
-                          <p className="text-[0.8rem] font-medium text-destructive text-start">
-                            {fieldErrorMsg(fieldState.error.message)}
-                          </p>
-                        ) : null}
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="sellerPhone"
+                  render={({ field, fieldState }) => (
+                    <FormItem className="space-y-1">
+                      <FormLabel className="block text-start text-xs text-zinc-400">
+                        {t("create_ad.contact.phone")}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="tel"
+                          placeholder={t("create_ad.contact.phone_placeholder")}
+                          dir="ltr"
+                          className={cn(
+                            "h-11 rounded-xl text-start",
+                            adInputClass,
+                          )}
+                          {...field}
+                        />
+                      </FormControl>
+                      {fieldState.error?.message ? (
+                        <p className="text-[0.8rem] font-medium text-destructive text-start">
+                          {fieldErrorMsg(fieldState.error.message)}
+                        </p>
+                      ) : null}
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
                   name="city"
                   render={({ field, fieldState }) => (
-                    <FormItem>
-                      <FormLabel className="text-start block">
+                    <FormItem className="space-y-1">
+                      <FormLabel className="block text-start text-xs text-zinc-400">
                         {t("create_ad.contact.city")}
                       </FormLabel>
                       <FormControl>
@@ -2343,7 +2479,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                           onChange={field.onChange}
                           placeholder={t("create_ad.contact.city_placeholder")}
                           className={cn(
-                            "h-12 rounded-xl py-2.5 hover:bg-zinc-900/90",
+                            "h-11 rounded-xl py-2 hover:bg-zinc-900/90",
                             adInputClass,
                           )}
                         />
@@ -2360,14 +2496,14 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </div>
           </section>
 
-          <section className="space-y-2" dir={isRtl ? "rtl" : "ltr"}>
-            <div className={cn(adCardShellCompact, "space-y-2.5 p-3")}>
+          <section className="space-y-1.5" dir={isRtl ? "rtl" : "ltr"}>
+            <div className={cn(adCardShellCompact, "space-y-1.5")}>
               <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-2">
-                <div className="mb-1 flex items-center gap-1.5">
-                  <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
-                  <h3 className="text-xs font-semibold">
+                <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                  <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+                  <span className={createAdSectionHeading}>
                     {t("create_ad.safety.card_title")}
-                  </h3>
+                  </span>
                 </div>
                 <p
                   className={cn(
@@ -2402,10 +2538,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             </div>
           </section>
 
-          <div className="space-y-3 pb-10 pt-2">
+          <div className="space-y-2 pt-1">
             <Button
               type="submit"
-              className="h-12 w-full rounded-full border border-primary/45 bg-zinc-950/80 text-base font-bold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-zinc-900/90 active:opacity-90"
+              className="h-11 w-full rounded-full border border-primary/45 bg-zinc-950/80 text-base font-bold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-zinc-900/90 active:opacity-90"
               disabled={isSubmittingForm}
             >
               {isSubmittingForm ? (
@@ -2424,12 +2560,19 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             <Button
               type="button"
               variant="outline"
-              className="h-12 w-full rounded-full border-primary/40 bg-zinc-950/80 text-base font-semibold text-foreground shadow-[0_0_16px_-12px_hsl(var(--primary)/0.3)] transition-colors hover:border-primary/55 hover:bg-zinc-900/90 active:opacity-90"
-              onClick={() => setPreviewOpen(true)}
+              className="h-11 w-full rounded-full border-primary/40 bg-zinc-950/80 text-base font-semibold text-foreground shadow-[0_0_16px_-12px_hsl(var(--primary)/0.3)] transition-colors hover:border-primary/55 hover:bg-zinc-900/90 active:opacity-90"
+              onClick={() => {
+                void form.trigger("city").then((ok) => {
+                  if (!ok || !validateCityBeforePublish()) return;
+                  setPreviewOpen(true);
+                });
+              }}
             >
               {t("create_ad.preview")}
             </Button>
           </div>
+
+          <div aria-hidden className={createAdScrollEndSpacer} />
         </form>
       </Form>
 
@@ -2465,39 +2608,23 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
         }}
       />
 
-      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+80px)] right-1.5 z-50 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={handleImproveDescription}
-          disabled={improveDescMutation.isPending}
-          aria-label={t("create_ad.ai.aria_label")}
-          className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-primary/45 bg-zinc-950/92 px-2.5 text-primary shadow-[0_0_12px_-12px_hsl(var(--primary)/0.32)] transition-[transform,colors,box-shadow] hover:border-primary/60 hover:bg-zinc-900/95 hover:shadow-[0_0_16px_-12px_hsl(var(--primary)/0.4)] active:scale-[0.98] disabled:opacity-60"
-        >
-          {improveDescMutation.isPending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Sparkles className="h-3.5 w-3.5" />
-          )}
-          <span className="text-[10px] font-medium">
-            {t("create_ad.ai.short_label")}
-          </span>
-        </button>
+      <CreateAdImproveDialog
+        open={improveDialogOpen}
+        onOpenChange={(open) => {
+          setImproveDialogOpen(open);
+          if (!open) setImproveProposal(null);
+        }}
+        original={improveOriginal}
+        proposal={improveProposal}
+        isLoading={improveDescMutation.isPending}
+        onApply={handleApplyImproveProposal}
+      />
 
-        <div
-          className={cn(
-            "max-w-[min(62vw,150px)] rounded-full border border-primary/35 bg-zinc-950/92 px-3 py-1 text-xs text-zinc-100 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.28)] transition-all duration-300",
-            showAiImproveHint
-              ? "translate-x-0 opacity-100"
-              : "pointer-events-none translate-x-2 opacity-0",
-          )}
-          aria-hidden={!showAiImproveHint}
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span>{t("create_ad.ai.hint")}</span>
-          </span>
-        </div>
-      </div>
+      <CreateAdDraggableAiFab
+        onImprove={handleImproveDescription}
+        isPending={improveDescMutation.isPending}
+        showHint={showAiImproveHint}
+      />
     </div>
   );
 }

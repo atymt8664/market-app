@@ -40,7 +40,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://workspaceapi-server-production-22f2.up.railway.app/api/:path*"
+      "destination": "https://api.souq-arab.com/api/:path*"
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

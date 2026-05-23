@@ -162,13 +162,13 @@ export function CreateAdImageGallery({
       )}
 
       {count > 0 && heroSrc && (
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           <button
             type="button"
             onClick={() => openViewer(heroIndex)}
             className={cn(
               "relative w-full overflow-hidden rounded-2xl border border-primary/30 bg-zinc-950/50",
-              "aspect-[4/3] sm:aspect-[16/10] shadow-[0_0_18px_-12px_hsl(var(--primary)/0.15)] transition-[box-shadow,transform] duration-200",
+              "aspect-[4/3] max-h-[min(52vw,13.5rem)] sm:max-h-none sm:aspect-[16/10] shadow-[0_0_18px_-12px_hsl(var(--primary)/0.15)] transition-[box-shadow,transform] duration-200",
               "hover:shadow-[0_0_22px_-10px_hsl(var(--primary)/0.22)] active:scale-[0.998] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
             )}
             aria-label={t("create_ad.images.open_gallery")}
@@ -209,7 +209,7 @@ export function CreateAdImageGallery({
                   type="button"
                   onClick={(e) => handleThumbClick(i, e)}
                   className={cn(
-                    "relative h-[4.25rem] w-[4.25rem] shrink-0 overflow-hidden rounded-xl border-2 transition-[box-shadow,transform,border-color] duration-200",
+                    "relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 transition-[box-shadow,transform,border-color] duration-200",
                     i === heroIndex
                       ? "border-primary ring-2 ring-primary/35 ring-offset-2 ring-offset-[#0A0A0A]"
                       : "border-primary/35 hover:border-primary/55 active:scale-[0.98]",

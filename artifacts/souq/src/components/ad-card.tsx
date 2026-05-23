@@ -5,7 +5,6 @@ import { formatRelativeTime, formatPrice, formatCurrencyAmount } from "@/lib/for
 import {
   useFavoriteAd,
   useUnfavoriteAd,
-  getListFavoriteAdsQueryKey,
   type Ad,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,9 +15,7 @@ import { memo, useCallback, useState } from "react";
 import { t } from "@/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocale } from "@/hooks/use-locale";
-import {
-  patchAdEngagementInCaches,
-} from "@/lib/invalidate-ad-queries";
+import { createFavoriteToggleHandlers } from "@/lib/invalidate-ad-queries";
 
 export interface AdCardProps {
   ad: Ad;
@@ -212,44 +209,20 @@ function AdCardInner({
         navigate(`/login?redirect=${encodeURIComponent(locationPath || "/")}`);
         return;
       }
-      const prevFav = Boolean(ad.isFavorited);
-      const prevCount = ad.favoriteCount ?? 0;
-      const next = !prevFav;
-
-      patchAdEngagementInCaches(queryClient, ad.id, {
-        isFavorited: next,
-        favoriteCount: Math.max(0, prevCount + (next ? 1 : -1)),
-      });
-
-      const onError = () => {
-        patchAdEngagementInCaches(queryClient, ad.id, {
-          isFavorited: prevFav,
-          favoriteCount: prevCount,
-        });
-        queryClient.invalidateQueries({ queryKey: getListFavoriteAdsQueryKey() });
-      };
-
-      const onSuccess = (data: { count: number; active: boolean }) => {
-        patchAdEngagementInCaches(queryClient, ad.id, {
-          isFavorited: data.active,
-          favoriteCount: data.count,
-        });
-        queryClient.setQueryData<Ad[]>(getListFavoriteAdsQueryKey(), (old) => {
-          if (data.active) {
-            if (old?.some((a) => a.id === ad.id)) return old;
-            return [
-              ...(old ?? []),
-              { ...ad, isFavorited: true, favoriteCount: data.count },
-            ];
-          }
-          return (old ?? []).filter((a) => a.id !== ad.id);
-        });
-      };
+      const next = !Boolean(ad.isFavorited);
+      const handlers = createFavoriteToggleHandlers(queryClient, ad);
+      handlers.optimistic(next);
 
       if (next) {
-        favMut.mutate({ adId: ad.id }, { onError, onSuccess });
+        favMut.mutate(
+          { adId: ad.id },
+          { onError: handlers.onError, onSuccess: handlers.onSuccess },
+        );
       } else {
-        unfavMut.mutate({ adId: ad.id }, { onError, onSuccess });
+        unfavMut.mutate(
+          { adId: ad.id },
+          { onError: handlers.onError, onSuccess: handlers.onSuccess },
+        );
       }
     },
     [ad, locationPath, navigate, queryClient, user, favMut, unfavMut],
@@ -267,18 +240,18 @@ function AdCardInner({
       className={cn(
         "flex min-h-0 w-full flex-col outline-none",
         favCompact ? "gap-1" : "gap-2",
-        featured ? "h-full" : "h-auto",
+        featured ? "h-full" : "h-full",
         featured &&
           "w-[148px] max-w-[148px] shrink-0 sm:w-[160px] sm:max-w-[160px] md:w-[172px] md:max-w-[172px]",
       )}
     >
     <Link
       href={`/ad/${ad.id}`}
-      className={cn("block min-h-0 w-full outline-none", !featured && "h-auto")}
+      className={cn("block h-full min-h-0 w-full outline-none")}
     >
       <article
         className={cn(
-          "group flex w-full flex-col overflow-hidden text-start [contain:layout]",
+          "group flex h-full w-full flex-col overflow-hidden text-start [contain:layout]",
           "active:scale-[0.98]",
           favCompact
             ? FAVORITES_CARD_SHELL
@@ -288,7 +261,7 @@ function AdCardInner({
                 "transition-[transform,border-color,box-shadow] duration-200 ease-out",
                 "hover:border-primary/25 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_2px_10px_rgba(0,0,0,0.45)]",
               ].join(" "),
-          featured ? "h-full min-h-0" : "h-auto",
+          "h-full min-h-0",
         )}
       >
         {/* Image — صفحة المفضلة: ارتفاع ثابت أصغر؛ باقي الصفحات: aspect 4/3 */}
@@ -356,7 +329,7 @@ function AdCardInner({
           <h3
             className={cn(
               favCompact ? TITLE_BOX_FAVORITES : TITLE_BOX,
-              "break-words font-semibold text-foreground line-clamp-2 overflow-hidden",
+              "overflow-hidden font-semibold text-foreground line-clamp-2 [overflow-wrap:anywhere]",
               favCompact
                 ? "text-[12px] leading-[1.06rem]"
                 : "text-[13px] leading-[1.25rem]",

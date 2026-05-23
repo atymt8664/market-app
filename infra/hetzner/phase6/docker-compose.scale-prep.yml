@@ -1,0 +1,16 @@
+# STAGING spike only — standalone Redis on loopback (not wired to API yet).
+
+name: souq-arab-redis-spike
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: "no"
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5

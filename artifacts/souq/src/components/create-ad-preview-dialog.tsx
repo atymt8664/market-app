@@ -271,7 +271,7 @@ export function CreateAdPreviewDialog({
           <div className="flex flex-col gap-2 sm:flex-row-reverse sm:justify-start">
             <Button
               type="button"
-              className="h-11 w-full rounded-full bg-primary font-bold text-black shadow-[0_0_18px_-10px_hsl(var(--primary)/0.4)] sm:flex-1"
+              className="h-11 w-full rounded-full bg-primary font-bold text-black shadow-[0_0_18px_-10px_hsl(var(--primary)/0.4)] sm:min-h-11 sm:flex-1"
               onClick={onPublish}
               disabled={isSubmitting}
             >

@@ -8,11 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useLocation } from "wouter";
-import { getApiBaseUrl } from "@/lib/api-url";
-
-/** Used only for WebSocket (HTTP API stays same-origin via Vercel → Railway). */
-const PRODUCTION_RAILWAY_HTTP_ORIGIN =
-  "https://workspaceapi-server-production-22f2.up.railway.app";
+import { buildWsUrlFromBrowser } from "@/lib/build-ws-url";
 
 export type ChatSocketEvent =
   | {
@@ -23,7 +19,7 @@ export type ChatSocketEvent =
         conversationId: number;
         senderId: number;
         body: string;
-        messageType?: "text" | "image";
+        messageType?: "text" | "image" | "location";
         imageUrl?: string | null;
         createdAt: string;
         deliveredAt: string | null;
@@ -36,33 +32,16 @@ export type ChatSocketEvent =
       userId: number;
       active: boolean;
     }
+  | {
+      type: "messages_removed";
+      conversationId: number;
+      messageIds: number[];
+      /** Present when delete-for-everyone (tombstone); omit for legacy hide-only flows. */
+      deletedForEveryoneAt?: string;
+    }
   | { type: "pong" };
 
-export function buildWsUrl(): string {
-  const base = getApiBaseUrl();
-  if (base) {
-    try {
-      const u = new URL(base);
-      const proto = u.protocol === "https:" ? "wss:" : "ws:";
-      return `${proto}//${u.host}/api/ws`;
-    } catch {
-      /* fall through */
-    }
-  }
-  if (import.meta.env.PROD) {
-    const override = import.meta.env.VITE_WS_HTTP_ORIGIN?.trim();
-    const httpOrigin = override || PRODUCTION_RAILWAY_HTTP_ORIGIN;
-    try {
-      const u = new URL(httpOrigin);
-      const proto = u.protocol === "https:" ? "wss:" : "ws:";
-      return `${proto}//${u.host}/api/ws`;
-    } catch {
-      /* fall through */
-    }
-  }
-  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${window.location.host}/api/ws`;
-}
+export { buildWsUrlFromBrowser as buildWsUrl } from "@/lib/build-ws-url";
 
 type Listener = (e: ChatSocketEvent) => void;
 
@@ -124,7 +103,7 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
       if (!alive) return;
       let ws: WebSocket;
       try {
-        ws = new WebSocket(buildWsUrl());
+        ws = new WebSocket(buildWsUrlFromBrowser());
       } catch {
         return;
       }

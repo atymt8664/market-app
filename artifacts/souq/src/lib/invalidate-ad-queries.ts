@@ -56,9 +56,83 @@ export function upsertAdInListCaches(queryClient: QueryClient, ad: Ad) {
   }
 }
 
+/** Canonical favorites list key — use for setQueryData / invalidate / useQuery. */
+export const favoritesListQueryKey = getListFavoriteAdsQueryKey;
+
+export type FavoriteReaction = { count: number; active: boolean };
+
+/**
+ * Adds, updates, or removes an ad in the favorites list cache (instant /favorites UI).
+ */
+export function syncFavoriteListCache(
+  queryClient: QueryClient,
+  ad: Ad,
+  favorited: boolean,
+  patch?: Partial<Pick<Ad, "favoriteCount" | "isFavorited">>,
+) {
+  const merged: Ad = {
+    ...ad,
+    ...patch,
+    isFavorited: favorited,
+  };
+  queryClient.setQueryData<Ad[]>(favoritesListQueryKey(), (old) => {
+    const list = Array.isArray(old) ? old : [];
+    if (favorited) {
+      const idx = list.findIndex((a) => a.id === ad.id);
+      if (idx >= 0) {
+        const next = [...list];
+        next[idx] = { ...next[idx], ...merged };
+        return next;
+      }
+      return [merged, ...list];
+    }
+    return list.filter((a) => a.id !== ad.id);
+  });
+}
+
+/** Optimistic + rollback helpers shared by Home, Ad Detail, and /favorites. */
+export function createFavoriteToggleHandlers(queryClient: QueryClient, ad: Ad) {
+  const prev = {
+    isFavorited: Boolean(ad.isFavorited),
+    favoriteCount: ad.favoriteCount ?? 0,
+  };
+
+  return {
+    optimistic(willFavorite: boolean) {
+      const favoriteCount = Math.max(0, prev.favoriteCount + (willFavorite ? 1 : -1));
+      patchAdEngagementInCaches(queryClient, ad.id, {
+        isFavorited: willFavorite,
+        favoriteCount,
+      });
+      syncFavoriteListCache(queryClient, ad, willFavorite, { favoriteCount });
+    },
+    onSuccess(data: FavoriteReaction) {
+      patchAdEngagementInCaches(queryClient, ad.id, {
+        isFavorited: data.active,
+        favoriteCount: data.count,
+      });
+      syncFavoriteListCache(queryClient, ad, data.active, {
+        favoriteCount: data.count,
+        isFavorited: data.active,
+      });
+    },
+    onError() {
+      patchAdEngagementInCaches(queryClient, ad.id, {
+        isFavorited: prev.isFavorited,
+        favoriteCount: prev.favoriteCount,
+      });
+      syncFavoriteListCache(queryClient, ad, prev.isFavorited, {
+        favoriteCount: prev.favoriteCount,
+        isFavorited: prev.isFavorited,
+      });
+      void queryClient.invalidateQueries({ queryKey: favoritesListQueryKey() });
+    },
+  };
+}
+
 /** After favorite / unfavorite — refetch to align with server and secondary views. */
 export function invalidateAdRelatedQueries(queryClient: QueryClient, adId: number) {
-  queryClient.invalidateQueries({ queryKey: getListFavoriteAdsQueryKey() });
+  queryClient.invalidateQueries({ queryKey: favoritesListQueryKey() });
   queryClient.invalidateQueries({ queryKey: getListFeaturedAdsQueryKey() });
   queryClient.invalidateQueries({ queryKey: getListRecommendedAdsQueryKey() });
   queryClient.invalidateQueries({ queryKey: getGetAdQueryKey(adId) });

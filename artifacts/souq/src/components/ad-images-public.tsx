@@ -31,6 +31,23 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
     setHeroIndex((i) => Math.min(i, Math.max(0, count - 1)));
   }, [count]);
 
+  /** Preload hero + adjacent slides so thumb taps do not wait on full JPEG fetch. */
+  useEffect(() => {
+    if (count <= 0) return;
+    const indices = new Set<number>([
+      heroIndex,
+      (heroIndex + 1) % count,
+      (heroIndex - 1 + count) % count,
+    ]);
+    for (const i of indices) {
+      const src = images[i];
+      if (!src) continue;
+      const img = new Image();
+      img.decoding = "async";
+      img.src = src;
+    }
+  }, [heroIndex, images, count]);
+
   const openViewer = (index: number) => {
     setViewerIndex(Math.min(Math.max(0, index), Math.max(0, count - 1)));
     setViewerOpen(true);
@@ -98,7 +115,8 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
             src={heroSrc}
             alt=""
             className="absolute inset-0 h-full w-full object-cover transition-opacity duration-200"
-            loading={heroIndex === 0 ? "eager" : "lazy"}
+            loading="eager"
+            fetchPriority={heroIndex === 0 ? "high" : "auto"}
             decoding="async"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, min(820px, 94vw)"
           />

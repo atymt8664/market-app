@@ -11,7 +11,8 @@
     "locations:generate": "node scripts/generate-marketplace-locations-data.mjs",
     "locations:compare-csc": "node scripts/compare-marketplace-locations-to-csc.mjs",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:ws-url": "node ./src/lib/build-ws-url.test.mjs"
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -48,6 +49,7 @@
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "@types/leaflet": "^1.9.21",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -85,5 +87,8 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4"
   }
 }

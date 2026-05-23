@@ -86,6 +86,8 @@ function souqManualChunks(id: string): string | undefined {
   if (norm.includes("node_modules/react-icons/")) return "vendor-react-icons";
   if (norm.includes("node_modules/next-themes/")) return "vendor-next-themes";
 
+  if (norm.includes("node_modules/leaflet/")) return "vendor-leaflet";
+
   if (norm.includes("node_modules/@supabase/")) return "vendor-supabase";
 
   if (norm.includes("node_modules/@floating-ui/")) return "vendor-floating-ui";

@@ -987,12 +987,15 @@ export default function AdDetail() {
           <Suspense
             fallback={
               <div
-                className="h-[5.75rem] w-full animate-pulse rounded-2xl border border-primary/30 bg-zinc-950/60"
+                className="h-[14rem] w-full animate-pulse rounded-2xl border border-primary/30 bg-zinc-950/60"
                 aria-hidden
               />
             }
           >
-            <AdDetailLocationCard city={ad.city ?? ""} />
+            <AdDetailLocationCard
+              city={ad.city ?? ""}
+              sectionShellClassName={deviceInfoShell}
+            />
           </Suspense>
 
           {/* 6 — التحذير الأمني (خارج كرت البائع) */}

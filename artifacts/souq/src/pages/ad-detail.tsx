@@ -17,8 +17,6 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
-  Share2,
-  Heart,
   Copy,
   Phone,
   Eye,
@@ -33,7 +31,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { formatRelativeTime, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { AdImagesPublic } from "@/components/ad-images-public";
+import { AdDetailHeroSection } from "@/components/ad-detail-hero-section";
 import { getPublicAdUrl } from "@/lib/public-url";
 import { buildAdShareText } from "@/lib/share-text";
 import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
@@ -42,13 +40,12 @@ import { AD_SHIPPING_LABELS } from "@/lib/ad-meta-labels";
 import { useToast } from "@/hooks/use-toast";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/hooks/use-locale";
-import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
-import { useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
 import { BuyerSafetyNote } from "@/components/buyer-safety-note";
 import { UserPresenceBadge } from "@/components/user-presence-badge";
 import { t, type Locale } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
+import { useQueryClient } from "@tanstack/react-query";
 import { STALE_AD_DETAIL_MS } from "@/lib/query-stale-times";
 import { createFavoriteToggleHandlers } from "@/lib/invalidate-ad-queries";
 import { prefetchConversationThread } from "@/lib/prefetch-conversation-thread";
@@ -294,6 +291,8 @@ export default function AdDetail() {
   const unlikeMut = useUnlikeAd();
   const favMut = useFavoriteAd();
   const unfavMut = useUnfavoriteAd();
+  const favBusy = favMut.isPending || unfavMut.isPending;
+  const adImages = useMemo(() => ad?.images ?? [], [ad?.images]);
 
   const handleReport = async () => {
     if (!reason) {
@@ -582,9 +581,6 @@ export default function AdDetail() {
   /** بطاقة مواصفة داخل الشبكة */
   const deviceSpecTile =
     "flex min-h-[3.75rem] flex-col justify-start gap-0.5 rounded-xl border border-primary/30 bg-muted/20 p-2.5 text-right shadow-[0_0_14px_-12px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10 dark:bg-black/40";
-  /** أزرار علوية فوق المعرض: دائرة داكنة + حدود lime + أيقونة primary + توهج خفيف */
-  const floatingHeaderBtn =
-    "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-card/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
   const sellerActionH = "h-12 rounded-2xl text-sm font-semibold";
   /** كرت داخلي داخل «معلومات البائع» — نفس روح كروت الشات. */
   const sellerInnerShell =
@@ -616,56 +612,19 @@ export default function AdDetail() {
     descRaw.length > 100 || descRaw.split("\n").length > 2;
 
   return (
-    <motion.div
+    <div
       dir="rtl"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
       className="flex flex-col w-full min-h-[100dvh] bg-[#0A0A0A] pb-28"
     >
-      {/* أزرار علوية ضمن تدفق الصفحة فوق المعرض — بدون fixed/sticky لتجنب التداخل مع الكروت عند التمرير */}
-      <div className={`${pageMax} pb-2 space-y-2`}>
-        <div className="flex items-center justify-between gap-3 py-3 md:py-4">
-          <Link href="/" className="shrink-0">
-            <button
-              type="button"
-              className={floatingHeaderBtn}
-              aria-label={t("common.back")}
-            >
-              <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
-            </button>
-          </Link>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => void handleShare()}
-              className={floatingHeaderBtn}
-              aria-label={t("ad_detail.copy_link")}
-            >
-              <Share2 className="h-5 w-5" strokeWidth={2.25} />
-            </button>
-            <button
-              type="button"
-              onClick={handleToggleFavorite}
-              aria-label={t("ad_detail.favorite")}
-              disabled={favMut.isPending || unfavMut.isPending}
-              className={floatingHeaderBtn}
-            >
-              <Heart
-                className={cn(
-                  "h-5 w-5",
-                  ad.isFavorited
-                    ? "fill-primary text-primary"
-                    : "text-primary",
-                )}
-                strokeWidth={2.25}
-              />
-            </button>
-          </div>
-        </div>
-        {/* معرض الصور — مطابق لعرض الإنشاء المحلي */}
-        <AdImagesPublic images={ad.images ?? []} title={ad.title} />
-      </div>
+      <AdDetailHeroSection
+        pageMax={pageMax}
+        images={adImages}
+        title={ad.title}
+        isFavorited={ad.isFavorited ?? false}
+        favBusy={favBusy}
+        onShare={() => void handleShare()}
+        onToggleFavorite={handleToggleFavorite}
+      />
 
       <div className={`${pageMax} py-2 md:py-4`}>
         <div className="flex flex-col gap-4 min-w-0">
@@ -735,7 +694,7 @@ export default function AdDetail() {
               onClick={handleToggleLike}
               aria-label={t("ad_detail.likes")}
               disabled={likeMut.isPending || unlikeMut.isPending}
-              className="flex flex-1 flex-col items-center justify-center gap-1.5 px-2 active:scale-[0.98] transition-transform disabled:opacity-60"
+              className="flex flex-1 flex-col items-center justify-center gap-1.5 px-2 touch-manipulation active:scale-[0.98] transition-transform duration-150 disabled:opacity-60"
             >
               <div className="flex items-center gap-1.5 text-primary">
                 <span className="text-lg font-bold tabular-nums leading-none text-foreground">
@@ -762,7 +721,7 @@ export default function AdDetail() {
               onClick={handleToggleFavorite}
               aria-label={t("ad_detail.favorites")}
               disabled={favMut.isPending || unfavMut.isPending}
-              className="flex flex-1 flex-col items-center justify-center gap-1.5 px-2 active:scale-[0.98] transition-transform disabled:opacity-60"
+              className="flex flex-1 flex-col items-center justify-center gap-1.5 px-2 touch-manipulation active:scale-[0.98] transition-transform duration-150 disabled:opacity-60"
             >
               <div className="flex items-center gap-1.5 text-primary">
                 <span className="text-lg font-bold tabular-nums leading-none text-foreground">
@@ -1103,6 +1062,6 @@ export default function AdDetail() {
           </div>
         </SheetContent>
       </Sheet>
-    </motion.div>
+    </div>
   );
 }

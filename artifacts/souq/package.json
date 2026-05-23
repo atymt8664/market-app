@@ -12,7 +12,8 @@
     "locations:compare-csc": "node scripts/compare-marketplace-locations-to-csc.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:ws-url": "node ./src/lib/build-ws-url.test.mjs"
+    "test:ws-url": "node ./src/lib/build-ws-url.test.mjs",
+    "test:ad-image-url": "node ./src/lib/ad-image-url.test.mjs"
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",

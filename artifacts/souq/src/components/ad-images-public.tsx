@@ -1,20 +1,30 @@
 /**
- * Read-only image gallery for public ad detail.
- * Not used on create/edit flows — those use CreateAdImageGallery.
- * CSS transitions only (7B — keeps framer-motion off ad-detail critical path).
+ * Read-only image gallery for public ad detail (P9).
+ * Crossfade layers + decode-ahead preload — no framer-motion on critical path.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
+import { AdImageCrossfade } from "@/components/ad-image-crossfade";
+import {
+  getAdImageHeroUrl,
+  getAdImageThumbUrl,
+  getAdImageViewerUrl,
+} from "@/lib/ad-image-url";
+import {
+  adImageListEqual,
+  preloadAdImageAll,
+  preloadAdImageNeighbors,
+} from "@/lib/ad-image-preload";
 
 type AdImagesPublicProps = {
   images: string[];
   title: string;
 };
 
-export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
+function AdImagesPublicInner({ images, title }: AdImagesPublicProps) {
   const { locale } = useLocale();
   const isAr = locale === "ar";
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -25,33 +35,58 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
   viewerIndexRef.current = viewerIndex;
 
   const count = images.length;
-  const heroSrc = count > 0 ? images[Math.min(heroIndex, count - 1)] : "";
+  const heroUrls = useMemo(
+    () => images.map((src) => getAdImageHeroUrl(src)),
+    [images],
+  );
+  const thumbUrls = useMemo(
+    () => images.map((src) => getAdImageThumbUrl(src)),
+    [images],
+  );
+  const viewerUrls = useMemo(
+    () => images.map((src) => getAdImageViewerUrl(src)),
+    [images],
+  );
+
+  const safeHeroIndex = count > 0 ? Math.min(heroIndex, count - 1) : 0;
+  const safeViewerIndex = count > 0 ? Math.min(viewerIndex, count - 1) : 0;
+  const heroSrc = count > 0 ? heroUrls[safeHeroIndex] : "";
+  const viewerSrc = count > 0 ? viewerUrls[safeViewerIndex] : "";
+
+  const prevHeroIndexRef = useRef(safeHeroIndex);
+  const heroInstantSrc =
+    count > 0 && prevHeroIndexRef.current !== safeHeroIndex
+      ? thumbUrls[safeHeroIndex]
+      : undefined;
+
+  useEffect(() => {
+    prevHeroIndexRef.current = safeHeroIndex;
+  }, [safeHeroIndex]);
 
   useEffect(() => {
     setHeroIndex((i) => Math.min(i, Math.max(0, count - 1)));
   }, [count]);
 
-  /** Preload hero + adjacent slides so thumb taps do not wait on full JPEG fetch. */
   useEffect(() => {
-    if (count <= 0) return;
-    const indices = new Set<number>([
-      heroIndex,
-      (heroIndex + 1) % count,
-      (heroIndex - 1 + count) % count,
-    ]);
-    for (const i of indices) {
-      const src = images[i];
-      if (!src) continue;
-      const img = new Image();
-      img.decoding = "async";
-      img.src = src;
-    }
-  }, [heroIndex, images, count]);
+    preloadAdImageAll(heroUrls);
+  }, [heroUrls]);
 
-  const openViewer = (index: number) => {
-    setViewerIndex(Math.min(Math.max(0, index), Math.max(0, count - 1)));
-    setViewerOpen(true);
-  };
+  useEffect(() => {
+    preloadAdImageNeighbors(heroUrls, safeHeroIndex);
+  }, [safeHeroIndex, heroUrls]);
+
+  useEffect(() => {
+    if (!viewerOpen) return;
+    preloadAdImageNeighbors(viewerUrls, safeViewerIndex);
+  }, [viewerOpen, safeViewerIndex, viewerUrls]);
+
+  const openViewer = useCallback(
+    (index: number) => {
+      setViewerIndex(Math.min(Math.max(0, index), Math.max(0, count - 1)));
+      setViewerOpen(true);
+    },
+    [count],
+  );
 
   const closeViewer = useCallback(() => {
     setHeroIndex(viewerIndexRef.current);
@@ -86,15 +121,34 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
     }
   }, [viewerOpen, count, viewerIndex, closeViewer]);
 
-  const handleThumbClick = (index: number, e: React.MouseEvent) => {
+  const handleThumbClick = useCallback((index: number, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setHeroIndex(index);
-  };
+  }, []);
+
+  const handleViewerTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartXRef.current = e.changedTouches[0]?.clientX ?? null;
+  }, []);
+
+  const handleViewerTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const startX = touchStartXRef.current;
+      const endX = e.changedTouches[0]?.clientX;
+      if (startX === null || typeof endX !== "number") return;
+      const deltaX = endX - startX;
+      if (deltaX > 48) prevImage();
+      if (deltaX < -48) nextImage();
+    },
+    [nextImage, prevImage],
+  );
 
   if (count === 0) {
     return motionlessEmpty();
   }
+
+  const heroSizes =
+    "(max-width: 640px) 100vw, (max-width: 1024px) 90vw, min(820px, 94vw)";
 
   return (
     <>
@@ -107,23 +161,27 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
             "aspect-[4/3] sm:aspect-[16/10] max-h-[min(380px,70vh)] sm:max-h-[380px]",
             "shadow-sm transition-[box-shadow,transform] duration-200",
             "hover:shadow-md active:scale-[0.998] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
+            "touch-manipulation [contain:layout_paint]",
           )}
           aria-label={t("ad_images_public.open_gallery")}
         >
-          <img
-            key={heroSrc}
+          <AdImageCrossfade
             src={heroSrc}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-200"
+            instantSrc={heroInstantSrc}
+            alt={t("ad_images_public.photo_of", {
+              current: heroIndex + 1,
+              total: count,
+            })}
+            className="absolute inset-0 size-full"
             loading="eager"
             fetchPriority={heroIndex === 0 ? "high" : "auto"}
-            decoding="async"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, min(820px, 94vw)"
+            sizes={heroSizes}
+            transitionMs={120}
           />
           <span
             dir="ltr"
             className={cn(
-              "absolute z-10 rounded-md bg-black/85 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-white shadow-md ring-1 ring-white/10 backdrop-blur-sm",
+              "absolute z-10 rounded-md bg-black/85 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-white shadow-md ring-1 ring-white/10",
               "left-3 bottom-[max(0.5rem,env(safe-area-inset-bottom))]",
             )}
             aria-live="polite"
@@ -146,20 +204,22 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
                 type="button"
                 onClick={(e) => handleThumbClick(i, e)}
                 className={cn(
-                  "relative h-[4.25rem] w-[4.25rem] shrink-0 overflow-hidden rounded-xl border-2 transition-[box-shadow,transform,border-color] duration-200",
+                  "relative h-[4.25rem] w-[4.25rem] shrink-0 overflow-hidden rounded-xl border-2 transition-[border-color,transform] duration-150",
+                  "touch-manipulation active:scale-[0.98]",
                   i === heroIndex
                     ? "border-primary ring-2 ring-primary/35 ring-offset-2 ring-offset-background"
-                    : "border-border/70 hover:border-primary/40 active:scale-[0.98]",
+                    : "border-border/70 hover:border-primary/40",
                 )}
                 aria-label={t("ad_images_public.view_photo_in_preview", { index: i + 1 })}
                 aria-pressed={i === heroIndex}
               >
                 <img
-                  src={src}
+                  src={thumbUrls[i]}
                   alt=""
                   className="h-full w-full object-cover"
                   loading="lazy"
                   decoding="async"
+                  fetchPriority="low"
                   sizes="68px"
                 />
                 <span
@@ -185,7 +245,7 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
             <button
               type="button"
               onClick={closeViewer}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+              className="flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 active:scale-[0.96]"
               aria-label={t("ad_images_public.close")}
             >
               <X className="h-5 w-5" />
@@ -195,6 +255,7 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
             </span>
             <div className="h-10 w-10 shrink-0" aria-hidden />
           </div>
+
           <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-0 pb-[env(safe-area-inset-bottom)]">
             <button
               type="button"
@@ -202,37 +263,26 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
                 e.stopPropagation();
                 prevImage();
               }}
-              className="absolute start-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white md:start-4"
+              className="absolute start-2 z-10 flex h-11 w-11 touch-manipulation items-center justify-center rounded-full bg-white/10 text-white active:scale-[0.96] md:start-4"
               aria-label={t("ad_images_public.previous_photo")}
             >
               <ChevronLeft className="h-6 w-6" />
             </button>
 
-            <div
-              key={viewerIndex}
-              className="flex max-h-[min(78vh,calc(100dvh-8rem))] max-w-[94vw] items-center justify-center transition-opacity duration-200"
-            >
-              <img
-                src={images[viewerIndex]}
-                alt={t("ad_images_public.image_alt", { title, index: viewerIndex + 1 })}
-                className="max-h-[min(78vh,calc(100dvh-8rem))] max-w-[94vw] select-none object-contain"
-                loading="eager"
-                decoding="async"
-                sizes="94vw"
-                onClick={(e) => e.stopPropagation()}
-                onTouchStart={(e) => {
-                  touchStartXRef.current = e.changedTouches[0]?.clientX ?? null;
-                }}
-                onTouchEnd={(e) => {
-                  const startX = touchStartXRef.current;
-                  const endX = e.changedTouches[0]?.clientX;
-                  if (startX === null || typeof endX !== "number") return;
-                  const deltaX = endX - startX;
-                  if (deltaX > 48) prevImage();
-                  if (deltaX < -48) nextImage();
-                }}
-              />
-            </div>
+            <AdImageCrossfade
+              src={viewerSrc}
+              alt={t("ad_images_public.image_alt", {
+                title,
+                index: viewerIndex + 1,
+              })}
+              className="relative h-[min(78vh,calc(100dvh-8rem))] w-[94vw] max-w-[94vw]"
+              objectFit="contain"
+              loading="eager"
+              sizes="94vw"
+              transitionMs={120}
+              onTouchStart={handleViewerTouchStart}
+              onTouchEnd={handleViewerTouchEnd}
+            />
 
             <button
               type="button"
@@ -240,7 +290,7 @@ export function AdImagesPublic({ images, title }: AdImagesPublicProps) {
                 e.stopPropagation();
                 nextImage();
               }}
-              className="absolute end-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white md:end-4"
+              className="absolute end-2 z-10 flex h-11 w-11 touch-manipulation items-center justify-center rounded-full bg-white/10 text-white active:scale-[0.96] md:end-4"
               aria-label={t("ad_images_public.next_photo")}
             >
               <ChevronRight className="h-6 w-6" />
@@ -263,3 +313,9 @@ function motionlessEmpty() {
     </div>
   );
 }
+
+export const AdImagesPublic = memo(AdImagesPublicInner, (prev, next) => {
+  return prev.title === next.title && adImageListEqual(prev.images, next.images);
+});
+
+AdImagesPublic.displayName = "AdImagesPublic";

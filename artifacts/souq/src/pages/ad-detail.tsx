@@ -994,6 +994,7 @@ export default function AdDetail() {
           >
             <AdDetailLocationCard
               city={ad.city ?? ""}
+              countryCode="DE"
               sectionShellClassName={deviceInfoShell}
             />
           </Suspense>

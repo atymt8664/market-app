@@ -1,8 +1,8 @@
 /**
- * Ad detail location card (P3) — interactive in-card map, external maps on tap.
+ * Ad detail location card (P3) — interactive in-card map; external maps via dedicated button only.
  */
-import { lazy, memo, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, MapPin } from "lucide-react";
+import { lazy, memo, Suspense, useCallback, useEffect, useState } from "react";
+import { MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
@@ -38,16 +38,15 @@ function AdDetailLocationCardInner({
   city,
   latitude,
   longitude,
-  countryCode,
+  countryCode = "DE",
   className,
   sectionShellClassName,
 }: AdDetailLocationCardProps) {
   const { locale } = useLocale();
   const isRtl = locale === "ar";
   const cityTrim = city.trim();
+  const country = countryCode?.trim().toUpperCase() || "DE";
 
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [mapVisible, setMapVisible] = useState(false);
   const [center, setCenter] = useState<AdCityCenter | null>(null);
   const [centerLoading, setCenterLoading] = useState(!!cityTrim);
 
@@ -64,7 +63,7 @@ function AdDetailLocationCardInner({
       city: cityTrim,
       latitude,
       longitude,
-      countryCode,
+      countryCode: country,
     }).then((resolved) => {
       if (cancelled) return;
       setCenter(resolved);
@@ -74,23 +73,7 @@ function AdDetailLocationCardInner({
     return () => {
       cancelled = true;
     };
-  }, [cityTrim, latitude, longitude, countryCode]);
-
-  useEffect(() => {
-    if (!center || !rootRef.current) return;
-    const el = rootRef.current;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setMapVisible(true);
-          obs.disconnect();
-        }
-      },
-      { rootMargin: "160px 0px", threshold: 0.01 },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [center]);
+  }, [cityTrim, latitude, longitude, country]);
 
   const openExternal = useCallback(() => {
     if (!center) return;
@@ -123,28 +106,14 @@ function AdDetailLocationCardInner({
       <span className={sectionHeading}>{t("ad_detail.location.section_title")}</span>
 
       <div
-        ref={rootRef}
         className={cn(
           locationCardShell,
           "transition-[border-color,box-shadow] hover:border-primary/55 hover:shadow-[0_0_26px_-10px_hsl(var(--primary)/0.28)]",
         )}
       >
-        <div className="flex items-center justify-between gap-2 border-b border-primary/15 px-3 py-2.5">
-          <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
-            <MapPin className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
-            <span className="truncate">{cityTrim}</span>
-          </div>
-          {center ? (
-            <button
-              type="button"
-              onClick={openExternal}
-              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-primary/35 bg-zinc-950/80 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:border-primary/55 hover:bg-zinc-900/90"
-              aria-label={t("ad_detail.location.open_in_maps")}
-            >
-              <ExternalLink className="h-3 w-3" strokeWidth={2.25} />
-              <span className="hidden sm:inline">{t("ad_detail.location.open_in_maps")}</span>
-            </button>
-          ) : null}
+        <div className="flex items-center gap-2 border-b border-primary/15 px-3 py-2.5">
+          <MapPin className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
+          <span className="truncate text-sm font-medium text-foreground">{cityTrim}</span>
         </div>
 
         <div className="relative aspect-[16/10] min-h-[11rem] w-full max-h-[220px] bg-zinc-900/90 sm:min-h-[12.5rem]">
@@ -153,7 +122,7 @@ function AdDetailLocationCardInner({
               className="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900"
               aria-hidden
             />
-          ) : center && mapVisible ? (
+          ) : center ? (
             <Suspense
               fallback={
                 <div
@@ -166,31 +135,15 @@ function AdDetailLocationCardInner({
                 lat={center.lat}
                 lng={center.lng}
                 city={cityTrim}
-                className="absolute inset-0"
-                onCardTap={openExternal}
+                onOpenExternal={openExternal}
               />
             </Suspense>
-          ) : center ? (
-            <div
-              className="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900"
-              aria-hidden
-            />
           ) : (
             <div className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
               {t("ad_detail.location.map_preview_unavailable")}
             </div>
           )}
         </div>
-
-        <p className="border-t border-primary/10 px-3 py-2 text-[10px] leading-snug text-muted-foreground">
-          {t("ad_detail.location.privacy_hint")}
-          {center ? (
-            <>
-              {" "}
-              · {t("ad_detail.location.tap_map_hint")}
-            </>
-          ) : null}
-        </p>
       </div>
     </section>
   );

@@ -4,13 +4,14 @@
 import { memo, useEffect, useRef, type MouseEvent } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Minus, Plus } from "lucide-react";
+import { ExternalLink, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/i18n";
 import {
+  adDetailMapShellClass,
+  LEAFLET_MIN_MAP_PX,
   MAP_TILE_ATTRIBUTION,
   MAP_TILE_URL,
-  leafletMapShellClass,
 } from "@/lib/leaflet-map-shared";
 
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png?url";
@@ -36,80 +37,111 @@ const limeMarkerIcon = L.divIcon({
   iconAnchor: [9, 9],
 });
 
+const mapControlBtnClass =
+  "pointer-events-auto flex h-8 w-8 touch-manipulation items-center justify-center rounded-xl border border-primary/50 bg-zinc-950/90 text-primary shadow-[0_0_14px_-6px_hsl(var(--primary)/0.45)] ring-1 ring-primary/20 transition-[transform,border-color] hover:border-primary/70 active:scale-95";
+
 export type AdDetailInteractiveMapProps = {
   lat: number;
   lng: number;
   city: string;
-  className?: string;
-  onCardTap?: () => void;
+  onOpenExternal?: () => void;
 };
 
 function AdDetailInteractiveMapInner({
   lat,
   lng,
   city,
-  className,
-  onCardTap,
+  onOpenExternal,
 }: AdDetailInteractiveMapProps) {
+  const shellRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
-  const dragRef = useRef(false);
-  const onCardTapRef = useRef(onCardTap);
-  onCardTapRef.current = onCardTap;
+  const onOpenExternalRef = useRef(onOpenExternal);
+  onOpenExternalRef.current = onOpenExternal;
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el || mapRef.current) return;
 
-    const map = L.map(el, {
-      center: [lat, lng],
-      zoom: CITY_ZOOM,
-      minZoom: MIN_ZOOM,
-      maxZoom: MAX_ZOOM,
-      zoomControl: false,
-      attributionControl: true,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
-      dragging: true,
-      touchZoom: true,
-      boxZoom: false,
-      keyboard: false,
-    });
+    let cancelled = false;
+    let lateSizeTimer: ReturnType<typeof setTimeout> | null = null;
+    let initRaf = 0;
+    let resizeObs: ResizeObserver | null = null;
 
-    L.tileLayer(MAP_TILE_URL, {
-      attribution: MAP_TILE_ATTRIBUTION,
-      maxZoom: 19,
-    }).addTo(map);
+    const invalidateMapSize = (map: L.Map) => {
+      try {
+        const { width, height } = el.getBoundingClientRect();
+        if (width >= LEAFLET_MIN_MAP_PX && height >= LEAFLET_MIN_MAP_PX) {
+          map.invalidateSize({ animate: false });
+        }
+      } catch {
+        /* map tearing down */
+      }
+    };
 
-    markerRef.current = L.marker([lat, lng], {
-      icon: limeMarkerIcon,
-      interactive: false,
-    }).addTo(map);
+    const initWhenSized = () => {
+      if (cancelled || mapRef.current) return;
+      const { width, height } = el.getBoundingClientRect();
+      if (width < LEAFLET_MIN_MAP_PX || height < LEAFLET_MIN_MAP_PX) {
+        initRaf = requestAnimationFrame(initWhenSized);
+        return;
+      }
 
-    map.on("dragstart", () => {
-      dragRef.current = true;
-    });
-    map.on("dragend", () => {
-      window.setTimeout(() => {
-        dragRef.current = false;
-      }, 80);
-    });
-    map.on("click", () => {
-      if (!dragRef.current) onCardTapRef.current?.();
-    });
+      const map = L.map(el, {
+        center: [lat, lng],
+        zoom: CITY_ZOOM,
+        minZoom: MIN_ZOOM,
+        maxZoom: MAX_ZOOM,
+        zoomControl: false,
+        attributionControl: true,
+        scrollWheelZoom: false,
+        doubleClickZoom: true,
+        dragging: true,
+        touchZoom: true,
+        boxZoom: false,
+        keyboard: false,
+      });
 
-    mapRef.current = map;
+      L.tileLayer(MAP_TILE_URL, {
+        attribution: MAP_TILE_ATTRIBUTION,
+        subdomains: "abcd",
+        maxZoom: 19,
+        detectRetina: true,
+        updateWhenIdle: false,
+        keepBuffer: 2,
+      }).addTo(map);
 
-    const raf = requestAnimationFrame(() => {
-      map.invalidateSize({ animate: false });
-    });
+      markerRef.current = L.marker([lat, lng], {
+        icon: limeMarkerIcon,
+        interactive: false,
+      }).addTo(map);
+
+      mapRef.current = map;
+
+      resizeObs = new ResizeObserver(() => {
+        if (!cancelled && mapRef.current) invalidateMapSize(mapRef.current);
+      });
+      resizeObs.observe(el);
+
+      requestAnimationFrame(() => invalidateMapSize(map));
+      lateSizeTimer = setTimeout(() => {
+        if (!cancelled && mapRef.current) invalidateMapSize(mapRef.current);
+      }, 480);
+    };
+
+    initWhenSized();
 
     return () => {
-      cancelAnimationFrame(raf);
-      map.remove();
-      mapRef.current = null;
-      markerRef.current = null;
+      cancelled = true;
+      if (initRaf) cancelAnimationFrame(initRaf);
+      if (lateSizeTimer) clearTimeout(lateSizeTimer);
+      resizeObs?.disconnect();
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- map init once per mount
   }, []);
@@ -131,20 +163,35 @@ function AdDetailInteractiveMapInner({
     else map.zoomOut();
   };
 
+  const openExternal = (e: MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onOpenExternalRef.current?.();
+  };
+
   return (
-    <div className={cn(leafletMapShellClass(className), "group/map")}>
+    <div ref={shellRef} className={adDetailMapShellClass()}>
       <div
         ref={containerRef}
-        className="absolute inset-0 touch-manipulation"
+        className="h-full w-full touch-manipulation"
         role="img"
         aria-label={t("ad_detail.location.map_alt", { city })}
       />
-      <div className="pointer-events-none absolute inset-0 z-[450] bg-gradient-to-t from-black/25 via-transparent to-black/10" />
-      <div className="absolute bottom-2 end-2 z-[500] flex flex-col gap-1">
+      {onOpenExternal ? (
+        <button
+          type="button"
+          onClick={openExternal}
+          className={cn(mapControlBtnClass, "absolute start-2 top-2 z-[500]")}
+          aria-label={t("ad_detail.location.open_in_maps")}
+        >
+          <ExternalLink className="h-3.5 w-3.5" strokeWidth={2.25} />
+        </button>
+      ) : null}
+      <div className="absolute end-2 top-1/2 z-[500] flex -translate-y-1/2 flex-col gap-1">
         <button
           type="button"
           onClick={zoomBy(1)}
-          className="pointer-events-auto flex h-8 w-8 touch-manipulation items-center justify-center rounded-xl border border-primary/50 bg-zinc-950/90 text-primary shadow-[0_0_14px_-6px_hsl(var(--primary)/0.45)] ring-1 ring-primary/20 transition-[transform,border-color] hover:border-primary/70 active:scale-95"
+          className={mapControlBtnClass}
           aria-label={t("ad_detail.location.zoom_in")}
         >
           <Plus className="h-4 w-4" strokeWidth={2.5} />
@@ -152,7 +199,7 @@ function AdDetailInteractiveMapInner({
         <button
           type="button"
           onClick={zoomBy(-1)}
-          className="pointer-events-auto flex h-8 w-8 touch-manipulation items-center justify-center rounded-xl border border-primary/50 bg-zinc-950/90 text-primary shadow-[0_0_14px_-6px_hsl(var(--primary)/0.45)] ring-1 ring-primary/20 transition-[transform,border-color] hover:border-primary/70 active:scale-95"
+          className={mapControlBtnClass}
           aria-label={t("ad_detail.location.zoom_out")}
         >
           <Minus className="h-4 w-4" strokeWidth={2.5} />

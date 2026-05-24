@@ -29,3 +29,6 @@ export const STALE_THREAD_MESSAGES_MS = 60 * 1000;
 
 /** Thread messages cache retention. */
 export const GC_THREAD_MESSAGES_MS = 30 * 60 * 1000;
+
+/** Default React Query garbage-collection for inactive cache entries (P9). */
+export const GC_QUERY_DEFAULT_MS = 30 * 60 * 1000;

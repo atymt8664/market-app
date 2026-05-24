@@ -39,10 +39,25 @@ command -v websocat >/dev/null 2>&1 || { echo "websocat missing after install" >
 log "baseline log dir"
 install -d -m 0750 -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" /var/log/souq-arab/baseline
 
-log "sync phase5 scripts"
+log "sync phase5 scripts + staging smoke guards"
 install -d -m 0755 "${BASE}/scripts" "${BASE}/phase5"
-for f in phase5-collect-baseline.sh phase5-staging-load-smoke.sh phase5-ws-probe.sh verify-phase5.sh; do
-  install -m 0755 "${SCRIPT_DIR}/${f}" "${BASE}/scripts/${f}"
+for f in \
+  require-staging-smoke-target.sh \
+  source-staging-smoke-guard.sh \
+  phase5-collect-baseline.sh \
+  phase5-staging-load-smoke.sh \
+  phase5-ws-probe.sh \
+  verify-phase5.sh \
+  verify-staging-smoke-routing.sh \
+  diag-staging-smoke-login.sh \
+  provision-staging-smoke-vps.sh; do
+  src="${SCRIPT_DIR}/${f}"
+  [[ -f "$src" ]] || src="${SCRIPT_DIR}/../_guards/${f}"
+  [[ -f "$src" ]] || continue
+  install -m 0755 "$src" "${BASE}/scripts/${f}"
+done
+for f in phase4-staging-smoke.sh phase4-staging-smoke-extended.sh phase4-staging-e2e-full.sh; do
+  install -m 0755 "${SCRIPT_DIR}/../phase4/${f}" "${BASE}/scripts/${f}" 2>/dev/null || true
 done
 install -m 0644 "${SCRIPT_DIR}/README.md" "${BASE}/phase5/README.md"
 install -m 0644 "${SCRIPT_DIR}/CUTOVER-RUNBOOK.md" "${BASE}/phase5/CUTOVER-RUNBOOK.md"

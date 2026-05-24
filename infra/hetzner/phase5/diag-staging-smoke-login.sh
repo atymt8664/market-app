@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
-# STAGING only — diagnose smoke login without printing secrets.
+# STAGING only — diagnose smoke login without printing secrets (loopback :3001).
 set -u
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "${SCRIPT_DIR}/source-staging-smoke-guard.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/source-staging-smoke-guard.sh"
+elif [[ -f "${SCRIPT_DIR}/../_guards/source-staging-smoke-guard.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/../_guards/source-staging-smoke-guard.sh"
+else
+  # shellcheck source=/dev/null
+  source "/opt/souq-arab/scripts/source-staging-smoke-guard.sh"
+fi
+_souq_source_staging_smoke_guard "$SCRIPT_DIR"
+staging_smoke_guard "${API_BASE:-}"
+BASE="${STAGING_SMOKE_BASE}"
+
 ENV_FILE="/opt/souq-arab/config/api.env.staging"
 CONTAINER="${SOUQ_API_CONTAINER:-souq-arab-api-api-1}"
 SE="$(grep -E '^STAGING_SMOKE_EMAIL=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
@@ -9,11 +24,12 @@ SP="$(grep -E '^STAGING_SMOKE_PASSWORD=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
 echo "email_set=$([[ -n "${SE:-}" ]] && echo yes || echo no)"
 echo "pass_set=$([[ -n "${SP:-}" ]] && echo yes || echo no)"
 echo "pass_len=${#SP}"
+echo "target_base=${BASE}"
 
 payload=$(SE="$SE" SP="$SP" python3 -c 'import json,os; print(json.dumps({"email":os.environ["SE"],"password":os.environ["SP"]}))')
 c=$(curl -s -o /tmp/login_body.json -w '%{http_code}' -X POST \
   -H 'Content-Type: application/json' -H 'User-Agent: souq-p5-diag' \
-  -d "$payload" http://127.0.0.1/api/auth/login)
+  -d "$payload" "${BASE}/api/auth/login")
 echo "login_http=$c"
 python3 -c 'import json; j=json.load(open("/tmp/login_body.json")); print("login_code="+str(j.get("code","none"))); print("has_error="+str("error" in j))' 2>/dev/null || echo "login_body_unparsed"
 rm -f /tmp/login_body.json

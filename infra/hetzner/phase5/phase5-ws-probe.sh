@@ -1,13 +1,26 @@
 #!/usr/bin/env bash
-# WebSocket probe on STAGING — uses VPS smoke credentials only; no secret output.
+# WebSocket probe on STAGING — loopback :3001 only; guarded against prod-shadow mixups.
 set -u
-# Staging API loopback (:3001). Nginx :80 may point at prod-shadow — override with API_BASE if needed.
-BASE="${API_BASE:-http://127.0.0.1:3001}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "${SCRIPT_DIR}/source-staging-smoke-guard.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/source-staging-smoke-guard.sh"
+elif [[ -f "${SCRIPT_DIR}/../_guards/source-staging-smoke-guard.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/../_guards/source-staging-smoke-guard.sh"
+else
+  # shellcheck source=/dev/null
+  source "/opt/souq-arab/scripts/source-staging-smoke-guard.sh"
+fi
+_souq_source_staging_smoke_guard "$SCRIPT_DIR"
+staging_smoke_guard "${API_BASE:-}"
+BASE="${STAGING_SMOKE_BASE}"
+
 FAIL=0
 ok() { printf '  OK  %s\n' "$*"; }
 bad() { printf '  FAIL %s\n' "$*"; FAIL=1; }
 
-echo "=== Phase 5 WebSocket probe ==="
+echo "=== Phase 5 WebSocket probe (${BASE}) ==="
 
 read_env_key() {
   grep -E "^${1}=" /opt/souq-arab/config/api.env.staging 2>/dev/null | head -1 | cut -d= -f2- || true
@@ -59,10 +72,7 @@ fi
 COOKIE="$(extract_session_cookie "$JAR")"
 [[ -n "${COOKIE:-}" ]] && ok "session cookie present" || { bad "session cookie missing"; echo "=== WS PROBE: FAIL ==="; exit 1; }
 
-if [[ -z "${WS_URL:-}" ]]; then
-  hostport="${BASE#*://}"
-  WS_URL="ws://${hostport}/api/ws"
-fi
+WS_URL="${WS_URL:-$(staging_smoke_ws_url)}"
 
 if printf '\n' | timeout 2 websocat -n1 "$WS_URL" 2>/dev/null | grep -q .; then
   bad "ws accepted without cookie"

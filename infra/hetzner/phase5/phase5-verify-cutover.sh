@@ -44,10 +44,24 @@ if [[ -n "${SE:-}" && -n "${SP:-}" ]]; then
   else
     bad "upload (csrf missing)"
   fi
-  if SOUQ_SMOKE_COOKIE_JAR="$JAR" API_BASE="$BASE" /opt/souq-arab/scripts/phase5-ws-probe.sh 2>/dev/null | grep -q 'WS PROBE: PASS'; then
-    ok "WebSocket ping/pong"
+  if command -v websocat >/dev/null 2>&1; then
+    COOKIE="$(grep $'\t'souq.sid$'\t' "$JAR" 2>/dev/null | awk -F'\t' '{print $6"="$7}' | tail -1)"
+    if [[ -z "${COOKIE:-}" ]]; then
+      COOKIE="$(grep '^#HttpOnly' "$JAR" 2>/dev/null | grep $'\t'souq.sid$'\t' | awk -F'\t' '{print $6"="$7}' | tail -1)"
+    fi
+  if [[ "$BASE" == https://* ]]; then
+    WS_URL="wss://${BASE#https://}/api/ws"
   else
-    bad "WebSocket"
+    WS_URL="ws://${BASE#*://}/api/ws"
+  fi
+    REPLY=$(printf '{"type":"ping"}\n' | timeout 5 websocat -n1 --header="Cookie: ${COOKIE}" "$WS_URL" 2>/dev/null | head -1 || true)
+    if echo "$REPLY" | grep -q '"type":"pong"'; then
+      ok "WebSocket ping/pong"
+    else
+      bad "WebSocket"
+    fi
+  else
+    skip "WebSocket (websocat not installed)"
   fi
   rm -f "$JAR"
 else

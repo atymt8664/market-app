@@ -21,6 +21,13 @@ fi
 
 docker compose -f "${BASE}/api/docker/docker-compose.yml" ps 2>/dev/null | grep -q 'api-1.*Up' && ok "shadow api Up" || bad "api not Up"
 
+echo "--- staging smoke routing ---"
+if bash "${BASE}/scripts/verify-staging-smoke-routing.sh"; then
+  ok "staging smoke routing guards"
+else
+  bad "staging smoke routing guards"
+fi
+
 echo "--- collect baseline ---"
 if bash "${BASE}/scripts/phase5-collect-baseline.sh"; then
   ok "baseline collected"

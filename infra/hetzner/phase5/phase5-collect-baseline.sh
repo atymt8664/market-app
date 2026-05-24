@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
-# STAGING VPS baseline snapshot — aggregates only, no secrets.
+# STAGING VPS baseline snapshot — loopback :3001 only; aggregates only, no secrets.
 set -u
-BASE="${API_BASE:-http://127.0.0.1}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "${SCRIPT_DIR}/source-staging-smoke-guard.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/source-staging-smoke-guard.sh"
+elif [[ -f "${SCRIPT_DIR}/../_guards/source-staging-smoke-guard.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/../_guards/source-staging-smoke-guard.sh"
+else
+  # shellcheck source=/dev/null
+  source "/opt/souq-arab/scripts/source-staging-smoke-guard.sh"
+fi
+_souq_source_staging_smoke_guard "$SCRIPT_DIR"
+staging_smoke_guard "${API_BASE:-}"
+BASE="${STAGING_SMOKE_BASE}"
+
 OUT_DIR="${BASELINE_OUT_DIR:-/var/log/souq-arab/baseline}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 OUT="${OUT_DIR}/baseline-${STAMP}.json"
@@ -46,6 +60,7 @@ current_tag="$(cat /opt/souq-arab/releases/CURRENT_TAG 2>/dev/null || echo unkno
 printf '%s\n' "{
   \"collectedAt\": \"${STAMP}\",
   \"environment\": \"staging-vps-shadow\",
+  \"smokeTargetBase\": \"${BASE}\",
   \"currentTag\": \"${current_tag}\",
   \"refGate\": { \"stagingPresent\": ${ref_ok}, \"productionBlocked\": ${prod_block} },
   \"latencySeconds\": {

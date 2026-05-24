@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
-# Full STAGING E2E — HTTP codes only, no secret output.
+# Full STAGING E2E — loopback :3001 only; HTTP codes only, no secret output.
 set -u
-BASE="${API_BASE:-http://127.0.0.1}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "${SCRIPT_DIR}/source-staging-smoke-guard.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/source-staging-smoke-guard.sh"
+elif [[ -f "${SCRIPT_DIR}/../_guards/source-staging-smoke-guard.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/../_guards/source-staging-smoke-guard.sh"
+else
+  # shellcheck source=/dev/null
+  source "/opt/souq-arab/scripts/source-staging-smoke-guard.sh"
+fi
+_souq_source_staging_smoke_guard "$SCRIPT_DIR"
+staging_smoke_guard "${API_BASE:-}"
+BASE="${STAGING_SMOKE_BASE}"
+
 FAIL=0
 ok() { printf '  OK  %s\n' "$*"; }
 bad() { printf '  FAIL %s\n' "$*"; FAIL=1; }
@@ -19,7 +33,7 @@ extract_json_number() {
   echo "$1" | sed -n "s/.*\"${2}\":\([0-9][0-9]*\).*/\1/p" | head -1
 }
 
-echo "=== STAGING full E2E ==="
+echo "=== STAGING full E2E (${BASE}) ==="
 
 SE="$(read_env_key STAGING_SMOKE_EMAIL)"
 SP="$(read_env_key STAGING_SMOKE_PASSWORD)"
@@ -32,8 +46,9 @@ fi
 JAR=$(mktemp)
 trap 'rm -f "$JAR"' EXIT
 
+login_payload=$(SE="$SE" SP="$SP" python3 -c 'import json,os; print(json.dumps({"email":os.environ["SE"],"password":os.environ["SP"]}))')
 c=$(code -c "$JAR" -b "$JAR" -X POST -H 'Content-Type: application/json' \
-  -d "{\"email\":\"${SE}\",\"password\":\"${SP}\"}" "${BASE}/api/auth/login")
+  -d "$login_payload" "${BASE}/api/auth/login")
 [[ "$c" == "200" ]] && ok "login ($c)" || { bad "login ($c)"; echo "=== FULL E2E: FAIL ==="; exit 1; }
 
 CSRF="$(extract_csrf "$JAR")"

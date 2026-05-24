@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
-# Light STAGING load on safe read-only endpoints — no secrets, no auth hammering.
+# Light STAGING load on safe read-only endpoints — loopback :3001 only.
 set -u
-BASE="${API_BASE:-http://127.0.0.1}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "${SCRIPT_DIR}/source-staging-smoke-guard.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/source-staging-smoke-guard.sh"
+elif [[ -f "${SCRIPT_DIR}/../_guards/source-staging-smoke-guard.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/../_guards/source-staging-smoke-guard.sh"
+else
+  # shellcheck source=/dev/null
+  source "/opt/souq-arab/scripts/source-staging-smoke-guard.sh"
+fi
+_souq_source_staging_smoke_guard "$SCRIPT_DIR"
+staging_smoke_guard "${API_BASE:-}"
+BASE="${STAGING_SMOKE_BASE}"
+
 FAIL=0
 REQS="${LOAD_REQS:-40}"
 CONC="${LOAD_CONC:-4}"
@@ -10,7 +24,7 @@ PATHS="/api/healthz /api/categories?limit=3 /api/ads?limit=2"
 ok() { printf '  OK  %s\n' "$*"; }
 bad() { printf '  FAIL %s\n' "$*"; FAIL=1; }
 
-echo "=== Phase 5 load smoke (${REQS} req, conc ${CONC}) ==="
+echo "=== Phase 5 load smoke (${REQS} req, conc ${CONC}) on ${BASE} ==="
 
 if command -v ab >/dev/null 2>&1; then
   for p in $PATHS; do

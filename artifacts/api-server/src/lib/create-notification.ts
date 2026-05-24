@@ -1,5 +1,6 @@
 import { db, notificationsTable } from "@workspace/db";
 import { shouldDeliverInAppNotification } from "./notification-preference-gate";
+import { schedulePushDelivery } from "./push/schedule-push-delivery";
 
 export type CreateNotificationInput = {
   userId: number;
@@ -68,5 +69,19 @@ export async function createNotification(
     })
     .returning({ id: notificationsTable.id });
 
-  return row?.id ?? null;
+  const notificationId = row?.id ?? null;
+  if (notificationId != null) {
+    schedulePushDelivery({
+      userId,
+      notificationId,
+      type,
+      title,
+      body,
+      entityType,
+      entityId,
+      metadata: metadata ?? null,
+    });
+  }
+
+  return notificationId;
 }

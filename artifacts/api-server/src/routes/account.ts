@@ -37,6 +37,8 @@ const NotificationPreferencesPatchBody = z
     notifySupport: z.boolean().optional(),
     notifyReports: z.boolean().optional(),
     notifyAnnouncements: z.boolean().optional(),
+    notifyFavorites: z.boolean().optional(),
+    pushEnabled: z.boolean().optional(),
   })
   .strict();
 
@@ -46,6 +48,8 @@ const defaultNotificationPrefs = {
   notifySupport: true,
   notifyReports: true,
   notifyAnnouncements: true,
+  notifyFavorites: true,
+  pushEnabled: true,
 } as const;
 
 function isPgUndefinedTableError(err: unknown): boolean {
@@ -76,6 +80,8 @@ router.get("/account/notification-preferences", requireAuth, async (req, res, ne
       notifySupport: row.notifySupport,
       notifyReports: row.notifyReports,
       notifyAnnouncements: row.notifyAnnouncements,
+      notifyFavorites: row.notifyFavorites,
+      pushEnabled: row.pushEnabled,
     });
   } catch (err) {
     if (isPgUndefinedTableError(err)) {
@@ -117,6 +123,8 @@ router.patch("/account/notification-preferences", requireAuth, requireUserCsrf, 
             notifySupport: existing.notifySupport,
             notifyReports: existing.notifyReports,
             notifyAnnouncements: existing.notifyAnnouncements,
+            notifyFavorites: existing.notifyFavorites,
+            pushEnabled: existing.pushEnabled,
           }
         : {}),
       ...patch,
@@ -131,6 +139,8 @@ router.patch("/account/notification-preferences", requireAuth, requireUserCsrf, 
         notifySupport: nextPrefs.notifySupport,
         notifyReports: nextPrefs.notifyReports,
         notifyAnnouncements: nextPrefs.notifyAnnouncements,
+        notifyFavorites: nextPrefs.notifyFavorites,
+        pushEnabled: nextPrefs.pushEnabled,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -141,6 +151,8 @@ router.patch("/account/notification-preferences", requireAuth, requireUserCsrf, 
           notifySupport: nextPrefs.notifySupport,
           notifyReports: nextPrefs.notifyReports,
           notifyAnnouncements: nextPrefs.notifyAnnouncements,
+          notifyFavorites: nextPrefs.notifyFavorites,
+          pushEnabled: nextPrefs.pushEnabled,
           updatedAt: new Date(),
         },
       });

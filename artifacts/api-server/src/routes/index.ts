@@ -13,6 +13,7 @@ import adminPresenceRouter from "./admin-presence";
 import admin2faRouter from "./admin-2fa";
 import supportRouter from "./support";
 import notificationsRouter from "./notifications";
+import pushRouter from "./push";
 import accountRouter from "./account";
 import observabilityRouter from "./observability";
 
@@ -33,5 +34,6 @@ router.use(adminRouter);
 router.use(admin2faRouter);
 router.use(supportRouter);
 router.use(notificationsRouter);
+router.use(pushRouter);
 router.use(accountRouter);
 export default router;

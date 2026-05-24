@@ -579,36 +579,75 @@ router.post("/ads/:adId/favorite", requireAuth, requireUserCsrf, async (req, res
   const adId = parseAdId(req, res);
   if (adId === null) return;
   const userId = req.session.userId!;
-  const exists = await db
-    .select({ id: adsTable.id, status: adsTable.status })
+  const [adRow] = await db
+    .select({ id: adsTable.id, status: adsTable.status, userId: adsTable.userId, title: adsTable.title })
     .from(adsTable)
     .where(eq(adsTable.id, adId))
     .limit(1);
-  if (!exists[0]) {
+  if (!adRow) {
     res.status(404).json({ error: "Ad not found" });
     return;
   }
-  if (!isPublicAdStatus(exists[0].status)) {
+  if (!isPublicAdStatus(adRow.status)) {
     res.status(404).json({ error: "Ad not found" });
     return;
   }
+
+  const [existingFav] = await db
+    .select({ adId: adFavoritesTable.adId })
+    .from(adFavoritesTable)
+    .where(and(eq(adFavoritesTable.adId, adId), eq(adFavoritesTable.userId, userId)))
+    .limit(1);
+
   if (useDenormalizedReactionCounters()) {
-    res.json(
-      await applyReactionToggle({
-        kind: "favorite",
-        adId,
-        userId,
-        action: "add",
-      }),
-    );
+    const result = await applyReactionToggle({
+      kind: "favorite",
+      adId,
+      userId,
+      action: "add",
+    });
+    if (result.active && !existingFav && adRow.userId != null && adRow.userId !== userId) {
+      try {
+        const shortTitle = adRow.title.trim().slice(0, 120) || "إعلانك";
+        await createNotification({
+          userId: adRow.userId,
+          type: "ad.favorited",
+          title: "إضافة إلى المفضلة",
+          body: `أُضيف إعلانك إلى المفضلة: ${shortTitle}`,
+          entityType: "ad",
+          entityId: adId,
+          metadata: { adTitle: shortTitle },
+        });
+      } catch (err) {
+        logger.warn({ err, adId }, "createNotification failed (ad.favorited)");
+      }
+    }
+    res.json(result);
     return;
   }
-  await db
+  const inserted = await db
     .insert(adFavoritesTable)
     .values({ adId, userId })
     .onConflictDoNothing({
       target: [adFavoritesTable.adId, adFavoritesTable.userId],
-    });
+    })
+    .returning({ adId: adFavoritesTable.adId });
+  if (inserted.length > 0 && adRow.userId != null && adRow.userId !== userId) {
+    try {
+      const shortTitle = adRow.title.trim().slice(0, 120) || "إعلانك";
+      await createNotification({
+        userId: adRow.userId,
+        type: "ad.favorited",
+        title: "إضافة إلى المفضلة",
+        body: `أُضيف إعلانك إلى المفضلة: ${shortTitle}`,
+        entityType: "ad",
+        entityId: adId,
+        metadata: { adTitle: shortTitle },
+      });
+    } catch (err) {
+      logger.warn({ err, adId }, "createNotification failed (ad.favorited)");
+    }
+  }
   res.json(await reactionResponse("favorite", adFavoritesTable, adId, userId));
 });
 

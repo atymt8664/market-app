@@ -4,6 +4,13 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { ListSubcategoriesParams } from "@workspace/api-zod";
 import { ensureCategoryAdminColumns } from "../lib/ensure-category-admin-columns";
 import { PUBLIC_AD_STATUSES } from "../lib/ad-visibility";
+import {
+  getCachedCategories,
+  getCachedSubcategories,
+  setCachedCategories,
+  setCachedSubcategories,
+  TAXONOMY_PUBLIC_CACHE_CONTROL,
+} from "../lib/taxonomy-public-cache";
 
 const router: IRouter = Router();
 
@@ -17,6 +24,22 @@ router.use(async (_req, _res, next) => {
 });
 
 router.get("/categories", async (_req, res) => {
+  res.setHeader("Cache-Control", TAXONOMY_PUBLIC_CACHE_CONTROL);
+
+  const cached = getCachedCategories<
+    Array<{
+      id: number;
+      name: string;
+      slug: string;
+      icon: string;
+      subtitle: string;
+      adCount: number;
+    }>
+  >();
+  if (cached) {
+    return res.json(cached);
+  }
+
   const rows = await db
     .select({
       id: categoriesTable.id,
@@ -38,13 +61,22 @@ router.get("/categories", async (_req, res) => {
     .groupBy(categoriesTable.id)
     .orderBy(asc(categoriesTable.sortOrder), asc(categoriesTable.id));
 
-  res.json(rows);
+  setCachedCategories(rows);
+  return res.json(rows);
 });
 
 router.get("/categories/:categoryId/subcategories", async (req, res) => {
   const params = ListSubcategoriesParams.parse({
     categoryId: Number(req.params["categoryId"]),
   });
+  res.setHeader("Cache-Control", TAXONOMY_PUBLIC_CACHE_CONTROL);
+
+  type SubcategoryRow = typeof subcategoriesTable.$inferSelect;
+  const cached = getCachedSubcategories<SubcategoryRow[]>(params.categoryId);
+  if (cached) {
+    return res.json(cached);
+  }
+
   const rows = await db
     .select()
     .from(subcategoriesTable)
@@ -57,7 +89,9 @@ router.get("/categories/:categoryId/subcategories", async (req, res) => {
       ),
     )
     .orderBy(asc(subcategoriesTable.sortOrder), asc(subcategoriesTable.id));
-  res.json(rows.map((row) => row.subcategories));
+  const payload = rows.map((row) => row.subcategories);
+  setCachedSubcategories(params.categoryId, payload);
+  return res.json(payload);
 });
 
 export default router;

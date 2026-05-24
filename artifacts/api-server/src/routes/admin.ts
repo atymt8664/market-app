@@ -22,6 +22,7 @@ import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import { getSessionClearCookieOptions, SESSION_COOKIE_NAME } from "../lib/session-cookie";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
+import { invalidateTaxonomyPublicCache } from "../lib/taxonomy-public-cache";
 import {
   clampLimit,
   finalizePage,
@@ -1500,6 +1501,7 @@ router.post("/admin/categories", requireAdmin, requireAdminCsrf, async (req, res
       targetId: created.id,
       details: { entityType: "subcategory", parentCategoryId: categoryId, name },
     });
+    invalidateTaxonomyPublicCache();
     return res.status(201).json({
       id: created.id,
       categoryId: created.categoryId,
@@ -1535,6 +1537,7 @@ router.post("/admin/categories", requireAdmin, requireAdminCsrf, async (req, res
       targetId: created.id,
       details: { entityType: "category", name, slug },
     });
+    invalidateTaxonomyPublicCache();
     return res.status(201).json({
       ...created,
       status: created.isHidden ? "hidden" : "active",
@@ -1592,6 +1595,7 @@ router.patch("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (req
       details: { entityType: "subcategory", fromHidden: before.isHidden, toHidden: updated.isHidden },
     });
 
+    invalidateTaxonomyPublicCache();
     return res.json({
       id: updated.id,
       categoryId: updated.categoryId,
@@ -1648,6 +1652,7 @@ router.patch("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (req
       details: { entityType: "category", fromHidden: before.isHidden, toHidden: updated.isHidden },
     });
 
+    invalidateTaxonomyPublicCache();
     return res.json({
       ...updated,
       status: updated.isHidden ? "hidden" : "active",
@@ -1691,6 +1696,7 @@ router.delete("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (re
       targetId: id,
       details: { entityType: "subcategory", name: existing.name },
     });
+    invalidateTaxonomyPublicCache();
     return res.json({ ok: true });
   }
 
@@ -1717,6 +1723,7 @@ router.delete("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (re
     targetId: id,
     details: { entityType: "category", name: existing.name },
   });
+  invalidateTaxonomyPublicCache();
   return res.json({ ok: true });
 });
 

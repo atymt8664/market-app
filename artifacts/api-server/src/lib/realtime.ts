@@ -40,10 +40,22 @@ const wsFocusStack = new WeakMap<WebSocket, Array<{ convId: number }>>();
 
 /** Limits typing:start fan-out per user+conversation (client may renew while composing). */
 const TYPING_START_MIN_INTERVAL_MS = 750;
+const TYPING_MAP_MAX_ENTRIES = 10_000;
 const typingStartLastSentMs = new Map<string, number>();
 
 function typingThrottleKey(userId: number, convId: number) {
   return `${userId}:${convId}`;
+}
+
+function trimTypingThrottleMap(): void {
+  if (typingStartLastSentMs.size <= TYPING_MAP_MAX_ENTRIES) return;
+  const overflow = typingStartLastSentMs.size - TYPING_MAP_MAX_ENTRIES;
+  const keys = typingStartLastSentMs.keys();
+  for (let i = 0; i < overflow; i++) {
+    const k = keys.next().value;
+    if (k === undefined) break;
+    typingStartLastSentMs.delete(k);
+  }
 }
 
 async function getConversationMemberRow(
@@ -82,6 +94,7 @@ async function relayTypingIndicator(fromUserId: number, convId: number, active: 
     const last = typingStartLastSentMs.get(tk) ?? 0;
     if (now - last < TYPING_START_MIN_INTERVAL_MS) return;
     typingStartLastSentMs.set(tk, now);
+    trimTypingThrottleMap();
   } else {
     typingStartLastSentMs.delete(typingThrottleKey(fromUserId, convId));
     if (!isUserFocusedOnConversation(peerId, convId)) return;

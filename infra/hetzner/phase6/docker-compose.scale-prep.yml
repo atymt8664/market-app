@@ -19,12 +19,14 @@ services:
     profiles: ["push-worker"]
     image: ${SOUQ_API_IMAGE:-ghcr.io/placeholder/souq-api:latest}
     restart: unless-stopped
+    working_dir: /app/artifacts/api-server
     depends_on:
       redis:
         condition: service_healthy
     env_file:
       - /opt/souq-arab/config/api.env.staging
     environment:
-      REDIS_URL: redis://127.0.0.1:6379
-    command: ["node", "--enable-source-maps", "/app/dist/worker/push-worker.mjs"]
+      REDIS_URL: redis://redis:6379
+      QUEUE_REDIS_URL: redis://redis:6379
+    command: ["node", "--enable-source-maps", "/app/artifacts/api-server/dist/worker/push-worker.mjs"]
     mem_limit: 256m

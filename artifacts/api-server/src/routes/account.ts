@@ -30,6 +30,8 @@ const DeleteAccountBody = z.object({
   password: z.string().min(1, "كلمة المرور مطلوبة"),
 });
 
+const HmSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "وقت غير صالح");
+
 const NotificationPreferencesPatchBody = z
   .object({
     notifyMessages: z.boolean().optional(),
@@ -39,6 +41,10 @@ const NotificationPreferencesPatchBody = z
     notifyAnnouncements: z.boolean().optional(),
     notifyFavorites: z.boolean().optional(),
     pushEnabled: z.boolean().optional(),
+    quietHoursEnabled: z.boolean().optional(),
+    quietHoursStart: HmSchema.optional(),
+    quietHoursEnd: HmSchema.optional(),
+    quietHoursTimezone: z.string().min(1).max(64).optional(),
   })
   .strict();
 
@@ -50,7 +56,39 @@ const defaultNotificationPrefs = {
   notifyAnnouncements: true,
   notifyFavorites: true,
   pushEnabled: true,
+  quietHoursEnabled: false,
+  quietHoursStart: "22:00",
+  quietHoursEnd: "08:00",
+  quietHoursTimezone: "Europe/Berlin",
 } as const;
+
+function serializeNotificationPrefs(row: {
+  notifyMessages: boolean;
+  notifyAdModeration: boolean;
+  notifySupport: boolean;
+  notifyReports: boolean;
+  notifyAnnouncements: boolean;
+  notifyFavorites: boolean;
+  pushEnabled: boolean;
+  quietHoursEnabled: boolean;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+  quietHoursTimezone: string;
+}) {
+  return {
+    notifyMessages: row.notifyMessages,
+    notifyAdModeration: row.notifyAdModeration,
+    notifySupport: row.notifySupport,
+    notifyReports: row.notifyReports,
+    notifyAnnouncements: row.notifyAnnouncements,
+    notifyFavorites: row.notifyFavorites,
+    pushEnabled: row.pushEnabled,
+    quietHoursEnabled: row.quietHoursEnabled,
+    quietHoursStart: row.quietHoursStart,
+    quietHoursEnd: row.quietHoursEnd,
+    quietHoursTimezone: row.quietHoursTimezone,
+  };
+}
 
 function isPgUndefinedTableError(err: unknown): boolean {
   return (
@@ -74,15 +112,7 @@ router.get("/account/notification-preferences", requireAuth, async (req, res, ne
       return res.json({ ...defaultNotificationPrefs });
     }
 
-    return res.json({
-      notifyMessages: row.notifyMessages,
-      notifyAdModeration: row.notifyAdModeration,
-      notifySupport: row.notifySupport,
-      notifyReports: row.notifyReports,
-      notifyAnnouncements: row.notifyAnnouncements,
-      notifyFavorites: row.notifyFavorites,
-      pushEnabled: row.pushEnabled,
-    });
+    return res.json(serializeNotificationPrefs(row));
   } catch (err) {
     if (isPgUndefinedTableError(err)) {
       logger.warn({ err }, "notification_preferences: table missing (run prepareDatabase / migration 006)");
@@ -116,17 +146,7 @@ router.patch("/account/notification-preferences", requireAuth, requireUserCsrf, 
 
     const nextPrefs = {
       ...defaultNotificationPrefs,
-      ...(existing
-        ? {
-            notifyMessages: existing.notifyMessages,
-            notifyAdModeration: existing.notifyAdModeration,
-            notifySupport: existing.notifySupport,
-            notifyReports: existing.notifyReports,
-            notifyAnnouncements: existing.notifyAnnouncements,
-            notifyFavorites: existing.notifyFavorites,
-            pushEnabled: existing.pushEnabled,
-          }
-        : {}),
+      ...(existing ? serializeNotificationPrefs(existing) : {}),
       ...patch,
     };
 
@@ -141,6 +161,10 @@ router.patch("/account/notification-preferences", requireAuth, requireUserCsrf, 
         notifyAnnouncements: nextPrefs.notifyAnnouncements,
         notifyFavorites: nextPrefs.notifyFavorites,
         pushEnabled: nextPrefs.pushEnabled,
+        quietHoursEnabled: nextPrefs.quietHoursEnabled,
+        quietHoursStart: nextPrefs.quietHoursStart,
+        quietHoursEnd: nextPrefs.quietHoursEnd,
+        quietHoursTimezone: nextPrefs.quietHoursTimezone,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -153,6 +177,10 @@ router.patch("/account/notification-preferences", requireAuth, requireUserCsrf, 
           notifyAnnouncements: nextPrefs.notifyAnnouncements,
           notifyFavorites: nextPrefs.notifyFavorites,
           pushEnabled: nextPrefs.pushEnabled,
+          quietHoursEnabled: nextPrefs.quietHoursEnabled,
+          quietHoursStart: nextPrefs.quietHoursStart,
+          quietHoursEnd: nextPrefs.quietHoursEnd,
+          quietHoursTimezone: nextPrefs.quietHoursTimezone,
           updatedAt: new Date(),
         },
       });

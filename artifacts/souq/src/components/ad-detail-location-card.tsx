@@ -32,6 +32,8 @@ export type AdDetailLocationCardProps = {
   className?: string;
   /** Matches ad-detail section card styling when embedded in page shell */
   sectionShellClassName?: string;
+  /** When a modal/sheet overlays the page, suppress map compositor bleed-through. */
+  overlayActive?: boolean;
 };
 
 function AdDetailLocationCardInner({
@@ -41,6 +43,7 @@ function AdDetailLocationCardInner({
   countryCode = "DE",
   className,
   sectionShellClassName,
+  overlayActive = false,
 }: AdDetailLocationCardProps) {
   const { locale } = useLocale();
   const isRtl = locale === "ar";
@@ -116,7 +119,13 @@ function AdDetailLocationCardInner({
           <span className="truncate text-sm font-medium text-foreground">{cityTrim}</span>
         </div>
 
-        <div className="relative aspect-[16/10] min-h-[11rem] w-full max-h-[220px] bg-zinc-900/90 sm:min-h-[12.5rem]">
+        <div
+          className={cn(
+            "relative z-0 aspect-[16/10] min-h-[11rem] w-full max-h-[220px] bg-zinc-900/90 sm:min-h-[12.5rem]",
+            overlayActive && "pointer-events-none [&_.leaflet-container]:invisible",
+          )}
+          aria-hidden={overlayActive || undefined}
+        >
           {centerLoading ? (
             <div
               className="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900"

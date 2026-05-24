@@ -1,5 +1,5 @@
 import { apiUrl } from "@/lib/api-url";
-import { getAuthProfileCsrfTokenForRequest } from "@workspace/api-client-react";
+import { ensureAuthProfileCsrfReady } from "@/lib/auth-csrf";
 
 export type PushSupportState =
   | "unsupported"
@@ -51,7 +51,7 @@ async function registerSubscriptionWithApi(subscription: PushSubscription): Prom
   const json = subscription.toJSON();
   if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return false;
 
-  const csrf = getAuthProfileCsrfTokenForRequest();
+  const csrf = await ensureAuthProfileCsrfReady();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (typeof csrf === "string" && csrf.length >= 32) headers["X-CSRF-Token"] = csrf;
 
@@ -100,7 +100,7 @@ export async function unsubscribeFromPushNotifications(): Promise<boolean> {
   if (!subscription) return true;
 
   const endpoint = subscription.endpoint;
-  const csrf = getAuthProfileCsrfTokenForRequest();
+  const csrf = await ensureAuthProfileCsrfReady();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (typeof csrf === "string" && csrf.length >= 32) headers["X-CSRF-Token"] = csrf;
 

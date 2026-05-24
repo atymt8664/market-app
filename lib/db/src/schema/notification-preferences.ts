@@ -2,6 +2,7 @@ import {
   boolean,
   integer,
   pgTable,
+  text,
   timestamp,
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
@@ -21,6 +22,10 @@ export const notificationPreferencesTable = pgTable("notification_preferences", 
   notifyFavorites: boolean("notify_favorites").notNull().default(true),
   /** Master device push toggle (browser permission is separate). */
   pushEnabled: boolean("push_enabled").notNull().default(true),
+  quietHoursEnabled: boolean("quiet_hours_enabled").notNull().default(false),
+  quietHoursStart: text("quiet_hours_start").notNull().default("22:00"),
+  quietHoursEnd: text("quiet_hours_end").notNull().default("08:00"),
+  quietHoursTimezone: text("quiet_hours_timezone").notNull().default("Europe/Berlin"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

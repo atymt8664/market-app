@@ -51,6 +51,10 @@ import { createFavoriteToggleHandlers } from "@/lib/invalidate-ad-queries";
 import { prefetchConversationThread } from "@/lib/prefetch-conversation-thread";
 import { AUTH_ACCENT_OUTLINE_BTN } from "@/lib/auth-page-styles";
 import {
+  UI_LAYER_ABOVE_LEAFLET,
+  UI_LAYER_ABOVE_LEAFLET_OVERLAY,
+} from "@/lib/ui-layer-z-index";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -996,6 +1000,7 @@ export default function AdDetail() {
               city={ad.city ?? ""}
               countryCode="DE"
               sectionShellClassName={deviceInfoShell}
+              overlayActive={reportReasonOpen}
             />
           </Suspense>
 
@@ -1010,7 +1015,11 @@ export default function AdDetail() {
         <SheetContent
           side="bottom"
           hideClose
-          className="flex max-h-[min(86dvh,680px)] flex-col gap-0 rounded-t-2xl border-x-0 border-b-0 border-t border-primary/35 bg-[#0A0A0A] p-0 shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.55)] ring-1 ring-primary/20 sm:mx-auto sm:max-w-lg"
+          overlayClassName={UI_LAYER_ABOVE_LEAFLET_OVERLAY}
+          className={cn(
+            UI_LAYER_ABOVE_LEAFLET,
+            "flex max-h-[min(86dvh,680px)] flex-col gap-0 rounded-t-2xl border-x-0 border-b-0 border-t border-primary/35 bg-[#0A0A0A] p-0 shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.55)] ring-1 ring-primary/20 sm:mx-auto sm:max-w-lg",
+          )}
         >
           <div className="flex items-center justify-between border-b border-primary/20 px-4 pb-3 pt-4">
             <SheetTitle className="text-base font-semibold text-white">

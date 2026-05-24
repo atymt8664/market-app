@@ -63,6 +63,7 @@ const AccountEmail = lazy(() => import("@/pages/account-email"));
 const AccountPassword = lazy(() => import("@/pages/account-password"));
 const AccountVerification = lazy(() => import("@/pages/account-verification"));
 const AccountNotifications = lazy(() => import("@/pages/account-notifications"));
+const AccountNotificationsQuietHours = lazy(() => import("@/pages/account-notifications-quiet-hours"));
 const AccountInfo = lazy(() => import("@/pages/account-info"));
 const Messages = lazy(() => import("@/pages/messages"));
 const MessageThread = lazy(() => import("@/pages/message-thread"));
@@ -117,6 +118,7 @@ function Router() {
           <Route path="/account/email" component={AccountEmail} />
           <Route path="/account/password" component={AccountPassword} />
           <Route path="/account/verification" component={AccountVerification} />
+          <Route path="/account/notifications/quiet-hours" component={AccountNotificationsQuietHours} />
           <Route path="/account/notifications" component={AccountNotifications} />
           <Route path="/account/help" component={SupportHelpPage} />
           <Route path="/support">{() => <Redirect to="/account/help" />}</Route>

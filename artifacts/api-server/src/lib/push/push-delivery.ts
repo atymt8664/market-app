@@ -1,6 +1,9 @@
 import webpush from "web-push";
+import { eq } from "drizzle-orm";
+import { db, notificationPreferencesTable } from "@workspace/db";
 import { logger } from "../logger";
 import { shouldDeliverPushNotification } from "../notification-preference-gate";
+import { isWithinQuietHours } from "./quiet-hours";
 import { notificationDeepLinkPath } from "./notification-url";
 import {
   listActivePushSubscriptions,
@@ -25,6 +28,29 @@ export async function deliverPushJob(job: PushDeliveryJob): Promise<void> {
 
   const allowed = await shouldDeliverPushNotification(job.userId, job.type);
   if (!allowed) return;
+
+  const [prefRow] = await db
+    .select({
+      quietHoursEnabled: notificationPreferencesTable.quietHoursEnabled,
+      quietHoursStart: notificationPreferencesTable.quietHoursStart,
+      quietHoursEnd: notificationPreferencesTable.quietHoursEnd,
+      quietHoursTimezone: notificationPreferencesTable.quietHoursTimezone,
+    })
+    .from(notificationPreferencesTable)
+    .where(eq(notificationPreferencesTable.userId, job.userId))
+    .limit(1);
+
+  if (
+    prefRow?.quietHoursEnabled &&
+    isWithinQuietHours(
+      new Date(),
+      prefRow.quietHoursStart,
+      prefRow.quietHoursEnd,
+      prefRow.quietHoursTimezone,
+    )
+  ) {
+    return;
+  }
 
   const subs = await listActivePushSubscriptions(job.userId);
   if (!subs.length) return;

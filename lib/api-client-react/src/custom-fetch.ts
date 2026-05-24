@@ -241,6 +241,14 @@ function isPatchAccountNotificationPreferences(method: string, url: string): boo
   return method === "PATCH" && pathnameOfRequestUrl(url) === "/api/account/notification-preferences";
 }
 
+function isPostPushSubscriptions(method: string, url: string): boolean {
+  return method === "POST" && pathnameOfRequestUrl(url) === "/api/push/subscriptions";
+}
+
+function isDeletePushSubscriptions(method: string, url: string): boolean {
+  return method === "DELETE" && pathnameOfRequestUrl(url) === "/api/push/subscriptions";
+}
+
 function isPostAiImproveDescription(method: string, url: string): boolean {
   return method === "POST" && pathnameOfRequestUrl(url) === "/api/ai/improve-description";
 }
@@ -289,6 +297,8 @@ function shouldAttachUserProfileCsrf(method: string, url: string): boolean {
     isUserSocialMutation(method, url) ||
     isUserSupportReportsNotificationsCsrf(method, url) ||
     isPatchAccountNotificationPreferences(method, url) ||
+    isPostPushSubscriptions(method, url) ||
+    isDeletePushSubscriptions(method, url) ||
     isPostAiImproveDescription(method, url) ||
     isPostAiSuggestPrice(method, url) ||
     isUserConversationsMutation(method, url)

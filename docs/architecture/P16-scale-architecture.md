@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Code** | P16 |
-| **Status** | Planned — spike scripts and roadmap exist |
+| **Status** | STAGING spike complete — Redis loopback running on VPS (`qkczposlooaldmsjfmun`) |
 
 ---
 

@@ -25,4 +25,4 @@
 
 ## STAGING spike
 
-`phase6-staging-redis-spike.sh` validates Redis on loopback without enabling in API yet.
+`phase6-staging-redis-spike.sh` starts Redis on `127.0.0.1:6379`, runs ping/pubsub/queue smokes, and leaves the container running (`restart: unless-stopped`) without enabling Redis in the API yet.

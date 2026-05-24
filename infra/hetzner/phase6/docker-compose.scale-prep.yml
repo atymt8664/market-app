@@ -5,7 +5,7 @@ name: souq-arab-redis-spike
 services:
   redis:
     image: redis:7-alpine
-    restart: "no"
+    restart: unless-stopped
     ports:
       - "127.0.0.1:6379:6379"
     command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]

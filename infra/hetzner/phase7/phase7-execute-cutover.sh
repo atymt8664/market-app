@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # Phase 7 gradual cutover — zero public downtime (Railway stays live until Vercel/DNS switch).
+# REQUIRES: SOUQ_CUTOVER_APPROVED=1 (Mohamed). See CUTOVER-WARNING.md — do not run accidentally.
 set -euo pipefail
+
+_GUARD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/_guards"
+# shellcheck source=/dev/null
+[[ -f "${_GUARD_DIR}/require-mohamed-cutover-approval.sh" ]] && source "${_GUARD_DIR}/require-mohamed-cutover-approval.sh"
+if [[ "${SOUQ_CUTOVER_APPROVED:-}" != "1" ]]; then
+  echo "REFUSED: Set SOUQ_CUTOVER_APPROVED=1 only after explicit approval from Mohamed." >&2
+  exit 99
+fi
 
 BASE="/opt/souq-arab"
 COMPOSE_MAIN="${BASE}/api/docker/docker-compose.yml"

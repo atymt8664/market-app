@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 # Phase 5 — api.souq-arab.com -> VPS + live HTTPS. Railway service stays up (DNS rollback path).
 # Requires DNS A record -> 178.105.206.173 (set at registrar before or during run).
+# REQUIRES: SOUQ_CUTOVER_APPROVED=1 (Mohamed). See infra/hetzner/phase7/CUTOVER-WARNING.md
 set -euo pipefail
+
+_GUARD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/_guards"
+# shellcheck source=/dev/null
+[[ -f "${_GUARD_DIR}/require-mohamed-cutover-approval.sh" ]] && source "${_GUARD_DIR}/require-mohamed-cutover-approval.sh"
+if [[ "${SOUQ_CUTOVER_APPROVED:-}" != "1" ]]; then
+  echo "REFUSED: Set SOUQ_CUTOVER_APPROVED=1 only after explicit approval from Mohamed." >&2
+  exit 99
+fi
 
 VPS_IP="${SOUQ_VPS_IP:-178.105.206.173}"
 DOMAIN="${SOUQ_API_DOMAIN:-api.souq-arab.com}"

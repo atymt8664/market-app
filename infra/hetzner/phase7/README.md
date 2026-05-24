@@ -1,5 +1,7 @@
 # Phase 7 — Production Cutover Execution (gradual, zero public downtime)
 
+**See [CUTOVER-WARNING.md](./CUTOVER-WARNING.md).** Cutover scripts refuse to run unless `SOUQ_CUTOVER_APPROVED=1` (Mohamed only).
+
 Railway (`https://api.souq-arab.com`) stays live until Vercel/DNS point to VPS.
 
 1. Read-only external prod smoke (no secrets)

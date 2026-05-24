@@ -1,0 +1,3 @@
+# Local DB exports must not live here (user data). Store offline only:
+# c:\Users\Abutym\Downloads\Souq-Arab-SECURITY-OFFLINE\db-exports\
+# See docs/architecture/P01-environments.md

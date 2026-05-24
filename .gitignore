@@ -49,6 +49,21 @@ Thumbs.db
 !.env.*.example
 !**/.env.*.example
 
+# P1 security — never commit keys, exports, or ops dumps
+**/.ssh-bootstrap/
+*_ed25519
+!*_ed25519.pub
+*.pem
+*.key
+!*.key.example
+scripts/exports/**
+!scripts/exports/.gitkeep
+**/db-export*/
+**/*dump*.json
+infra/hetzner/vps-foundation/*.log
+infra/hetzner/**/*.log
+!infra/hetzner/**/*.log.example
+
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 

@@ -16,8 +16,9 @@ import {
   SETTINGS_PAGE_BG,
 } from "@/components/settings-shell";
 import { cn } from "@/lib/utils";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 export type NotificationPrefsDto = {
   notifyMessages: boolean;
@@ -25,6 +26,8 @@ export type NotificationPrefsDto = {
   notifySupport: boolean;
   notifyReports: boolean;
   notifyAnnouncements: boolean;
+  notifyFavorites: boolean;
+  pushEnabled: boolean;
 };
 
 const queryKey = ["account", "notification-preferences"] as const;
@@ -119,6 +122,8 @@ export default function AccountNotifications() {
     },
   });
 
+  const push = usePushNotifications(!!user && !authLoading);
+
   if (!authLoading && !user) {
     return <Redirect to="/guest-welcome?redirect=/account/notifications" />;
   }
@@ -141,7 +146,6 @@ export default function AccountNotifications() {
   }
 
   const prefs = q.data;
-  /** Without this, a failed fetch leaves `data` undefined while `isLoading` is false → spinner forever. */
   const showPrefsLoading = q.isPending && !q.isError;
   const errStatus =
     q.error instanceof Error && /^[0-9]{3}$/.test(q.error.message)
@@ -162,6 +166,80 @@ export default function AccountNotifications() {
         <p className="text-sm leading-relaxed text-zinc-500">
           {t("account_notifications.intro")}
         </p>
+
+        <div className={cn(SETTINGS_CARD, "mb-4")}>
+          <div className="flex items-start gap-3 border-b border-primary/10 pb-4">
+            <Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+            <div className={cn("min-w-0 flex-1", isRtl ? "text-right" : "text-left")}>
+              <p className="text-sm font-medium text-foreground">{t("account_notifications.push_title")}</p>
+              <p className={cn(SETTINGS_LABEL, "mt-1 text-zinc-500")}>
+                {t("account_notifications.push_hint")}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {push.support === "unsupported"
+                  ? t("account_notifications.push_unsupported")
+                  : push.support === "denied"
+                    ? t("account_notifications.push_denied")
+                    : push.status?.subscribed
+                      ? t("account_notifications.push_subscribed")
+                      : t("account_notifications.push_not_subscribed")}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {push.support === "default" || push.support === "granted" ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={mut.isPending}
+                    onClick={() => {
+                      void push.subscribe().then((result) => {
+                        if (result === "subscribed") {
+                          toast({ title: t("account_notifications.push_enabled_toast") });
+                        } else if (result === "denied") {
+                          toast({
+                            title: t("account_notifications.push_denied_toast"),
+                            variant: "destructive",
+                          });
+                        } else if (result === "not-configured") {
+                          toast({
+                            title: t("account_notifications.push_not_configured"),
+                            variant: "destructive",
+                          });
+                        }
+                      });
+                    }}
+                  >
+                    {t("account_notifications.push_enable_btn")}
+                  </Button>
+                ) : null}
+                {push.status?.subscribed ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      void push.unsubscribe().then(() => {
+                        toast({ title: t("account_notifications.push_disabled_toast") });
+                      });
+                    }}
+                  >
+                    {t("account_notifications.push_disable_btn")}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          {prefs ? (
+            <Row
+              label={t("account_notifications.push_master")}
+              hint={t("account_notifications.push_master_hint")}
+              checked={prefs.pushEnabled}
+              disabled={mut.isPending}
+              isRtl={isRtl}
+              onCheckedChange={(v) => update({ pushEnabled: v })}
+            />
+          ) : null}
+        </div>
 
         <div className={cn(SETTINGS_CARD, "relative")}>
           {showPrefsLoading ? (
@@ -219,6 +297,14 @@ export default function AccountNotifications() {
                 disabled={mut.isPending}
                 isRtl={isRtl}
                 onCheckedChange={(v) => update({ notifyAdModeration: v })}
+              />
+              <Row
+                label={t("account_notifications.favorites")}
+                hint={t("account_notifications.favorites_hint")}
+                checked={prefs.notifyFavorites}
+                disabled={mut.isPending}
+                isRtl={isRtl}
+                onCheckedChange={(v) => update({ notifyFavorites: v })}
               />
               <Row
                 label={t("account_notifications.support")}

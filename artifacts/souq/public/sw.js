@@ -1,33 +1,36 @@
 /**
- * Souq Arab EU — minimal offline shell for PWA installability.
- * Drop into site root as /sw.js and register from the app shell (see INTEGRATION.md).
- * Does NOT replace API/network data — caches shell assets only when listed.
+ * Souq Arab EU — PWA shell + Web Push (P11).
+ * Precaches install assets; handles push when app is closed/backgrounded.
  */
-const CACHE_VERSION = "souq-arab-eu-v1";
+const CACHE_VERSION = "souq-arab-eu-v2-push";
 const PRECACHE_URLS = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
-  /* If you host the file as `manifest.json`, update this list and the link tag in `INTEGRATION.md`. */
   "/icons/pwa-icon-192.png",
   "/icons/pwa-icon-512.png",
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(PRECACHE_URLS)).then(() => self.skipWaiting()),
+    caches
+      .open(CACHE_VERSION)
+      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then(() => self.skipWaiting()),
   );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k))),
-    ).then(() => self.clients.claim()),
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k))),
+      )
+      .then(() => self.clients.claim()),
   );
 });
 
-/** Network-first for navigation + APIs; cache fallback for same-origin GET documents only */
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -35,7 +38,6 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // API / dynamic: always network
   if (url.pathname.startsWith("/api")) {
     event.respondWith(fetch(req));
     return;
@@ -53,5 +55,69 @@ self.addEventListener("fetch", (event) => {
       .catch(() =>
         caches.match(req).then((hit) => hit || caches.match("/index.html")),
       ),
+  );
+});
+
+function resolveNotificationUrl(data) {
+  if (data && typeof data.url === "string" && data.url.startsWith("/")) {
+    return data.url;
+  }
+  return "/notifications";
+}
+
+self.addEventListener("push", (event) => {
+  let payload = { title: "Souq Arab EU", body: "", data: {} };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    /* ignore malformed payload */
+  }
+
+  const title = String(payload.title || "Souq Arab EU").slice(0, 120);
+  const body = String(payload.body || "").slice(0, 240);
+  const data = payload.data && typeof payload.data === "object" ? payload.data : {};
+
+  event.waitUntil(
+    (async () => {
+      await self.registration.showNotification(title, {
+        body,
+        data,
+        icon: "/icons/pwa-icon-192.png",
+        badge: "/icons/pwa-icon-192.png",
+        tag: data.notificationId ? `n-${data.notificationId}` : undefined,
+      });
+      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of clients) {
+        client.postMessage({ type: "souq:push-received", data });
+      }
+    })(),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetPath = resolveNotificationUrl(event.notification.data);
+  const targetUrl = new URL(targetPath, self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ("focus" in client) {
+          client.postMessage({ type: "souq:push-navigate", url: targetPath });
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+    }),
+  );
+});
+
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        client.postMessage({ type: "souq:push-resubscribe" });
+      }
+    }),
   );
 });

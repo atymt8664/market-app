@@ -17,6 +17,7 @@ import {
   STALE_USER_ADS_MS,
 } from "@/lib/query-stale-times";
 import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
+import { PushNotificationsRegistrar } from "@/components/push-notifications-registrar";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -60,6 +61,7 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="w-full min-h-[100svh] bg-[#0A0A0A]">
+      <PushNotificationsRegistrar />
       {/*
         لا نفرض overflow:hidden على html/body من هنا — ذلك يمنع pull-to-refresh.
         تمرير الشات محصور في [data-chat-scroll] (انظر index.css).

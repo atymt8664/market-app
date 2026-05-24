@@ -13,3 +13,4 @@ export * from "./support";
 export * from "./app-settings";
 export * from "./notifications";
 export * from "./notification-preferences";
+export * from "./push-subscriptions";

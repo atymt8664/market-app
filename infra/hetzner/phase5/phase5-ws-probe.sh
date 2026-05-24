@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # WebSocket probe on STAGING — uses VPS smoke credentials only; no secret output.
 set -u
-BASE="${API_BASE:-http://127.0.0.1}"
+# Staging API loopback (:3001). Nginx :80 may point at prod-shadow — override with API_BASE if needed.
+BASE="${API_BASE:-http://127.0.0.1:3001}"
 FAIL=0
 ok() { printf '  OK  %s\n' "$*"; }
 bad() { printf '  FAIL %s\n' "$*"; FAIL=1; }
@@ -45,9 +46,10 @@ else
 fi
 if [[ "$REUSE_JAR" == "false" ]]; then
   trap 'rm -f "$JAR"' EXIT
+  login_payload=$(SE="$SE" SP="$SP" python3 -c 'import json,os; print(json.dumps({"email":os.environ["SE"],"password":os.environ["SP"]}))')
   c=$(curl -s -o /dev/null -w '%{http_code}' -c "$JAR" -b "$JAR" -X POST \
     -H 'Content-Type: application/json' -H 'User-Agent: souq-phase5-ws' \
-    -d "{\"email\":\"${SE}\",\"password\":\"${SP}\"}" \
+    -d "$login_payload" \
     "${BASE}/api/auth/login" 2>/dev/null || echo 000)
   [[ "$c" == "200" ]] && ok "login for ws (${c})" || { bad "login (${c})"; echo "=== WS PROBE: FAIL ==="; exit 1; }
 else
@@ -57,7 +59,10 @@ fi
 COOKIE="$(extract_session_cookie "$JAR")"
 [[ -n "${COOKIE:-}" ]] && ok "session cookie present" || { bad "session cookie missing"; echo "=== WS PROBE: FAIL ==="; exit 1; }
 
-WS_URL='ws://127.0.0.1/api/ws'
+if [[ -z "${WS_URL:-}" ]]; then
+  hostport="${BASE#*://}"
+  WS_URL="ws://${hostport}/api/ws"
+fi
 
 if printf '\n' | timeout 2 websocat -n1 "$WS_URL" 2>/dev/null | grep -q .; then
   bad "ws accepted without cookie"

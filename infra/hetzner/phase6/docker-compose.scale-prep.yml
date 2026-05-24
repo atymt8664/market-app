@@ -14,3 +14,17 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  push-worker:
+    profiles: ["push-worker"]
+    image: ${SOUQ_API_IMAGE:-ghcr.io/placeholder/souq-api:latest}
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - /opt/souq-arab/config/api.env.staging
+    environment:
+      REDIS_URL: redis://127.0.0.1:6379
+    command: ["node", "--enable-source-maps", "/app/dist/worker/push-worker.mjs"]
+    mem_limit: 256m

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Calendar,
+  Check,
   ChevronRight,
   Flag,
   LifeBuoy,
@@ -9,29 +10,35 @@ import {
   Mail,
   MapPin,
   Megaphone,
-  PackageOpen,
   Phone,
   Shield,
   ShieldOff,
   Sparkles,
+  XCircle,
 } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
-import { adminLogout, updateAdminUserStatus } from "@/features/admin/api";
+import { adminLogout, reviewAdminUserAvatar, updateAdminUserStatus } from "@/features/admin/api";
+import { ModerationReasonDialog } from "@/features/admin/components/moderation-reason-dialog";
 import {
   ADMIN_ROW_ACTION_BASE,
   BTN_FIX,
   BTN_MODAL_GHOST,
   BTN_TOOLBAR_OUTLINE,
   CARD_SHELL,
-  PANEL_INSET,
   STAT_TILE,
   SUB_CARD,
 } from "@/features/admin/admin-interaction-classes";
 import { AdminShell } from "@/features/admin/components/admin-shell";
+import {
+  AdminEmptyState,
+  AdminErrorState,
+  AdminPageLoading,
+} from "@/features/admin/components/admin-page-states";
 import { useAdminUserDetails, useRequireAdmin } from "@/features/admin/hooks";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api-url";
 import { AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
+import { t } from "@/i18n";
 import { SETTINGS_SECTION_TITLE } from "@/components/settings-shell";
 import {
   AlertDialog,
@@ -69,7 +76,7 @@ function initials(name: string | null | undefined) {
 }
 
 function formatDate(iso: string | null) {
-  if (!iso) return "—";
+  if (!iso) return t("p8.admin.common.dash");
   try {
     return new Date(iso).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" });
   } catch {
@@ -78,30 +85,13 @@ function formatDate(iso: string | null) {
 }
 
 function EmptyBlock({
-  icon: Icon,
   title,
   hint,
 }: {
-  icon: typeof PackageOpen;
   title: string;
   hint: string;
 }) {
-  return (
-    <div
-      className={cn(
-        PANEL_INSET,
-        "border border-dashed border-primary/25 bg-zinc-950/40 py-14 shadow-[inset_0_1px_0_0_hsl(var(--primary)/0.06)] ring-1 ring-primary/8",
-      )}
-    >
-      <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-[0_0_24px_-10px_hsl(var(--primary)/0.45)] ring-1 ring-primary/15">
-          <Icon className="h-7 w-7 opacity-90" aria-hidden />
-        </span>
-        <p className="text-sm font-semibold text-foreground">{title}</p>
-        <p className="text-xs leading-relaxed text-muted-foreground">{hint}</p>
-      </div>
-    </div>
-  );
+  return <AdminEmptyState title={title} description={hint} />;
 }
 
 export default function AdminUserDetailsPage() {
@@ -113,6 +103,11 @@ export default function AdminUserDetailsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [pendingBan, setPendingBan] = useState<{ id: number; name: string } | null>(null);
+  const [pendingAvatarReject, setPendingAvatarReject] = useState(false);
+
+  function isFounderUser(user: { id: number; name: string }) {
+    return user.id === 1 || user.name.trim().toLowerCase() === "mohamed";
+  }
 
   const statusMutation = useMutation({
     mutationFn: ({ id, nextStatus }: { id: number; nextStatus: "active" | "banned" }) =>
@@ -120,12 +115,35 @@ export default function AdminUserDetailsPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
       await queryClient.invalidateQueries({ queryKey: ["admin", "users", "details", userId] });
-      toast({ title: "تم تحديث حالة المستخدم" });
+      toast({ title: t("p8.admin.user_details.toast_status_updated") });
     },
     onError: (error) => {
       toast({
-        title: "فشل تحديث الحالة",
-        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+        title: t("p8.admin.user_details.toast_status_fail"),
+        description: error instanceof Error ? error.message : t("p8.admin.common.error_generic"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const avatarReviewMutation = useMutation({
+    mutationFn: ({
+      decision,
+      reason,
+    }: {
+      decision: "approve" | "reject";
+      reason?: string;
+    }) => reviewAdminUserAvatar(userId, decision, reason),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "users", "details", userId] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+      toast({ title: t("p8.admin.user_details.toast_avatar_reviewed") });
+    },
+    onError: (error) => {
+      toast({
+        title: t("p8.admin.user_details.toast_avatar_review_fail"),
+        description: error instanceof Error ? error.message : t("p8.admin.common.error_generic"),
         variant: "destructive",
       });
     },
@@ -136,10 +154,19 @@ export default function AdminUserDetailsPage() {
     navigate("/admin-login");
   };
 
-  const actionPending = statusMutation.isPending;
+  const actionPending = statusMutation.isPending || avatarReviewMutation.isPending;
 
   const confirmBan = () => {
     if (!pendingBan) return;
+    if (isFounderUser(pendingBan)) {
+      toast({
+        title: t("p8.admin.user_details.protected_title"),
+        description: t("p8.admin.user_details.protected_hint"),
+        variant: "destructive",
+      });
+      setPendingBan(null);
+      return;
+    }
     statusMutation.mutate(
       { id: pendingBan.id, nextStatus: "banned" },
       { onSettled: () => setPendingBan(null) },
@@ -148,12 +175,8 @@ export default function AdminUserDetailsPage() {
 
   if (meQuery.isLoading || detailsQuery.isLoading) {
     return (
-      <div
-        className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#0A0A0A] text-muted-foreground"
-        dir="rtl"
-      >
-        <Loader2 className="h-9 w-9 animate-spin text-primary" aria-hidden />
-        <span className="text-sm font-medium text-foreground/80">جاري تحميل تفاصيل المستخدم…</span>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#0A0A0A]" dir="rtl">
+        <AdminPageLoading message={t("p8.admin.user_details.loading")} />
       </div>
     );
   }
@@ -161,20 +184,20 @@ export default function AdminUserDetailsPage() {
   if (detailsQuery.isError || !detailsQuery.data) {
     return (
       <AdminShell activeKey="users" onLogout={handleLogout}>
-        <div
-          className={cn(
-            ADMIN_GLASS_SURFACE,
-            "border-red-500/35 bg-red-950/20 p-10 text-center text-red-100 ring-red-500/15",
-          )}
-        >
-          <p className="text-sm font-medium">تعذر تحميل تفاصيل المستخدم.</p>
-          <button
-            type="button"
-            onClick={() => navigate("/admin/users")}
-            className={cn(BTN_TOOLBAR_OUTLINE, "mx-auto mt-6 px-5 py-2.5 text-sm")}
-          >
-            العودة إلى قائمة المستخدمين
-          </button>
+        <div className="space-y-4">
+          <AdminErrorState
+            title={t("p8.admin.user_details.load_error")}
+            onRetry={() => void detailsQuery.refetch()}
+          />
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/users")}
+              className={cn(BTN_TOOLBAR_OUTLINE, "px-5 py-2.5 text-sm")}
+            >
+              {t("p8.admin.user_details.back_to_users")}
+            </button>
+          </div>
         </div>
       </AdminShell>
     );
@@ -197,7 +220,7 @@ export default function AdminUserDetailsPage() {
             )}
           >
             <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
-            رجوع إلى المستخدمين
+            {t("p8.admin.user_details.back")}
           </button>
           <div className="flex flex-wrap gap-2">
             {u.status === "banned" ? (
@@ -211,13 +234,23 @@ export default function AdminUserDetailsPage() {
                 )}
               >
                 <ShieldOff className="h-4 w-4" aria-hidden />
-                فك الحظر
+                {t("p8.admin.user_details.unban")}
               </button>
             ) : (
               <button
                 type="button"
-                onClick={() => setPendingBan({ id: u.id, name: u.name })}
-                disabled={actionPending}
+                onClick={() => {
+                  if (isFounderUser(u)) {
+                    toast({
+                      title: t("p8.admin.user_details.protected_title"),
+                      description: t("p8.admin.user_details.protected_hint"),
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  setPendingBan({ id: u.id, name: u.name });
+                }}
+                disabled={actionPending || isFounderUser(u)}
                 className={cn(
                   ADMIN_ROW_ACTION_BASE,
                   BTN_FIX,
@@ -226,7 +259,7 @@ export default function AdminUserDetailsPage() {
                 )}
               >
                 <Shield className="h-4 w-4" aria-hidden />
-                حظر المستخدم
+                {t("p8.admin.user_details.ban")}
               </button>
             )}
           </div>
@@ -252,11 +285,11 @@ export default function AdminUserDetailsPage() {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0 space-y-1">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/80">
-                    ملف المستخدم
+                    {t("p8.admin.user_details.profile_label")}
                   </p>
                   <h1 className={cn(AUTH_HEADER_TITLE, "text-2xl sm:text-3xl")}>{u.name}</h1>
                   <p className="text-sm text-muted-foreground">
-                    معرف الحساب{" "}
+                    {t("p8.admin.user_details.account_id")}{" "}
                     <span className="font-mono tabular-nums text-foreground/90">#{u.id}</span>
                   </p>
                 </div>
@@ -269,7 +302,7 @@ export default function AdminUserDetailsPage() {
                   )}
                 >
                   <Sparkles className="h-3.5 w-3.5 opacity-90" aria-hidden />
-                  {u.status === "banned" ? "محظور" : "نشط"}
+                  {u.status === "banned" ? t("p8.admin.user_details.status_banned") : t("p8.admin.user_details.status_active")}
                 </span>
               </div>
 
@@ -284,12 +317,12 @@ export default function AdminUserDetailsPage() {
                     <Mail className="h-4 w-4" aria-hidden />
                   </span>
                   <div className="min-w-0 text-right">
-                    <p className="text-[11px] font-medium text-muted-foreground">البريد الإلكتروني</p>
+                    <p className="text-[11px] font-medium text-muted-foreground">{t("p8.admin.user_details.email")}</p>
                     <p className="truncate text-sm font-medium text-foreground">{u.email}</p>
                     {u.emailVerified ? (
-                      <p className="mt-0.5 text-[11px] text-emerald-400/90">موثّق</p>
+                      <p className="mt-0.5 text-[11px] text-emerald-400/90">{t("p8.admin.user_details.verified")}</p>
                     ) : (
-                      <p className="mt-0.5 text-[11px] text-amber-300/90">غير موثّق</p>
+                      <p className="mt-0.5 text-[11px] text-amber-300/90">{t("p8.admin.user_details.unverified")}</p>
                     )}
                   </div>
                 </div>
@@ -304,8 +337,8 @@ export default function AdminUserDetailsPage() {
                     <MapPin className="h-4 w-4" aria-hidden />
                   </span>
                   <div className="min-w-0 text-right">
-                    <p className="text-[11px] font-medium text-muted-foreground">المدينة</p>
-                    <p className="text-sm font-medium text-foreground">{u.city?.trim() || "—"}</p>
+                    <p className="text-[11px] font-medium text-muted-foreground">{t("p8.admin.user_details.city")}</p>
+                    <p className="text-sm font-medium text-foreground">{u.city?.trim() || t("p8.admin.common.dash")}</p>
                   </div>
                 </div>
 
@@ -319,7 +352,7 @@ export default function AdminUserDetailsPage() {
                     <Calendar className="h-4 w-4" aria-hidden />
                   </span>
                   <div className="min-w-0 text-right">
-                    <p className="text-[11px] font-medium text-muted-foreground">تاريخ الإنشاء</p>
+                    <p className="text-[11px] font-medium text-muted-foreground">{t("p8.admin.user_details.created_at")}</p>
                     <p className="text-sm font-medium text-foreground tabular-nums">
                       {formatDate(u.createdAt)}
                     </p>
@@ -336,9 +369,9 @@ export default function AdminUserDetailsPage() {
                     <Phone className="h-4 w-4" aria-hidden />
                   </span>
                   <div className="min-w-0 text-right">
-                    <p className="text-[11px] font-medium text-muted-foreground">الهاتف</p>
+                    <p className="text-[11px] font-medium text-muted-foreground">{t("p8.admin.user_details.phone")}</p>
                     <p className="font-mono text-sm font-medium text-foreground tabular-nums">
-                      {u.phone?.trim() || "—"}
+                      {u.phone?.trim() || t("p8.admin.common.dash")}
                     </p>
                   </div>
                 </div>
@@ -352,7 +385,7 @@ export default function AdminUserDetailsPage() {
           <div className={cn(STAT_GLASS, "p-5")}>
             <div className="flex items-start justify-between gap-3">
               <div className="text-right">
-                <p className="text-xs font-medium text-muted-foreground">إجمالي الإعلانات</p>
+                <p className="text-xs font-medium text-muted-foreground">{t("p8.admin.user_details.stats_ads")}</p>
                 <p className="mt-2 text-3xl font-bold tabular-nums text-primary">
                   {details.stats.adsCount.toLocaleString("ar-EG")}
                 </p>
@@ -361,12 +394,12 @@ export default function AdminUserDetailsPage() {
                 <Megaphone className="h-5 w-5" aria-hidden />
               </span>
             </div>
-            <p className="mt-3 text-[11px] text-muted-foreground">كل الإعلانات المرتبطة بهذا الحساب</p>
+            <p className="mt-3 text-[11px] text-muted-foreground">{t("p8.admin.user_details.stats_ads_hint")}</p>
           </div>
           <div className={cn(STAT_GLASS, "p-5")}>
             <div className="flex items-start justify-between gap-3">
               <div className="text-right">
-                <p className="text-xs font-medium text-muted-foreground">البلاغات</p>
+                <p className="text-xs font-medium text-muted-foreground">{t("p8.admin.user_details.stats_reports")}</p>
                 <p className="mt-2 text-3xl font-bold tabular-nums text-amber-200">
                   {details.stats.reportsCount.toLocaleString("ar-EG")}
                 </p>
@@ -375,12 +408,12 @@ export default function AdminUserDetailsPage() {
                 <Flag className="h-5 w-5" aria-hidden />
               </span>
             </div>
-            <p className="mt-3 text-[11px] text-muted-foreground">بلاغات تخص هذا المستخدم</p>
+            <p className="mt-3 text-[11px] text-muted-foreground">{t("p8.admin.user_details.stats_reports_hint")}</p>
           </div>
           <div className={cn(STAT_GLASS, "p-5")}>
             <div className="flex items-start justify-between gap-3">
               <div className="text-right">
-                <p className="text-xs font-medium text-muted-foreground">تذاكر الدعم</p>
+                <p className="text-xs font-medium text-muted-foreground">{t("p8.admin.user_details.stats_support")}</p>
                 <p className="mt-2 text-3xl font-bold tabular-nums text-sky-200">
                   {details.stats.supportTicketsCount.toLocaleString("ar-EG")}
                 </p>
@@ -389,22 +422,57 @@ export default function AdminUserDetailsPage() {
                 <LifeBuoy className="h-5 w-5" aria-hidden />
               </span>
             </div>
-            <p className="mt-3 text-[11px] text-muted-foreground">محادثات الدعم المفتوحة أو المغلقة</p>
+            <p className="mt-3 text-[11px] text-muted-foreground">{t("p8.admin.user_details.stats_support_hint")}</p>
           </div>
         </section>
+
+        {u.avatarPendingReview ? (
+          <section className={cn(CARD_SHELL, "border-amber-500/35 p-5 sm:p-6 ring-amber-500/15")}>
+            <div className="mb-4 flex flex-col gap-1 text-right">
+              <p className={SETTINGS_SECTION_TITLE}>{t("p8.admin.user_details.avatar_review_section")}</p>
+              <h2 className="text-lg font-semibold text-foreground sm:text-xl">{t("p8.admin.user_details.avatar_pending_title")}</h2>
+              <p className="text-sm text-muted-foreground">{t("p8.admin.user_details.avatar_review_hint")}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={actionPending}
+                onClick={() => avatarReviewMutation.mutate({ decision: "approve" })}
+                className={cn(
+                  ADMIN_ROW_ACTION_BASE,
+                  "border-emerald-500/45 bg-emerald-600/15 px-4 py-2 text-emerald-100",
+                )}
+              >
+                <Check className="h-4 w-4" aria-hidden />
+                {t("p8.admin.user_details.approve_avatar")}
+              </button>
+              <button
+                type="button"
+                disabled={actionPending}
+                onClick={() => setPendingAvatarReject(true)}
+                className={cn(
+                  ADMIN_ROW_ACTION_BASE,
+                  "border-orange-500/45 bg-orange-600/12 px-4 py-2 text-orange-100",
+                )}
+              >
+                <XCircle className="h-4 w-4" aria-hidden />
+                {t("p8.admin.user_details.reject_avatar")}
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         {/* Ads */}
         <section className={cn(CARD_SHELL, "border-primary/20 p-5 sm:p-6")}>
           <div className="mb-5 flex flex-col gap-1 text-right sm:mb-6">
-            <p className={SETTINGS_SECTION_TITLE}>النشاط التجاري</p>
-            <h2 className="text-lg font-semibold text-foreground sm:text-xl">إعلانات المستخدم</h2>
-            <p className="text-sm text-muted-foreground">آخر الإعلانات المسجلة لهذا الحساب</p>
+            <p className={SETTINGS_SECTION_TITLE}>{t("p8.admin.user_details.commercial_section")}</p>
+            <h2 className="text-lg font-semibold text-foreground sm:text-xl">{t("p8.admin.user_details.ads_title")}</h2>
+            <p className="text-sm text-muted-foreground">{t("p8.admin.user_details.ads_subtitle")}</p>
           </div>
           {details.ads.length === 0 ? (
             <EmptyBlock
-              icon={PackageOpen}
-              title="لا توجد إعلانات"
-              hint="لم يُنشئ هذا المستخدم أي إعلان بعد، أو تمت إزالة كل السجلات المرتبطة به."
+              title={t("p8.admin.user_details.ads_empty_title")}
+              hint={t("p8.admin.user_details.ads_empty_hint")}
             />
           ) : (
             <ul className="space-y-3">
@@ -423,11 +491,11 @@ export default function AdminUserDetailsPage() {
                       </p>
                       <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span>
-                          الحالة:{" "}
+                          {t("p8.admin.user_details.label_status")}{" "}
                           <span className="font-medium text-foreground/90">{ad.status}</span>
                         </span>
-                        <span>المدينة: {ad.city || "—"}</span>
-                        <span className="tabular-nums">المشاهدات: {ad.views.toLocaleString("ar-EG")}</span>
+                        <span>{t("p8.admin.user_details.label_city")} {ad.city || t("p8.admin.common.dash")}</span>
+                        <span className="tabular-nums">{t("p8.admin.user_details.label_views")} {ad.views.toLocaleString("ar-EG")}</span>
                         {ad.createdAt ? (
                           <span className="tabular-nums">{formatDate(ad.createdAt)}</span>
                         ) : null}
@@ -443,15 +511,14 @@ export default function AdminUserDetailsPage() {
         {/* Reports */}
         <section className={cn(CARD_SHELL, "border-primary/20 p-5 sm:p-6")}>
           <div className="mb-5 flex flex-col gap-1 text-right sm:mb-6">
-            <p className={SETTINGS_SECTION_TITLE}>السلامة والامتثال</p>
-            <h2 className="text-lg font-semibold text-foreground sm:text-xl">البلاغات المرتبطة</h2>
-            <p className="text-sm text-muted-foreground">بلاغات وُجهت ضد هذا المستخدم أو نشاطه</p>
+            <p className={SETTINGS_SECTION_TITLE}>{t("p8.admin.user_details.safety_section")}</p>
+            <h2 className="text-lg font-semibold text-foreground sm:text-xl">{t("p8.admin.user_details.reports_title")}</h2>
+            <p className="text-sm text-muted-foreground">{t("p8.admin.user_details.reports_subtitle")}</p>
           </div>
           {details.reports.length === 0 ? (
             <EmptyBlock
-              icon={Flag}
-              title="لا توجد بلاغات"
-              hint="لا توجد سجلات بلاغات لهذا المستخدم في الفترة الحالية."
+              title={t("p8.admin.user_details.reports_empty_title")}
+              hint={t("p8.admin.user_details.reports_empty_hint")}
             />
           ) : (
             <ul className="space-y-3">
@@ -467,10 +534,10 @@ export default function AdminUserDetailsPage() {
                     <span className="font-mono text-amber-200/90">#{report.id}</span> — {report.reason}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    الحالة:{" "}
+                    {t("p8.admin.user_details.label_status")}{" "}
                     <span className="font-medium text-foreground/90">{report.status}</span>
                     {" · "}
-                    المبلّغ: {report.reporterName?.trim() || "—"}
+                    {t("p8.admin.user_details.label_reporter")} {report.reporterName?.trim() || t("p8.admin.common.dash")}
                     {report.createdAt ? (
                       <>
                         {" · "}
@@ -492,15 +559,14 @@ export default function AdminUserDetailsPage() {
         {/* Support */}
         <section className={cn(CARD_SHELL, "border-primary/20 p-5 sm:p-6")}>
           <div className="mb-5 flex flex-col gap-1 text-right sm:mb-6">
-            <p className={SETTINGS_SECTION_TITLE}>الدعم</p>
-            <h2 className="text-lg font-semibold text-foreground sm:text-xl">تذاكر الدعم</h2>
-            <p className="text-sm text-muted-foreground">طلبات المساعدة المفتوحة من هذا الحساب</p>
+            <p className={SETTINGS_SECTION_TITLE}>{t("p8.admin.user_details.support_section")}</p>
+            <h2 className="text-lg font-semibold text-foreground sm:text-xl">{t("p8.admin.user_details.support_title")}</h2>
+            <p className="text-sm text-muted-foreground">{t("p8.admin.user_details.support_subtitle")}</p>
           </div>
           {details.supportTickets.length === 0 ? (
             <EmptyBlock
-              icon={LifeBuoy}
-              title="لا توجد تذاكر دعم"
-              hint="لم يُفتح أي تذكرة دعم من هذا المستخدم بعد."
+              title={t("p8.admin.user_details.support_empty_title")}
+              hint={t("p8.admin.user_details.support_empty_hint")}
             />
           ) : (
             <ul className="space-y-3">
@@ -516,12 +582,12 @@ export default function AdminUserDetailsPage() {
                     <span className="font-mono text-sky-200/90">#{ticket.id}</span> — {ticket.subject}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    النوع: {ticket.category}
+                    {t("p8.admin.user_details.label_type")} {ticket.category}
                     {" · "}
-                    الحالة:{" "}
+                    {t("p8.admin.user_details.label_status")}{" "}
                     <span className="font-medium text-foreground/90">{ticket.status}</span>
                     {" · "}
-                    الأولوية: {ticket.priority}
+                    {t("p8.admin.user_details.label_priority")} {ticket.priority}
                     {ticket.createdAt ? (
                       <>
                         {" · "}
@@ -542,26 +608,26 @@ export default function AdminUserDetailsPage() {
           className="z-[100] max-w-md rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
         >
           <AlertDialogHeader className="text-right sm:text-right">
-            <AlertDialogTitle className="text-lg font-semibold text-foreground">تأكيد حظر المستخدم</AlertDialogTitle>
+            <AlertDialogTitle className="text-lg font-semibold text-foreground">{t("p8.admin.user_details.ban_confirm_title")}</AlertDialogTitle>
             <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
-              {pendingBan ? (
-                <>
-                  هل تريد حظر «{pendingBan.name}» (#{pendingBan.id})؟ لن يتمكن من استخدام الحساب بالشكل المعتاد حتى يتم
-                  فك الحظر.
-                </>
-              ) : null}
+              {pendingBan
+                ? t("p8.admin.user_details.ban_confirm_body", {
+                    name: pendingBan.name,
+                    id: pendingBan.id,
+                  })
+                : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-row-reverse flex-wrap gap-2 sm:flex-row-reverse sm:justify-start sm:gap-2 sm:space-x-0">
             <AlertDialogCancel
               className={cn(buttonVariants({ variant: "outline", size: "default" }), BTN_MODAL_GHOST, "mt-0")}
             >
-              إلغاء
+              {t("p8.admin.common.cancel")}
             </AlertDialogCancel>
             <button
               type="button"
               disabled={actionPending || !pendingBan}
-              title={actionPending ? "جاري تنفيذ العملية…" : undefined}
+              title={actionPending ? t("p8.admin.user_details.action_pending") : undefined}
               className={cn(
                 buttonVariants({ variant: "destructive", size: "default" }),
                 BTN_FIX,
@@ -570,11 +636,25 @@ export default function AdminUserDetailsPage() {
               onClick={() => confirmBan()}
             >
               {actionPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-              تأكيد الحظر
+              {t("p8.admin.user_details.confirm_ban")}
             </button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ModerationReasonDialog
+        open={pendingAvatarReject}
+        onOpenChange={setPendingAvatarReject}
+        title={t("p8.admin.user_details.avatar_reject_title")}
+        description={t("p8.admin.user_details.avatar_review_hint")}
+        confirmLabel={t("p8.admin.user_details.confirm_avatar_reject")}
+        onConfirm={(reason) => {
+          avatarReviewMutation.mutate(
+            { decision: "reject", reason },
+            { onSettled: () => setPendingAvatarReject(false) },
+          );
+        }}
+      />
     </AdminShell>
   );
 }

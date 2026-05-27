@@ -19,8 +19,11 @@ export const usersTable = pgTable("users", {
   phone: text("phone").notNull(),
   city: text("city").notNull().default(""),
   avatarUrl: text("avatar_url"),
+  avatarApprovedUrl: text("avatar_approved_url"),
+  avatarPendingReview: boolean("avatar_pending_review").notNull().default(false),
   isBanned: boolean("is_banned").notNull().default(false),
   emailVerified: boolean("email_verified").notNull().default(false),
+  accountVerificationStatus: text("account_verification_status").notNull().default("unverified"),
   verificationCode: text("verification_code"),
   verificationExpiresAt: timestamp("verification_expires_at", {
     withTimezone: true,

@@ -12,10 +12,14 @@ export const PAGINATION = {
   NOTIFICATIONS: { default: 100, max: 100 },
   SUPPORT_TICKETS: { default: 50, max: 100 },
   SUPPORT_MESSAGES: { default: 100, max: 200 },
-  ADMIN_USERS: { default: 100, max: 200 },
-  ADMIN_REPORTS: { default: 100, max: 200 },
+  ADMIN_USERS: { default: 50, max: 100 },
+  ADMIN_REPORTS: { default: 50, max: 100 },
+  ADMIN_ADS: { default: 50, max: 100 },
+  ADMIN_SUPPORT: { default: 50, max: 100 },
+  ADMIN_VERIFICATION: { default: 50, max: 100 },
+  ADMIN_STAFF: { default: 50, max: 100 },
   ADMIN_CITIES: { default: 500, max: 500 },
-  ADMIN_LOGS: { default: 300, max: 300 },
+  ADMIN_LOGS: { default: 50, max: 100 },
   SOCIAL: { default: 200, max: 200 },
 } as const;
 
@@ -35,9 +39,25 @@ export type PageMeta = {
   nextCursor: string | null;
 };
 
+/** Admin list pages — page/size/total headers (P8M-1). */
+export type AdminPageMeta = PageMeta & {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+};
+
 const CURSOR_HEADER = "x-pagination-next-cursor";
 const HAS_MORE_HEADER = "x-pagination-has-more";
 const LIMIT_HEADER = "x-pagination-limit";
+const PAGE_HEADER = "x-pagination-page";
+const PAGE_SIZE_HEADER = "x-pagination-page-size";
+const TOTAL_PAGES_HEADER = "x-pagination-total-pages";
+const TOTAL_ITEMS_HEADER = "x-pagination-total-items";
+const HAS_NEXT_HEADER = "x-pagination-has-next";
+const HAS_PREVIOUS_HEADER = "x-pagination-has-previous";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -189,11 +209,57 @@ export function finalizePage<T>(
   };
 }
 
+export function parseAdminPageQuery(
+  query: Record<string, unknown>,
+  profile: LimitProfile,
+): { page: number; pageSize: number; offset: number } {
+  const pageSize = clampLimit(query.pageSize ?? query.limit, profile);
+  const pageRaw = query.page;
+  let page =
+    pageRaw === undefined || pageRaw === null || pageRaw === ""
+      ? 1
+      : Math.floor(Number(pageRaw));
+  if (!Number.isFinite(page) || page < 1) page = 1;
+  return { page, pageSize, offset: (page - 1) * pageSize };
+}
+
+export function buildAdminPageMeta(
+  page: number,
+  pageSize: number,
+  totalItems: number,
+  nextCursor: string | null = null,
+): AdminPageMeta {
+  const totalPages = Math.max(1, Math.ceil(Math.max(0, totalItems) / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const hasNext = safePage < totalPages;
+  const hasPrevious = safePage > 1;
+  return {
+    page: safePage,
+    pageSize,
+    totalItems: Math.max(0, totalItems),
+    totalPages,
+    hasNext,
+    hasPrevious,
+    limit: pageSize,
+    hasMore: hasNext,
+    nextCursor: hasNext ? nextCursor : null,
+  };
+}
+
 export function setPaginationHeaders(res: Response, meta: PageMeta): void {
   res.setHeader(LIMIT_HEADER, String(meta.limit));
   res.setHeader(HAS_MORE_HEADER, meta.hasMore ? "true" : "false");
   if (meta.nextCursor) {
     res.setHeader(CURSOR_HEADER, meta.nextCursor);
+  }
+  if ("page" in meta && typeof (meta as AdminPageMeta).page === "number") {
+    const adminMeta = meta as AdminPageMeta;
+    res.setHeader(PAGE_HEADER, String(adminMeta.page));
+    res.setHeader(PAGE_SIZE_HEADER, String(adminMeta.pageSize));
+    res.setHeader(TOTAL_PAGES_HEADER, String(adminMeta.totalPages));
+    res.setHeader(TOTAL_ITEMS_HEADER, String(adminMeta.totalItems));
+    res.setHeader(HAS_NEXT_HEADER, adminMeta.hasNext ? "true" : "false");
+    res.setHeader(HAS_PREVIOUS_HEADER, adminMeta.hasPrevious ? "true" : "false");
   }
 }
 
@@ -202,6 +268,16 @@ export function sendJsonArrayPage(
   res: Response,
   items: unknown[],
   meta: PageMeta,
+): void {
+  setPaginationHeaders(res, meta);
+  res.json(items);
+}
+
+/** Admin page lists — includes page/total headers (P8M-1). */
+export function sendJsonAdminPage(
+  res: Response,
+  items: unknown[],
+  meta: AdminPageMeta,
 ): void {
   setPaginationHeaders(res, meta);
   res.json(items);

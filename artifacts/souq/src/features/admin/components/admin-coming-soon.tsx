@@ -1,4 +1,5 @@
 import { Sparkles } from "lucide-react";
+import { t } from "@/i18n";
 
 type AdminComingSoonProps = {
   title: string;
@@ -7,7 +8,7 @@ type AdminComingSoonProps = {
 
 export function AdminComingSoon({
   title,
-  description = "هذه الصفحة سيتم تنفيذها بالكامل في الخطوات القادمة.",
+  description = t("p8.admin.common.coming_soon_description"),
 }: AdminComingSoonProps) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-[#0d1324] p-8 text-center">

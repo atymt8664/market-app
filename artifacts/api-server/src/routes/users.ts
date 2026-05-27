@@ -23,6 +23,7 @@ import {
   SupabaseStorageConnectionError,
   uploadAvatarImageForUser,
 } from "../lib/supabaseStorage";
+import { avatarPatchAfterUpload, resolvePublicAvatarUrl } from "../lib/trust-safety/avatar-moderation";
 import { PUBLIC_AD_STATUSES } from "../lib/ad-visibility";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireUserCsrf } from "../middlewares/require-user-csrf";
@@ -297,6 +298,8 @@ router.get("/users/:userId/followers", async (req, res) => {
         userId: usersTable.id,
         name: usersTable.name,
         avatarUrl: usersTable.avatarUrl,
+        avatarApprovedUrl: usersTable.avatarApprovedUrl,
+        avatarPendingReview: usersTable.avatarPendingReview,
         followCreatedAt: userFollowsTable.createdAt,
         followId: userFollowsTable.id,
       })
@@ -325,7 +328,14 @@ router.get("/users/:userId/followers", async (req, res) => {
       items.map((r) => ({
         userId: r.userId,
         name: r.name,
-        avatarUrl: r.avatarUrl ?? null,
+        avatarUrl: resolvePublicAvatarUrl(
+          {
+            avatarUrl: r.avatarUrl,
+            avatarApprovedUrl: r.avatarApprovedUrl,
+            avatarPendingReview: r.avatarPendingReview,
+          },
+          false,
+        ),
       })),
       meta,
     );
@@ -357,6 +367,8 @@ router.get("/users/:userId/following", async (req, res) => {
         userId: usersTable.id,
         name: usersTable.name,
         avatarUrl: usersTable.avatarUrl,
+        avatarApprovedUrl: usersTable.avatarApprovedUrl,
+        avatarPendingReview: usersTable.avatarPendingReview,
         followCreatedAt: userFollowsTable.createdAt,
         followId: userFollowsTable.id,
       })
@@ -385,7 +397,14 @@ router.get("/users/:userId/following", async (req, res) => {
       items.map((r) => ({
         userId: r.userId,
         name: r.name,
-        avatarUrl: r.avatarUrl ?? null,
+        avatarUrl: resolvePublicAvatarUrl(
+          {
+            avatarUrl: r.avatarUrl,
+            avatarApprovedUrl: r.avatarApprovedUrl,
+            avatarPendingReview: r.avatarPendingReview,
+          },
+          false,
+        ),
       })),
       meta,
     );
@@ -477,6 +496,8 @@ router.get("/users/:userId", async (req, res) => {
       name: usersTable.name,
       city: usersTable.city,
       avatarUrl: usersTable.avatarUrl,
+      avatarApprovedUrl: usersTable.avatarApprovedUrl,
+      avatarPendingReview: usersTable.avatarPendingReview,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
@@ -487,14 +508,16 @@ router.get("/users/:userId", async (req, res) => {
     res.status(404).json({ error: "المستخدم غير موجود" });
     return;
   }
+  const isSelf = req.session.userId === u.id;
   const stats = await followStats(userId, req.session.userId ?? null);
   res.json({
     id: u.id,
     name: u.name,
     city: u.city,
-    avatarUrl: u.avatarUrl ?? null,
+    avatarUrl: resolvePublicAvatarUrl(u, isSelf),
+    avatarPendingReview: isSelf ? u.avatarPendingReview : undefined,
     createdAt: u.createdAt.toISOString(),
-    isSelf: req.session.userId === u.id,
+    isSelf,
     ...stats,
   });
 });
@@ -619,12 +642,26 @@ router.post(
         buffer: file.buffer,
         mimetype: file.mimetype,
       });
+      const [current] = await db
+        .select({
+          avatarUrl: usersTable.avatarUrl,
+          avatarApprovedUrl: usersTable.avatarApprovedUrl,
+          avatarPendingReview: usersTable.avatarPendingReview,
+        })
+        .from(usersTable)
+        .where(eq(usersTable.id, userId))
+        .limit(1);
+      const avatarPatch = avatarPatchAfterUpload(current ?? {}, imageUrl);
       await db
         .update(usersTable)
-        .set({ avatarUrl: imageUrl })
+        .set(avatarPatch)
         .where(eq(usersTable.id, userId));
 
-      res.json({ success: true, imageUrl });
+      res.json({
+        success: true,
+        imageUrl,
+        avatarPendingReview: avatarPatch.avatarPendingReview,
+      });
     } catch (error) {
       if (error instanceof MissingSupabaseStorageConfigError) {
         req.log.warn(

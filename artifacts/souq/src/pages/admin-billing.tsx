@@ -1,16 +1,18 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { FileText, Loader2, Wallet2 } from "lucide-react";
+import { FileText, Wallet2 } from "lucide-react";
 import { adminLogout } from "@/features/admin/api";
 import {
   BTN_FIX,
   CARD_SHELL,
   INPUT_FIELD,
-  PANEL_INSET,
-  STAT_TILE,
   SUB_CARD,
   SURFACE_TABLE_WRAP,
 } from "@/features/admin/admin-interaction-classes";
+import {
+  AdminEmptyState,
+  AdminPageLoading,
+} from "@/features/admin/components/admin-page-states";
 import { AdminShell } from "@/features/admin/components/admin-shell";
 import { useRequireAdmin } from "@/features/admin/hooks";
 import { Button } from "@/components/ui/button";
@@ -19,20 +21,13 @@ import { cn } from "@/lib/utils";
 
 const YEARS = [2024, 2025, 2026, 2027] as const;
 
-function StatPlaceholderCard({ titleKey }: { titleKey: string }) {
-  return (
-    <div className={cn(STAT_TILE, "flex flex-col gap-1.5 text-right")}>
-      <p className="text-xs font-medium leading-snug text-zinc-400">{t(titleKey)}</p>
-      <p className="text-xl font-bold tabular-nums tracking-tight text-primary">{t("admin_billing.placeholder_amount")}</p>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="rounded-full border border-primary/35 bg-zinc-950/90 px-2 py-0.5 text-[10px] font-semibold text-primary">
-          {t("admin_billing.placeholder_badge")}
-        </span>
-        <span className="text-[11px] text-zinc-500">{t("admin_billing.placeholder_no_data")}</span>
-      </div>
-    </div>
-  );
-}
+const CHANNEL_KEYS = [
+  "admin_billing.channels.promo",
+  "admin_billing.channels.premium",
+  "admin_billing.channels.professional",
+  "admin_billing.channels.stores",
+  "admin_billing.channels.badges",
+] as const;
 
 export default function AdminBillingPage() {
   const [, navigate] = useLocation();
@@ -46,8 +41,8 @@ export default function AdminBillingPage() {
 
   if (meQuery.isLoading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-[#0A0A0A] text-primary" dir="rtl">
-        <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
+      <div className="flex min-h-[50vh] items-center justify-center bg-[#0A0A0A]" dir="rtl">
+        <AdminPageLoading message={t("p8.admin.common.loading")} />
       </div>
     );
   }
@@ -57,36 +52,6 @@ export default function AdminBillingPage() {
     navigate("/admin-login");
   };
 
-  const statKeys = [
-    "admin_billing.stats.month_total",
-    "admin_billing.stats.promo",
-    "admin_billing.stats.premium_account",
-    "admin_billing.stats.professional_account",
-    "admin_billing.stats.successful",
-    "admin_billing.stats.refunded",
-    "admin_billing.stats.taxes_fees",
-  ] as const;
-
-  const channelKeys = [
-    "admin_billing.channels.promo",
-    "admin_billing.channels.premium",
-    "admin_billing.channels.professional",
-    "admin_billing.channels.stores",
-    "admin_billing.channels.badges",
-  ] as const;
-
-  const tableCols = [
-    "admin_billing.table.col_date",
-    "admin_billing.table.col_type",
-    "admin_billing.table.col_ad_user",
-    "admin_billing.table.col_bundle",
-    "admin_billing.table.col_amount",
-    "admin_billing.table.col_fees",
-    "admin_billing.table.col_tax",
-    "admin_billing.table.col_net",
-    "admin_billing.table.col_status",
-  ] as const;
-
   return (
     <AdminShell activeKey="billing" onLogout={onLogout}>
       <div className="space-y-5" dir="rtl">
@@ -95,30 +60,27 @@ export default function AdminBillingPage() {
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/45 bg-primary/12 text-primary shadow-[0_0_20px_-8px_hsl(var(--primary)/0.4)] ring-1 ring-primary/15">
               <Wallet2 className="h-6 w-6" aria-hidden />
             </div>
-            <div className="min-w-0 flex-1 space-y-1">
-              <h1 className="text-xl font-bold text-foreground sm:text-2xl">{t("admin_billing.title")}</h1>
-              <p className="text-sm leading-relaxed text-zinc-400">{t("admin_billing.subtitle")}</p>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-bold text-foreground">{t("admin_billing.title")}</h1>
+              <p className="text-sm text-muted-foreground">{t("admin_billing.subtitle")}</p>
             </div>
           </div>
         </header>
 
-        <div
-          className="rounded-2xl border border-amber-500/35 bg-amber-950/25 px-3 py-2.5 text-right text-[13px] font-medium leading-relaxed text-amber-100/95"
-          role="status"
-        >
-          {t("admin_billing.alert")}
-        </div>
+        <section className={cn(CARD_SHELL, "border-amber-500/35 bg-amber-950/15 p-5 text-right")}>
+          <h2 className="text-base font-semibold text-amber-100">{t("p8.admin.billing.disconnected_title")}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-amber-100/85">{t("p8.admin.billing.disconnected_body")}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{t("p8.admin.billing.next_step")}</p>
+        </section>
 
-        <section className={CARD_SHELL}>
-          <h2 className="mb-3 text-right text-base font-semibold text-foreground">{t("admin_billing.filter.title")}</h2>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="flex min-w-[140px] flex-1 flex-col gap-1.5 text-right text-xs font-medium text-zinc-400">
-              {t("admin_billing.filter.month")}
+        <section className={cn(CARD_SHELL, "p-4 sm:p-5")}>
+          <div className="mb-4 flex flex-wrap items-end gap-3">
+            <label className="space-y-1 text-right text-sm">
+              <span className="text-muted-foreground">{t("admin_billing.filter.month")}</span>
               <select
-                className={cn(BTN_FIX, INPUT_FIELD, "h-11 cursor-pointer")}
                 value={filterMonth}
                 onChange={(e) => setFilterMonth(e.target.value)}
-                aria-label={t("admin_billing.filter.month")}
+                className={cn(INPUT_FIELD, "min-w-[120px]")}
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                   <option key={m} value={String(m)}>
@@ -127,13 +89,12 @@ export default function AdminBillingPage() {
                 ))}
               </select>
             </label>
-            <label className="flex min-w-[120px] flex-1 flex-col gap-1.5 text-right text-xs font-medium text-zinc-400">
-              {t("admin_billing.filter.year")}
+            <label className="space-y-1 text-right text-sm">
+              <span className="text-muted-foreground">{t("admin_billing.filter.year")}</span>
               <select
-                className={cn(BTN_FIX, INPUT_FIELD, "h-11 cursor-pointer")}
                 value={filterYear}
                 onChange={(e) => setFilterYear(e.target.value)}
-                aria-label={t("admin_billing.filter.year")}
+                className={cn(INPUT_FIELD, "min-w-[120px]")}
               >
                 {YEARS.map((y) => (
                   <option key={y} value={String(y)}>
@@ -142,86 +103,30 @@ export default function AdminBillingPage() {
                 ))}
               </select>
             </label>
+            <Button type="button" variant="outline" className={cn(BTN_FIX, "rounded-2xl")} disabled>
+              {t("admin_billing.filter.apply")}
+            </Button>
           </div>
-          <p className="mt-2 text-right text-[11px] text-zinc-500">{t("admin_billing.filter.hint")}</p>
-        </section>
 
-        <section>
-          <h2 className="mb-3 text-right text-base font-semibold text-foreground">{t("admin_billing.stats.section_title")}</h2>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {statKeys.map((k) => (
-              <StatPlaceholderCard key={k} titleKey={k} />
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <h2 className="mb-2 text-right text-base font-semibold text-foreground">{t("admin_billing.channels.section_title")}</h2>
-          <p className="mb-3 text-right text-xs leading-relaxed text-zinc-500">{t("admin_billing.channels.subtitle")}</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {channelKeys.map((k) => (
-              <StatPlaceholderCard key={k} titleKey={k} />
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <h2 className="mb-3 text-right text-base font-semibold text-foreground">{t("admin_billing.revenue_sources.title")}</h2>
-          <div className={SURFACE_TABLE_WRAP}>
-            <table className="w-full min-w-[720px] border-collapse text-right text-sm">
-              <thead>
-                <tr className="border-b border-primary/25 bg-zinc-950/90">
-                  {tableCols.map((col) => (
-                    <th key={col} className="whitespace-nowrap px-3 py-2.5 text-xs font-semibold text-zinc-300">
-                      {t(col)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colSpan={tableCols.length} className={PANEL_INSET}>
-                    <p className="text-sm font-medium text-zinc-400">{t("admin_billing.revenue_sources.empty")}</p>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section>
-          <h2 className="mb-3 text-right text-base font-semibold text-foreground">{t("admin_billing.invoices.title")}</h2>
-          <div className={SUB_CARD}>
-            <div className="flex flex-col gap-2 text-right sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-2">
-                <FileText className="mt-0.5 h-5 w-5 shrink-0 text-primary/90" aria-hidden />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{t("admin_billing.invoices.sample_title")}</p>
-                  <p className="text-xs text-zinc-500">{t("admin_billing.invoices.empty")}</p>
-                </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {CHANNEL_KEYS.map((k) => (
+              <div key={k} className={cn(SUB_CARD, "p-4 text-right opacity-80")}>
+                <p className="text-xs text-muted-foreground">{t(k)}</p>
+                <p className="mt-2 text-sm font-medium text-foreground">{t("p8.admin.common.dash")}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{t("p8.admin.billing.awaiting_source")}</p>
               </div>
-              <Button
-                type="button"
-                disabled
-                className="h-10 shrink-0 rounded-xl border border-primary/30 bg-zinc-950/80 text-xs font-semibold text-zinc-500 shadow-none"
-              >
-                {t("admin_billing.invoices.pdf_btn")}
-              </Button>
-            </div>
-            <p className="mt-3 text-right text-[11px] leading-relaxed text-zinc-500">{t("admin_billing.invoices.pdf_hint")}</p>
+            ))}
           </div>
         </section>
 
-        <section className={CARD_SHELL}>
-          <h2 className="mb-2 text-right text-base font-semibold text-foreground">{t("admin_billing.tax.title")}</h2>
-          <p className="mb-3 text-right text-sm leading-relaxed text-zinc-400">{t("admin_billing.tax.intro")}</p>
-          <ul className="list-disc space-y-1.5 pr-5 text-right text-sm text-zinc-400">
-            <li>{t("admin_billing.tax.b1")}</li>
-            <li>{t("admin_billing.tax.b2")}</li>
-            <li>{t("admin_billing.tax.b3")}</li>
-            <li>{t("admin_billing.tax.b4")}</li>
-            <li>{t("admin_billing.tax.b5")}</li>
-          </ul>
+        <section className={cn(CARD_SHELL, "p-4 sm:p-5")}>
+          <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
+            <FileText className="h-5 w-5 text-primary" aria-hidden />
+            {t("admin_billing.table.title")}
+          </h2>
+          <div className={SURFACE_TABLE_WRAP}>
+            <AdminEmptyState title={t("p8.admin.billing.transactions_empty")} />
+          </div>
         </section>
       </div>
     </AdminShell>

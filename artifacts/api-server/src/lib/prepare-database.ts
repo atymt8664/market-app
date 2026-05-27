@@ -2,9 +2,14 @@ import { pool } from "@workspace/db";
 import { logger } from "./logger";
 import { ensureCoreSchema } from "./ensure-core-schema";
 import { ensureAppSettingsTable } from "./ensure-app-settings-table";
+import { ensureStaffManagementSchema } from "./admin-staff-management";
+import { ensureVerificationSchema } from "./admin-verification-workflow";
+import { ensureOpsQueueSchema } from "./admin-operations-queue";
 
 const POST_CORE_SCHEMA_SQL = `
     ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_approved_url TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_pending_review BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE ads ADD COLUMN IF NOT EXISTS details JSONB NOT NULL DEFAULT '{}'::jsonb;
 
     CREATE TABLE IF NOT EXISTS support_tickets (
@@ -161,6 +166,45 @@ const POST_CORE_SCHEMA_SQL = `
     );
     CREATE UNIQUE INDEX IF NOT EXISTS push_subscriptions_endpoint_unique ON push_subscriptions (endpoint);
     CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions (user_id) WHERE revoked_at IS NULL;
+
+    CREATE TABLE IF NOT EXISTS admin_staff (
+      id SERIAL PRIMARY KEY,
+      admin_actor_id INTEGER NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      role_key TEXT NOT NULL,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    INSERT INTO admin_staff (admin_actor_id, display_name, role_key)
+    VALUES (1, 'Mohamed', 'founder')
+    ON CONFLICT (admin_actor_id) DO UPDATE
+      SET display_name = EXCLUDED.display_name,
+          role_key = EXCLUDED.role_key,
+          is_active = true;
+
+    ALTER TABLE reports ADD COLUMN IF NOT EXISTS assigned_staff_id INTEGER NULL;
+    ALTER TABLE reports ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMPTZ NULL;
+    ALTER TABLE reports ADD COLUMN IF NOT EXISTS assigned_by_admin_id INTEGER NULL;
+    CREATE INDEX IF NOT EXISTS reports_assigned_staff_idx ON reports (assigned_staff_id);
+
+    ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS assigned_staff_id INTEGER NULL;
+    ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMPTZ NULL;
+    ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS assigned_by_admin_id INTEGER NULL;
+    CREATE INDEX IF NOT EXISTS support_tickets_assigned_staff_idx ON support_tickets (assigned_staff_id);
+
+    ALTER TABLE admin_staff ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+    ALTER TABLE admin_staff ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ NULL;
+    ALTER TABLE admin_staff ADD COLUMN IF NOT EXISTS suspended_at TIMESTAMPTZ NULL;
+    ALTER TABLE admin_staff ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+    ALTER TABLE admin_staff ADD COLUMN IF NOT EXISTS department_key TEXT NOT NULL DEFAULT 'administration';
+    ALTER TABLE admin_staff ADD COLUMN IF NOT EXISTS login_email TEXT NULL;
+    ALTER TABLE admin_staff ADD COLUMN IF NOT EXISTS password_hash TEXT NULL;
+    ALTER TABLE admin_staff ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE admin_staff ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ NULL;
+    ALTER TABLE admin_staff ADD COLUMN IF NOT EXISTS created_by_admin_actor_id INT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS admin_staff_login_email_unique_idx
+      ON admin_staff (lower(login_email))
+      WHERE login_email IS NOT NULL;
     `;
 
 /**
@@ -171,5 +215,8 @@ export async function prepareDatabase(): Promise<void> {
   await ensureCoreSchema(pool);
   await ensureAppSettingsTable();
   await pool.query(POST_CORE_SCHEMA_SQL);
+  await ensureStaffManagementSchema();
+  await ensureVerificationSchema();
+  await ensureOpsQueueSchema();
   logger.info("Database schema ready");
 }

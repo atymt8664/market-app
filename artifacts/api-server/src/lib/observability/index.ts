@@ -2,6 +2,8 @@ export { OBSERVABILITY } from "./config";
 export { createRequestId, resolveRequestId } from "./request-id";
 export {
   buildObservabilitySnapshot,
+  buildSlowHttpEndpoints,
+  computeHttpErrorRate,
   recordDbQuery,
   recordHttpRequest,
   recordSearchRequest,

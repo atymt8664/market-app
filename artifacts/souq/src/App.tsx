@@ -49,6 +49,10 @@ const AdminBillingPage = lazy(() => import("@/pages/admin-billing"));
 const AdminVerificationPage = lazy(() => import("@/pages/admin-verification"));
 const AdminPlansPage = lazy(() => import("@/pages/admin-plans"));
 const AdminSettingsPage = lazy(() => import("@/pages/admin-settings"));
+const AdminOperationsPage = lazy(() => import("@/pages/admin-operations"));
+const AdminMonitoringPage = lazy(() => import("@/pages/admin-monitoring"));
+const AdminStaffPage = lazy(() => import("@/pages/admin-staff"));
+const AdminForcePasswordChangePage = lazy(() => import("@/pages/admin-force-password-change"));
 const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
 const ResetPassword = lazy(() => import("@/pages/reset-password"));
 const UserProfile = lazy(() => import("@/pages/user-profile"));
@@ -96,7 +100,12 @@ function Router() {
           <Route path="/admin/support" component={AdminSupportPage} />
           <Route path="/admin/users" component={AdminUsersPage} />
           <Route path="/admin/users/:id" component={AdminUserDetailsPage} />
-          <Route path="/admin/stats" component={AdminStatsPage} />
+          <Route path="/admin/analytics" component={AdminStatsPage} />
+          <Route path="/admin/operations" component={AdminOperationsPage} />
+          <Route path="/admin/monitoring" component={AdminMonitoringPage} />
+          <Route path="/admin/staff" component={AdminStaffPage} />
+          <Route path="/admin/force-password-change" component={AdminForcePasswordChangePage} />
+          <Route path="/admin/stats">{() => <Redirect to="/admin/analytics" />}</Route>
           <Route path="/admin/cities" component={AdminCitiesPage} />
           <Route path="/admin/categories" component={AdminCategoriesPage} />
           <Route path="/admin/logs" component={AdminLogsPage} />

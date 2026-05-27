@@ -38,6 +38,13 @@ export const adsTable = pgTable("ads", {
   featured: boolean("featured").notNull().default(false),
   status: text("status").notNull().default("pending"),
   views: integer("views").notNull().default(0),
+  assignedStaffId: integer("assigned_staff_id"),
+  assignedAt: timestamp("assigned_at", { withTimezone: true }),
+  assignedByAdminId: integer("assigned_by_admin_id"),
+  isUrgent: boolean("is_urgent").notNull().default(false),
+  slaDueAt: timestamp("sla_due_at", { withTimezone: true }),
+  escalatedAt: timestamp("escalated_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
   /** Multilingual FTS document (trigger-maintained). */
   searchVector: tsvector("search_vector"),
   createdAt: timestamp("created_at", { withTimezone: true })

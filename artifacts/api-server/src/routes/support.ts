@@ -6,22 +6,41 @@ import {
   supportTicketMessagesTable,
   usersTable,
 } from "@workspace/db";
-import { and, desc, eq, ilike, or } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql, count } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import { requireAdmin, requireAdminAccessGrant, requireAdminCsrf } from "../middlewares/require-admin";
 import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
+import { requireAdminPermission } from "../middlewares/require-admin-permission";
+import { requireAdminFounder } from "../middlewares/require-admin-founder";
 import { getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
+import { adminDeepLink, writeAdminAudit } from "../lib/admin-audit";
+import { okAdminActionFeedback } from "../lib/admin-action-feedback";
+import { parseModerationReason } from "../lib/admin-moderation-reason";
+import {
+  assignSupportTicket,
+  buildStaffAssignmentView,
+  claimSupportTicket,
+  ensureStaffWorkflowSchema,
+  releaseSupportTicket,
+} from "../lib/admin-staff-workflow";
+import { buildQueueSql, getDomainQueueCounts, mapSlaFields, runAutoEscalationAll, assertStaffCanClaim } from "../lib/admin-operations-queue";
+import { isOpsQueueKey } from "../lib/admin-operations-sla";
+import { loadAdminStaffContext } from "../lib/admin-rbac";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 import {
+  buildAdminPageMeta,
   finalizePage,
   handlePaginationError,
   keysetWhereDesc,
   PAGINATION,
+  parseAdminPageQuery,
   parsePaginationQuery,
+  sendJsonAdminPage,
   sendJsonArrayPage,
 } from "../lib/pagination";
+import { createSupportTicketLimiter } from "../lib/trust-safety/trust-limits";
 
 const router = Router();
 const ALLOWED_SUPPORT_CATEGORIES = new Set([
@@ -63,7 +82,7 @@ function normalizeSupportCategory(value: unknown): string {
   return ALLOWED_SUPPORT_CATEGORIES.has(normalized) ? normalized : "general";
 }
 
-router.post("/support/tickets", requireAuth, requireUserCsrf, async (req, res) => {
+router.post("/support/tickets", requireAuth, requireUserCsrf, createSupportTicketLimiter, async (req, res) => {
   try {
     const userId = req.session.userId!;
     const rawBody =
@@ -301,14 +320,55 @@ router.get("/support/tickets/:id/messages", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/admin/support/tickets", requireAdminAccessGrant, requireAdmin, async (req, res) => {
+router.get("/admin/support/stats", requireAdminAccessGrant, requireAdmin, requireAdminPermission("support"), async (req, res) => {
+  const staff = req.adminStaff ?? (await loadAdminStaffContext(req));
+  await runAutoEscalationAll();
+  const counts = await getDomainQueueCounts(staff, "support");
+  return res.json(counts);
+});
+
+router.get("/admin/support/tickets", requireAdminAccessGrant, requireAdmin, requireAdminPermission("support"), async (req, res) => {
   try {
+    await ensureStaffWorkflowSchema();
+    const staff = req.adminStaff ?? (await loadAdminStaffContext(req));
+    await runAutoEscalationAll();
+
+    const queueRaw = String(req.query.queue || "").trim();
+    const queue = isOpsQueueKey(queueRaw) ? queueRaw : null;
+    const actorId = staff.actorAdminId;
+
     const status = String(req.query.status || "").trim();
     const q = String(req.query.q || "").trim();
-    const pagination = parsePaginationQuery(
+    const { page, pageSize, offset } = parseAdminPageQuery(
       req.query as Record<string, unknown>,
       PAGINATION.SUPPORT_TICKETS,
     );
+
+    const queueFilter =
+      queue && queue !== "all"
+        ? sql`${supportTicketsTable.id} IN (SELECT st.id FROM support_tickets st WHERE ${buildQueueSql("support", queue, actorId, "st")})`
+        : sql`TRUE`;
+
+    const listWhere = and(
+      queueFilter,
+      status ? eq(supportTicketsTable.status, status) : undefined,
+      q
+        ? or(
+            ilike(supportTicketsTable.subject, `%${q}%`),
+            ilike(supportTicketsTable.category, `%${q}%`),
+            ilike(usersTable.name, `%${q}%`),
+            ilike(usersTable.email, `%${q}%`),
+          )
+        : undefined,
+    );
+
+    const [countRow] = await db
+      .select({ value: count(supportTicketsTable.id) })
+      .from(supportTicketsTable)
+      .leftJoin(usersTable, eq(usersTable.id, supportTicketsTable.userId))
+      .where(listWhere);
+    const totalItems = Number(countRow?.value ?? 0);
+
     const rows = await db
       .select({
         id: supportTicketsTable.id,
@@ -324,43 +384,40 @@ router.get("/admin/support/tickets", requireAdminAccessGrant, requireAdmin, asyn
         relatedUserId: supportTicketsTable.relatedUserId,
         createdAt: supportTicketsTable.createdAt,
         updatedAt: supportTicketsTable.updatedAt,
+        slaDueAt: sql<Date | null>`support_tickets.sla_due_at`,
+        assignedStaffId: supportTicketsTable.assignedStaffId,
+        assignedAt: supportTicketsTable.assignedAt,
+        assignedByAdminId: supportTicketsTable.assignedByAdminId,
       })
       .from(supportTicketsTable)
       .leftJoin(usersTable, eq(usersTable.id, supportTicketsTable.userId))
-      .where(
-        and(
-          status ? eq(supportTicketsTable.status, status) : undefined,
-          q
-            ? or(
-                ilike(supportTicketsTable.subject, `%${q}%`),
-                ilike(supportTicketsTable.category, `%${q}%`),
-                ilike(usersTable.name, `%${q}%`),
-                ilike(usersTable.email, `%${q}%`),
-              )
-            : undefined,
-          pagination.cursor
-            ? keysetWhereDesc(
-                supportTicketsTable.createdAt,
-                supportTicketsTable.id,
-                pagination.cursor,
-              )
-            : undefined,
-        ),
-      )
+      .where(listWhere)
       .orderBy(desc(supportTicketsTable.createdAt), desc(supportTicketsTable.id))
-      .limit(pagination.fetchLimit);
+      .limit(pageSize)
+      .offset(offset);
 
-    const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
-      at: row.createdAt,
-      id: row.id,
-    }));
-    return sendJsonArrayPage(
+    const meta = buildAdminPageMeta(page, pageSize, totalItems);
+    return sendJsonAdminPage(
       res,
-      items.map((row) => ({
-        ...row,
-        createdAt: row.createdAt ? row.createdAt.toISOString() : null,
-        updatedAt: row.updatedAt ? row.updatedAt.toISOString() : null,
-      })),
+      await Promise.all(
+        rows.map(async (row) => ({
+          ...row,
+          assignment: await buildStaffAssignmentView({
+            assignedStaffId: row.assignedStaffId,
+            assignedAt: row.assignedAt,
+            assignedByAdminId: row.assignedByAdminId,
+          }),
+          createdAt: row.createdAt ? row.createdAt.toISOString() : null,
+          updatedAt: row.updatedAt ? row.updatedAt.toISOString() : null,
+          ...mapSlaFields({
+            domain: "support",
+            createdAt: row.createdAt,
+            slaDueAt: row.slaDueAt,
+            status: row.status,
+            row: { category: row.category, priority: row.priority },
+          }),
+        })),
+      ),
       meta,
     );
   } catch (err) {
@@ -369,7 +426,7 @@ router.get("/admin/support/tickets", requireAdminAccessGrant, requireAdmin, asyn
   }
 });
 
-router.get("/admin/support/tickets/:id/messages", requireAdminAccessGrant, requireAdmin, async (req, res) => {
+router.get("/admin/support/tickets/:id/messages", requireAdminAccessGrant, requireAdmin, requireAdminPermission("support"), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
@@ -426,7 +483,7 @@ router.get("/admin/support/tickets/:id/messages", requireAdminAccessGrant, requi
   }
 });
 
-router.patch("/admin/support/tickets/:id", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {
+router.patch("/admin/support/tickets/:id", requireAdminAccessGrant, requireAdmin, requireAdminPermission("support"), requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid ticket id" });
@@ -460,6 +517,13 @@ router.patch("/admin/support/tickets/:id", requireAdminAccessGrant, requireAdmin
     return res.status(404).json({ error: "Ticket not found" });
   }
 
+  let moderationReason = "";
+  if (status === "closed") {
+    const parsed = parseModerationReason(req.body?.reason, "support_close");
+    if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+    moderationReason = parsed.reason;
+  }
+
   const statusChanged = status !== undefined && status !== before.status;
   const priorityChanged = priority !== undefined && priority !== before.priority;
 
@@ -479,20 +543,25 @@ router.patch("/admin/support/tickets/:id", requireAdminAccessGrant, requireAdmin
     });
 
   const effectiveStatus = status ?? before.status;
-  const action =
+  const actionKey =
     effectiveStatus === "closed"
       ? "support.close"
       : effectiveStatus === "resolved"
         ? "support.resolve"
-        : "support.update";
-  await logAdminActivity({
-    action,
-    actorAdminId: getAdminActorId(req),
+        : effectiveStatus === "open" && (before.status === "closed" || before.status === "resolved")
+          ? "support.reopen"
+          : "support.update";
+
+  const auditActivityId = await writeAdminAudit({
+    req,
+    actionKey,
     targetType: "support_ticket",
     targetId: id,
-    details: {
-      fromStatus: before.status,
-      toStatus: effectiveStatus,
+    previousState: before.status,
+    newState: effectiveStatus,
+    reason: moderationReason || null,
+    deepLink: adminDeepLink(`/admin/support?ticketId=${id}`),
+    extra: {
       fromPriority: before.priority,
       toPriority: priority ?? before.priority,
     },
@@ -510,20 +579,31 @@ router.patch("/admin/support/tickets/:id", requireAdminAccessGrant, requireAdmin
         userId: before.userId,
         type: "support.ticket.updated",
         title: "تحديث على تذكرة الدعم",
-        body: `«${subj}» — ${parts.join(" • ")}`,
+        body:
+          moderationReason && effectiveStatus === "closed"
+            ? `«${subj}» — ${moderationReason}`
+            : `«${subj}» — ${parts.join(" • ")}`,
         entityType: "support_ticket",
         entityId: id,
-        metadata: { ticketId: id },
+        metadata: { ticketId: id, reason: moderationReason || null },
       });
     } catch (err) {
       logger.warn({ err, ticketId: id }, "createNotification failed (support ticket update)");
     }
   }
 
-  return res.json(updated);
+  return res.json({
+    ...okAdminActionFeedback({
+      title: "تم تحديث التذكرة",
+      description: `تذكرة الدعم #${id} — ${effectiveStatus}`,
+      nextStep: "تم إشعار المستخدم إن وُجدت تغييرات.",
+      auditActivityId,
+    }),
+    ...updated,
+  });
 });
 
-router.post("/admin/support/tickets/:id/reply", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {
+router.post("/admin/support/tickets/:id/reply", requireAdminAccessGrant, requireAdmin, requireAdminPermission("support"), requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid ticket id" });
@@ -551,7 +631,7 @@ router.post("/admin/support/tickets/:id/reply", requireAdminAccessGrant, require
     .insert(supportTicketMessagesTable)
     .values({
       ticketId: id,
-      adminId: req.session.userId ?? null,
+      adminId: getAdminActorId(req),
       message,
     })
     .returning({
@@ -567,6 +647,15 @@ router.post("/admin/support/tickets/:id/reply", requireAdminAccessGrant, require
     .update(supportTicketsTable)
     .set({ status: "pending", updatedAt: new Date() })
     .where(eq(supportTicketsTable.id, id));
+
+  const auditActivityId = await writeAdminAudit({
+    req,
+    actionKey: "support.reply",
+    targetType: "support_ticket",
+    targetId: id,
+    deepLink: adminDeepLink(`/admin/support?ticketId=${id}`),
+    extra: { messageId: inserted.id },
+  });
 
   if (ticket.userId != null) {
     try {
@@ -589,6 +678,102 @@ router.post("/admin/support/tickets/:id/reply", requireAdminAccessGrant, require
   return res.status(201).json({
     ...inserted,
     createdAt: inserted.createdAt ? inserted.createdAt.toISOString() : null,
+    ...okAdminActionFeedback({
+      title: "تم إرسال الرد",
+      description: `رد على تذكرة الدعم #${id}`,
+      nextStep: "سيصل إشعار للمستخدم.",
+      auditActivityId,
+    }),
+  });
+});
+
+router.post("/admin/support/tickets/:id/claim", requireAdminAccessGrant, requireAdmin, requireAdminPermission("support"), requireAdminCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid ticket id" });
+
+  try {
+    const staff = req.adminStaff ?? (await loadAdminStaffContext(req));
+    await assertStaffCanClaim(staff, "support");
+    const assignment = await claimSupportTicket({ ticketId: id, actorAdminId: getAdminActorId(req) });
+    const auditActivityId = await writeAdminAudit({
+      req,
+      actionKey: "support.claim",
+      targetType: "support_ticket",
+      targetId: id,
+      newState: assignment.staffName,
+      deepLink: adminDeepLink(`/admin/support?ticketId=${id}`),
+    });
+    return res.json({
+      assignment,
+      ...okAdminActionFeedback({
+        title: "تم استلام التذكرة",
+        description: `أصبحت مسؤولاً عن تذكرة الدعم #${id}`,
+        nextStep: "راجع الرسائل وأرسل رداً للمستخدم.",
+        auditActivityId,
+      }),
+    });
+  } catch (err) {
+    if (err instanceof Error && (err.message === "STAFF_CLAIM_LIMIT_REACHED" || err.message === "STAFF_DOMAIN_CLAIM_LIMIT_REACHED")) {
+      return res.status(409).json({
+        error: "لا يمكن استلام المزيد من الطلبات حاليًا — تم بلوغ حد الحمل",
+        code: err.message,
+      });
+    }
+    throw err;
+  }
+});
+
+router.post("/admin/support/tickets/:id/assign", requireAdminAccessGrant, requireAdmin, requireAdminPermission("support"), requireAdminFounder(), requireAdminCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  const staffId = Number(req.body?.staffId);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid ticket id" });
+  if (!Number.isInteger(staffId) || staffId <= 0) return res.status(400).json({ error: "Invalid staffId" });
+
+  const assignment = await assignSupportTicket({
+    ticketId: id,
+    staffId,
+    actorAdminId: getAdminActorId(req),
+  });
+  const auditActivityId = await writeAdminAudit({
+    req,
+    actionKey: "support.assign",
+    targetType: "support_ticket",
+    targetId: id,
+    newState: assignment.staffName,
+    deepLink: adminDeepLink(`/admin/support?ticketId=${id}`),
+    extra: { staffId },
+  });
+  return res.json({
+    assignment,
+    ...okAdminActionFeedback({
+      title: "تم إسناد التذكرة",
+      description: `أُسندت تذكرة الدعم #${id} إلى ${assignment.staffName ?? "الموظف"}.`,
+      nextStep: "سيظهر في طابور الموظف المُسند.",
+      auditActivityId,
+    }),
+  });
+});
+
+router.post("/admin/support/tickets/:id/release", requireAdminAccessGrant, requireAdmin, requireAdminPermission("support"), requireAdminCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid ticket id" });
+
+  const assignment = await releaseSupportTicket(id);
+  const auditActivityId = await writeAdminAudit({
+    req,
+    actionKey: "support.release",
+    targetType: "support_ticket",
+    targetId: id,
+    deepLink: adminDeepLink(`/admin/support?ticketId=${id}`),
+  });
+  return res.json({
+    assignment,
+    ...okAdminActionFeedback({
+      title: "تم إلغاء الإسناد",
+      description: `تذكرة الدعم #${id} أصبحت غير مُسندة`,
+      nextStep: "يمكن لموظف آخر استلامها من الطابور.",
+      auditActivityId,
+    }),
   });
 });
 

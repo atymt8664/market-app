@@ -1,18 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import {
   BarChart3,
   Calendar,
@@ -35,63 +22,17 @@ import {
   SUB_CARD,
   adminPillBtn,
 } from "@/features/admin/admin-interaction-classes";
+import { AdminAnalyticsCharts } from "@/features/admin/components/admin-analytics-charts";
+import {
+  AdminErrorState,
+  AdminPageLoading,
+} from "@/features/admin/components/admin-page-states";
 import { AdminShell } from "@/features/admin/components/admin-shell";
 import { useAdminStats, useRequireAdmin } from "@/features/admin/hooks";
+import { useAdminAccess } from "@/features/admin/access";
 import type { AdminStatsPeriod } from "@/features/admin/types";
+import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
-
-const TEXT = {
-  loading: "جاري التحميل...",
-  title: "الإحصائيات",
-  subtitle: "قراءة مباشرة من قاعدة البيانات — أرقام فعلية حسب الفترة المختارة",
-  loadingStats: "جاري تحميل الإحصائيات...",
-  errorStats: "تعذر تحميل الإحصائيات.",
-  retry: "إعادة المحاولة",
-  noData: "لا توجد بيانات",
-  usersTotal: "إجمالي المستخدمين",
-  adsTotal: "إجمالي الإعلانات",
-  reportsTotal: "إجمالي البلاغات",
-  supportTotal: "إجمالي طلبات الدعم",
-  viewsTotal: "إجمالي المشاهدات",
-  citiesTotal: "المدن المسجّلة",
-  categoriesTotal: "الأقسام المسجّلة",
-  adsToday: "إعلانات منشورة اليوم",
-  usersGrowth: "نمو المستخدمين",
-  reportsSummary: "ملخص البلاغات",
-  supportSummary: "ملخص الدعم",
-  adsByStatus: "الإعلانات حسب الحالة",
-  periodMetrics: "مؤشرات الفترة المحددة",
-  topCities: "أكثر المدن نشاطًا",
-  topCategories: "أكثر الأقسام استخدامًا",
-  topAds: "أكثر الإعلانات مشاهدة",
-  pendingReview: "قيد المراجعة",
-  approved: "مقبولة",
-  rejected: "مرفوضة",
-  hidden: "مخفية",
-  newToday: "جدد اليوم",
-  newWeek: "جدد هذا الأسبوع",
-  newMonth: "جدد هذا الشهر",
-  reportsNew: "بلاغات جديدة (حسب الفترة)",
-  open: "مفتوحة",
-  resolved: "محلولة",
-  inReview: "قيد المراجعة",
-  processing: "قيد المعالجة",
-  closed: "مغلقة",
-  users: "مستخدمون",
-  ads: "إعلانات",
-  reports: "بلاغات",
-  support: "دعم",
-  adUnit: "إعلان",
-  viewsUnit: "مشاهدة",
-  viewsPeriod: "مشاهدات (الفترة)",
-  today: "اليوم",
-  sevenDays: "آخر 7 أيام",
-  thirtyDays: "آخر 30 يوم",
-  all: "الكل",
-  refresh: "تحديث",
-  manage: "إدارة",
-  generatedPrefix: "آخر تحديث:",
-};
 
 /** مسارات إدارية معروفة — لا روابط وهمية */
 const ROUTES = {
@@ -103,27 +44,22 @@ const ROUTES = {
   categories: "/admin/categories",
 } as const;
 
-const PERIOD_OPTIONS: Array<{ value: AdminStatsPeriod; label: string }> = [
-  { value: "today", label: TEXT.today },
-  { value: "7d", label: TEXT.sevenDays },
-  { value: "30d", label: TEXT.thirtyDays },
-  { value: "all", label: TEXT.all },
-];
+const PERIOD_VALUES: AdminStatsPeriod[] = ["today", "7d", "30d", "all"];
 
-/** متوافقة مع لوحة التحكم — ألوان حالة الإعلان */
-const ADS_STATUS_COLORS: Record<string, string> = {
-  pending: "hsl(45 93% 47%)",
-  approved: "hsl(142 76% 45%)",
-  rejected: "hsl(0 84% 60%)",
-  hidden: "hsl(215 16% 47%)",
-};
-
-const tooltipStyle = {
-  background: "#18181b",
-  border: "1px solid hsl(var(--primary) / 0.35)",
-  borderRadius: "12px",
-  color: "#fafafa",
-};
+function periodLabel(value: AdminStatsPeriod): string {
+  switch (value) {
+    case "today":
+      return t("p8.admin.stats.today");
+    case "7d":
+      return t("p8.admin.stats.seven_days");
+    case "30d":
+      return t("p8.admin.stats.thirty_days");
+    case "all":
+      return t("p8.admin.stats.all");
+    default:
+      return value;
+  }
+}
 
 /**
  * حاوية أقسام الإحصائيات — تسهّل لاحقًا ربط live counters / badges دون إعادة هيكلة الصفحة.
@@ -183,8 +119,25 @@ function SummaryNavCard({
 }: {
   title: string;
   lines: Array<{ label: string; value: number }>;
-  onNavigate: () => void;
+  onNavigate?: () => void;
 }) {
+  if (!onNavigate) {
+    return (
+      <div className={cn(CARD_SHELL, "w-full p-4 text-right")}>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">{title}</h2>
+        <div className="space-y-2 text-sm">
+          {lines.map((line) => (
+            <p key={line.label} className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-muted-foreground">{line.label}</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {line.value.toLocaleString("ar-EG")}
+              </span>
+            </p>
+          ))}
+        </div>
+      </div>
+    );
+  }
   return (
     <button
       type="button"
@@ -193,7 +146,7 @@ function SummaryNavCard({
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-        <span className="text-xs font-medium text-primary">{TEXT.manage}</span>
+        <span className="text-xs font-medium text-primary">{t("p8.admin.stats.manage")}</span>
       </div>
       <div className="space-y-2 text-sm">
         {lines.map((line) => (
@@ -228,7 +181,7 @@ function SectionHeaderLink({
           "shrink-0 cursor-pointer rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-all duration-150 ease-out hover:border-primary/50 hover:bg-primary/15 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         )}
       >
-        {TEXT.manage}
+        {t("p8.admin.stats.manage")}
       </button>
     </div>
   );
@@ -237,8 +190,11 @@ function SectionHeaderLink({
 export default function AdminStatsPage() {
   const [, navigate] = useLocation();
   const meQuery = useRequireAdmin();
+  const access = useAdminAccess();
   const [period, setPeriod] = useState<AdminStatsPeriod>("30d");
   const statsQuery = useAdminStats(period);
+  const canManage = (area: "users" | "ads" | "reports" | "support" | "cities" | "categories") =>
+    access.can(area);
 
   const handleLogout = async () => {
     await adminLogout();
@@ -248,30 +204,37 @@ export default function AdminStatsPage() {
   if (meQuery.isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] text-muted-foreground">
-        {TEXT.loading}
+        {t("p8.admin.stats.loading")}
       </div>
     );
   }
 
   const data = statsQuery.data;
-  const adsStatusData = data
-    ? [
-        { name: TEXT.pendingReview, key: "pending", value: data.ads.pending },
-        { name: TEXT.approved, key: "approved", value: data.ads.approved },
-        { name: TEXT.rejected, key: "rejected", value: data.ads.rejected },
-        { name: TEXT.hidden, key: "hidden", value: data.ads.hidden },
-      ]
-    : [];
 
-  const periodBarData = data
-    ? [
-        { name: TEXT.users, value: data.periodMetrics.users },
-        { name: TEXT.ads, value: data.periodMetrics.ads },
-        { name: TEXT.reports, value: data.periodMetrics.reports },
-        { name: TEXT.support, value: data.periodMetrics.supportTickets },
-        { name: TEXT.viewsPeriod, value: data.periodMetrics.views },
-      ]
-    : [];
+  const chartData = useMemo(() => {
+    if (!data) return null;
+    return {
+      adsStatusData: [
+        { name: t("p8.admin.stats.pending_review"), key: "pending", value: data.ads.pending },
+        { name: t("p8.admin.stats.approved"), key: "approved", value: data.ads.approved },
+        { name: t("p8.admin.stats.rejected"), key: "rejected", value: data.ads.rejected },
+        { name: t("p8.admin.stats.hidden"), key: "hidden", value: data.ads.hidden },
+      ],
+      periodBarData: [
+        { name: t("p8.admin.stats.users"), value: data.periodMetrics.users },
+        { name: t("p8.admin.stats.ads"), value: data.periodMetrics.ads },
+        { name: t("p8.admin.stats.reports"), value: data.periodMetrics.reports },
+        { name: t("p8.admin.stats.support"), value: data.periodMetrics.supportTickets },
+        { name: t("p8.admin.stats.views_period"), value: data.periodMetrics.views },
+      ],
+      periodLabel: periodLabel(period),
+      adsByStatusTitle: t("p8.admin.stats.ads_by_status"),
+      periodMetricsTitle: t("p8.admin.stats.period_metrics"),
+      manageLabel: t("p8.admin.stats.manage"),
+      adUnit: t("p8.admin.stats.ad_unit"),
+      onManageAds: () => navigate(ROUTES.ads),
+    };
+  }, [data, navigate, period]);
 
   const generatedLabel = data?.generatedAt
     ? new Date(data.generatedAt).toLocaleString("ar-EG", {
@@ -281,7 +244,7 @@ export default function AdminStatsPage() {
     : null;
 
   return (
-    <AdminShell activeKey="stats" onLogout={handleLogout}>
+    <AdminShell activeKey="analytics" onLogout={handleLogout}>
       <div
         className={cn("space-y-5", statsQuery.isFetching && data && "opacity-[0.92] transition-opacity")}
         dir="rtl"
@@ -294,12 +257,13 @@ export default function AdminStatsPage() {
           <div className="space-y-1 text-right">
             <div className="flex flex-wrap items-center gap-2">
               <BarChart3 className="h-6 w-6 text-primary" aria-hidden />
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{TEXT.title}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("p8.admin.stats.title")}</h1>
             </div>
-            <p className="text-sm text-muted-foreground">{TEXT.subtitle}</p>
+            <p className="text-sm text-muted-foreground">{t("p8.admin.stats.subtitle")}</p>
             {generatedLabel ? (
               <p className="text-xs text-muted-foreground/90">
-                {TEXT.generatedPrefix} <span className="tabular-nums text-foreground/90">{generatedLabel}</span>
+                {t("p8.admin.stats.generated_prefix")}{" "}
+                <span className="tabular-nums text-foreground/90">{generatedLabel}</span>
               </p>
             ) : null}
           </div>
@@ -309,25 +273,25 @@ export default function AdminStatsPage() {
                 type="button"
                 onClick={() => statsQuery.refetch()}
                 disabled={statsQuery.isFetching}
-                title={statsQuery.isFetching ? "جاري التحديث..." : undefined}
+                title={statsQuery.isFetching ? t("p8.admin.noc.refreshing") : undefined}
                 className={cn(
                   BTN_SEARCH,
                   "inline-flex items-center gap-2 border border-primary/35 bg-zinc-900/90 px-3 py-2 text-sm font-medium text-foreground shadow-[0_0_16px_-8px_hsl(var(--primary)/0.25)]",
                 )}
               >
                 <RefreshCw className={cn("h-4 w-4 text-primary", statsQuery.isFetching && "animate-spin")} aria-hidden />
-                {TEXT.refresh}
+                {t("p8.admin.stats.refresh")}
               </button>
             </div>
             <div className="flex flex-wrap justify-end gap-2">
-              {PERIOD_OPTIONS.map((item) => (
+              {PERIOD_VALUES.map((value) => (
                 <button
-                  key={item.value}
+                  key={value}
                   type="button"
-                  onClick={() => setPeriod(item.value)}
-                  className={adminPillBtn(period === item.value)}
+                  onClick={() => setPeriod(value)}
+                  className={adminPillBtn(period === value)}
                 >
-                  {item.label}
+                  {periodLabel(value)}
                 </button>
               ))}
             </div>
@@ -335,72 +299,93 @@ export default function AdminStatsPage() {
         </header>
 
         {statsQuery.isLoading && !data ? (
-          <div className={cn(CARD_SHELL, "p-8 text-center text-muted-foreground")}>{TEXT.loadingStats}</div>
+          <AdminPageLoading message={t("p8.admin.stats.loading_stats")} />
         ) : statsQuery.isError || !data ? (
-          <div className="rounded-2xl border border-red-500/35 bg-red-950/25 p-8 text-center text-red-100 shadow-[0_0_20px_-12px_rgba(239,68,68,0.35)] ring-1 ring-red-500/20">
-            <p className="mb-3">{TEXT.errorStats}</p>
-            <button
-              type="button"
-              onClick={() => statsQuery.refetch()}
-              className={cn(
-                BTN_SEARCH,
-                "border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-              )}
-            >
-              {TEXT.retry}
-            </button>
-          </div>
+          <AdminErrorState
+            description={t("p8.admin.stats.error_stats")}
+            onRetry={() => statsQuery.refetch()}
+            retryLabel={t("p8.admin.stats.retry")}
+          />
         ) : (
           <>
+            {data.analyticsFoundation ? (
+              <StatsSection id="foundation">
+                <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <InteractiveStatCard
+                    label={t("p8.admin.stats.messages_today")}
+                    value={data.analyticsFoundation.messagesToday}
+                    icon={<TrendingUp className="h-4 w-4" aria-hidden />}
+                  />
+                  <InteractiveStatCard
+                    label={t("p8.admin.stats.reports_today")}
+                    value={data.analyticsFoundation.reportsToday}
+                    icon={<Flag className="h-4 w-4" aria-hidden />}
+                    onNavigate={canManage("reports") ? () => navigate(ROUTES.reports) : undefined}
+                  />
+                  <InteractiveStatCard
+                    label={t("p8.admin.stats.report_resolution_rate")}
+                    value={data.analyticsFoundation.reportResolutionRatePct ?? 0}
+                    icon={<BarChart3 className="h-4 w-4" aria-hidden />}
+                  />
+                  <InteractiveStatCard
+                    label={t("p8.admin.stats.support_resolution_rate")}
+                    value={data.analyticsFoundation.supportResolutionRatePct ?? 0}
+                    icon={<Headphones className="h-4 w-4" aria-hidden />}
+                    onNavigate={canManage("support") ? () => navigate(ROUTES.support) : undefined}
+                  />
+                </section>
+              </StatsSection>
+            ) : null}
+
             <StatsSection id="kpis">
               <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <InteractiveStatCard
-                  label={TEXT.usersTotal}
+                  label={t("p8.admin.stats.users_total")}
                   value={data.totals.users}
                   icon={<Users className="h-4 w-4" aria-hidden />}
-                  onNavigate={() => navigate(ROUTES.users)}
+                  onNavigate={canManage("users") ? () => navigate(ROUTES.users) : undefined}
                 />
                 <InteractiveStatCard
-                  label={TEXT.adsTotal}
+                  label={t("p8.admin.stats.ads_total")}
                   value={data.totals.ads}
                   icon={<Megaphone className="h-4 w-4" aria-hidden />}
-                  onNavigate={() => navigate(ROUTES.ads)}
+                  onNavigate={canManage("ads") ? () => navigate(ROUTES.ads) : undefined}
                 />
                 <InteractiveStatCard
-                  label={TEXT.reportsTotal}
+                  label={t("p8.admin.stats.reports_total")}
                   value={data.totals.reports}
                   icon={<Flag className="h-4 w-4" aria-hidden />}
-                  onNavigate={() => navigate(ROUTES.reports)}
+                  onNavigate={canManage("reports") ? () => navigate(ROUTES.reports) : undefined}
                 />
                 <InteractiveStatCard
-                  label={TEXT.supportTotal}
+                  label={t("p8.admin.stats.support_total")}
                   value={data.totals.supportTickets}
                   icon={<Headphones className="h-4 w-4" aria-hidden />}
-                  onNavigate={() => navigate(ROUTES.support)}
+                  onNavigate={canManage("support") ? () => navigate(ROUTES.support) : undefined}
                 />
                 <InteractiveStatCard
-                  label={TEXT.viewsTotal}
+                  label={t("p8.admin.stats.views_total")}
                   value={data.totals.views}
                   icon={<Eye className="h-4 w-4" aria-hidden />}
-                  onNavigate={() => navigate(ROUTES.ads)}
+                  onNavigate={canManage("ads") ? () => navigate(ROUTES.ads) : undefined}
                 />
                 <InteractiveStatCard
-                  label={TEXT.citiesTotal}
+                  label={t("p8.admin.stats.cities_total")}
                   value={data.totals.cities}
                   icon={<MapPin className="h-4 w-4" aria-hidden />}
-                  onNavigate={() => navigate(ROUTES.cities)}
+                  onNavigate={canManage("cities") ? () => navigate(ROUTES.cities) : undefined}
                 />
                 <InteractiveStatCard
-                  label={TEXT.categoriesTotal}
+                  label={t("p8.admin.stats.categories_total")}
                   value={data.totals.categories}
                   icon={<FolderTree className="h-4 w-4" aria-hidden />}
-                  onNavigate={() => navigate(ROUTES.categories)}
+                  onNavigate={canManage("categories") ? () => navigate(ROUTES.categories) : undefined}
                 />
                 <InteractiveStatCard
-                  label={TEXT.adsToday}
+                  label={t("p8.admin.stats.ads_today")}
                   value={data.ads.publishedToday}
                   icon={<Calendar className="h-4 w-4" aria-hidden />}
-                  onNavigate={() => navigate(ROUTES.ads)}
+                  onNavigate={canManage("ads") ? () => navigate(ROUTES.ads) : undefined}
                 />
               </section>
             </StatsSection>
@@ -408,138 +393,60 @@ export default function AdminStatsPage() {
             <StatsSection id="summaries">
               <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <SummaryNavCard
-                  title={TEXT.usersGrowth}
-                  onNavigate={() => navigate(ROUTES.users)}
+                  title={t("p8.admin.stats.users_growth")}
+                  onNavigate={canManage("users") ? () => navigate(ROUTES.users) : undefined}
                   lines={[
-                    { label: TEXT.newToday, value: data.users.newToday },
-                    { label: TEXT.newWeek, value: data.users.newWeek },
-                    { label: TEXT.newMonth, value: data.users.newMonth },
+                    { label: t("p8.admin.stats.new_today"), value: data.users.newToday },
+                    { label: t("p8.admin.stats.new_week"), value: data.users.newWeek },
+                    { label: t("p8.admin.stats.new_month"), value: data.users.newMonth },
                   ]}
                 />
                 <SummaryNavCard
-                  title={TEXT.reportsSummary}
-                  onNavigate={() => navigate(ROUTES.reports)}
+                  title={t("p8.admin.stats.reports_summary")}
+                  onNavigate={canManage("reports") ? () => navigate(ROUTES.reports) : undefined}
                   lines={[
-                    { label: TEXT.reportsNew, value: data.reports.new },
-                    { label: TEXT.inReview, value: data.reports.inReview },
-                    { label: TEXT.open, value: data.reports.open },
-                    { label: TEXT.resolved, value: data.reports.resolved },
+                    { label: t("p8.admin.stats.reports_new"), value: data.reports.new },
+                    { label: t("p8.admin.stats.in_review"), value: data.reports.inReview },
+                    { label: t("p8.admin.stats.open"), value: data.reports.open },
+                    { label: t("p8.admin.stats.resolved"), value: data.reports.resolved },
                   ]}
                 />
                 <SummaryNavCard
-                  title={TEXT.supportSummary}
-                  onNavigate={() => navigate(ROUTES.support)}
+                  title={t("p8.admin.stats.support_summary")}
+                  onNavigate={canManage("support") ? () => navigate(ROUTES.support) : undefined}
                   lines={[
-                    { label: TEXT.open, value: data.support.open },
-                    { label: TEXT.processing, value: data.support.pending },
-                    { label: TEXT.resolved, value: data.support.resolved },
-                    { label: TEXT.closed, value: data.support.closed },
+                    { label: t("p8.admin.stats.open"), value: data.support.open },
+                    { label: t("p8.admin.stats.processing"), value: data.support.pending },
+                    { label: t("p8.admin.stats.resolved"), value: data.support.resolved },
+                    { label: t("p8.admin.stats.closed"), value: data.support.closed },
                   ]}
                 />
               </section>
             </StatsSection>
 
             <StatsSection id="charts">
-              <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <div className={cn(CARD_SHELL, "p-4")}>
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <h2 className="text-lg font-semibold text-foreground">{TEXT.adsByStatus}</h2>
-                    <button
-                      type="button"
-                      onClick={() => navigate(ROUTES.ads)}
-                      className={cn(
-                        BTN_FIX,
-                        "cursor-pointer rounded text-xs font-medium text-primary transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:opacity-80",
-                      )}
-                    >
-                      {TEXT.manage}
-                    </button>
-                  </div>
-                  <p className="mb-3 text-xs text-muted-foreground">
-                    توزيع إجمالي الإعلانات حسب الحالة في قاعدة البيانات (ليست مقتصرة على الفترة).
-                  </p>
-                  {/* محور الرسم LTR لاتساق أشرطة Recharts؛ البيانات من API */}
-                  <div className="h-64" dir="ltr">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={adsStatusData}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={52}
-                          outerRadius={88}
-                          paddingAngle={2}
-                        >
-                          {adsStatusData.map((entry) => (
-                            <Cell key={entry.key} fill={ADS_STATUS_COLORS[entry.key] || "#71717a"} />
-                          ))}
-                        </Pie>
-                        <Legend
-                          verticalAlign="bottom"
-                          formatter={(value) => <span style={{ color: "#e4e4e7", fontSize: 12 }}>{value}</span>}
-                        />
-                        <Tooltip
-                          formatter={(value: number, _name, item) => [
-                            `${Number(value).toLocaleString("ar-EG")} ${TEXT.adUnit}`,
-                            String(item?.payload?.name ?? ""),
-                          ]}
-                          contentStyle={tooltipStyle}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className={cn(CARD_SHELL, "p-4")}>
-                  <h2 className="mb-1 text-lg font-semibold text-foreground">{TEXT.periodMetrics}</h2>
-                  <p className="mb-3 text-xs text-muted-foreground">
-                    أعداد الجديد ضمن الفترة المختارة (
-                    {PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period}) — من API.
-                  </p>
-                  <div className="h-64" dir="ltr">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={periodBarData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--primary) / 0.12)" />
-                        <XAxis dataKey="name" stroke="#a1a1aa" tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-                        <YAxis stroke="#a1a1aa" tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-                        <Tooltip
-                          formatter={(value: number) => `${Number(value).toLocaleString("ar-EG")}`}
-                          contentStyle={tooltipStyle}
-                          cursor={{ fill: "hsl(var(--primary) / 0.12)" }}
-                        />
-                        <Bar
-                          dataKey="value"
-                          fill="hsl(var(--primary))"
-                          radius={[8, 8, 0, 0]}
-                          maxBarSize={56}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </section>
+              {chartData ? <AdminAnalyticsCharts data={chartData} /> : null}
             </StatsSection>
 
             <StatsSection id="rankings">
               <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <div className={cn(CARD_SHELL, "p-4")}>
-                  <SectionHeaderLink title={TEXT.topCities} href={ROUTES.cities} />
+                  <SectionHeaderLink title={t("p8.admin.stats.top_cities")} href={ROUTES.cities} />
                   <div className="space-y-2">
                     {data.topCities.length === 0 ? (
                       <div className="rounded-xl border border-primary/20 bg-zinc-900/50 p-3 text-sm text-muted-foreground">
-                        {TEXT.noData}
+                        {t("p8.admin.stats.no_data")}
                       </div>
                     ) : (
                       data.topCities.map((item) => (
                         <div key={item.city} className={cn(SUB_CARD, "p-3 text-sm")}>
                           <p className="font-medium text-foreground">{item.city}</p>
                           <p className="mt-1 text-muted-foreground">
-                            <span className="tabular-nums">{item.adsCount.toLocaleString("ar-EG")}</span> {TEXT.adUnit}{" "}
+                            <span className="tabular-nums">{item.adsCount.toLocaleString("ar-EG")}</span>{" "}
+                            {t("p8.admin.stats.ad_unit")}{" "}
                             <span className="text-primary/80">·</span>{" "}
                             <span className="tabular-nums">{item.totalViews.toLocaleString("ar-EG")}</span>{" "}
-                            {TEXT.viewsUnit}
+                            {t("p8.admin.stats.views_unit")}
                           </p>
                         </div>
                       ))
@@ -548,21 +455,22 @@ export default function AdminStatsPage() {
                 </div>
 
                 <div className={cn(CARD_SHELL, "p-4")}>
-                  <SectionHeaderLink title={TEXT.topCategories} href={ROUTES.categories} />
+                  <SectionHeaderLink title={t("p8.admin.stats.top_categories")} href={ROUTES.categories} />
                   <div className="space-y-2">
                     {data.topCategories.length === 0 ? (
                       <div className="rounded-xl border border-primary/20 bg-zinc-900/50 p-3 text-sm text-muted-foreground">
-                        {TEXT.noData}
+                        {t("p8.admin.stats.no_data")}
                       </div>
                     ) : (
                       data.topCategories.map((item) => (
                         <div key={item.id} className={cn(SUB_CARD, "p-3 text-sm")}>
                           <p className="font-medium text-foreground">{item.name}</p>
                           <p className="mt-1 text-muted-foreground">
-                            <span className="tabular-nums">{item.adsCount.toLocaleString("ar-EG")}</span> {TEXT.adUnit}{" "}
+                            <span className="tabular-nums">{item.adsCount.toLocaleString("ar-EG")}</span>{" "}
+                            {t("p8.admin.stats.ad_unit")}{" "}
                             <span className="text-primary/80">·</span>{" "}
                             <span className="tabular-nums">{item.totalViews.toLocaleString("ar-EG")}</span>{" "}
-                            {TEXT.viewsUnit}
+                            {t("p8.admin.stats.views_unit")}
                           </p>
                         </div>
                       ))
@@ -571,11 +479,11 @@ export default function AdminStatsPage() {
                 </div>
 
                 <div className={cn(CARD_SHELL, "p-4")}>
-                  <SectionHeaderLink title={TEXT.topAds} href={ROUTES.ads} />
+                  <SectionHeaderLink title={t("p8.admin.stats.top_ads")} href={ROUTES.ads} />
                   <div className="space-y-2">
                     {data.topAds.length === 0 ? (
                       <div className="rounded-xl border border-primary/20 bg-zinc-900/50 p-3 text-sm text-muted-foreground">
-                        {TEXT.noData}
+                        {t("p8.admin.stats.no_data")}
                       </div>
                     ) : (
                       data.topAds.map((item) => (
@@ -594,9 +502,10 @@ export default function AdminStatsPage() {
                             <TrendingUp className="hidden h-3.5 w-3.5 text-primary sm:inline" aria-hidden />
                             <span className="tabular-nums">#{item.id}</span>
                             <span className="text-primary/80">·</span>
-                            <span>{item.city || "—"}</span>
+                            <span>{item.city || t("p8.admin.common.dash")}</span>
                             <span className="text-primary/80">·</span>
-                            <span className="tabular-nums">{item.views.toLocaleString("ar-EG")}</span> {TEXT.viewsUnit}
+                            <span className="tabular-nums">{item.views.toLocaleString("ar-EG")}</span>{" "}
+                            {t("p8.admin.stats.views_unit")}
                           </p>
                         </button>
                       ))

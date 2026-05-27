@@ -16,6 +16,11 @@ import notificationsRouter from "./notifications";
 import pushRouter from "./push";
 import accountRouter from "./account";
 import observabilityRouter from "./observability";
+import adminReportsWorkflowRouter from "./admin-reports-workflow";
+import adminVerificationWorkflowRouter from "./admin-verification-workflow";
+import adminOperationsRouter from "./admin-operations";
+import adminMonitoringRouter from "./admin-monitoring";
+import adminStaffRouter from "./admin-staff";
 
 const router: IRouter = Router();
 
@@ -31,6 +36,11 @@ router.use(usersRouter);
 router.use(conversationsRouter);
 router.use("/reports", reports);
 router.use(adminRouter);
+router.use(adminReportsWorkflowRouter);
+router.use(adminVerificationWorkflowRouter);
+router.use(adminOperationsRouter);
+router.use(adminMonitoringRouter);
+router.use(adminStaffRouter);
 router.use(admin2faRouter);
 router.use(supportRouter);
 router.use(notificationsRouter);

@@ -30,11 +30,13 @@ import { logger } from "../lib/logger";
 import { verifyAdminAccessKeyHeader } from "../lib/admin-access-key";
 import { isAdminSecurityRevisionStale } from "../lib/admin-security-revision";
 import { getAdminAuthSecuritySnapshot } from "../lib/admin-auth-settings";
+import { findStaffLoginByEmail, verifyStaffPassword } from "../lib/admin-staff-auth";
 import { ADMIN_TOTP_LOGIN_PENDING_MS } from "../lib/admin-2fa-constants";
 import { consumeBackupCodeIfValid } from "../lib/admin-backup-codes";
 import { verifyTotpCode } from "../lib/admin-totp";
 import { getTrustedClientIp } from "../lib/client-ip";
 import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
+import { defaultAdminHomePath, loadAdminStaffContext } from "../lib/admin-rbac";
 import {
   attachAdminCsrfToken,
   clearAdminIdentityOnSession,
@@ -49,6 +51,7 @@ import {
   getSessionClearCookieOptions,
   SESSION_COOKIE_NAME,
 } from "../lib/session-cookie";
+import { avatarPatchAfterUrlChange } from "../lib/trust-safety/avatar-moderation";
 import {
   ACCOUNT_DISABLED_CODE,
   ACCOUNT_DISABLED_MESSAGE,
@@ -198,6 +201,7 @@ function serializeUserBasic(u: typeof usersTable.$inferSelect) {
     phone: u.phone,
     city: u.city,
     avatarUrl: u.avatarUrl ?? null,
+    avatarPendingReview: u.avatarPendingReview ?? false,
     createdAt: u.createdAt.toISOString(),
     emailVerified: u.emailVerified,
   };
@@ -459,7 +463,12 @@ router.patch("/auth/me", requireUserCsrf, async (req, res) => {
   }
 
   const [existingMe] = await db
-    .select({ isBanned: usersTable.isBanned })
+    .select({
+      isBanned: usersTable.isBanned,
+      avatarUrl: usersTable.avatarUrl,
+      avatarApprovedUrl: usersTable.avatarApprovedUrl,
+      avatarPendingReview: usersTable.avatarPendingReview,
+    })
     .from(usersTable)
     .where(eq(usersTable.id, userId))
     .limit(1);
@@ -509,11 +518,16 @@ router.patch("/auth/me", requireUserCsrf, async (req, res) => {
     res.status(400).json({ error: "مسار الصورة غير صالح" });
     return;
   }
-  const patch: Record<string, string | null> = {};
+  const patch: Record<string, string | null | boolean> = {};
   if (name !== undefined) patch["name"] = name;
   if (phone !== undefined) patch["phone"] = phone;
   if (city !== undefined) patch["city"] = city;
-  if (avatarUrl !== undefined) patch["avatarUrl"] = avatarUrl;
+  if (avatarUrl !== undefined) {
+    const avatarPatch = avatarPatchAfterUrlChange(existingMe, avatarUrl);
+    patch["avatarUrl"] = avatarPatch.avatarUrl;
+    patch["avatarApprovedUrl"] = avatarPatch.avatarApprovedUrl;
+    patch["avatarPendingReview"] = avatarPatch.avatarPendingReview;
+  }
   if (Object.keys(patch).length === 0) {
     res.status(400).json({ error: "لا تغييرات" });
     return;
@@ -794,7 +808,8 @@ void and;
 router.use("/admin", requireAdminIpAllowlist);
 
 router.post("/admin-login", requireAdminIpAllowlist, adminLoginLimiter, async (req, res) => {
-  const { password } = req.body;
+  const passwordRaw = req.body?.password;
+  const emailRaw = req.body?.email;
   const loginIdentifier = getAdminLoginIdentifier(req);
 
   if (!verifyAdminAccessKeyHeader(req)) {
@@ -805,8 +820,58 @@ router.post("/admin-login", requireAdminIpAllowlist, adminLoginLimiter, async (r
     return res.status(429).json({ error: "بيانات الدخول غير صحيحة" });
   }
 
-  if (!password || typeof password !== "string") {
+  if (!passwordRaw || typeof passwordRaw !== "string") {
     return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+  }
+
+  const password = passwordRaw;
+  const staffEmail = typeof emailRaw === "string" ? emailRaw.trim().toLowerCase() : "";
+
+  if (staffEmail) {
+    const staff = await findStaffLoginByEmail(staffEmail);
+    if (!staff) {
+      registerAdminLoginFailure(loginIdentifier);
+      return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+    }
+    if (!staff.isActive || staff.status === "disabled" || staff.status === "suspended") {
+      registerAdminLoginFailure(loginIdentifier);
+      return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+    }
+    const staffPasswordOk = await verifyStaffPassword(password, staff.passwordHash);
+    if (!staffPasswordOk) {
+      registerAdminLoginFailure(loginIdentifier);
+      return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+    }
+
+    clearAdminLoginFailures(loginIdentifier);
+    const snap = await getAdminAuthSecuritySnapshot();
+
+    await new Promise<void>((resolve, reject) => {
+      req.session.regenerate((err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        req.session.isAdmin = true;
+        req.session.adminAuthenticatedAt = Date.now();
+        req.session.adminActorId = staff.adminActorId;
+        req.session.adminActorLabel = `staff-${staff.adminActorId}`;
+        req.session.adminCsrfToken = undefined;
+        req.session.adminMustChangePassword = staff.mustChangePassword;
+        req.session.adminSecurityRevision = snap?.adminSecurityRevision ?? 0;
+        refreshAdminAccessGrant(req);
+        resolve();
+      });
+    });
+
+    const csrfToken = attachAdminCsrfToken(req, res);
+    return res.json({
+      success: true,
+      csrfToken,
+      adminActorLabel: req.session.adminActorLabel,
+      requiresPasswordChange: staff.mustChangePassword,
+      homePath: staff.mustChangePassword ? "/admin/force-password-change" : undefined,
+    });
   }
 
   const snap = await getAdminAuthSecuritySnapshot();
@@ -964,10 +1029,17 @@ router.get("/admin/me", async (req, res, next) => {
         return res.status(401).json({ isAdmin: false });
       }
       const csrfToken = attachAdminCsrfToken(req, res);
+      const staff = await loadAdminStaffContext(req);
       return res.json({
         isAdmin: true,
         csrfToken,
         adminActorLabel: req.session.adminActorLabel ?? "primary-admin",
+        roleKey: staff.roleKey,
+        displayName: staff.displayName,
+        permissions: staff.permissions,
+        isFounder: staff.isFounder,
+        homePath: defaultAdminHomePath(staff.roleKey),
+        mustChangePassword: req.session.adminMustChangePassword === true,
       });
     }
 

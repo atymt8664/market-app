@@ -12,20 +12,33 @@ import {
   Trash2,
   User,
 } from "lucide-react";
-import { adminLogout, moderateReportedAd, updateAdminReportStatus } from "@/features/admin/api";
+import { adminLogout, assignAdminReport, claimAdminReport, moderateReportedAd, releaseAdminReport, updateAdminReportStatus } from "@/features/admin/api";
+import { toastAdminAction, toastAdminError } from "@/features/admin/admin-action-toast";
+import { ModerationReasonDialog } from "@/features/admin/components/moderation-reason-dialog";
+import { SlaStatusBadge } from "@/features/admin/components/sla-status-badge";
+import { AdminScrollableTable } from "@/features/admin/components/admin-scrollable-table";
+import { AdminPaginationBar } from "@/features/admin/components/admin-pagination-bar";
+import {
+  AdminEmptyState,
+  AdminErrorState,
+  AdminPageLoading,
+} from "@/features/admin/components/admin-page-states";
+import { StaffAssignDialog } from "@/features/admin/components/staff-assign-dialog";
+import { StaffWorkflowPanel } from "@/features/admin/components/staff-workflow-panel";
 import {
   ADMIN_ROW_ACTION_BASE,
   ADMIN_TABLE_ROW,
-  BTN_FIX,
   BTN_SEARCH,
   CARD_SHELL,
   SURFACE_TABLE_WRAP,
   adminPillBtn,
 } from "@/features/admin/admin-interaction-classes";
 import { AdminShell } from "@/features/admin/components/admin-shell";
-import { useAdminDashboard, useAdminReports, useRequireAdmin } from "@/features/admin/hooks";
+import { useAdminAccess, useAdminReports, useAdminReportsStats, useRequireAdmin } from "@/features/admin/hooks";
+import type { AdminPaginatedResult } from "@/features/admin/api";
 import type { AdminReport } from "@/features/admin/types";
 import { useToast } from "@/hooks/use-toast";
+import { getLocale, t } from "@/i18n";
 import { apiUrl } from "@/lib/api-url";
 import { AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
 import { cn } from "@/lib/utils";
@@ -41,6 +54,15 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 
+import { OperationsQueueTabBar } from "@/features/admin/components/operations-queue-tab-bar";
+import type { OpsQueueKey } from "@/features/admin/operations-queue-types";
+
+const REPORT_STATUS_FILTER_KEYS = ["all", "open", "under_review", "resolved", "rejected"] as const;
+
+function localeTag() {
+  return getLocale() === "ar" ? "ar-EG" : getLocale() === "de" ? "de-DE" : "en-US";
+}
+
 function mediaSrc(url: string | null | undefined): string | undefined {
   if (!url?.trim()) return undefined;
   const u = url.trim();
@@ -54,26 +76,35 @@ function initials(name: string | null | undefined) {
   return parts.map((p) => p[0]).join("").slice(0, 2);
 }
 
+function normalizeReportStatusKey(status: string): string {
+  if (status === "pending") return "open";
+  if (status === "in_review") return "under_review";
+  if (status === "ignored") return "rejected";
+  return status;
+}
+
 function statusLabel(status: string) {
-  if (status === "pending") return "جديد";
-  if (status === "in_review") return "قيد المراجعة";
-  if (status === "resolved") return "تم الحل";
-  if (status === "rejected" || status === "ignored") return "متجاهل";
+  const key = normalizeReportStatusKey(status);
+  if (key === "open") return t("p8.admin.reports.status_open");
+  if (key === "under_review") return t("p8.admin.reports.status_under_review");
+  if (key === "resolved") return t("p8.admin.reports.status_resolved");
+  if (key === "rejected") return t("p8.admin.reports.status_rejected");
   return status;
 }
 
 function statusBadgeClass(status: string) {
-  if (status === "pending") return "border-amber-500/45 bg-amber-500/15 text-amber-200";
-  if (status === "in_review") return "border-primary/45 bg-primary/15 text-primary";
-  if (status === "resolved") return "border-emerald-500/45 bg-emerald-500/15 text-emerald-200";
-  if (status === "rejected" || status === "ignored") return "border-zinc-600 bg-zinc-800/80 text-zinc-300";
+  const key = normalizeReportStatusKey(status);
+  if (key === "open") return "border-amber-500/45 bg-amber-500/15 text-amber-200";
+  if (key === "under_review") return "border-primary/45 bg-primary/15 text-primary";
+  if (key === "resolved") return "border-emerald-500/45 bg-emerald-500/15 text-emerald-200";
+  if (key === "rejected") return "border-zinc-600 bg-zinc-800/80 text-zinc-300";
   return "border-zinc-600 bg-zinc-900/70 text-zinc-300";
 }
 
 function formatReportDate(iso: string | null) {
-  if (!iso) return "—";
+  if (!iso) return t("p8.admin.common.dash");
   try {
-    return new Date(iso).toLocaleString("ar-EG", {
+    return new Date(iso).toLocaleString(localeTag(), {
       dateStyle: "medium",
       timeStyle: "short",
     });
@@ -84,7 +115,9 @@ function formatReportDate(iso: string | null) {
 
 function ReportSubjectCell({ report }: { report: AdminReport }) {
   if (report.targetType === "ad" && report.targetAdId) {
-    const title = report.targetAdTitle?.trim() || `إعلان #${report.targetAdId}`;
+    const title =
+      report.targetAdTitle?.trim() ||
+      t("p8.admin.reports.subject_ad_fallback", { id: report.targetAdId });
     const seller =
       report.targetAdOwnerName?.trim() ||
       report.targetAdSellerName?.trim() ||
@@ -100,14 +133,16 @@ function ReportSubjectCell({ report }: { report: AdminReport }) {
         <div className="min-w-0 text-right">
           <p className="line-clamp-1 font-medium text-foreground">{title}</p>
           <p className="text-[11px] text-muted-foreground">
-            {seller ? `البائع: ${seller}` : `إعلان #${report.targetAdId}`}
+            {seller
+              ? t("p8.admin.reports.subject_seller", { name: seller })
+              : t("p8.admin.reports.subject_ad_fallback", { id: report.targetAdId })}
           </p>
         </div>
       </div>
     );
   }
   if (report.targetType === "user" && report.targetUserId) {
-    const name = report.targetProfileName?.trim() || `مستخدم #${report.targetUserId}`;
+    const name = report.targetProfileName?.trim() || `#${report.targetUserId}`;
     return (
       <div className="flex items-center gap-2">
         <Avatar className="h-9 w-9 shrink-0 border border-primary/25 ring-1 ring-primary/10">
@@ -118,7 +153,7 @@ function ReportSubjectCell({ report }: { report: AdminReport }) {
         </Avatar>
         <div className="min-w-0 text-right">
           <p className="line-clamp-1 font-medium text-foreground">{name}</p>
-          <p className="text-[11px] text-muted-foreground">بلاغ ضد مستخدم</p>
+          <p className="text-[11px] text-muted-foreground">{t("p8.admin.reports.subject_user_report")}</p>
         </div>
       </div>
     );
@@ -127,11 +162,13 @@ function ReportSubjectCell({ report }: { report: AdminReport }) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground">
         <MessageSquare className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-        <span className="text-sm">محادثة #{report.relatedConversationId}</span>
+        <span className="text-sm">
+          {t("p8.admin.reports.subject_conversation", { id: report.relatedConversationId })}
+        </span>
       </div>
     );
   }
-  return <span className="text-muted-foreground">—</span>;
+  return <span className="text-muted-foreground">{t("p8.admin.common.dash")}</span>;
 }
 
 function ReporterCell({ report }: { report: AdminReport }) {
@@ -144,34 +181,64 @@ function ReporterCell({ report }: { report: AdminReport }) {
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 text-right">
-        <p className="line-clamp-1 font-medium text-foreground">{report.reporterName?.trim() || "—"}</p>
-        <p className="text-[11px] text-muted-foreground">{report.reporterEmail || "—"}</p>
+        <p className="line-clamp-1 font-medium text-foreground">
+          {report.reporterName?.trim() || t("p8.admin.common.dash")}
+        </p>
+        <p className="text-[11px] text-muted-foreground">{report.reporterEmail || t("p8.admin.common.dash")}</p>
       </div>
     </div>
   );
 }
 
-const STATUS_FILTERS = [
-  { key: "all", label: "الكل" },
-  { key: "pending", label: "جديد" },
-  { key: "in_review", label: "قيد المراجعة" },
-  { key: "resolved", label: "تم الحل" },
-  { key: "rejected", label: "متجاهل" },
-] as const;
-
 export default function AdminReportsPage() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const meQuery = useRequireAdmin();
-  const reportsQuery = useAdminReports();
-  const dashboardQuery = useAdminDashboard();
-  const reportsStatusCounts = dashboardQuery.data?.statusCounts?.reports ?? {};
+  const access = useAdminAccess();
+  const params = new URLSearchParams(window.location.search);
+  const initialQueue = (params.get("queue") || "all") as OpsQueueKey;
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [queue, setQueue] = useState<OpsQueueKey>(initialQueue);
+  const reportsQuery = useAdminReports({ queue, page, pageSize });
+  const reportsStatsQuery = useAdminReportsStats(!meQuery.isLoading);
   const { toast } = useToast();
   const [selectedReport, setSelectedReport] = useState<AdminReport | null>(null);
-  const params = new URLSearchParams(window.location.search);
-  const initialStatus = params.get("status") || "all";
+  const [assignOpen, setAssignOpen] = useState(false);
+  const initialRaw = params.get("status") || "all";
+  const initialStatus =
+    initialRaw === "pending" ? "open" : initialRaw === "in_review" ? "under_review" : initialRaw;
   const [statusFilter, setStatusFilter] = useState(initialStatus);
-  const [pendingAdDeleteReportId, setPendingAdDeleteReportId] = useState<number | null>(null);
+  const [reasonDialog, setReasonDialog] = useState<
+    | null
+    | { kind: "status"; id: number; status: "resolved" | "rejected" }
+    | { kind: "ad"; id: number; action: "hide" | "delete" }
+  >(null);
+
+  const statusFilters = useMemo(
+    () =>
+      REPORT_STATUS_FILTER_KEYS.map((key) => ({
+        key,
+        label: t(`p8.admin.reports.filter_${key}` as "p8.admin.reports.filter_all"),
+      })),
+    [],
+  );
+
+  const workflowMutation = useMutation({
+    mutationFn: async (action: { type: "claim" | "release"; id: number }) => {
+      if (action.type === "claim") return claimAdminReport(action.id);
+      return releaseAdminReport(action.id);
+    },
+    onSuccess: async (_res, action) => {
+      await refresh();
+      toastAdminAction(
+        toast,
+        _res,
+        action.type === "claim" ? t("p8.admin.reports.toast_claim") : t("p8.admin.reports.toast_release"),
+      );
+    },
+    onError: (error) => toastAdminError(toast, error),
+  });
 
   const closeReportModal = useCallback(() => {
     const next = new URLSearchParams(window.location.search);
@@ -182,31 +249,69 @@ export default function AdminReportsPage() {
   }, [navigate]);
 
   const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
+    await queryClient.invalidateQueries({ queryKey: ["admin", "nav-badges"] });
     await queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+    await queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
     await queryClient.invalidateQueries({ queryKey: ["admin", "ads"] });
   };
 
+  useEffect(() => {
+    setPage(1);
+  }, [queue]);
+
+  const assignMutation = useMutation({
+    mutationFn: ({ id, staffId }: { id: number; staffId: number }) => assignAdminReport(id, staffId),
+    onSuccess: async (res, variables) => {
+      setAssignOpen(false);
+      await refresh();
+      if (selectedReport?.id === variables.id && res.assignment) {
+        setSelectedReport((prev) => (prev ? { ...prev, assignment: res.assignment } : prev));
+      }
+      toastAdminAction(toast, res, t("p8.admin.reports.toast_assign"));
+    },
+    onError: (error) => toastAdminError(toast, error),
+  });
+
   const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: "pending" | "in_review" | "resolved" | "rejected" }) =>
-      updateAdminReportStatus(id, status),
+    mutationFn: ({
+      id,
+      status,
+      reason,
+    }: {
+      id: number;
+      status: "open" | "under_review" | "resolved" | "rejected";
+      reason?: string;
+    }) => updateAdminReportStatus(id, status, reason),
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: ["admin", "reports"] });
-      const previous = queryClient.getQueryData<AdminReport[]>(["admin", "reports"]);
-      queryClient.setQueryData<AdminReport[]>(["admin", "reports"], (old = []) =>
-        old.map((item) =>
-          item.id === variables.id ? { ...item, status: variables.status } : item,
-        ),
+      const previous = queryClient.getQueryData<AdminPaginatedResult<AdminReport>>([
+        "admin",
+        "reports",
+        queue,
+        page,
+        pageSize,
+      ]);
+      queryClient.setQueryData<AdminPaginatedResult<AdminReport>>(
+        ["admin", "reports", queue, page, pageSize],
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            items: old.items.map((item) =>
+              item.id === variables.id ? { ...item, status: variables.status } : item,
+            ),
+          };
+        },
       );
       return { previous };
     },
     onError: (error, _variables, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(["admin", "reports"], context.previous);
+        queryClient.setQueryData(["admin", "reports", queue, page, pageSize], context.previous);
       }
       toast({
-        title: "فشل تحديث البلاغ",
-        description: error instanceof Error ? error.message : "حدث خطأ",
+        title: t("p8.admin.reports.toast_status_failed"),
+        description: error instanceof Error ? error.message : t("p8.admin.common.error_generic"),
         variant: "destructive",
       });
     },
@@ -216,27 +321,30 @@ export default function AdminReportsPage() {
       );
       await refresh();
       toast({
-        title: "تم تحديث البلاغ",
-        description: `تم تغيير الحالة إلى ${statusLabel(variables.status)}`,
+        title: t("p8.admin.reports.toast_status_updated"),
+        description: t("p8.admin.reports.toast_status_updated_desc", { status: statusLabel(variables.status) }),
       });
     },
   });
 
   const adActionMutation = useMutation({
-    mutationFn: ({ id, action }: { id: number; action: "hide" | "delete" }) =>
-      moderateReportedAd(id, action),
+    mutationFn: ({ id, action, reason }: { id: number; action: "hide" | "delete"; reason: string }) =>
+      moderateReportedAd(id, action, reason),
     onSuccess: async (_, variables) => {
-      setPendingAdDeleteReportId(null);
+      setReasonDialog(null);
       await refresh();
       toast({
-        title: "تم تنفيذ الإجراء",
-        description: variables.action === "hide" ? "تم إخفاء الإعلان المرتبط" : "تم حذف الإعلان المرتبط",
+        title: t("p8.admin.reports.toast_action_done"),
+        description:
+          variables.action === "hide"
+            ? t("p8.admin.reports.toast_action_hide")
+            : t("p8.admin.reports.toast_action_delete"),
       });
     },
     onError: (error) => {
       toast({
-        title: "فشل تنفيذ الإجراء",
-        description: error instanceof Error ? error.message : "حدث خطأ",
+        title: t("p8.admin.reports.toast_action_failed"),
+        description: error instanceof Error ? error.message : t("p8.admin.common.error_generic"),
         variant: "destructive",
       });
     },
@@ -247,14 +355,17 @@ export default function AdminReportsPage() {
     navigate("/admin-login");
   };
 
-  const reports = reportsQuery.data ?? [];
-  const actionPending = statusMutation.isPending || adActionMutation.isPending;
+  const reports = reportsQuery.data?.items ?? [];
+  const pagination = reportsQuery.data?.pagination;
+  const actionPending = statusMutation.isPending || adActionMutation.isPending || assignMutation.isPending;
   const visibleReports = useMemo(() => {
     if (statusFilter === "all") return reports;
     if (statusFilter === "rejected") {
-      return reports.filter((r) => r.status === "rejected" || r.status === "ignored");
+      return reports.filter(
+        (r) => normalizeReportStatusKey(r.status) === "rejected",
+      );
     }
-    return reports.filter((r) => r.status === statusFilter);
+    return reports.filter((r) => normalizeReportStatusKey(r.status) === statusFilter);
   }, [reports, statusFilter]);
 
   /** مزامنة الحالة مع الشريط دون حذف reportId من الرابط العميق قبل تحميل القائمة */
@@ -298,8 +409,6 @@ export default function AdminReportsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedReport, closeReportModal]);
 
-  const ignoredTotal =
-    Number(reportsStatusCounts.ignored ?? 0) + Number(reportsStatusCounts.rejected ?? 0);
 
   if (meQuery.isLoading) {
     return (
@@ -318,56 +427,26 @@ export default function AdminReportsPage() {
           )}
         >
           <div className="space-y-1 text-right">
-            <h1 className={cn(AUTH_HEADER_TITLE, "text-2xl md:text-[1.65rem]")}>إدارة البلاغات</h1>
-            <p className="text-sm text-muted-foreground">مراجعة البلاغات وربطها بالإعلانات والمستخدمين</p>
+            <h1 className={cn(AUTH_HEADER_TITLE, "text-2xl md:text-[1.65rem]")}>{t("p8.admin.reports.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("p8.admin.reports.subtitle")}</p>
           </div>
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-zinc-900/90 px-3 py-1.5 text-xs text-muted-foreground ring-1 ring-primary/10">
             <Flag className="h-3.5 w-3.5 text-primary" aria-hidden />
-            {visibleReports.length.toLocaleString("ar-EG")} بلاغاً في العرض
+            {t("p8.admin.reports.list_count", {
+              count: (pagination?.totalItems ?? visibleReports.length).toLocaleString(localeTag()),
+            })}
           </span>
         </header>
 
-        <section className={cn(CARD_SHELL, "p-4 sm:p-5")}>
-          <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {(
-              [
-                ["pending", "جديدة", reportsStatusCounts.pending],
-                ["in_review", "قيد المراجعة", reportsStatusCounts.in_review],
-                ["resolved", "تم الحل", reportsStatusCounts.resolved],
-                ["rejected", "متجاهلة", ignoredTotal],
-              ] as const
-            ).map(([key, label, count]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setStatusFilter(key)}
-                className={cn(
-                  BTN_FIX,
-                  "rounded-2xl border p-3 text-right transition-all duration-150 ease-out active:scale-[0.98]",
-                  "hover:border-primary/45 hover:shadow-[0_0_18px_-10px_hsl(var(--primary)/0.18)]",
-                  statusFilter === key
-                    ? "border-primary/45 bg-primary/10 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15"
-                    : "border-primary/20 bg-zinc-900/50 ring-1 ring-primary/5",
-                )}
-              >
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p
-                  className={cn(
-                    "mt-1 text-xl font-semibold tabular-nums",
-                    key === "pending" && "text-amber-200",
-                    key === "in_review" && "text-primary",
-                    key === "resolved" && "text-emerald-200",
-                    key === "rejected" && "text-zinc-200",
-                  )}
-                >
-                  {Number(count ?? 0).toLocaleString("ar-EG")}
-                </p>
-              </button>
-            ))}
-          </div>
+        <OperationsQueueTabBar
+          queue={queue}
+          counts={reportsStatsQuery.data ?? undefined}
+          onChange={setQueue}
+        />
 
+        <section className={cn(CARD_SHELL, "p-4 sm:p-5")}>
           <div className="mb-5 flex flex-wrap gap-2">
-            {STATUS_FILTERS.map((item) => (
+            {statusFilters.map((item) => (
               <button
                 key={item.key}
                 type="button"
@@ -380,41 +459,33 @@ export default function AdminReportsPage() {
           </div>
 
           {reportsQuery.isLoading ? (
-            <div className="flex items-center justify-center gap-2 rounded-2xl border border-primary/25 bg-zinc-900/40 py-12 text-muted-foreground ring-1 ring-primary/10">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              جاري تحميل البلاغات...
-            </div>
+            <AdminPageLoading message={t("p8.admin.reports.loading")} />
           ) : reportsQuery.isError ? (
-            <div className="rounded-2xl border border-red-500/35 bg-red-950/25 px-4 py-10 text-center text-sm text-red-200 ring-1 ring-red-500/20">
-              <p className="mb-3">تعذر تحميل البلاغات. حاول مرة أخرى.</p>
-              <button
-                type="button"
-                onClick={() => reportsQuery.refetch()}
-                className={cn(buttonVariants(), BTN_SEARCH)}
-              >
-                إعادة المحاولة
-              </button>
-            </div>
+            <AdminErrorState
+              title={t("p8.admin.reports.load_error")}
+              description={t("p8.admin.reports.load_error_hint")}
+              onRetry={() => reportsQuery.refetch()}
+            />
           ) : visibleReports.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-primary/30 bg-zinc-900/40 py-12 text-center text-sm text-muted-foreground">
-              لا يوجد بلاغات مطابقة للفلتر الحالي.
-            </div>
+            <AdminEmptyState title={t("p8.admin.reports.empty_title")} description={t("p8.admin.reports.empty_body")} />
           ) : (
-            <div className={SURFACE_TABLE_WRAP}>
-              <table className="w-full min-w-[1080px] text-sm">
-                <thead className="border-b border-primary/25 bg-zinc-900/50 text-muted-foreground">
+            <AdminScrollableTable
+              items={visibleReports}
+              minWidth="min-w-[1080px]"
+              head={
                   <tr>
-                    <th className="px-3 py-3 text-right font-medium">#</th>
-                    <th className="px-3 py-3 text-right font-medium">المبلّغ</th>
-                    <th className="px-3 py-3 text-right font-medium">حول</th>
-                    <th className="px-3 py-3 text-right font-medium">السبب</th>
-                    <th className="px-3 py-3 text-right font-medium">الحالة</th>
-                    <th className="px-3 py-3 text-right font-medium">التاريخ</th>
-                    <th className="px-3 py-3 text-center font-medium">إجراءات</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.reports.col_id")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.reports.col_reporter")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.reports.col_subject")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.reports.col_reason")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.reports.col_status")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.reports.col_sla")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.reports.col_date")}</th>
+                    <th className="px-3 py-3 text-center font-medium">{t("p8.admin.reports.col_actions")}</th>
                   </tr>
-                </thead>
-                <tbody>
-                  {visibleReports.map((report) => (
+              }
+              getRowKey={(report) => report.id}
+              renderRow={(report) => (
                     <tr
                       key={report.id}
                       className={cn("cursor-pointer last:border-0", ADMIN_TABLE_ROW)}
@@ -443,6 +514,13 @@ export default function AdminReportsPage() {
                           {statusLabel(report.status)}
                         </span>
                       </td>
+                      <td className="px-3 py-3 align-middle">
+                        {report.slaState ? (
+                          <SlaStatusBadge state={report.slaState} minutesRemaining={report.slaMinutesRemaining} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">{t("p8.admin.common.dash")}</span>
+                        )}
+                      </td>
                       <td className="px-3 py-3 align-middle text-[13px] text-muted-foreground whitespace-nowrap">
                         {formatReportDate(report.createdAt)}
                       </td>
@@ -457,18 +535,18 @@ export default function AdminReportsPage() {
                             )}
                           >
                             <Eye className="h-3.5 w-3.5" aria-hidden />
-                            تفاصيل
+                            {t("p8.admin.common.details")}
                           </button>
                           <button
                             type="button"
-                            onClick={() => statusMutation.mutate({ id: report.id, status: "in_review" })}
+                            onClick={() => statusMutation.mutate({ id: report.id, status: "under_review" })}
                             disabled={actionPending}
                             className={cn(
                               ADMIN_ROW_ACTION_BASE,
                               "border-primary/35 bg-primary/8 text-primary hover:bg-primary/15",
                             )}
                           >
-                            مراجعة
+                            {t("p8.admin.reports.action_review_short")}
                           </button>
                           <button
                             type="button"
@@ -479,7 +557,7 @@ export default function AdminReportsPage() {
                               "border-emerald-500/45 bg-emerald-600/15 text-emerald-200 hover:bg-emerald-600/25",
                             )}
                           >
-                            حل
+                            {t("p8.admin.reports.action_resolve_short")}
                           </button>
                           <button
                             type="button"
@@ -490,16 +568,24 @@ export default function AdminReportsPage() {
                               "border-amber-500/45 bg-amber-600/12 text-amber-100 hover:bg-amber-600/22",
                             )}
                           >
-                            تجاهل
+                            {t("p8.admin.reports.ignore")}
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+              )}
+            />
           )}
+
+          <AdminPaginationBar
+            pagination={pagination}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+            isLoading={reportsQuery.isFetching}
+          />
         </section>
       </div>
 
@@ -521,7 +607,7 @@ export default function AdminReportsPage() {
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <h2 id="admin-report-detail-title" className="text-xl font-semibold text-foreground">
-                    تفاصيل البلاغ #{selectedReport.id}
+                    {t("p8.admin.reports.detail_title", { id: selectedReport.id })}
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {formatReportDate(selectedReport.createdAt)} ·{" "}
@@ -533,13 +619,13 @@ export default function AdminReportsPage() {
                   onClick={() => closeReportModal()}
                   className={cn(buttonVariants({ variant: "outline", size: "sm" }), "shrink-0 rounded-2xl border-primary/35")}
                 >
-                  إغلاق
+                  {t("p8.admin.common.close")}
                 </button>
               </div>
 
               <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className={cn(CARD_SHELL, "p-4")}>
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">المبلّغ</p>
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">{t("p8.admin.reports.detail_reporter")}</p>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12 border border-primary/30 ring-1 ring-primary/10">
                       <AvatarImage src={mediaSrc(selectedReport.reporterAvatarUrl)} alt="" className="object-cover" />
@@ -548,15 +634,17 @@ export default function AdminReportsPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <p className="font-medium text-foreground">{selectedReport.reporterName || "—"}</p>
-                      <p className="break-all text-xs text-muted-foreground">{selectedReport.reporterEmail || "—"}</p>
-                      <p className="text-[11px] text-muted-foreground">معرّف: {selectedReport.reporterId}</p>
+                      <p className="font-medium text-foreground">{selectedReport.reporterName || t("p8.admin.common.dash")}</p>
+                      <p className="break-all text-xs text-muted-foreground">{selectedReport.reporterEmail || t("p8.admin.common.dash")}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {t("p8.admin.reports.detail_id_label", { id: selectedReport.reporterId })}
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 <div className={cn(CARD_SHELL, "p-4")}>
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">الهدف</p>
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">{t("p8.admin.reports.detail_target")}</p>
                   {selectedReport.targetType === "ad" && selectedReport.targetAdId ? (
                     <div className="flex items-center gap-3">
                       <Avatar className="h-12 w-12 border border-primary/30 ring-1 ring-primary/10">
@@ -571,12 +659,15 @@ export default function AdminReportsPage() {
                       </Avatar>
                       <div className="min-w-0">
                         <p className="font-medium text-foreground">
-                          {selectedReport.targetAdTitle?.trim() || `إعلان #${selectedReport.targetAdId}`}
+                          {selectedReport.targetAdTitle?.trim() ||
+                            t("p8.admin.reports.subject_ad_fallback", { id: selectedReport.targetAdId })}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {(selectedReport.targetAdOwnerName || selectedReport.targetAdSellerName)?.trim()
-                            ? `البائع: ${(selectedReport.targetAdOwnerName || selectedReport.targetAdSellerName)?.trim()}`
-                            : `إعلان #${selectedReport.targetAdId}`}
+                            ? t("p8.admin.reports.subject_seller", {
+                                name: (selectedReport.targetAdOwnerName || selectedReport.targetAdSellerName)?.trim() ?? "",
+                              })
+                            : t("p8.admin.reports.subject_ad_fallback", { id: selectedReport.targetAdId })}
                         </p>
                       </div>
                     </div>
@@ -590,17 +681,21 @@ export default function AdminReportsPage() {
                       </Avatar>
                       <div className="min-w-0">
                         <p className="font-medium text-foreground">
-                          {selectedReport.targetProfileName?.trim() || `مستخدم #${selectedReport.targetUserId}`}
+                          {selectedReport.targetProfileName?.trim() || `#${selectedReport.targetUserId}`}
                         </p>
-                        <p className="text-xs text-muted-foreground">معرّف: {selectedReport.targetUserId}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t("p8.admin.reports.detail_id_label", { id: selectedReport.targetUserId })}
+                        </p>
                       </div>
                     </div>
                   ) : selectedReport.targetType === "conversation" ? (
                     <p className="text-sm text-muted-foreground">
-                      محادثة #{selectedReport.relatedConversationId ?? "—"}
+                      {t("p8.admin.reports.subject_conversation", {
+                        id: selectedReport.relatedConversationId ?? t("p8.admin.common.dash"),
+                      })}
                     </p>
                   ) : (
-                    <p className="text-sm text-muted-foreground">غير محدد</p>
+                    <p className="text-sm text-muted-foreground">{t("p8.admin.reports.detail_unspecified")}</p>
                   )}
                 </div>
               </div>
@@ -615,43 +710,58 @@ export default function AdminReportsPage() {
                   {statusLabel(selectedReport.status)}
                 </span>
                 <span className="inline-flex rounded-full border border-primary/25 bg-zinc-900/60 px-2.5 py-1 text-xs text-muted-foreground">
-                  النوع: {selectedReport.targetType}
+                  {t("p8.admin.reports.detail_type", { type: selectedReport.targetType })}
                 </span>
               </div>
 
               <div className="mb-4 rounded-2xl border border-primary/25 bg-zinc-900/50 p-4 ring-1 ring-primary/10">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">سبب البلاغ</p>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">{t("p8.admin.reports.detail_reason")}</p>
                 <p className="text-sm leading-relaxed text-foreground">{selectedReport.reason}</p>
-                <p className="mb-1 mt-4 text-xs font-medium text-muted-foreground">الوصف / تفاصيل إضافية</p>
+                <p className="mb-1 mt-4 text-xs font-medium text-muted-foreground">{t("p8.admin.reports.detail_description")}</p>
                 <p className="text-sm leading-relaxed text-foreground">
-                  {selectedReport.description?.trim() || "لا يوجد وصف إضافي."}
+                  {selectedReport.description?.trim() || t("p8.admin.reports.detail_no_description")}
                 </p>
+              </div>
+
+              <div className="mb-4">
+                <StaffWorkflowPanel
+                  assignment={selectedReport.assignment}
+                  busy={workflowMutation.isPending || assignMutation.isPending}
+                  canAssign={access.isFounder}
+                  onAssign={() => setAssignOpen(true)}
+                  onClaim={() => workflowMutation.mutate({ type: "claim", id: selectedReport.id })}
+                  onRelease={() => workflowMutation.mutate({ type: "release", id: selectedReport.id })}
+                />
               </div>
 
               <div className="mb-5 flex flex-wrap gap-2 border-t border-primary/15 pt-5">
                 <button
                   type="button"
-                  onClick={() => statusMutation.mutate({ id: selectedReport.id, status: "in_review" })}
+                  onClick={() => statusMutation.mutate({ id: selectedReport.id, status: "under_review" })}
                   disabled={actionPending}
                   className={cn(ADMIN_ROW_ACTION_BASE, "border-primary/40 bg-primary/10 text-primary")}
                 >
-                  قيد المراجعة
+                  {t("p8.admin.reports.status_under_review")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => statusMutation.mutate({ id: selectedReport.id, status: "resolved" })}
+                  onClick={() =>
+                    setReasonDialog({ kind: "status", id: selectedReport.id, status: "resolved" })
+                  }
                   disabled={actionPending}
                   className={cn(ADMIN_ROW_ACTION_BASE, "border-emerald-500/45 bg-emerald-600/15 text-emerald-200")}
                 >
-                  تم الحل
+                  {t("p8.admin.reports.status_resolved")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => statusMutation.mutate({ id: selectedReport.id, status: "rejected" })}
+                  onClick={() =>
+                    setReasonDialog({ kind: "status", id: selectedReport.id, status: "rejected" })
+                  }
                   disabled={actionPending}
                   className={cn(ADMIN_ROW_ACTION_BASE, "border-amber-500/45 bg-amber-600/12 text-amber-100")}
                 >
-                  تجاهل
+                  {t("p8.admin.reports.ignore")}
                 </button>
               </div>
 
@@ -665,7 +775,7 @@ export default function AdminReportsPage() {
                       className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-2xl border-primary/35")}
                     >
                       <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                      صفحة الإعلان
+                      {t("p8.admin.reports.link_ad_page")}
                     </a>
                     <button
                       type="button"
@@ -673,7 +783,7 @@ export default function AdminReportsPage() {
                       className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-2xl border-primary/35")}
                     >
                       <Megaphone className="h-3.5 w-3.5" aria-hidden />
-                      في لوحة الإعلانات
+                      {t("p8.admin.reports.link_admin_ads")}
                     </button>
                   </>
                 ) : null}
@@ -684,7 +794,7 @@ export default function AdminReportsPage() {
                     className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-2xl border-primary/35")}
                   >
                     <User className="h-3.5 w-3.5" aria-hidden />
-                    صفحة المستخدم
+                    {t("p8.admin.reports.link_user_page")}
                   </button>
                 ) : null}
                 {selectedReport.relatedConversationId ? (
@@ -694,7 +804,7 @@ export default function AdminReportsPage() {
                     className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-2xl border-primary/35")}
                   >
                     <MessageSquare className="h-3.5 w-3.5" aria-hidden />
-                    المحادثة
+                    {t("p8.admin.reports.link_conversation")}
                   </button>
                 ) : null}
               </div>
@@ -703,18 +813,22 @@ export default function AdminReportsPage() {
                 <div className="mt-5 flex flex-wrap gap-2 border-t border-primary/15 pt-5">
                   <button
                     type="button"
-                    onClick={() => adActionMutation.mutate({ id: selectedReport.id, action: "hide" })}
+                    onClick={() =>
+                      setReasonDialog({ kind: "ad", id: selectedReport.id, action: "hide" })
+                    }
                     disabled={actionPending}
                     className={cn(
                       ADMIN_ROW_ACTION_BASE,
                       "border-zinc-600 bg-zinc-800/90 text-zinc-200 hover:bg-zinc-800",
                     )}
                   >
-                    إخفاء الإعلان المرتبط
+                    {t("p8.admin.reports.action_hide_ad")}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPendingAdDeleteReportId(selectedReport.id)}
+                    onClick={() =>
+                      setReasonDialog({ kind: "ad", id: selectedReport.id, action: "delete" })
+                    }
                     disabled={actionPending}
                     className={cn(
                       ADMIN_ROW_ACTION_BASE,
@@ -722,7 +836,7 @@ export default function AdminReportsPage() {
                     )}
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                    حذف الإعلان المرتبط
+                    {t("p8.admin.reports.action_delete_ad")}
                   </button>
                 </div>
               ) : null}
@@ -731,59 +845,50 @@ export default function AdminReportsPage() {
           document.body,
         )}
 
-      <AlertDialog
-        open={pendingAdDeleteReportId !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingAdDeleteReportId(null);
+      <StaffAssignDialog
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        title={t("p8.admin.reports.assign_title")}
+        description={t("p8.admin.reports.assign_description")}
+        currentAssignee={selectedReport?.assignment?.staffName}
+        busy={assignMutation.isPending}
+        onConfirm={(staffActorId) => {
+          if (!selectedReport) return;
+          assignMutation.mutate({ id: selectedReport.id, staffId: staffActorId });
         }}
-      >
-        <AlertDialogContent
-          dir="rtl"
-          className="max-w-md rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
-        >
-          <AlertDialogHeader className="space-y-2 text-right sm:text-right">
-            <AlertDialogTitle className="text-lg font-semibold text-foreground">تأكيد حذف الإعلان المرتبط</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
-              سيتم حذف الإعلان المرتبط بهذا البلاغ نهائياً من المنصة. هذا الإجراء لا يمكن التراجع عنه. هل تريد
-              المتابعة؟
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-row-reverse flex-wrap gap-2 sm:flex-row-reverse sm:justify-start sm:gap-2 sm:space-x-0">
-            <AlertDialogCancel
-              className={cn(
-                buttonVariants({ variant: "outline", size: "default" }),
-                "mt-0 rounded-2xl border-primary/35 bg-zinc-900/80 hover:bg-zinc-900",
-              )}
-            >
-              إلغاء
-            </AlertDialogCancel>
-            <button
-              type="button"
-              disabled={adActionMutation.isPending || pendingAdDeleteReportId === null}
-              className={cn(
-                buttonVariants({ variant: "destructive", size: "default" }),
-                "inline-flex gap-2 rounded-2xl border-red-500/50 shadow-[0_0_18px_-10px_rgba(220,38,38,0.35)]",
-              )}
-              onClick={() => {
-                if (pendingAdDeleteReportId === null) return;
-                adActionMutation.mutate({ id: pendingAdDeleteReportId, action: "delete" });
-              }}
-            >
-              {adActionMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  جاري الحذف...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4" aria-hidden />
-                  حذف الإعلان
-                </>
-              )}
-            </button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      />
+
+      <ModerationReasonDialog
+        open={reasonDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) setReasonDialog(null);
+        }}
+        title={
+          reasonDialog?.kind === "ad"
+            ? t("p8.admin.reports.moderation_ad_reason_title")
+            : reasonDialog?.status === "rejected"
+              ? t("p8.admin.reports.moderation_reject_title")
+              : t("p8.admin.reports.moderation_resolve_title")
+        }
+        description={t("p8.admin.moderation.reason_hint")}
+        onConfirm={(reason) => {
+          if (!reasonDialog) return;
+          if (reasonDialog.kind === "status") {
+            statusMutation.mutate({
+              id: reasonDialog.id,
+              status: reasonDialog.status,
+              reason,
+            });
+          } else {
+            adActionMutation.mutate({
+              id: reasonDialog.id,
+              action: reasonDialog.action,
+              reason,
+            });
+          }
+          setReasonDialog(null);
+        }}
+      />
     </AdminShell>
   );
 }

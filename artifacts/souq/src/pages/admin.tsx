@@ -5,6 +5,7 @@ import { AdminShell } from "@/features/admin/components/admin-shell";
 import { DashboardHome } from "@/features/admin/components/dashboard-home";
 import { useAdminDashboard, useRequireAdmin } from "@/features/admin/hooks";
 import { BTN_FIX } from "@/features/admin/admin-interaction-classes";
+import { t } from "@/i18n";
 import { AUTH_ACCENT_OUTLINE_BTN } from "@/lib/auth-page-styles";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +47,7 @@ export default function AdminPage() {
       >
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-primary/40 bg-zinc-950/85 px-8 py-10 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12">
           <Loader2 className="h-9 w-9 animate-spin text-primary" aria-hidden />
-          <p className="text-sm text-muted-foreground">جاري تحميل لوحة التحكم...</p>
+          <p className="text-sm text-muted-foreground">{t("p8.admin.page.loading")}</p>
         </div>
       </div>
     );
@@ -60,13 +61,13 @@ export default function AdminPage() {
             className="rounded-2xl border border-destructive/35 bg-destructive/10 p-8 text-center text-destructive shadow-[0_0_20px_-12px_rgba(0,0,0,0.4)] ring-1 ring-destructive/25"
             dir="rtl"
           >
-            <p className="mb-4 text-destructive">تعذر تحميل بيانات لوحة التحكم.</p>
+            <p className="mb-4 text-destructive">{t("p8.admin.page.load_error")}</p>
             <button
               type="button"
               onClick={() => dashboardQuery.refetch()}
               className={cn(AUTH_ACCENT_OUTLINE_BTN, BTN_FIX, "cursor-pointer hover:bg-zinc-900 active:scale-[0.98]")}
             >
-              إعادة المحاولة
+              {t("p8.admin.page.retry")}
             </button>
           </div>
         </AdminShell>
@@ -82,11 +83,7 @@ export default function AdminPage() {
 
   return (
     <AdminShell activeKey="dashboard" onLogout={handleLogout}>
-      <DashboardHome
-        key={dashboardQuery.dataUpdatedAt}
-        data={dashboardQuery.data}
-        isRefreshing={dashboardQuery.isFetching}
-      />
+      <DashboardHome data={dashboardQuery.data} isRefreshing={dashboardQuery.isFetching} />
     </AdminShell>
   );
 }

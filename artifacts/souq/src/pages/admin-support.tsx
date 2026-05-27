@@ -14,13 +14,26 @@ import {
 } from "lucide-react";
 import {
   adminLogout,
+  assignAdminSupportTicket,
+  claimAdminSupportTicket,
+  releaseAdminSupportTicket,
   replyAdminSupportTicket,
   updateAdminSupportTicket,
 } from "@/features/admin/api";
+import { toastAdminAction, toastAdminError } from "@/features/admin/admin-action-toast";
+import { ModerationReasonDialog } from "@/features/admin/components/moderation-reason-dialog";
+import { SlaStatusBadge } from "@/features/admin/components/sla-status-badge";
+import { AdminPaginationBar } from "@/features/admin/components/admin-pagination-bar";
+import {
+  AdminEmptyState,
+  AdminErrorState,
+  AdminPageLoading,
+} from "@/features/admin/components/admin-page-states";
+import { StaffAssignDialog } from "@/features/admin/components/staff-assign-dialog";
+import { StaffWorkflowPanel } from "@/features/admin/components/staff-workflow-panel";
 import {
   ADMIN_ROW_ACTION_BASE,
   ADMIN_TABLE_ROW,
-  BTN_FIX,
   BTN_MODAL_GHOST,
   BTN_SEARCH,
   CARD_SHELL,
@@ -28,14 +41,19 @@ import {
   adminPillBtn,
 } from "@/features/admin/admin-interaction-classes";
 import { AdminShell } from "@/features/admin/components/admin-shell";
+import { OperationsQueueTabBar } from "@/features/admin/components/operations-queue-tab-bar";
 import {
-  useAdminDashboard,
+  useAdminAccess,
   useAdminSupportMessages,
+  useAdminSupportStats,
   useAdminSupportTickets,
   useRequireAdmin,
 } from "@/features/admin/hooks";
+import type { AdminPaginatedResult } from "@/features/admin/api";
+import type { OpsQueueKey } from "@/features/admin/operations-queue-types";
 import type { AdminSupportTicket } from "@/features/admin/types";
 import { useToast } from "@/hooks/use-toast";
+import { getLocale, t } from "@/i18n";
 import { apiUrl } from "@/lib/api-url";
 import { AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
 import { cn } from "@/lib/utils";
@@ -51,13 +69,11 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
 
-const STATUS_OPTIONS = [
-  { key: "all", label: "الكل" },
-  { key: "open", label: "مفتوحة" },
-  { key: "pending", label: "قيد المعالجة" },
-  { key: "resolved", label: "تم الحل" },
-  { key: "closed", label: "مغلقة" },
-] as const;
+const SUPPORT_STATUS_FILTER_KEYS = ["all", "open", "pending", "resolved", "closed"] as const;
+
+function localeTag() {
+  return getLocale() === "ar" ? "ar-EG" : getLocale() === "de" ? "de-DE" : "en-US";
+}
 
 function mediaSrc(url: string | null | undefined): string | undefined {
   if (!url?.trim()) return undefined;
@@ -73,29 +89,29 @@ function initials(name: string | null | undefined) {
 }
 
 function priorityLabel(priority: string) {
-  if (priority === "low") return "منخفضة";
-  if (priority === "normal") return "عادية";
-  if (priority === "high") return "مرتفعة";
-  if (priority === "urgent") return "عاجلة";
+  if (priority === "low") return t("p8.admin.support.priority_low");
+  if (priority === "normal") return t("p8.admin.support.priority_normal");
+  if (priority === "high") return t("p8.admin.support.priority_high");
+  if (priority === "urgent") return t("p8.admin.support.priority_urgent");
   return priority;
 }
 
 function statusLabel(status: string) {
-  if (status === "open") return "مفتوحة";
-  if (status === "pending") return "قيد المعالجة";
-  if (status === "resolved") return "تم الحل";
-  if (status === "closed") return "مغلقة";
+  if (status === "open") return t("p8.admin.support.status_open");
+  if (status === "pending") return t("p8.admin.support.status_pending");
+  if (status === "resolved") return t("p8.admin.support.status_resolved");
+  if (status === "closed") return t("p8.admin.support.status_closed");
   return status;
 }
 
 function categoryLabel(category: string) {
   const map: Record<string, string> = {
-    general: "عام",
-    login: "تسجيل الدخول",
-    ad: "إعلان",
-    payment: "دفع",
-    account: "الحساب",
-    other: "أخرى",
+    general: t("p8.admin.support.category_general"),
+    login: t("p8.admin.support.category_login"),
+    ad: t("p8.admin.support.category_ad"),
+    payment: t("p8.admin.support.category_payment"),
+    account: t("p8.admin.support.category_account"),
+    other: t("p8.admin.support.category_other"),
   };
   return map[category] ?? category;
 }
@@ -116,9 +132,9 @@ function priorityBadgeClass(priority: string) {
 }
 
 function formatTicketDate(iso: string | null) {
-  if (!iso) return "—";
+  if (!iso) return t("p8.admin.common.dash");
   try {
-    return new Date(iso).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" });
+    return new Date(iso).toLocaleString(localeTag(), { dateStyle: "medium", timeStyle: "short" });
   } catch {
     return iso;
   }
@@ -132,45 +148,96 @@ export default function AdminSupportPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const meQuery = useRequireAdmin();
-  const dashboardQuery = useAdminDashboard();
-  const supportStatusCounts = dashboardQuery.data?.statusCounts?.support ?? {};
+  const access = useAdminAccess();
 
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [status, setStatus] = useState("all");
+  const [queue, setQueue] = useState<OpsQueueKey>("all");
+  const supportStatsQuery = useAdminSupportStats(!meQuery.isLoading);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [selectedTicket, setSelectedTicket] = useState<AdminSupportTicket | null>(null);
   const [reply, setReply] = useState("");
   const [pendingCloseConfirm, setPendingCloseConfirm] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
 
-  const ticketsQuery = useAdminSupportTickets({ status, q: search });
+  const statusOptions = useMemo(
+    () =>
+      SUPPORT_STATUS_FILTER_KEYS.map((key) => ({
+        key,
+        label: t(`p8.admin.support.filter_${key}` as "p8.admin.support.filter_all"),
+      })),
+    [],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [status, search, queue]);
+
+  const workflowMutation = useMutation({
+    mutationFn: async (action: { type: "claim" | "release"; id: number }) => {
+      if (action.type === "claim") return claimAdminSupportTicket(action.id);
+      return releaseAdminSupportTicket(action.id);
+    },
+    onSuccess: async (res, action) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "nav-badges"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "support", "tickets"] });
+      toastAdminAction(
+        toast,
+        res,
+        action.type === "claim" ? t("p8.admin.support.toast_claim") : t("p8.admin.support.toast_release"),
+      );
+    },
+    onError: (error) => toastAdminError(toast, error),
+  });
+
+  const ticketsQuery = useAdminSupportTickets({ status, q: search, queue, page, pageSize });
   const messagesQuery = useAdminSupportMessages(selectedTicket?.id ?? null);
 
-  const visibleTickets = useMemo(() => ticketsQuery.data ?? [], [ticketsQuery.data]);
+  const tickets = ticketsQuery.data?.items ?? [];
+  const pagination = ticketsQuery.data?.pagination;
+  const visibleTickets = useMemo(() => tickets, [tickets]);
 
   const mergeTicketFromCache = useCallback(
     (ticketId: number) => {
-      const list = queryClient.getQueryData<AdminSupportTicket[]>([
+      const list = queryClient.getQueryData<AdminPaginatedResult<AdminSupportTicket>>([
         "admin",
         "support",
         "tickets",
         status,
         search,
+        queue,
+        page,
+        pageSize,
       ]);
-      return list?.find((t) => t.id === ticketId);
+      return list?.items?.find((t) => t.id === ticketId);
     },
-    [queryClient, status, search],
+    [queryClient, status, search, queue, page, pageSize],
   );
 
   const refresh = async (messageTicketId?: number | null) => {
+    await queryClient.invalidateQueries({ queryKey: ["admin", "nav-badges"] });
+    await queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
     await queryClient.invalidateQueries({ queryKey: ["admin", "support", "tickets"] });
     await queryClient.invalidateQueries({
       queryKey: ["admin", "support", "messages", messageTicketId ?? selectedTicket?.id ?? null],
     });
-    await queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
-    await queryClient.refetchQueries({
-      queryKey: ["admin", "support", "tickets", status, search],
-    });
   };
+
+  const assignMutation = useMutation({
+    mutationFn: ({ id, staffId }: { id: number; staffId: number }) => assignAdminSupportTicket(id, staffId),
+    onSuccess: async (res, variables) => {
+      setAssignOpen(false);
+      await refresh(variables.id);
+      if (selectedTicket?.id === variables.id && res.assignment) {
+        setSelectedTicket((prev) => (prev ? { ...prev, assignment: res.assignment } : prev));
+      }
+      toastAdminAction(toast, res, t("p8.admin.support.toast_assign"));
+    },
+    onError: (error) => toastAdminError(toast, error),
+  });
 
   const patchMutation = useMutation({
     mutationFn: ({
@@ -181,6 +248,7 @@ export default function AdminSupportPage() {
       payload: {
         status?: "open" | "pending" | "resolved" | "closed";
         priority?: "low" | "normal" | "high" | "urgent";
+        reason?: string;
       };
     }) => updateAdminSupportTicket(id, payload),
     onSuccess: async (_, variables) => {
@@ -194,14 +262,14 @@ export default function AdminSupportPage() {
         return fromCache ? { ...prev, ...fromCache } : prev;
       });
       toast({
-        title: "تم تحديث التذكرة",
-        description: "تم حفظ التغييرات بنجاح",
+        title: t("p8.admin.support.toast_updated"),
+        description: t("p8.admin.support.toast_updated_desc"),
       });
     },
     onError: (error) => {
       toast({
-        title: "فشل تحديث التذكرة",
-        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+        title: t("p8.admin.support.toast_update_failed"),
+        description: error instanceof Error ? error.message : t("p8.admin.common.unexpected_error"),
         variant: "destructive",
       });
     },
@@ -225,14 +293,14 @@ export default function AdminSupportPage() {
         return fromCache ? { ...prev, ...fromCache } : prev;
       });
       toast({
-        title: "تم إرسال الرد",
-        description: "تم نشر الرد على التذكرة",
+        title: t("p8.admin.support.toast_reply_sent"),
+        description: t("p8.admin.support.toast_reply_sent_desc"),
       });
     },
     onError: (error) => {
       toast({
-        title: "فشل إرسال الرد",
-        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+        title: t("p8.admin.support.toast_reply_failed"),
+        description: error instanceof Error ? error.message : t("p8.admin.common.unexpected_error"),
         variant: "destructive",
       });
     },
@@ -271,10 +339,10 @@ export default function AdminSupportPage() {
 
   const actionPending = patchMutation.isPending || replyMutation.isPending;
 
-  const confirmCloseTicket = () => {
+  const confirmCloseTicket = (reason: string) => {
     if (!selectedTicket) return;
     patchMutation.mutate(
-      { id: selectedTicket.id, payload: { status: "closed" } },
+      { id: selectedTicket.id, payload: { status: "closed", reason } },
       { onSettled: () => setPendingCloseConfirm(false) },
     );
   };
@@ -296,54 +364,20 @@ export default function AdminSupportPage() {
           )}
         >
           <div className="space-y-1 text-right">
-            <h1 className={cn(AUTH_HEADER_TITLE, "text-2xl md:text-[1.65rem]")}>الدعم والمساعدة</h1>
-            <p className="text-sm text-muted-foreground">إدارة تذاكر المستخدمين والرد على الاستفسارات</p>
+            <h1 className={cn(AUTH_HEADER_TITLE, "text-2xl md:text-[1.65rem]")}>{t("p8.admin.support.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("p8.admin.support.subtitle")}</p>
           </div>
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-zinc-900/90 px-3 py-1.5 text-xs text-muted-foreground ring-1 ring-primary/10">
             <Headphones className="h-3.5 w-3.5 text-primary" aria-hidden />
-            {visibleTickets.length.toLocaleString("ar-EG")} تذكرة في العرض
+            {t("p8.admin.support.list_count", {
+              count: (pagination?.totalItems ?? visibleTickets.length).toLocaleString(localeTag()),
+            })}
           </span>
         </header>
 
-        <section className={cn(CARD_SHELL, "p-4 sm:p-5")}>
-          <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {(
-              [
-                ["open", "مفتوحة", supportStatusCounts.open],
-                ["pending", "قيد المعالجة", supportStatusCounts.pending],
-                ["resolved", "تم الحل", supportStatusCounts.resolved],
-                ["closed", "مغلقة", supportStatusCounts.closed],
-              ] as const
-            ).map(([key, label, count]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setStatus(key)}
-                className={cn(
-                  BTN_FIX,
-                  "rounded-2xl border p-3 text-right transition-all duration-150 ease-out active:scale-[0.98]",
-                  "hover:border-primary/45 hover:shadow-[0_0_18px_-10px_hsl(var(--primary)/0.18)]",
-                  status === key
-                    ? "border-primary/45 bg-primary/10 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15"
-                    : "border-primary/20 bg-zinc-900/50 ring-1 ring-primary/5",
-                )}
-              >
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p
-                  className={cn(
-                    "mt-1 text-xl font-semibold tabular-nums",
-                    key === "open" && "text-amber-200",
-                    key === "pending" && "text-primary",
-                    key === "resolved" && "text-emerald-200",
-                    key === "closed" && "text-zinc-200",
-                  )}
-                >
-                  {Number(count ?? 0).toLocaleString("ar-EG")}
-                </p>
-              </button>
-            ))}
-          </div>
+        <OperationsQueueTabBar queue={queue} counts={supportStatsQuery.data ?? undefined} onChange={setQueue} />
 
+        <section className={cn(CARD_SHELL, "p-4 sm:p-5")}>
           <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <form
               className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-center"
@@ -357,18 +391,18 @@ export default function AdminSupportPage() {
                 <input
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="ابحث بالمستخدم أو العنوان أو النوع..."
+                  placeholder={t("p8.admin.support.search_placeholder")}
                   className={cn(inputClass, "pr-10")}
-                  aria-label="بحث في التذاكر"
+                  aria-label={t("p8.admin.support.search_aria")}
                 />
               </div>
               <Button type="submit" className={BTN_SEARCH}>
-                بحث
+                {t("p8.admin.common.search")}
               </Button>
             </form>
 
             <div className="flex flex-wrap gap-2">
-              {STATUS_OPTIONS.map((item) => (
+              {statusOptions.map((item) => (
                 <button
                   key={item.key}
                   type="button"
@@ -382,31 +416,29 @@ export default function AdminSupportPage() {
           </div>
 
           {ticketsQuery.isLoading ? (
-            <div className="flex items-center justify-center gap-2 rounded-2xl border border-primary/25 bg-zinc-900/40 py-12 text-muted-foreground ring-1 ring-primary/10">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              جاري تحميل التذاكر...
-            </div>
+            <AdminPageLoading message={t("p8.admin.support.loading")} />
           ) : ticketsQuery.isError ? (
-            <div className="rounded-2xl border border-red-500/35 bg-red-950/25 px-4 py-10 text-center text-sm text-red-200 ring-1 ring-red-500/20">
-              تعذر تحميل التذاكر. حاول مرة أخرى.
-            </div>
+            <AdminErrorState
+              title={t("p8.admin.support.load_error")}
+              description={t("p8.admin.support.load_error_hint")}
+              onRetry={() => ticketsQuery.refetch()}
+            />
           ) : visibleTickets.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-primary/30 bg-zinc-900/40 py-12 text-center text-sm text-muted-foreground">
-              لا توجد تذاكر وفق عوامل البحث الحالية.
-            </div>
+            <AdminEmptyState title={t("p8.admin.support.empty_title")} description={t("p8.admin.support.empty_body")} />
           ) : (
             <div className={SURFACE_TABLE_WRAP}>
               <table className="w-full min-w-[1080px] text-sm">
                 <thead className="border-b border-primary/25 bg-zinc-900/50 text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-3 text-right font-medium">#</th>
-                    <th className="px-3 py-3 text-right font-medium">المستخدم</th>
-                    <th className="px-3 py-3 text-right font-medium">النوع</th>
-                    <th className="px-3 py-3 text-right font-medium">العنوان</th>
-                    <th className="px-3 py-3 text-right font-medium">الحالة</th>
-                    <th className="px-3 py-3 text-right font-medium">الأولوية</th>
-                    <th className="px-3 py-3 text-right font-medium">التاريخ</th>
-                    <th className="px-3 py-3 text-center font-medium">إجراءات</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.support.col_id")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.support.col_user")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.support.col_category")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.support.col_subject")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.support.col_status")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.support.col_sla")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.support.col_priority")}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t("p8.admin.support.col_date")}</th>
+                    <th className="px-3 py-3 text-center font-medium">{t("p8.admin.support.col_actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -426,8 +458,8 @@ export default function AdminSupportPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 text-right">
-                            <p className="line-clamp-1 font-medium text-foreground">{ticket.userName || "—"}</p>
-                            <p className="text-[11px] text-muted-foreground">{ticket.userEmail || "—"}</p>
+                            <p className="line-clamp-1 font-medium text-foreground">{ticket.userName || t("p8.admin.common.dash")}</p>
+                            <p className="text-[11px] text-muted-foreground">{ticket.userEmail || t("p8.admin.common.dash")}</p>
                           </div>
                         </div>
                       </td>
@@ -444,6 +476,13 @@ export default function AdminSupportPage() {
                         >
                           {statusLabel(ticket.status)}
                         </span>
+                      </td>
+                      <td className="px-3 py-3 align-middle">
+                        {ticket.slaState ? (
+                          <SlaStatusBadge state={ticket.slaState} minutesRemaining={ticket.slaMinutesRemaining} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">{t("p8.admin.common.dash")}</span>
+                        )}
                       </td>
                       <td className="px-3 py-3 align-middle">
                         <span
@@ -467,7 +506,7 @@ export default function AdminSupportPage() {
                             "border-primary/40 bg-primary/10 text-primary hover:border-primary/55 hover:bg-primary/18",
                           )}
                         >
-                          التفاصيل
+                          {t("p8.admin.common.details")}
                         </button>
                       </td>
                     </tr>
@@ -476,6 +515,16 @@ export default function AdminSupportPage() {
               </table>
             </div>
           )}
+
+          <AdminPaginationBar
+            pagination={pagination}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+            isLoading={ticketsQuery.isFetching}
+          />
         </section>
       </div>
 
@@ -500,13 +549,13 @@ export default function AdminSupportPage() {
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <h2 id="admin-support-detail-title" className="text-xl font-semibold text-foreground">
-                    تذكرة #{selectedTicket.id}
+                    {t("p8.admin.support.detail_title", { id: selectedTicket.id })}
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {formatTicketDate(selectedTicket.createdAt)}
                     {selectedTicket.updatedAt ? (
                       <span className="mr-2 text-[13px]">
-                        · آخر تحديث: {formatTicketDate(selectedTicket.updatedAt)}
+                        {t("p8.admin.support.detail_last_updated", { date: formatTicketDate(selectedTicket.updatedAt) })}
                       </span>
                     ) : null}
                   </p>
@@ -516,12 +565,12 @@ export default function AdminSupportPage() {
                   onClick={() => closeTicketModal()}
                   className={cn(buttonVariants({ variant: "outline", size: "sm" }), BTN_MODAL_GHOST, "shrink-0")}
                 >
-                  إغلاق
+                  {t("p8.admin.common.close")}
                 </button>
               </div>
 
               <div className={cn(CARD_SHELL, "mb-4 p-4")}>
-                <p className="mb-3 text-xs font-medium text-muted-foreground">المستخدم</p>
+                <p className="mb-3 text-xs font-medium text-muted-foreground">{t("p8.admin.support.detail_user")}</p>
                 <div className="flex items-center gap-3">
                   <Avatar className="h-14 w-14 border border-primary/30 ring-1 ring-primary/10">
                     <AvatarImage src={mediaSrc(selectedTicket.userAvatarUrl)} alt="" className="object-cover" />
@@ -530,9 +579,11 @@ export default function AdminSupportPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <p className="font-semibold text-foreground">{selectedTicket.userName || "—"}</p>
-                    <p className="break-all text-sm text-muted-foreground">{selectedTicket.userEmail || "—"}</p>
-                    <p className="text-[11px] text-muted-foreground">معرّف المستخدم: {selectedTicket.userId}</p>
+                    <p className="font-semibold text-foreground">{selectedTicket.userName || t("p8.admin.common.dash")}</p>
+                    <p className="break-all text-sm text-muted-foreground">{selectedTicket.userEmail || t("p8.admin.common.dash")}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {t("p8.admin.support.detail_user_id", { id: selectedTicket.userId })}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -552,36 +603,47 @@ export default function AdminSupportPage() {
                     priorityBadgeClass(selectedTicket.priority),
                   )}
                 >
-                  أولوية: {priorityLabel(selectedTicket.priority)}
+                  {t("p8.admin.support.detail_priority", { priority: priorityLabel(selectedTicket.priority) })}
                 </span>
                 <span className="inline-flex rounded-full border border-primary/25 bg-zinc-900/60 px-2.5 py-1 text-xs text-muted-foreground">
-                  النوع: {categoryLabel(selectedTicket.category)}
+                  {t("p8.admin.support.detail_type", { category: categoryLabel(selectedTicket.category) })}
                 </span>
               </div>
 
+              <div className="mb-4">
+                <StaffWorkflowPanel
+                  assignment={selectedTicket.assignment}
+                  busy={workflowMutation.isPending || assignMutation.isPending}
+                  canAssign={access.isFounder}
+                  onAssign={() => setAssignOpen(true)}
+                  onClaim={() => workflowMutation.mutate({ type: "claim", id: selectedTicket.id })}
+                  onRelease={() => workflowMutation.mutate({ type: "release", id: selectedTicket.id })}
+                />
+              </div>
+
               <div className="mb-4 rounded-2xl border border-primary/25 bg-zinc-900/50 p-4 ring-1 ring-primary/10">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">عنوان الطلب</p>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">{t("p8.admin.support.section_request_subject")}</p>
                 <p className="text-sm font-medium text-foreground">{selectedTicket.subject}</p>
               </div>
 
               <div className="mb-4 rounded-2xl border border-primary/25 bg-zinc-900/50 p-4 ring-1 ring-primary/10">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">محتوى الطلب (أول رسالة)</p>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">{t("p8.admin.support.section_first_message")}</p>
                 {messagesQuery.isLoading ? (
                   <p className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    جاري تحميل المحتوى...
+                    {t("p8.admin.support.messages_loading")}
                   </p>
                 ) : messagesQuery.isError ? (
-                  <p className="text-sm text-red-300">تعذر تحميل نص الطلب من الرسائل</p>
+                  <p className="text-sm text-red-300">{t("p8.admin.support.messages_load_error")}</p>
                 ) : initialMessageText ? (
                   <p className="text-sm leading-relaxed text-foreground">{initialMessageText}</p>
                 ) : (
-                  <p className="text-sm text-muted-foreground">لا توجد رسائل مسجّلة لهذه التذكرة بعد.</p>
+                  <p className="text-sm text-muted-foreground">{t("p8.admin.support.messages_empty")}</p>
                 )}
               </div>
 
               <div className="mb-4 flex flex-wrap gap-2 border-t border-primary/15 pt-4">
-                <p className="w-full text-xs font-medium text-muted-foreground">تغيير الحالة</p>
+                <p className="w-full text-xs font-medium text-muted-foreground">{t("p8.admin.support.section_change_status")}</p>
                 {(["open", "pending", "resolved"] as const).map((item) => (
                   <button
                     key={item}
@@ -600,7 +662,7 @@ export default function AdminSupportPage() {
                       item === "resolved" && "border-emerald-500/45 bg-emerald-600/15 text-emerald-200",
                     )}
                   >
-                    {item === "open" ? "مفتوحة" : item === "pending" ? "قيد المعالجة" : "تم الحل"}
+                    {statusLabel(item)}
                   </button>
                 ))}
                 <button
@@ -612,12 +674,12 @@ export default function AdminSupportPage() {
                     "border-zinc-600 bg-zinc-800/90 text-zinc-200 hover:border-red-500/40 hover:bg-red-950/30 hover:text-red-200",
                   )}
                 >
-                  إغلاق التذكرة
+                  {t("p8.admin.support.close_ticket")}
                 </button>
               </div>
 
               <div className="mb-4 flex flex-wrap gap-2">
-                <p className="w-full text-xs font-medium text-muted-foreground">الأولوية</p>
+                <p className="w-full text-xs font-medium text-muted-foreground">{t("p8.admin.support.section_priority")}</p>
                 {(["low", "normal", "high", "urgent"] as const).map((item) => (
                   <button
                     key={item}
@@ -646,7 +708,7 @@ export default function AdminSupportPage() {
                       className={cn(buttonVariants({ variant: "outline", size: "sm" }), BTN_MODAL_GHOST)}
                     >
                       <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                      صفحة الإعلان
+                      {t("p8.admin.support.link_ad_page")}
                     </a>
                     <button
                       type="button"
@@ -654,7 +716,7 @@ export default function AdminSupportPage() {
                       className={cn(buttonVariants({ variant: "outline", size: "sm" }), BTN_MODAL_GHOST)}
                     >
                       <Megaphone className="h-3.5 w-3.5" aria-hidden />
-                      في لوحة الإعلانات
+                      {t("p8.admin.support.link_admin_ads")}
                     </button>
                   </>
                 ) : null}
@@ -665,7 +727,7 @@ export default function AdminSupportPage() {
                     className={cn(buttonVariants({ variant: "outline", size: "sm" }), BTN_MODAL_GHOST)}
                   >
                     <User className="h-3.5 w-3.5" aria-hidden />
-                    مستخدم مرتبط #{selectedTicket.relatedUserId}
+                    {t("p8.admin.support.link_related_user", { id: selectedTicket.relatedUserId })}
                   </button>
                 ) : null}
                 <button
@@ -674,24 +736,24 @@ export default function AdminSupportPage() {
                   className={cn(buttonVariants({ variant: "outline", size: "sm" }), BTN_MODAL_GHOST)}
                 >
                   <User className="h-3.5 w-3.5" aria-hidden />
-                  صفحة المستخدم (صاحب التذكرة)
+                  {t("p8.admin.support.link_ticket_owner")}
                 </button>
               </div>
 
               <div className="rounded-2xl border border-primary/25 bg-zinc-900/40 p-4 ring-1 ring-primary/10">
                 <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
                   <MessageSquare className="h-4 w-4 text-primary" aria-hidden />
-                  المحادثة
+                  {t("p8.admin.support.section_conversation")}
                 </p>
                 {messagesQuery.isLoading ? (
                   <p className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    جاري تحميل الرسائل...
+                    {t("p8.admin.support.messages_loading_thread")}
                   </p>
                 ) : messagesQuery.isError ? (
-                  <p className="text-sm text-red-300">تعذر تحميل الرسائل</p>
+                  <p className="text-sm text-red-300">{t("p8.admin.support.messages_thread_error")}</p>
                 ) : sortedMessages.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">لا توجد رسائل بعد</p>
+                  <p className="text-sm text-muted-foreground">{t("p8.admin.support.messages_thread_empty")}</p>
                 ) : (
                   <div className="max-h-64 space-y-2 overflow-y-auto">
                     {sortedMessages.map((msg) => (
@@ -705,7 +767,7 @@ export default function AdminSupportPage() {
                         )}
                       >
                         <p className="text-[11px] text-muted-foreground">
-                          {msg.adminId ? "الإدارة" : "المستخدم"} ·{" "}
+                          {msg.adminId ? t("p8.admin.support.message_from_admin") : t("p8.admin.support.message_from_user")} ·{" "}
                           {formatTicketDate(msg.createdAt)}
                         </p>
                         <p className="mt-1 whitespace-pre-wrap leading-relaxed text-foreground">{msg.message}</p>
@@ -729,9 +791,9 @@ export default function AdminSupportPage() {
                 <input
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
-                  placeholder="اكتب رد الإدارة هنا..."
+                  placeholder={t("p8.admin.support.reply_placeholder")}
                   className={cn(inputClass, "flex-1")}
-                  aria-label="رد على التذكرة"
+                  aria-label={t("p8.admin.support.reply_aria")}
                 />
                 <button
                   type="submit"
@@ -743,7 +805,7 @@ export default function AdminSupportPage() {
                   ) : (
                     <>
                       <Send className="h-4 w-4" aria-hidden />
-                      إرسال
+                      {t("p8.admin.support.send")}
                     </>
                   )}
                 </button>
@@ -753,46 +815,27 @@ export default function AdminSupportPage() {
           document.body,
         )}
 
-      <AlertDialog open={pendingCloseConfirm} onOpenChange={setPendingCloseConfirm}>
-        <AlertDialogContent
-          dir="rtl"
-          className="z-[100] max-w-md rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
-        >
-          <AlertDialogHeader className="space-y-2 text-right sm:text-right">
-            <AlertDialogTitle className="text-lg font-semibold text-foreground">تأكيد إغلاق التذكرة</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
-              سيتم وضع التذكرة في حالة «مغلقة». يمكنك فتحها لاحقاً بتغيير الحالة إذا لزم.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-row-reverse flex-wrap gap-2 sm:flex-row-reverse sm:justify-start sm:gap-2 sm:space-x-0">
-            <AlertDialogCancel
-              className={cn(
-                buttonVariants({ variant: "outline", size: "default" }),
-                BTN_MODAL_GHOST,
-                "mt-0 bg-zinc-900/80 hover:bg-zinc-900",
-              )}
-            >
-              إلغاء
-            </AlertDialogCancel>
-            <button
-              type="button"
-              disabled={patchMutation.isPending}
-              title={patchMutation.isPending ? "جاري المعالجة..." : undefined}
-              className={cn(
-                buttonVariants({ variant: "destructive", size: "default" }),
-                BTN_FIX,
-                "inline-flex gap-2 rounded-2xl border-red-500/50 shadow-[0_0_18px_-10px_rgba(220,38,38,0.35)]",
-              )}
-              onClick={() => confirmCloseTicket()}
-            >
-              {patchMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              ) : null}
-              إغلاق التذكرة
-            </button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <StaffAssignDialog
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        title={t("p8.admin.support.assign_title")}
+        description={t("p8.admin.support.assign_description")}
+        currentAssignee={selectedTicket?.assignment?.staffName}
+        busy={assignMutation.isPending}
+        onConfirm={(staffActorId) => {
+          if (!selectedTicket) return;
+          assignMutation.mutate({ id: selectedTicket.id, staffId: staffActorId });
+        }}
+      />
+
+      <ModerationReasonDialog
+        open={pendingCloseConfirm}
+        onOpenChange={setPendingCloseConfirm}
+        title={t("p8.admin.support.close_reason_title")}
+        description={t("p8.admin.moderation.reason_hint")}
+        confirmLabel={t("p8.admin.support.close_confirm_label")}
+        onConfirm={confirmCloseTicket}
+      />
     </AdminShell>
   );
 }

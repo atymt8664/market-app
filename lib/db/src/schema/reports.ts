@@ -17,7 +17,11 @@ export const reportsTable = pgTable("reports", {
   reason: text("reason").notNull(),
   description: text("description"),
 
-  status: text("status").notNull().default("pending"),
+  status: text("status").notNull().default("open"),
+
+  assignedStaffId: integer("assigned_staff_id"),
+  assignedAt: timestamp("assigned_at", { withTimezone: true }),
+  assignedByAdminId: integer("assigned_by_admin_id"),
 
   createdAt: timestamp("created_at").defaultNow(),
 });

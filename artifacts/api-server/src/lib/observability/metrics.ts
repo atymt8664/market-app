@@ -1,5 +1,6 @@
 import { OBSERVABILITY } from "./config";
 import { LatencyTracker, type LatencySummary } from "./latency-tracker";
+import { recordWsConnectWindow, recordWsDisconnectWindow } from "./ws-window";
 
 type CounterMap = Record<string, number>;
 
@@ -81,11 +82,13 @@ export function recordSearchRequest(params: {
 export function recordWsConnect(): void {
   wsConnectionsTotal += 1;
   wsConnectionsCurrent += 1;
+  recordWsConnectWindow();
 }
 
 export function recordWsDisconnect(): void {
   wsDisconnectsTotal += 1;
   wsConnectionsCurrent = Math.max(0, wsConnectionsCurrent - 1);
+  recordWsDisconnectWindow();
 }
 
 export function recordWsAuthFailure(): void {
@@ -141,6 +144,29 @@ export type ObservabilitySnapshot = {
 };
 
 const processStartedAt = Date.now();
+
+export function computeHttpErrorRate(requestsTotal: number, errors5xxTotal: number): number | null {
+  if (requestsTotal <= 0) return null;
+  return Math.round((errors5xxTotal / requestsTotal) * 10000) / 100;
+}
+
+export function buildSlowHttpEndpoints(limit = 10): Array<{
+  route: string;
+  count: number;
+  latencyMs: LatencySummary;
+}> {
+  return [...httpByRoute.entries()]
+    .map(([route, tracker]) => {
+      const latencyMs = tracker.snapshot();
+      return { route, count: latencyMs.count, latencyMs };
+    })
+    .filter(
+      (entry) =>
+        entry.latencyMs.p95Ms != null && entry.latencyMs.p95Ms >= OBSERVABILITY.slowHttpMs,
+    )
+    .sort((a, b) => (b.latencyMs.p95Ms ?? 0) - (a.latencyMs.p95Ms ?? 0))
+    .slice(0, limit);
+}
 
 export function buildObservabilitySnapshot(): ObservabilitySnapshot {
   const mem = process.memoryUsage();

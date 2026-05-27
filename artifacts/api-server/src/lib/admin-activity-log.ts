@@ -9,7 +9,7 @@ type SafeDetails = Record<string, Primitive>;
 export type AdminActivityInput = {
   action: string;
   actorAdminId: number | null;
-  targetType: "ad" | "report" | "support_ticket" | "user" | "category" | "city" | "system";
+  targetType: "ad" | "report" | "support_ticket" | "user" | "category" | "city" | "system" | "verification_request";
   targetId: number | null;
   details?: SafeDetails;
 };
@@ -93,18 +93,23 @@ async function ensureAdminActivityLogsTable() {
   return ensureLogsTablePromise;
 }
 
-export async function logAdminActivity(input: AdminActivityInput): Promise<void> {
+export async function logAdminActivity(input: AdminActivityInput): Promise<number | null> {
   try {
     await ensureAdminActivityLogsTable();
-    await db.insert(adminActivityLogsTable).values({
-      action: input.action,
-      actorAdminId: input.actorAdminId,
-      targetType: input.targetType,
-      targetId: input.targetId,
-      details: sanitizeDetails(input.details),
-    });
+    const rows = await db
+      .insert(adminActivityLogsTable)
+      .values({
+        action: input.action,
+        actorAdminId: input.actorAdminId,
+        targetType: input.targetType,
+        targetId: input.targetId,
+        details: sanitizeDetails(input.details),
+      })
+      .returning({ id: adminActivityLogsTable.id });
+    return rows[0]?.id ?? null;
   } catch (error) {
     console.error("Failed to write admin activity log", error);
+    return null;
   }
 }
 

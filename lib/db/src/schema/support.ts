@@ -27,6 +27,9 @@ export const supportTicketsTable = pgTable(
       .notNull()
       .defaultNow(),
     closedAt: timestamp("closed_at", { withTimezone: true }),
+    assignedStaffId: integer("assigned_staff_id"),
+    assignedAt: timestamp("assigned_at", { withTimezone: true }),
+    assignedByAdminId: integer("assigned_by_admin_id"),
   },
   (t) => ({
     userIdx: index("support_tickets_user_idx").on(t.userId),

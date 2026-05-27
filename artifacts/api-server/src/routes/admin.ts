@@ -5,6 +5,7 @@ import {
   adminActivityLogsTable,
   adsTable,
   categoriesTable,
+  messagesTable,
   reportsTable,
   subcategoriesTable,
   supportTicketsTable,
@@ -13,24 +14,43 @@ import {
 import { and, asc, count, desc, eq, gte, ilike, inArray, or, sql } from "drizzle-orm";
 import { alias, boolean, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { ensureAdminLogsReady, getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
+import { okAdminActionFeedback } from "../lib/admin-action-feedback";
+import { adminDeepLink, writeAdminAudit } from "../lib/admin-audit";
+import { parseModerationReason } from "../lib/admin-moderation-reason";
 import { ensureCategoryAdminColumns } from "../lib/ensure-category-admin-columns";
 import { ensureCityAdminColumns } from "../lib/ensure-city-admin-columns";
 import { ensureAppSettingsTable } from "../lib/ensure-app-settings-table";
 import { bumpAdminSecurityRevision } from "../lib/admin-auth-settings";
 import { requireAdmin, requireAdminAccessGrant, requireAdminCsrf } from "../middlewares/require-admin";
+import { requireAdminPermission } from "../middlewares/require-admin-permission";
+import { loadAdminStaffContext } from "../lib/admin-rbac";
 import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import { getSessionClearCookieOptions, SESSION_COOKIE_NAME } from "../lib/session-cookie";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 import { invalidateTaxonomyPublicCache } from "../lib/taxonomy-public-cache";
 import {
+  normalizeReportStatus,
+} from "../lib/trust-safety/report-status";
+import {
+  avatarPatchAfterAdminApprove,
+  avatarPatchAfterAdminReject,
+} from "../lib/trust-safety/avatar-moderation";
+import { buildAdminNocSnapshot } from "../lib/admin-noc-snapshot";
+import { countOpenVerificationRequests } from "../lib/admin-verification-workflow";
+import {
+  assertNotFounderUser,
+  FounderProtectedError,
+  FOUNDER_ADMIN_ACTOR_ID,
+  FOUNDER_DISPLAY_NAME,
+} from "../lib/admin-staff";
+import {
+  buildAdminPageMeta,
   clampLimit,
-  finalizePage,
   handlePaginationError,
-  keysetWhereDesc,
   PAGINATION,
-  parsePaginationQuery,
-  sendJsonArrayPage,
+  parseAdminPageQuery,
+  sendJsonAdminPage,
   setPaginationHeaders,
 } from "../lib/pagination";
 
@@ -161,32 +181,24 @@ function validateStrongPassword(password: string): boolean {
   );
 }
 
-function reportStatusNotificationPayload(status: string): { type: string; title: string; body: string } | null {
-  if (status === "in_review" || status === "reviewing") {
-    return {
-      type: "report.reviewing",
-      title: "تحديث حالة البلاغ",
-      body: "بلاغك قيد المراجعة",
-    };
+function mergeReportStatusCounts(
+  rows: Array<{ status: string | null; value: number | string | null }>,
+): Record<string, number> {
+  const output: Record<string, number> = {
+    open: 0,
+    under_review: 0,
+    resolved: 0,
+    rejected: 0,
+  };
+  for (const row of rows) {
+    const normalized = normalizeReportStatus(row.status);
+    if (!normalized) continue;
+    output[normalized] = (output[normalized] ?? 0) + Number(row.value ?? 0);
   }
-  if (status === "resolved") {
-    return {
-      type: "report.resolved",
-      title: "تحديث حالة البلاغ",
-      body: "تم حل بلاغك",
-    };
-  }
-  if (status === "ignored" || status === "dismissed" || status === "rejected") {
-    return {
-      type: "report.ignored",
-      title: "تحديث حالة البلاغ",
-      body: "تمت مراجعة بلاغك ولم يتم اتخاذ إجراء إضافي",
-    };
-  }
-  return null;
+  return output;
 }
 
-router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
+router.get("/admin/dashboard", requireAdminPermission("dashboard.operations", "dashboard.moderation"), async (req, res) => {
   const [usersTotal] = await db.select({ c: count() }).from(usersTable);
   const [adsTotal] = await db.select({ c: count() }).from(adsTable);
   const [reportsTotal] = await db.select({ c: count() }).from(reportsTable);
@@ -294,6 +306,7 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
     reportsStatusCounts,
     supportStatusCounts,
     usersStatusCounts,
+    verificationOpenCount,
   ] =
     await Promise.all([
       db
@@ -304,7 +317,7 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
       db
         .select({ value: count(reportsTable.id) })
         .from(reportsTable)
-        .where(inArray(reportsTable.status, ["pending", "in_review"]))
+        .where(inArray(reportsTable.status, ["open", "under_review", "pending", "in_review"]))
         .then((rows) => rows[0]),
       db
         .select({ value: count(supportTicketsTable.id) })
@@ -329,7 +342,7 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
       db
         .select({ value: count(reportsTable.id) })
         .from(reportsTable)
-        .where(eq(reportsTable.status, "pending"))
+        .where(inArray(reportsTable.status, ["open", "pending"]))
         .then((rows) => rows[0]),
       db
         .select({ value: count(adsTable.id) })
@@ -355,6 +368,7 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
         })
         .from(usersTable)
         .groupBy(usersTable.isBanned),
+      countOpenVerificationRequests().catch(() => 0),
     ]);
 
   const toStatusMap = (
@@ -370,17 +384,41 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
     return output;
   };
 
-  const reportCounts = toStatusMap(reportsStatusCounts, [
-    "pending",
-    "in_review",
-    "resolved",
-    "ignored",
-  ]);
-  if (!reportCounts.ignored && reportCounts.rejected) {
-    reportCounts.ignored = Number(reportCounts.rejected ?? 0);
-  }
+  const reportCounts = mergeReportStatusCounts(reportsStatusCounts);
+
+  const pendingAdsCount = Number(pendingAdsRow?.value ?? 0);
+  const openReportsCount = Number(openReportsRow?.value ?? 0);
+  const openSupportCount = Number(openSupportRow?.value ?? 0);
+
+  const noc = await buildAdminNocSnapshot({
+    pendingAds: pendingAdsCount,
+    openReports: openReportsCount,
+    openSupportTickets: openSupportCount,
+    newUsersToday: Number(newUsersTodayRow?.value ?? 0),
+    newAdsToday: Number(publishedTodayAdsRow?.value ?? 0),
+    newReportsToday: Number(newReportsRow?.value ?? 0),
+    newSupportToday: 0,
+    blockedUsers: toStatusMap(usersStatusCounts, ["active", "blocked"]).blocked ?? 0,
+  });
+
+  const staff = req.adminStaff ?? (await loadAdminStaffContext(req));
+  const nocForRole =
+    staff.isFounder
+      ? noc
+      : {
+          ...noc,
+          founderIdentity: undefined,
+          systemHealthGrid: [],
+          queueCenter: { ...noc.queueCenter, items: [] },
+        };
 
   return res.json({
+    rbac: {
+      roleKey: staff.roleKey,
+      displayName: staff.displayName,
+      permissions: staff.permissions,
+      isFounder: staff.isFounder,
+    },
     totals: {
       users: Number(usersTotal?.c ?? 0),
       ads: Number(adsTotal?.c ?? 0),
@@ -410,6 +448,7 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
       reportsOpen: Number(openReportsRow?.value ?? 0),
       supportOpen: Number(openSupportRow?.value ?? 0),
       usersNewToday: Number(newUsersTodayRow?.value ?? 0),
+      verificationOpen: Number(verificationOpenCount ?? 0),
     },
     highlights: {
       adsPendingReview: Number(pendingAdsRow?.value ?? 0),
@@ -424,10 +463,14 @@ router.get("/admin/dashboard", requireAdmin, async (_req, res) => {
       support: toStatusMap(supportStatusCounts, ["open", "pending", "resolved", "closed"]),
       users: toStatusMap(usersStatusCounts, ["active", "blocked"]),
     },
+    noc: nocForRole,
   });
 });
 
-router.get("/admin/stats", requireAdmin, async (req, res) => {
+router.get("/admin/stats", requireAdminPermission("analytics"), handleAdminAnalytics);
+router.get("/admin/analytics", requireAdminPermission("analytics"), handleAdminAnalytics);
+
+async function handleAdminAnalytics(req: import("express").Request, res: import("express").Response) {
   const period = parseStatsPeriod(req.query.period);
   const periodStart = getPeriodStart(period);
 
@@ -463,6 +506,8 @@ router.get("/admin/stats", requireAdmin, async (req, res) => {
     topCitiesRows,
     topCategoriesRows,
     topAdsRows,
+    messagesTodayRow,
+    reportsTodayRow,
   ] = await Promise.all([
     db.select({ value: count(usersTable.id) }).from(usersTable).then((rows) => rows[0]),
     db.select({ value: count(adsTable.id) }).from(adsTable).then((rows) => rows[0]),
@@ -504,7 +549,7 @@ router.get("/admin/stats", requireAdmin, async (req, res) => {
     db
       .select({ value: count(reportsTable.id) })
       .from(reportsTable)
-      .where(eq(reportsTable.status, "in_review"))
+      .where(inArray(reportsTable.status, ["under_review", "in_review"]))
       .then((rows) => rows[0]),
     db
       .select({ value: count(reportsTable.id) })
@@ -593,6 +638,16 @@ router.get("/admin/stats", requireAdmin, async (req, res) => {
       .where(periodStart ? gte(adsTable.createdAt, periodStart) : undefined)
       .orderBy(desc(adsTable.views), desc(adsTable.createdAt))
       .limit(8),
+    db
+      .select({ value: count(messagesTable.id) })
+      .from(messagesTable)
+      .where(gte(messagesTable.createdAt, startOfToday))
+      .then((rows) => rows[0]),
+    db
+      .select({ value: count(reportsTable.id) })
+      .from(reportsTable)
+      .where(gte(reportsTable.createdAt, startOfToday))
+      .then((rows) => rows[0]),
   ]);
 
   const adsStatusMap: Record<string, number> = {
@@ -617,7 +672,25 @@ router.get("/admin/stats", requireAdmin, async (req, res) => {
     supportStatusMap[key] = Number(row.value ?? 0);
   }
 
-  return res.json({
+  const reportsResolvedCount = Number(reportsResolvedRow?.value ?? 0);
+  const reportsOpenCount = Number(reportsOpenRow?.value ?? 0);
+  const reportsInReviewCount = Number(reportsInReviewRow?.value ?? 0);
+  const reportResolutionDenom =
+    reportsResolvedCount + reportsOpenCount + reportsInReviewCount;
+  const reportResolutionRatePct =
+    reportResolutionDenom > 0
+      ? Math.round((reportsResolvedCount / reportResolutionDenom) * 1000) / 10
+      : null;
+
+  const supportTotalCount = Number(supportTotalRow?.value ?? 0);
+  const supportResolvedCount =
+    Number(supportStatusMap.resolved ?? 0) + Number(supportStatusMap.closed ?? 0);
+  const supportResolutionRatePct =
+    supportTotalCount > 0
+      ? Math.round((supportResolvedCount / supportTotalCount) * 1000) / 10
+      : null;
+
+  const statsPayload = {
     period,
     generatedAt: new Date().toISOString(),
     totals: {
@@ -681,10 +754,23 @@ router.get("/admin/stats", requireAdmin, async (req, res) => {
       status: row.status,
       createdAt: row.createdAt ? row.createdAt.toISOString() : null,
     })),
-  });
-});
+    analyticsFoundation: {
+      messagesToday: Number(messagesTodayRow?.value ?? 0),
+      reportsToday: Number(reportsTodayRow?.value ?? 0),
+      reportResolutionRatePct,
+      supportResolutionRatePct,
+      userGrowth: {
+        today: Number(usersNewTodayRow?.value ?? 0),
+        week: Number(usersNewWeekRow?.value ?? 0),
+        month: Number(usersNewMonthRow?.value ?? 0),
+      },
+    },
+  };
 
-router.get("/admin/settings", requireAdmin, async (_req, res) => {
+  return res.json(statsPayload);
+}
+
+router.get("/admin/settings", requireAdminPermission("settings"), async (_req, res) => {
   const [settings] = await db
     .select({
       appName: appSettingsTable.appName,
@@ -743,7 +829,7 @@ router.get("/admin/settings", requireAdmin, async (_req, res) => {
   });
 });
 
-router.patch("/admin/settings", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.patch("/admin/settings", requireAdminPermission("settings"), requireAdminCsrf, async (req, res) => {
   const appName = normalizeAppName(req.body?.appName);
   const appVersion = normalizeAppVersion(req.body?.appVersion);
   const supportEmail = normalizeSupportEmail(req.body?.supportEmail);
@@ -795,7 +881,7 @@ router.patch("/admin/settings", requireAdmin, requireAdminCsrf, async (req, res)
       updatedByAdminId: appSettingsTable.updatedByAdminId,
     });
 
-  await logAdminActivity({
+  const auditActivityId = await logAdminActivity({
     action: "settings.update",
     actorAdminId,
     targetType: "system",
@@ -813,10 +899,16 @@ router.patch("/admin/settings", requireAdmin, requireAdminCsrf, async (req, res)
   return res.json({
     ...updated,
     updatedAt: updated.updatedAt ? updated.updatedAt.toISOString() : null,
+    ...okAdminActionFeedback({
+      title: "تم تحديث الإعدادات",
+      description: "حُفظت إعدادات التطبيق بنجاح.",
+      nextStep: "قد يحتاج المستخدمون لتحديث الصفحة لرؤية التغييرات.",
+      auditActivityId,
+    }),
   });
 });
 
-router.post("/admin/change-password", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.post("/admin/change-password", requireAdminPermission("settings"), requireAdminCsrf, async (req, res) => {
   const body = req.body as {
     currentPassword?: unknown;
     newPassword?: unknown;
@@ -870,7 +962,7 @@ router.post("/admin/change-password", requireAdmin, requireAdminCsrf, async (req
 
   await bumpAdminSecurityRevision();
 
-  await logAdminActivity({
+  const auditActivityId = await logAdminActivity({
     action: "admin.password.change",
     actorAdminId,
     targetType: "system",
@@ -883,187 +975,149 @@ router.post("/admin/change-password", requireAdmin, requireAdminCsrf, async (req
   await new Promise<void>((resolve) => {
     req.session.destroy(() => {
       res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
-      res.json({ ok: true, reauthRequired: true });
+      res.json({
+        ok: true,
+        reauthRequired: true,
+        ...okAdminActionFeedback({
+          title: "تم تغيير كلمة المرور",
+          description: "حُدّثت كلمة مرور المؤسس بنجاح.",
+          nextStep: "سجّل الدخول مجدداً بكلمة المرور الجديدة.",
+          auditActivityId,
+        }),
+      });
       resolve();
     });
   });
   return;
 });
 
-router.get("/admin/reports", requireAdmin, async (req, res) => {
-  try {
-  const pagination = parsePaginationQuery(
-    req.query as Record<string, unknown>,
-    PAGINATION.ADMIN_REPORTS,
-  );
-  const reportReporter = alias(usersTable, "admin_reports_list_reporter");
-  const reportAdOwner = alias(usersTable, "admin_reports_list_ad_owner");
-  const reportTargetUser = alias(usersTable, "admin_reports_list_target_user");
-
-  const reports = await db
-    .select({
-      id: reportsTable.id,
-      reporterId: reportsTable.reporterId,
-      reporterName: reportReporter.name,
-      reporterEmail: reportReporter.email,
-      reporterAvatarUrl: reportReporter.avatarUrl,
-      targetUserId: reportsTable.targetUserId,
-      targetAdId: reportsTable.targetAdId,
-      relatedConversationId: reportsTable.relatedConversationId,
-      reason: reportsTable.reason,
-      description: reportsTable.description,
-      status: reportsTable.status,
-      createdAt: reportsTable.createdAt,
-      targetAdTitle: adsTable.title,
-      targetAdSellerName: adsTable.sellerName,
-      targetAdOwnerAvatarUrl: reportAdOwner.avatarUrl,
-      targetAdOwnerName: reportAdOwner.name,
-      targetProfileName: reportTargetUser.name,
-      targetProfileAvatarUrl: reportTargetUser.avatarUrl,
-    })
-    .from(reportsTable)
-    .leftJoin(reportReporter, eq(reportReporter.id, reportsTable.reporterId))
-    .leftJoin(adsTable, eq(adsTable.id, reportsTable.targetAdId))
-    .leftJoin(reportAdOwner, eq(reportAdOwner.id, adsTable.userId))
-    .leftJoin(reportTargetUser, eq(reportTargetUser.id, reportsTable.targetUserId))
-    .where(
-      pagination.cursor
-        ? keysetWhereDesc(reportsTable.createdAt, reportsTable.id, pagination.cursor)
-        : undefined,
-    )
-    .orderBy(desc(reportsTable.createdAt), desc(reportsTable.id))
-    .limit(pagination.fetchLimit);
-
-  const { items, meta } = finalizePage(reports, pagination.limit, (report) => ({
-    at: report.createdAt ?? new Date(0),
-    id: report.id,
-  }));
-
-  return sendJsonArrayPage(
-    res,
-    items.map((report) => ({
-      ...report,
-      targetType: report.targetAdId
-        ? "ad"
-        : report.targetUserId
-          ? "user"
-          : report.relatedConversationId
-            ? "conversation"
-            : "unknown",
-      createdAt: report.createdAt ? report.createdAt.toISOString() : null,
-    })),
-    meta,
-  );
-  } catch (err) {
-    if (handlePaginationError(err, res)) return;
-    throw err;
-  }
-});
-
-router.patch("/admin/reports/:id/status", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.patch("/admin/users/:id/avatar-review", requireAdminPermission("users"), requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: "Invalid report id" });
+    return res.status(400).json({ error: "Invalid user id" });
   }
 
-  const status = String(req.body?.status || "").trim();
-  const allowed = ["pending", "in_review", "resolved", "rejected"];
-  if (!allowed.includes(status)) {
-    return res.status(400).json({ error: "Invalid status" });
+  const decision = String(req.body?.decision || "").trim().toLowerCase();
+  if (!["approve", "reject"].includes(decision)) {
+    return res.status(400).json({ error: "Invalid decision" });
   }
 
-  const [before] = await db
+  const [user] = await db
     .select({
-      id: reportsTable.id,
-      reporterId: reportsTable.reporterId,
-      status: reportsTable.status,
-      targetAdId: reportsTable.targetAdId,
-      targetUserId: reportsTable.targetUserId,
-      relatedConversationId: reportsTable.relatedConversationId,
+      id: usersTable.id,
+      avatarUrl: usersTable.avatarUrl,
+      avatarApprovedUrl: usersTable.avatarApprovedUrl,
+      avatarPendingReview: usersTable.avatarPendingReview,
     })
-    .from(reportsTable)
-    .where(eq(reportsTable.id, id))
+    .from(usersTable)
+    .where(eq(usersTable.id, id))
     .limit(1);
 
-  if (!before) {
-    return res.status(404).json({ error: "Report not found" });
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
   }
 
-  const updated = await db
-    .update(reportsTable)
-    .set({ status })
-    .where(eq(reportsTable.id, id))
-    .returning({ id: reportsTable.id, status: reportsTable.status });
+  if (!user.avatarPendingReview) {
+    return res.status(400).json({ error: "No avatar pending review" });
+  }
 
-  const action =
-    status === "resolved"
-      ? "report.resolve"
-      : status === "in_review"
-        ? "report.review"
-        : status === "rejected" || status === "ignored"
-          ? "report.ignore"
-          : "report.update_status";
+  let moderationReason = "";
+  if (decision === "reject") {
+    const parsed = parseModerationReason(req.body?.reason, "avatar_reject");
+    if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+    moderationReason = parsed.reason;
+  }
 
-  await logAdminActivity({
-    action,
-    actorAdminId: getAdminActorId(req),
-    targetType: "report",
+  const patch =
+    decision === "approve"
+      ? avatarPatchAfterAdminApprove(user)
+      : avatarPatchAfterAdminReject(user);
+
+  const [updated] = await db
+    .update(usersTable)
+    .set(patch)
+    .where(eq(usersTable.id, id))
+    .returning({
+      id: usersTable.id,
+      avatarUrl: usersTable.avatarUrl,
+      avatarApprovedUrl: usersTable.avatarApprovedUrl,
+      avatarPendingReview: usersTable.avatarPendingReview,
+    });
+
+  const auditActivityId = await writeAdminAudit({
+    req,
+    actionKey: decision === "approve" ? "user.avatar_approve" : "user.avatar_reject",
+    targetType: "user",
     targetId: id,
-    details: {
-      fromStatus: before.status,
-      toStatus: status,
-      targetType: before.targetAdId
-        ? "ad"
-        : before.targetUserId
-          ? "user"
-          : before.relatedConversationId
-            ? "conversation"
-            : "unknown",
-      targetId:
-        before.targetAdId ?? before.targetUserId ?? before.relatedConversationId ?? null,
-    },
+    previousState: "pending_review",
+    newState: decision,
+    reason: moderationReason || null,
+    deepLink: adminDeepLink(`/admin/users/${id}`),
   });
 
-  const payload = reportStatusNotificationPayload(status);
-  if (payload && before.reporterId) {
+  if (decision === "reject" && moderationReason) {
     try {
       await createNotification({
-        userId: before.reporterId,
-        type: payload.type,
-        title: payload.title,
-        body: payload.body,
-        entityType: "report",
+        userId: id,
+        type: "user.avatar_rejected",
+        title: "تم رفض صورتك الشخصية",
+        body: moderationReason,
+        entityType: "user",
         entityId: id,
-        metadata: {
-          reportId: id,
-          fromStatus: before.status,
-          toStatus: status,
-          targetType: before.targetAdId
-            ? "ad"
-            : before.targetUserId
-              ? "user"
-              : before.relatedConversationId
-                ? "conversation"
-                : "unknown",
-          targetId: before.targetAdId ?? before.targetUserId ?? before.relatedConversationId ?? null,
-        },
+        metadata: { reason: moderationReason },
       });
     } catch (err) {
-      logger.warn({ err, reportId: id, status }, "createNotification failed (admin report status)");
+      logger.warn({ err, userId: id }, "createNotification failed (avatar reject)");
     }
   }
 
-  return res.json(updated[0]);
+  return res.json({
+    ...updated,
+    ...okAdminActionFeedback({
+      title: decision === "approve" ? "تم قبول الصورة الشخصية" : "تم رفض الصورة الشخصية",
+      description:
+        decision === "approve"
+          ? `تم اعتماد صورة المستخدم #${id}`
+          : `تم رفض صورة المستخدم #${id}`,
+      nextStep:
+        decision === "approve"
+          ? "ستظهر الصورة للمستخدمين في الملف الشخصي."
+          : "تم إشعار المستخدم بالسبب إن وُجد.",
+      auditActivityId,
+    }),
+  });
 });
 
-router.get("/admin/users", requireAdmin, async (req, res) => {
+router.get("/admin/users", requireAdminPermission("users"), async (req, res) => {
   try {
   const q = String(req.query.q || "").trim();
   const status = String(req.query.status || "all").trim().toLowerCase();
-  const pagination = parsePaginationQuery(
+  const avatarReview = String(req.query.avatarReview || "").trim().toLowerCase();
+  const { page, pageSize, offset } = parseAdminPageQuery(
     req.query as Record<string, unknown>,
     PAGINATION.ADMIN_USERS,
   );
+
+  const whereClause = and(
+    status === "active"
+      ? eq(usersTable.isBanned, false)
+      : status === "banned"
+        ? eq(usersTable.isBanned, true)
+        : undefined,
+    avatarReview === "pending" ? eq(usersTable.avatarPendingReview, true) : undefined,
+    q
+      ? or(
+          ilike(usersTable.name, `%${q}%`),
+          ilike(usersTable.email, `%${q}%`),
+        )
+      : undefined,
+  );
+
+  const [countRow] = await db
+    .select({ value: count(usersTable.id) })
+    .from(usersTable)
+    .where(whereClause);
+  const totalItems = Number(countRow?.value ?? 0);
 
   const rows = await db
     .select({
@@ -1071,43 +1125,26 @@ router.get("/admin/users", requireAdmin, async (req, res) => {
       name: usersTable.name,
       email: usersTable.email,
       avatarUrl: usersTable.avatarUrl,
+      avatarPendingReview: usersTable.avatarPendingReview,
       isBanned: usersTable.isBanned,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
-    .where(
-      and(
-        status === "active"
-          ? eq(usersTable.isBanned, false)
-          : status === "banned"
-            ? eq(usersTable.isBanned, true)
-            : undefined,
-        q
-          ? or(
-              ilike(usersTable.name, `%${q}%`),
-              ilike(usersTable.email, `%${q}%`),
-            )
-          : undefined,
-        pagination.cursor
-          ? keysetWhereDesc(usersTable.createdAt, usersTable.id, pagination.cursor)
-          : undefined,
-      ),
-    )
+    .where(whereClause)
     .orderBy(desc(usersTable.createdAt), desc(usersTable.id))
-    .limit(pagination.fetchLimit);
+    .limit(pageSize)
+    .offset(offset);
 
-  const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
-    at: row.createdAt,
-    id: row.id,
-  }));
+  const meta = buildAdminPageMeta(page, pageSize, totalItems);
 
-  return sendJsonArrayPage(
+  return sendJsonAdminPage(
     res,
-    items.map((row) => ({
+    rows.map((row) => ({
       id: row.id,
       name: row.name,
       email: row.email,
       avatarUrl: row.avatarUrl,
+      avatarPendingReview: row.avatarPendingReview,
       status: row.isBanned ? "banned" : "active",
       createdAt: row.createdAt ? row.createdAt.toISOString() : null,
     })),
@@ -1119,7 +1156,7 @@ router.get("/admin/users", requireAdmin, async (req, res) => {
   }
 });
 
-router.get("/admin/users/:id", requireAdmin, async (req, res) => {
+router.get("/admin/users/:id", requireAdminPermission("users"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid user id" });
@@ -1133,8 +1170,10 @@ router.get("/admin/users/:id", requireAdmin, async (req, res) => {
       phone: usersTable.phone,
       city: usersTable.city,
       avatarUrl: usersTable.avatarUrl,
+      avatarPendingReview: usersTable.avatarPendingReview,
       isBanned: usersTable.isBanned,
       emailVerified: usersTable.emailVerified,
+      lastSeenAt: usersTable.lastSeenAt,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
@@ -1210,8 +1249,10 @@ router.get("/admin/users/:id", requireAdmin, async (req, res) => {
       phone: user.phone,
       city: user.city,
       avatarUrl: user.avatarUrl,
+      avatarPendingReview: user.avatarPendingReview,
       emailVerified: user.emailVerified,
       status: user.isBanned ? "banned" : "active",
+      lastSeenAt: user.lastSeenAt ? user.lastSeenAt.toISOString() : null,
       createdAt: user.createdAt ? user.createdAt.toISOString() : null,
     },
     stats: {
@@ -1234,7 +1275,7 @@ router.get("/admin/users/:id", requireAdmin, async (req, res) => {
   });
 });
 
-router.patch("/admin/users/:id", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.patch("/admin/users/:id", requireAdminPermission("users"), requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid user id" });
@@ -1246,13 +1287,24 @@ router.patch("/admin/users/:id", requireAdmin, requireAdminCsrf, async (req, res
   }
 
   const [before] = await db
-    .select({ id: usersTable.id, isBanned: usersTable.isBanned })
+    .select({ id: usersTable.id, name: usersTable.name, isBanned: usersTable.isBanned })
     .from(usersTable)
     .where(eq(usersTable.id, id))
     .limit(1);
 
   if (!before) {
     return res.status(404).json({ error: "User not found" });
+  }
+
+  if (status === "banned") {
+    try {
+      assertNotFounderUser(id, before.name);
+    } catch (error) {
+      if (error instanceof FounderProtectedError) {
+        return res.status(403).json({ error: error.message });
+      }
+      throw error;
+    }
   }
 
   const [updated] = await db
@@ -1271,18 +1323,29 @@ router.patch("/admin/users/:id", requireAdmin, requireAdminCsrf, async (req, res
     await db.execute(sql`delete from user_sessions where sess::jsonb->>'userId' = ${String(id)}`);
   }
 
-  await logAdminActivity({
-    action: status === "banned" ? "user.block" : "user.unblock",
-    actorAdminId: getAdminActorId(req),
+  const auditActivityId = await writeAdminAudit({
+    req,
+    actionKey: status === "banned" ? "user.block" : "user.unblock",
     targetType: "user",
     targetId: id,
-    details: {
-      fromStatus: before.isBanned ? "banned" : "active",
-      toStatus: status,
-    },
+    previousState: before.isBanned ? "banned" : "active",
+    newState: status,
+    deepLink: adminDeepLink(`/admin/users/${id}`),
   });
 
   return res.json({
+    ...okAdminActionFeedback({
+      title: status === "banned" ? "تم حظر المستخدم" : "تم إلغاء حظر المستخدم",
+      description:
+        status === "banned"
+          ? `تم حظر ${updated.name ?? `المستخدم #${id}`}`
+          : `أُعيد تفعيل ${updated.name ?? `المستخدم #${id}`}`,
+      nextStep:
+        status === "banned"
+          ? "لن يتمكن المستخدم من تسجيل الدخول أو نشر إعلانات."
+          : "يمكن للمستخدم استخدام المنصة مجدداً.",
+      auditActivityId,
+    }),
     id: updated.id,
     name: updated.name,
     email: updated.email,
@@ -1291,11 +1354,11 @@ router.patch("/admin/users/:id", requireAdmin, requireAdminCsrf, async (req, res
   });
 });
 
-router.get("/admin/logs", requireAdmin, async (req, res) => {
+router.get("/admin/logs", requireAdminPermission("logs"), async (req, res) => {
   try {
   await ensureAdminLogsReady();
 
-  const pagination = parsePaginationQuery(
+  const { page, pageSize, offset } = parseAdminPageQuery(
     req.query as Record<string, unknown>,
     PAGINATION.ADMIN_LOGS,
   );
@@ -1309,13 +1372,54 @@ router.get("/admin/logs", requireAdmin, async (req, res) => {
   const toDate = to ? new Date(`${to}T23:59:59.999Z`) : null;
 
   const actionGroups: Record<string, string[]> = {
-    ad: ["ad.approve", "ad.reject", "ad.hide", "ad.unhide", "ad.delete"],
-    report: ["report.resolve", "report.review", "report.ignore", "report.update_status"],
-    support: ["support.close", "support.resolve", "support.update"],
-    user: ["user.block", "user.unblock"],
+    ad: [
+      "ad.approve",
+      "ad.reject",
+      "ad.hide",
+      "ad.unhide",
+      "ad.delete",
+      "ad.claim",
+      "ad.release",
+      "ad.assign",
+      "ad.feature_on",
+      "ad.feature_off",
+    ],
+    report: [
+      "report.resolve",
+      "report.review",
+      "report.ignore",
+      "report.update_status",
+      "report.claim",
+      "report.assign",
+      "report.release",
+      "report.ad_action",
+    ],
+    support: [
+      "support.close",
+      "support.resolve",
+      "support.update",
+      "support.reply",
+      "support.reopen",
+      "support.claim",
+      "support.assign",
+      "support.release",
+    ],
+    user: ["user.block", "user.unblock", "user.avatar_approve", "user.avatar_reject"],
     category: ["category.create", "category.update", "category.hide", "category.unhide", "category.delete"],
     city: ["city.create", "city.update", "city.hide", "city.unhide", "city.delete"],
     settings: ["settings.update", "admin.password.change", "admin.2fa.enable", "admin.2fa.disable"],
+    verification: [
+      "verification.claim",
+      "verification.assign",
+      "verification.release",
+      "verification.escalate",
+      "verification.approve",
+      "verification.reject",
+      "verification.needs_info",
+      "verification.status",
+    ],
+    staff: ["staff.create", "staff.update", "staff.sessions_revoke", "staff.password_change"],
+    monitoring: ["monitoring.alert"],
   };
 
   const where = and(
@@ -1339,14 +1443,13 @@ router.get("/admin/logs", requireAdmin, async (req, res) => {
           sql`cast(${adminActivityLogsTable.actorAdminId} as text) ilike ${`%${q}%`}`,
         )
       : undefined,
-    pagination.cursor
-      ? keysetWhereDesc(
-          adminActivityLogsTable.createdAt,
-          adminActivityLogsTable.id,
-          pagination.cursor,
-        )
-      : undefined,
   );
+
+  const [countRow] = await db
+    .select({ value: count(adminActivityLogsTable.id) })
+    .from(adminActivityLogsTable)
+    .where(where);
+  const totalItems = Number(countRow?.value ?? 0);
 
   const rows = await db
     .select({
@@ -1361,19 +1464,22 @@ router.get("/admin/logs", requireAdmin, async (req, res) => {
     .from(adminActivityLogsTable)
     .where(where)
     .orderBy(desc(adminActivityLogsTable.createdAt), desc(adminActivityLogsTable.id))
-    .limit(pagination.fetchLimit);
+    .limit(pageSize)
+    .offset(offset);
 
-  const { items, meta } = finalizePage(rows, pagination.limit, (row) => ({
-    at: row.createdAt,
-    id: row.id,
-  }));
+  const meta = buildAdminPageMeta(page, pageSize, totalItems);
 
-  return sendJsonArrayPage(
+  return sendJsonAdminPage(
     res,
-    items.map((row) => ({
+    rows.map((row) => ({
       id: row.id,
       actionType: row.action,
-      actor: row.actorAdminId !== null ? `admin#${row.actorAdminId}` : "admin#unknown",
+      actor:
+        row.actorAdminId === FOUNDER_ADMIN_ACTOR_ID
+          ? `${FOUNDER_DISPLAY_NAME} (Founder)`
+          : row.actorAdminId !== null
+            ? `admin#${row.actorAdminId}`
+            : "admin#unknown",
       targetType: row.targetType,
       targetId: row.targetId,
       details:
@@ -1390,7 +1496,7 @@ router.get("/admin/logs", requireAdmin, async (req, res) => {
   }
 });
 
-router.get("/admin/categories", requireAdmin, async (req, res) => {
+router.get("/admin/categories", requireAdminPermission("categories"), async (req, res) => {
   const q = String(req.query.q || "").trim();
   const status = String(req.query.status || "all").trim().toLowerCase();
 
@@ -1465,7 +1571,7 @@ router.get("/admin/categories", requireAdmin, async (req, res) => {
   );
 });
 
-router.post("/admin/categories", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.post("/admin/categories", requireAdminPermission("categories"), requireAdminCsrf, async (req, res) => {
   const type = String(req.body?.type || "category").trim().toLowerCase();
   const name = String(req.body?.name || "").trim();
   if (!name) {
@@ -1494,7 +1600,7 @@ router.post("/admin/categories", requireAdmin, requireAdminCsrf, async (req, res
         sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
       })
       .returning();
-    await logAdminActivity({
+    const auditActivityId = await logAdminActivity({
       action: "category.create",
       actorAdminId,
       targetType: "category",
@@ -1503,6 +1609,12 @@ router.post("/admin/categories", requireAdmin, requireAdminCsrf, async (req, res
     });
     invalidateTaxonomyPublicCache();
     return res.status(201).json({
+      ...okAdminActionFeedback({
+        title: "تم إنشاء التصنيف الفرعي",
+        description: `أُضيف التصنيف الفرعي «${name}».`,
+        nextStep: "يظهر ضمن التصنيف الأب في واجهة المستخدم.",
+        auditActivityId,
+      }),
       id: created.id,
       categoryId: created.categoryId,
       name: created.name,
@@ -1530,7 +1642,7 @@ router.post("/admin/categories", requireAdmin, requireAdminCsrf, async (req, res
         sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
       })
       .returning();
-    await logAdminActivity({
+    const auditActivityId = await logAdminActivity({
       action: "category.create",
       actorAdminId,
       targetType: "category",
@@ -1539,6 +1651,12 @@ router.post("/admin/categories", requireAdmin, requireAdminCsrf, async (req, res
     });
     invalidateTaxonomyPublicCache();
     return res.status(201).json({
+      ...okAdminActionFeedback({
+        title: "تم إنشاء التصنيف",
+        description: `أُضيف التصنيف «${name}».`,
+        nextStep: "يمكن للمستخدمين اختياره عند نشر الإعلانات.",
+        auditActivityId,
+      }),
       ...created,
       status: created.isHidden ? "hidden" : "active",
     });
@@ -1551,7 +1669,7 @@ router.post("/admin/categories", requireAdmin, requireAdminCsrf, async (req, res
   }
 });
 
-router.patch("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.patch("/admin/categories/:id", requireAdminPermission("categories"), requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid id" });
@@ -1587,7 +1705,7 @@ router.patch("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (req
           ? "category.hide"
           : "category.unhide"
         : "category.update";
-    await logAdminActivity({
+    const auditActivityId = await logAdminActivity({
       action,
       actorAdminId,
       targetType: "category",
@@ -1597,6 +1715,12 @@ router.patch("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (req
 
     invalidateTaxonomyPublicCache();
     return res.json({
+      ...okAdminActionFeedback({
+        title: action === "category.hide" ? "تم إخفاء التصنيف الفرعي" : action === "category.unhide" ? "تم إظهار التصنيف الفرعي" : "تم تحديث التصنيف الفرعي",
+        description: `التصنيف الفرعي «${updated.name}».`,
+        nextStep: "راجع شجرة التصنيفات للتأكد من ظهورها كما هو متوقع.",
+        auditActivityId,
+      }),
       id: updated.id,
       categoryId: updated.categoryId,
       name: updated.name,
@@ -1644,7 +1768,7 @@ router.patch("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (req
           ? "category.hide"
           : "category.unhide"
         : "category.update";
-    await logAdminActivity({
+    const auditActivityId = await logAdminActivity({
       action,
       actorAdminId,
       targetType: "category",
@@ -1654,6 +1778,12 @@ router.patch("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (req
 
     invalidateTaxonomyPublicCache();
     return res.json({
+      ...okAdminActionFeedback({
+        title: action === "category.hide" ? "تم إخفاء التصنيف" : action === "category.unhide" ? "تم إظهار التصنيف" : "تم تحديث التصنيف",
+        description: `التصنيف «${updated.name}».`,
+        nextStep: "راجع شجرة التصنيفات للتأكد من ظهورها كما هو متوقع.",
+        auditActivityId,
+      }),
       ...updated,
       status: updated.isHidden ? "hidden" : "active",
     });
@@ -1666,7 +1796,7 @@ router.patch("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (req
   }
 });
 
-router.delete("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.delete("/admin/categories/:id", requireAdminPermission("categories"), requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid id" });
@@ -1689,7 +1819,7 @@ router.delete("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (re
       return res.status(409).json({ error: "Subcategory is used by ads; hide it instead" });
     }
     await db.delete(subcategoriesTable).where(eq(subcategoriesTable.id, id));
-    await logAdminActivity({
+    const auditActivityId = await logAdminActivity({
       action: "category.delete",
       actorAdminId,
       targetType: "category",
@@ -1697,7 +1827,15 @@ router.delete("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (re
       details: { entityType: "subcategory", name: existing.name },
     });
     invalidateTaxonomyPublicCache();
-    return res.json({ ok: true });
+    return res.json({
+      ok: true,
+      ...okAdminActionFeedback({
+        title: "تم حذف التصنيف الفرعي",
+        description: `حُذف «${existing.name}».`,
+        nextStep: "لن يظهر في قوائم التصنيفات.",
+        auditActivityId,
+      }),
+    });
   }
 
   const [existing] = await db
@@ -1716,7 +1854,7 @@ router.delete("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (re
   }
 
   await db.delete(categoriesTable).where(eq(categoriesTable.id, id));
-  await logAdminActivity({
+  const auditActivityId = await logAdminActivity({
     action: "category.delete",
     actorAdminId,
     targetType: "category",
@@ -1724,10 +1862,18 @@ router.delete("/admin/categories/:id", requireAdmin, requireAdminCsrf, async (re
     details: { entityType: "category", name: existing.name },
   });
   invalidateTaxonomyPublicCache();
-  return res.json({ ok: true });
+  return res.json({
+    ok: true,
+    ...okAdminActionFeedback({
+      title: "تم حذف التصنيف",
+      description: `حُذف «${existing.name}».`,
+      nextStep: "لن يظهر في قوائم التصنيفات.",
+      auditActivityId,
+    }),
+  });
 });
 
-router.get("/admin/cities", requireAdmin, async (req, res) => {
+router.get("/admin/cities", requireAdminPermission("cities"), async (req, res) => {
   const q = String(req.query.q || "").trim();
   const countryCode = String(req.query.countryCode || "all")
     .trim()
@@ -1803,7 +1949,7 @@ router.get("/admin/cities", requireAdmin, async (req, res) => {
   });
 });
 
-router.post("/admin/cities", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.post("/admin/cities", requireAdminPermission("cities"), requireAdminCsrf, async (req, res) => {
   const name = String(req.body?.name || "").trim();
   const countryCode = String(req.body?.countryCode || "")
     .trim()
@@ -1851,7 +1997,7 @@ router.post("/admin/cities", requireAdmin, requireAdminCsrf, async (req, res) =>
     })
     .returning();
 
-  await logAdminActivity({
+  const auditActivityId = await logAdminActivity({
     action: "city.create",
     actorAdminId: getAdminActorId(req),
     targetType: "city",
@@ -1865,6 +2011,12 @@ router.post("/admin/cities", requireAdmin, requireAdminCsrf, async (req, res) =>
   });
 
   return res.status(201).json({
+    ...okAdminActionFeedback({
+      title: "تم إضافة المدينة",
+      description: `أُضيفت «${created.name}» (${created.countryName}).`,
+      nextStep: "ستظهر في قوائم المدن عند نشر الإعلانات.",
+      auditActivityId,
+    }),
     id: created.id,
     name: created.name,
     countryCode: created.countryCode,
@@ -1877,7 +2029,7 @@ router.post("/admin/cities", requireAdmin, requireAdminCsrf, async (req, res) =>
   });
 });
 
-router.patch("/admin/cities/:id", requireAdmin, requireAdminCsrf, async (req, res) => {
+router.patch("/admin/cities/:id", requireAdminPermission("cities"), requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid city id" });
@@ -1936,7 +2088,7 @@ router.patch("/admin/cities/:id", requireAdmin, requireAdminCsrf, async (req, re
         : "city.unhide"
       : "city.update";
 
-  await logAdminActivity({
+  const auditActivityId = await logAdminActivity({
     action,
     actorAdminId: getAdminActorId(req),
     targetType: "city",
@@ -1959,6 +2111,12 @@ router.patch("/admin/cities/:id", requireAdmin, requireAdminCsrf, async (req, re
     .where(eq(adsTable.city, updated.name));
 
   return res.json({
+    ...okAdminActionFeedback({
+      title: action === "city.hide" ? "تم إخفاء المدينة" : action === "city.unhide" ? "تم إظهار المدينة" : "تم تحديث المدينة",
+      description: `«${updated.name}» — ${updated.countryName}.`,
+      nextStep: "راجع قائمة المدن في واجهة النشر.",
+      auditActivityId,
+    }),
     id: updated.id,
     name: updated.name,
     countryCode: updated.countryCode,

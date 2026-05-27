@@ -124,6 +124,15 @@ async function buildAll() {
     entryPoints: [path.resolve(artifactDir, "src/push-worker.ts")],
     outdir: path.resolve(distDir, "worker"),
   });
+
+  await esbuild({
+    ...sharedBuildOptions,
+    entryPoints: [
+      path.resolve(artifactDir, "scripts/p13-monitoring-smoke-runner.ts"),
+      path.resolve(artifactDir, "scripts/p8j-admin-smoke-runner.ts"),
+    ],
+    outdir: path.resolve(distDir, "scripts"),
+  });
 }
 
 buildAll().catch((err) => {

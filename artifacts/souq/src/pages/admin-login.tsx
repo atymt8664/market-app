@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Link } from "wouter";
-import { motion } from "framer-motion";
 import { ArrowRight, LayoutDashboard, Loader2, Shield } from "lucide-react";
 import { absorbAdminLoginCsrf, submitAdminLoginTotp } from "@/features/admin/api";
 import { apiUrl } from "@/lib/api-url";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
 import {
   AUTH_ACCENT_OUTLINE_BTN,
   AUTH_BACK_BUTTON,
@@ -16,10 +16,11 @@ import {
   AUTH_PAGE_BG,
 } from "@/lib/auth-page-styles";
 
-const GENERIC_CREDENTIALS = "بيانات الدخول غير صحيحة";
+const AdminLoginMotionRoot = lazy(() => import("@/features/admin/components/admin-login-motion-root"));
 
 export default function AdminLogin() {
   const [accessKey, setAccessKey] = useState("");
+  const [staffEmail, setStaffEmail] = useState("");
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [step, setStep] = useState<"password" | "totp">("password");
@@ -39,7 +40,7 @@ export default function AdminLogin() {
 
   const handleLogin = async () => {
     if (!password.trim()) {
-      setError("اكتب كلمة مرور الأدمن");
+      setError(t("p8.admin.login.error_password_required"));
       return;
     }
 
@@ -47,15 +48,25 @@ export default function AdminLogin() {
       setError("");
       setLoading(true);
 
+      const body: { password: string; email?: string } = { password: password.trim() };
+      const trimmedEmail = staffEmail.trim().toLowerCase();
+      if (trimmedEmail) body.email = trimmedEmail;
+
       const res = await fetch(apiUrl("/api/admin-login"), {
         method: "POST",
         headers: buildHeaders(),
         credentials: "include",
-        body: JSON.stringify({ password: password.trim() }),
+        body: JSON.stringify(body),
       });
 
       const text = await res.text();
-      let data: { requiresTwoFactor?: boolean; success?: boolean; csrfToken?: unknown } = {};
+      let data: {
+        requiresTwoFactor?: boolean;
+        success?: boolean;
+        csrfToken?: unknown;
+        requiresPasswordChange?: boolean;
+        homePath?: string;
+      } = {};
       try {
         data = text ? (JSON.parse(text) as typeof data) : {};
       } catch {
@@ -70,22 +81,24 @@ export default function AdminLogin() {
           return;
         }
         absorbAdminLoginCsrf(data);
-        window.location.href = "/admin";
+        window.location.href = data.requiresPasswordChange
+          ? "/admin/force-password-change"
+          : data.homePath || "/admin";
         return;
       }
 
       if (res.status === 403) {
-        setError("تم رفض الوصول.");
+        setError(t("p8.admin.login.error_access_denied"));
         return;
       }
       if (res.status === 429) {
-        setError("محاولات كثيرة، انتظر قليلاً وحاول مجدداً");
+        setError(t("p8.admin.login.error_rate_limit"));
         return;
       }
 
-      setError(GENERIC_CREDENTIALS);
+      setError(t("p8.admin.login.error_credentials"));
     } catch {
-      setError("تعذر الاتصال بالسيرفر");
+      setError(t("p8.admin.login.error_connection"));
     } finally {
       setLoading(false);
     }
@@ -94,7 +107,7 @@ export default function AdminLogin() {
   const handleTotpSubmit = async () => {
     const code = totpCode.trim();
     if (!code) {
-      setError("أدخل رمز التطبيق أو رمز الاسترداد");
+      setError(t("p8.admin.login.error_totp_required"));
       return;
     }
     try {
@@ -105,10 +118,13 @@ export default function AdminLogin() {
       window.location.href = "/admin";
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
-      if (msg.includes("محاولات كثيرة") || msg.includes("رفض الوصول")) {
+      if (
+        msg.includes(t("p8.admin.login.error_rate_limit")) ||
+        msg.includes(t("p8.admin.login.error_access_denied"))
+      ) {
         setError(msg);
       } else {
-        setError(GENERIC_CREDENTIALS);
+        setError(t("p8.admin.login.error_credentials"));
       }
     } finally {
       setLoading(false);
@@ -116,19 +132,23 @@ export default function AdminLogin() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={AUTH_PAGE_BG}
-      dir="rtl"
+    <Suspense
+      fallback={
+        <div className={AUTH_PAGE_BG} dir="rtl">
+          <div className="flex min-h-[50vh] items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
+          </div>
+        </div>
+      }
     >
+      <AdminLoginMotionRoot className={AUTH_PAGE_BG}>
       <header className={AUTH_HEADER}>
         <Link href="/">
-          <button type="button" className={AUTH_BACK_BUTTON} aria-label="رجوع للرئيسية">
+          <button type="button" className={AUTH_BACK_BUTTON} aria-label={t("p8.admin.login.back")}>
             <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
           </button>
         </Link>
-        <h1 className={AUTH_HEADER_TITLE}>لوحة الإدارة</h1>
+        <h1 className={AUTH_HEADER_TITLE}>{t("p8.admin.login.title")}</h1>
       </header>
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pb-8 pt-6 md:px-5">
@@ -153,12 +173,12 @@ export default function AdminLogin() {
 
           <div className={cn(AUTH_HERO_CARD, "w-full max-w-md space-y-1.5")}>
             <h2 className="text-lg font-bold text-foreground md:text-xl">
-              {step === "totp" ? "التحقق الثنائي" : "دخول المشرفين"}
+              {step === "totp" ? t("p8.admin.login.totp_step_title") : t("p8.admin.login.password_step_title")}
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
               {step === "totp"
-                ? "أدخل الرمز من تطبيق المصادقة أو أحد أكواد الاسترداد."
-                : "أدخل مفتاح الوصول وكلمة مرور لوحة التحكم عند الحاجة"}
+                ? t("p8.admin.login.totp_step_subtitle")
+                : t("p8.admin.login.password_step_subtitle")}
             </p>
           </div>
         </div>
@@ -179,28 +199,42 @@ export default function AdminLogin() {
               }}
             >
               <label className="text-right text-sm font-medium text-foreground" htmlFor="admin-access-key">
-                مفتاح وصول الأدمن
+                {t("p8.admin.login.access_key_label")}
               </label>
               <input
                 id="admin-access-key"
                 name="admin-access-key"
                 type="password"
                 autoComplete="off"
-                placeholder="••••••••"
+                placeholder={t("p8.admin.login.access_key_placeholder")}
                 value={accessKey}
                 onChange={(e) => setAccessKey(e.target.value)}
                 className={cn(AUTH_INPUT, "w-full rounded-xl px-3.5 py-2.5 text-right")}
               />
 
+              <label className="text-right text-sm font-medium text-foreground" htmlFor="staff-email">
+                {t("p8.admin.login.staff_email_label")}
+              </label>
+              <input
+                id="staff-email"
+                name="staff-email"
+                type="email"
+                autoComplete="username"
+                placeholder={t("p8.admin.login.staff_email_placeholder")}
+                value={staffEmail}
+                onChange={(e) => setStaffEmail(e.target.value)}
+                className={cn(AUTH_INPUT, "w-full rounded-xl px-3.5 py-2.5 text-right")}
+              />
+
               <label className="text-right text-sm font-medium text-foreground" htmlFor="admin-password">
-                كلمة مرور الأدمن
+                {t("p8.admin.login.password_label")}
               </label>
               <input
                 id="admin-password"
                 name="admin-password"
                 type="password"
                 autoComplete="current-password"
-                placeholder="••••••••"
+                placeholder={t("p8.admin.login.password_placeholder")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={cn(AUTH_INPUT, "w-full rounded-xl px-3.5 py-2.5 text-right")}
@@ -223,10 +257,10 @@ export default function AdminLogin() {
                 {loading ? (
                   <>
                     <Loader2 className="h-5 w-5 shrink-0 animate-spin" aria-hidden />
-                    جاري الدخول...
+                    {t("p8.admin.common.loading")}
                   </>
                 ) : (
-                  "دخول"
+                  t("p8.admin.login.submit")
                 )}
               </button>
             </form>
@@ -239,7 +273,7 @@ export default function AdminLogin() {
               }}
             >
               <label className="text-right text-sm font-medium text-foreground" htmlFor="admin-totp-code">
-                رمز التطبيق أو رمز الاسترداد
+                {t("p8.admin.login.totp_label")}
               </label>
               <input
                 id="admin-totp-code"
@@ -247,7 +281,7 @@ export default function AdminLogin() {
                 type="text"
                 inputMode="text"
                 autoComplete="one-time-code"
-                placeholder="رمز من 6 أرقام أو رمز استرداد"
+                placeholder={t("p8.admin.login.totp_placeholder")}
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value.trim())}
                 className={cn(
@@ -276,10 +310,10 @@ export default function AdminLogin() {
                   {loading ? (
                     <>
                       <Loader2 className="h-5 w-5 shrink-0 animate-spin" aria-hidden />
-                      جاري التحقق...
+                      {t("p8.admin.common.loading")}
                     </>
                   ) : (
-                    "تأكيد الدخول"
+                    t("p8.admin.login.totp_submit")
                   )}
                 </button>
                 <button
@@ -295,7 +329,7 @@ export default function AdminLogin() {
                     "inline-flex flex-1 items-center justify-center gap-2 opacity-90 hover:bg-zinc-900 disabled:pointer-events-none disabled:opacity-40",
                   )}
                 >
-                  رجوع
+                  {t("p8.admin.login.back")}
                 </button>
               </div>
             </form>
@@ -303,9 +337,10 @@ export default function AdminLogin() {
         </div>
 
         <p className="text-center text-xs leading-relaxed text-muted-foreground">
-          هذه الصفحة مخصّصة لفريق التشغيل فقط.
+          {t("p8.admin.login.footer_note")}
         </p>
       </div>
-    </motion.div>
+      </AdminLoginMotionRoot>
+    </Suspense>
   );
 }

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export const BTN_FIX = "no-default-hover-elevate";
 
 export const INPUT_FIELD =
-  "rounded-xl border-zinc-700/80 bg-zinc-900/90 text-foreground placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-primary/25";
+  "h-11 rounded-xl border border-primary/35 bg-zinc-900/95 text-foreground shadow-[0_0_12px_-10px_hsl(var(--primary)/0.1)] placeholder:text-zinc-500 transition-all duration-150 hover:border-primary/45 hover:bg-zinc-900 focus-visible:border-primary/55 focus-visible:ring-2 focus-visible:ring-primary/25";
 
 export const CARD_SHELL =
   "rounded-2xl border border-primary/35 bg-zinc-950/70 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10";
@@ -28,7 +28,45 @@ export const PANEL_INSET =
   "rounded-2xl border border-primary/25 bg-zinc-950/55 px-4 py-12 text-center transition-colors";
 
 export const SELECT_FIELD =
-  "flex h-10 w-full cursor-pointer rounded-xl px-3 py-2 text-sm outline-none transition-all duration-150 ease-out hover:border-primary/45 hover:bg-zinc-900/95 hover:shadow-[0_0_14px_-8px_hsl(var(--primary)/0.15)] focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20";
+  "flex h-11 w-full cursor-pointer appearance-none rounded-xl border border-primary/35 bg-zinc-900/95 px-3 py-2 text-sm text-foreground shadow-[0_0_14px_-10px_hsl(var(--primary)/0.12)] outline-none transition-all duration-150 ease-out [color-scheme:dark] hover:border-primary/45 hover:bg-zinc-900 hover:shadow-[0_0_18px_-8px_hsl(var(--primary)/0.18)] focus-visible:border-primary/55 focus-visible:ring-2 focus-visible:ring-primary/25 [&>option]:bg-zinc-950 [&>option]:text-foreground";
+
+/** Radix Select — trigger (Souq Arab EU dark + lime) */
+export const ADMIN_SELECT_TRIGGER = cn(
+  SELECT_FIELD,
+  "items-center justify-between gap-2 data-[placeholder]:text-zinc-500 [&>span]:line-clamp-1",
+);
+
+/** Radix Select — dropdown panel */
+export const ADMIN_SELECT_CONTENT =
+  "z-[200] max-h-72 overflow-y-auto rounded-2xl border border-primary/40 bg-zinc-950 p-1.5 text-foreground shadow-[0_0_32px_-10px_hsl(var(--primary)/0.38)] ring-1 ring-primary/15 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95";
+
+/** Radix Select — option row (RTL) */
+export const ADMIN_SELECT_ITEM =
+  "relative flex w-full cursor-pointer select-none items-center rounded-xl py-2.5 pe-9 ps-3 text-right text-sm outline-none transition-colors duration-150 focus:bg-primary/15 focus:text-primary data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-primary/12 data-[highlighted]:text-foreground data-[state=checked]:bg-primary/15 data-[state=checked]:font-semibold data-[state=checked]:text-primary";
+
+export const MODAL_HEADER_RTL = "space-y-2 text-right sm:text-right";
+
+export const MODAL_LABEL = "text-sm font-medium text-zinc-300";
+
+export const MODAL_FIELD_GROUP = "space-y-2";
+
+export const MODAL_BODY = "space-y-4";
+
+export const MODAL_SCROLL =
+  "max-h-[min(70vh,32rem)] space-y-4 overflow-y-auto pe-1 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:bg-transparent";
+
+export const MODAL_SECTION_CARD = cn(
+  SUB_CARD,
+  "space-y-3 p-4",
+);
+
+export const MODAL_SECTION_TITLE =
+  "flex items-center gap-2 text-sm font-semibold text-primary";
+
+export const DIALOG_SURFACE_RTL = cn(
+  DIALOG_SURFACE,
+  "[&>button]:left-4 [&>button]:right-auto [&>button]:rounded-xl [&>button]:border [&>button]:border-primary/30 [&>button]:bg-zinc-900/90 [&>button]:opacity-100 [&>button]:transition-colors hover:[&>button]:border-primary/50 hover:[&>button]:bg-primary/10",
+);
 
 /** صف جدول رئيسي — hover موحّد */
 export const ADMIN_TABLE_ROW =

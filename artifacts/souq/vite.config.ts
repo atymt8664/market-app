@@ -99,7 +99,7 @@ function souqManualChunks(id: string): string | undefined {
  * 6B-2: drop non-critical modulepreloads on first navigation (keep react/react-dom).
  * Chunks still load on demand — only parallel prefetch is reduced for Gate/Home cold start.
  */
-const DEFERRED_MODULE_PRELOAD = /vendor-(?:radix|date-fns|lucide|floating-ui)-/;
+const DEFERRED_MODULE_PRELOAD = /vendor-(?:radix|date-fns|lucide|floating-ui|recharts|framer-motion)-/;
 
 function trimNonCriticalModulePreloads(): { name: string; transformIndexHtml: { order: "post"; handler: (html: string) => string } } {
   return {

@@ -4,7 +4,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import {
   Check,
-  Eye,
   EyeOff,
   Loader2,
   Megaphone,
@@ -16,13 +15,33 @@ import {
 import { getListFeaturedAdsQueryKey } from "@workspace/api-client-react";
 import {
   adminLogout,
+  assignAdminAd,
+  claimAdminAd,
   deleteAdminAd,
   patchAdminAdFeatured,
+  releaseAdminAd,
   updateAdminAdStatus,
 } from "@/features/admin/api";
+import { toastAdminAction, parseAdminActionResponse, toastAdminError } from "@/features/admin/admin-action-toast";
+import {
+  AdminAdsTableRow,
+  FeaturedStripBadge,
+  FeaturedToggleButtons,
+  statusBadgeClass,
+  statusLabel,
+} from "@/features/admin/components/admin-ads-table-row";
+import { ModerationReasonDialog } from "@/features/admin/components/moderation-reason-dialog";
+import { AdminScrollableTable } from "@/features/admin/components/admin-scrollable-table";
+import { AdminPaginationBar } from "@/features/admin/components/admin-pagination-bar";
+import {
+  AdminEmptyState,
+  AdminErrorState,
+  AdminPageLoading,
+} from "@/features/admin/components/admin-page-states";
+import { StaffAssignDialog } from "@/features/admin/components/staff-assign-dialog";
+import { StaffWorkflowPanel } from "@/features/admin/components/staff-workflow-panel";
 import {
   ADMIN_ROW_ACTION_BASE,
-  ADMIN_TABLE_ROW,
   BTN_FIX,
   BTN_MODAL_GHOST,
   BTN_SEARCH,
@@ -31,9 +50,12 @@ import {
   adminPillBtn,
 } from "@/features/admin/admin-interaction-classes";
 import { AdminShell } from "@/features/admin/components/admin-shell";
-import { useAdminAds, useAdminDashboard, useRequireAdmin } from "@/features/admin/hooks";
+import { OperationsQueueTabBar } from "@/features/admin/components/operations-queue-tab-bar";
+import { useAdminAccess, useAdminAds, useAdminAdsStats, useRequireAdmin } from "@/features/admin/hooks";
+import type { OpsQueueKey } from "@/features/admin/operations-queue-types";
 import type { AdminAd } from "@/features/admin/types";
 import { useToast } from "@/hooks/use-toast";
+import { getLocale, t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
 import {
@@ -46,40 +68,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const FILTERS = [
-  { key: "all", label: "الكل" },
-  { key: "pending", label: "قيد المراجعة" },
-  { key: "approved", label: "مقبول" },
-  { key: "rejected", label: "مرفوض" },
-  { key: "hidden", label: "مخفي" },
-] as const;
+const AD_STATUS_FILTER_KEYS = ["all", "pending", "approved", "rejected", "hidden"] as const;
+const FEATURE_FILTER_KEYS = ["all", "true", "false"] as const;
 
-const FEATURE_FILTERS = [
-  { key: "all", label: "الكل" },
-  { key: "true", label: "مميزة" },
-  { key: "false", label: "غير مميزة" },
-] as const;
+function localeTag() {
+  return getLocale() === "ar" ? "ar-EG" : getLocale() === "de" ? "de-DE" : "en-US";
+}
 
 const inputClass =
   "w-full rounded-2xl border border-primary/30 bg-zinc-900/90 px-4 py-2.5 text-sm text-foreground outline-none ring-1 ring-primary/5 transition placeholder:text-muted-foreground focus:border-primary/55 focus:ring-2 focus:ring-primary/25";
-
-function statusLabel(status: string) {
-  if (status === "pending") return "قيد المراجعة";
-  if (status === "approved") return "مقبول";
-  if (status === "rejected") return "مرفوض";
-  if (status === "hidden") return "مخفي";
-  return status;
-}
-
-function statusBadgeClass(status: string) {
-  if (status === "pending") return "border-amber-500/45 bg-amber-500/15 text-amber-200";
-  if (status === "approved") return "border-emerald-500/45 bg-emerald-500/15 text-emerald-200";
-  if (status === "rejected") return "border-orange-500/45 bg-orange-500/12 text-orange-200";
-  if (status === "hidden") return "border-zinc-600 bg-zinc-800/80 text-zinc-300";
-  return "border-primary/35 bg-primary/10 text-primary";
-}
 
 function featuredFilterFromParam(raw: string | null): "all" | "true" | "false" {
   if (raw === "true") return "true";
@@ -87,93 +85,13 @@ function featuredFilterFromParam(raw: string | null): "all" | "true" | "false" {
   return "all";
 }
 
-function FeaturedStripBadge({ featured }: { featured: boolean }) {
-  if (!featured) {
-    return <span className="text-muted-foreground">—</span>;
-  }
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-primary/45 bg-primary/12 px-2 py-0.5 text-xs font-medium text-primary shadow-[0_0_12px_-8px_hsl(var(--primary)/0.35)]">
-      <Sparkles className="h-3 w-3 shrink-0" aria-hidden />
-      مميز
-    </span>
-  );
-}
-
-function FeaturedToggleButtons({
-  ad,
-  disabled,
-  onRequest,
-}: {
-  ad: AdminAd;
-  disabled: boolean;
-  onRequest: (ad: AdminAd, nextFeatured: boolean) => void;
-}) {
-  if (ad.featured) {
-    return (
-      <button
-        type="button"
-        onClick={() => onRequest(ad, false)}
-        disabled={disabled}
-        className={cn(
-          ADMIN_ROW_ACTION_BASE,
-          "border-zinc-500/55 bg-zinc-900/80 text-zinc-100 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35",
-        )}
-      >
-        <Sparkles className="h-3.5 w-3.5" aria-hidden />
-        إزالة التمييز
-      </button>
-    );
-  }
-  if (ad.status === "approved") {
-    return (
-      <button
-        type="button"
-        onClick={() => onRequest(ad, true)}
-        disabled={disabled}
-        className={cn(
-          ADMIN_ROW_ACTION_BASE,
-          "border-primary/45 bg-primary/12 text-primary hover:border-primary/60 hover:bg-primary/20 focus-visible:ring-primary/40",
-        )}
-      >
-        <Sparkles className="h-3.5 w-3.5" aria-hidden />
-        تمييز
-      </button>
-    );
-  }
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="inline-flex">
-          <button
-            type="button"
-            disabled
-            className={cn(
-              ADMIN_ROW_ACTION_BASE,
-              "cursor-not-allowed border-zinc-700/80 bg-zinc-900/60 text-zinc-500 opacity-70",
-            )}
-          >
-            <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            تمييز
-          </button>
-        </span>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="max-w-[260px] border border-primary/35 bg-zinc-950 px-3 py-2 text-xs leading-relaxed text-foreground shadow-lg"
-      >
-        لا يظهر الإعلان في الشريط المميز للجميع إلا بعد اعتماده (مقبول). يمكنك قبول الإعلان أولاً ثم التمييز.
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
-const ADMIN_AD_STATUS_KEYS = new Set(FILTERS.map((f) => f.key));
+const ADMIN_AD_STATUS_KEYS = new Set(AD_STATUS_FILTER_KEYS);
 
 function parseAdminAdsSearch(searchString: string) {
   const p = new URLSearchParams(searchString);
   const rawStatus = p.get("status");
   const status =
-    rawStatus && ADMIN_AD_STATUS_KEYS.has(rawStatus as (typeof FILTERS)[number]["key"])
+    rawStatus && ADMIN_AD_STATUS_KEYS.has(rawStatus as (typeof AD_STATUS_FILTER_KEYS)[number])
       ? rawStatus
       : "all";
   return {
@@ -189,10 +107,15 @@ export default function AdminAdsPage() {
   const searchString = useSearch();
   const queryClient = useQueryClient();
   const meQuery = useRequireAdmin();
+  const access = useAdminAccess();
   const { toast } = useToast();
 
   const initial = parseAdminAdsSearch(searchString);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [status, setStatus] = useState(initial.status);
+  const [queue, setQueue] = useState<OpsQueueKey>("all");
+  const adsStatsQuery = useAdminAdsStats(!meQuery.isLoading);
   const [searchInput, setSearchInput] = useState(initial.q);
   const [search, setSearch] = useState(initial.q);
   const [featuredFilter, setFeaturedFilter] = useState<"all" | "true" | "false">(initial.featured);
@@ -201,21 +124,50 @@ export default function AdminAdsPage() {
   const [sortBy, setSortBy] = useState(initial.sort);
   const focusId = Number(new URLSearchParams(searchString).get("focusId") || 0);
   const [pendingDelete, setPendingDelete] = useState<AdminAd | null>(null);
+  const [pendingReject, setPendingReject] = useState<AdminAd | null>(null);
   const [featuredConfirm, setFeaturedConfirm] = useState<{
     ad: AdminAd;
     nextFeatured: boolean;
   } | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
 
-  const adsQuery = useAdminAds({ status, q: search, featured: featuredFilter });
-  const dashboardQuery = useAdminDashboard();
-  const adsStatusCounts = dashboardQuery.data?.statusCounts?.ads ?? {};
+  const statusFilters = useMemo(
+    () =>
+      AD_STATUS_FILTER_KEYS.map((key) => ({
+        key,
+        label: t(`p8.admin.ads.filter_${key}` as "p8.admin.ads.filter_all"),
+      })),
+    [],
+  );
+
+  const featureFilters = useMemo(
+    () =>
+      FEATURE_FILTER_KEYS.map((key) => ({
+        key,
+        label:
+          key === "all"
+            ? t("p8.admin.ads.featured_all")
+            : key === "true"
+              ? t("p8.admin.ads.featured_true")
+              : t("p8.admin.ads.featured_false"),
+      })),
+    [],
+  );
+
+  const adsQuery = useAdminAds({ status, q: search, queue, featured: featuredFilter, page, pageSize });
+  const ads = adsQuery.data?.items ?? [];
+  const pagination = adsQuery.data?.pagination;
   const visibleAds = useMemo(() => {
-    const list = [...(adsQuery.data ?? [])];
+    const list = [...ads];
     if (sortBy === "views") {
       list.sort((a, b) => b.views - a.views);
     }
     return list;
-  }, [adsQuery.data, sortBy]);
+  }, [ads, sortBy]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [status, search, queue, featuredFilter]);
 
   const openAdDetails = (ad: AdminAd) => {
     setDismissedFocusId(null);
@@ -269,28 +221,33 @@ export default function AdminAdsPage() {
   }, [selectedAd, closeAdDetails]);
 
   const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["admin", "ads"] });
+    await queryClient.invalidateQueries({ queryKey: ["admin", "nav-badges"] });
     await queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+    await queryClient.invalidateQueries({ queryKey: ["admin", "ads"] });
     await queryClient.invalidateQueries({ queryKey: getListFeaturedAdsQueryKey() });
   };
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, nextStatus }: { id: number; nextStatus: "approved" | "rejected" | "hidden" }) =>
-      updateAdminAdStatus(id, nextStatus),
-    onSuccess: async (_res, variables) => {
+    mutationFn: ({
+      id,
+      nextStatus,
+      reason,
+    }: {
+      id: number;
+      nextStatus: "approved" | "rejected" | "hidden";
+      reason?: string;
+    }) => updateAdminAdStatus(id, nextStatus, reason),
+    onSuccess: async (res, variables) => {
       if (selectedAd?.id === variables.id) {
         setSelectedAd((prev) => (prev ? { ...prev, status: variables.nextStatus } : prev));
       }
       await refresh();
-      toast({
-        title: "تم تحديث الحالة",
-        description: `تم تغيير حالة الإعلان إلى ${statusLabel(variables.nextStatus)}`,
-      });
+      toastAdminAction(toast, parseAdminActionResponse(res as Record<string, unknown>), t("p8.admin.ads.toast_status_updated"));
     },
     onError: (error) => {
       toast({
-        title: "فشل تحديث الحالة",
-        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+        title: t("p8.admin.ads.toast_status_failed"),
+        description: error instanceof Error ? error.message : t("p8.admin.ads.unexpected_error"),
         variant: "destructive",
       });
     },
@@ -303,14 +260,14 @@ export default function AdminAdsPage() {
       setSelectedAd(null);
       await refresh();
       toast({
-        title: "تم حذف الإعلان",
-        description: "تم حذف الإعلان من قاعدة البيانات بنجاح",
+        title: t("p8.admin.ads.toast_deleted"),
+        description: t("p8.admin.ads.toast_deleted_desc"),
       });
     },
     onError: (error) => {
       toast({
-        title: "فشل حذف الإعلان",
-        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+        title: t("p8.admin.ads.toast_delete_failed"),
+        description: error instanceof Error ? error.message : t("p8.admin.ads.unexpected_error"),
         variant: "destructive",
       });
     },
@@ -324,23 +281,52 @@ export default function AdminAdsPage() {
       if (selectedAd?.id === variables.id) {
         setSelectedAd((prev) => (prev ? { ...prev, featured: variables.featured } : prev));
       }
-      await queryClient.invalidateQueries({ queryKey: ["admin", "ads"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "nav-badges"] });
       await queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "ads"] });
       await queryClient.invalidateQueries({ queryKey: getListFeaturedAdsQueryKey() });
       toast({
-        title: variables.featured ? "تم تمييز الإعلان" : "تمت إزالة التمييز",
+        title: variables.featured ? t("p8.admin.ads.toast_featured_on") : t("p8.admin.ads.toast_featured_off"),
         description: variables.featured
-          ? "سيظهر في شريط الإعلانات المميزة على الصفحة الرئيسية."
-          : "لن يُعرض في الشريط المميز بعد الآن.",
+          ? t("p8.admin.ads.toast_featured_on_desc")
+          : t("p8.admin.ads.toast_featured_off_desc"),
       });
     },
     onError: (error) => {
       toast({
-        title: "فشل تحديث التمييز",
-        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+        title: t("p8.admin.ads.toast_featured_failed"),
+        description: error instanceof Error ? error.message : t("p8.admin.ads.connection_error"),
         variant: "destructive",
       });
     },
+  });
+
+  const workflowMutation = useMutation({
+    mutationFn: async (action: { type: "claim" | "release"; id: number }) => {
+      if (action.type === "claim") return claimAdminAd(action.id);
+      return releaseAdminAd(action.id);
+    },
+    onSuccess: async (res, action) => {
+      await refresh();
+      if (selectedAd?.id === action.id && res.assignment) {
+        setSelectedAd((prev) => (prev ? { ...prev, assignment: res.assignment } : prev));
+      }
+      toastAdminAction(toast, res, action.type === "claim" ? t("p8.admin.ads.toast_claim") : t("p8.admin.ads.toast_release"));
+    },
+    onError: (error) => toastAdminError(toast, error),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: ({ id, staffId }: { id: number; staffId: number }) => assignAdminAd(id, staffId),
+    onSuccess: async (res, variables) => {
+      setAssignOpen(false);
+      await refresh();
+      if (selectedAd?.id === variables.id && res.assignment) {
+        setSelectedAd((prev) => (prev ? { ...prev, assignment: res.assignment } : prev));
+      }
+      toastAdminAction(toast, res, t("p8.admin.ads.toast_assign"));
+    },
+    onError: (error) => toastAdminError(toast, error),
   });
 
   const handleLogout = async () => {
@@ -349,7 +335,10 @@ export default function AdminAdsPage() {
   };
 
   const actionBusy =
-    statusMutation.isPending || deleteMutation.isPending || featuredMutation.isPending;
+    statusMutation.isPending ||
+    deleteMutation.isPending ||
+    featuredMutation.isPending ||
+    assignMutation.isPending;
 
   const requestDelete = (ad: AdminAd) => {
     setPendingDelete(ad);
@@ -388,56 +377,22 @@ export default function AdminAdsPage() {
           )}
         >
           <div className="space-y-1 text-right">
-            <h1 className={cn(AUTH_HEADER_TITLE, "text-2xl md:text-[1.65rem]")}>إدارة الإعلانات</h1>
-            <p className="text-sm text-muted-foreground">مراجعة الإعلانات وتعديل الحالات مباشرة</p>
+            <h1 className={cn(AUTH_HEADER_TITLE, "text-2xl md:text-[1.65rem]")}>{t("p8.admin.ads.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("p8.admin.ads.subtitle")}</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-zinc-900/90 px-3 py-1.5 text-xs text-muted-foreground ring-1 ring-primary/10">
               <Megaphone className="h-3.5 w-3.5 text-primary" aria-hidden />
-              {visibleAds.length.toLocaleString("ar-EG")} إعلاناً في القائمة
+              {t("p8.admin.ads.list_count", {
+                count: (pagination?.totalItems ?? visibleAds.length).toLocaleString(localeTag()),
+              })}
             </span>
           </div>
         </header>
 
-        <section className={cn(CARD_SHELL, "p-4 sm:p-5")}>
-          <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {(
-              [
-                ["pending", "قيد المراجعة", adsStatusCounts.pending],
-                ["approved", "مقبول", adsStatusCounts.approved],
-                ["rejected", "مرفوض", adsStatusCounts.rejected],
-                ["hidden", "مخفي", adsStatusCounts.hidden],
-              ] as const
-            ).map(([key, label, count]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setStatus(key)}
-                className={cn(
-                  BTN_FIX,
-                  "rounded-2xl border p-3 text-right transition-all duration-150 ease-out active:scale-[0.98]",
-                  "hover:border-primary/45 hover:shadow-[0_0_18px_-10px_hsl(var(--primary)/0.18)]",
-                  status === key
-                    ? "border-primary/45 bg-primary/10 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15"
-                    : "border-primary/20 bg-zinc-900/50 ring-1 ring-primary/5",
-                )}
-              >
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p
-                  className={cn(
-                    "mt-1 text-xl font-semibold tabular-nums",
-                    key === "pending" && "text-amber-200",
-                    key === "approved" && "text-emerald-200",
-                    key === "rejected" && "text-orange-200",
-                    key === "hidden" && "text-foreground",
-                  )}
-                >
-                  {Number(count ?? 0).toLocaleString("ar-EG")}
-                </p>
-              </button>
-            ))}
-          </div>
+        <OperationsQueueTabBar queue={queue} counts={adsStatsQuery.data ?? undefined} onChange={setQueue} />
 
+        <section className={cn(CARD_SHELL, "p-4 sm:p-5")}>
           <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <form
               className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-center"
@@ -451,19 +406,19 @@ export default function AdminAdsPage() {
                 <input
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="ابحث بالعنوان، الوصف، المدينة، اسم البائع..."
+                  placeholder={t("p8.admin.ads.search_placeholder")}
                   className={cn(inputClass, "pr-10")}
-                  aria-label="بحث في الإعلانات"
+                  aria-label={t("p8.admin.ads.search_aria")}
                 />
               </div>
               <Button type="submit" className={BTN_SEARCH}>
-                بحث
+                {t("p8.admin.common.search")}
               </Button>
             </form>
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">الحالة:</span>
-              {FILTERS.map((item) => (
+              <span className="text-xs text-muted-foreground">{t("p8.admin.ads.label_status")}</span>
+              {statusFilters.map((item) => (
                 <button
                   key={item.key}
                   type="button"
@@ -476,8 +431,8 @@ export default function AdminAdsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">تمييز:</span>
-              {FEATURE_FILTERS.map((item) => (
+              <span className="text-xs text-muted-foreground">{t("p8.admin.ads.label_featured")}</span>
+              {featureFilters.map((item) => (
                 <button
                   key={item.key}
                   type="button"
@@ -490,144 +445,72 @@ export default function AdminAdsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">الترتيب:</span>
+              <span className="text-xs text-muted-foreground">{t("p8.admin.ads.label_sort")}</span>
               <button type="button" onClick={() => setSortBy("created")} className={adminPillBtn(sortBy === "created")}>
-                الأحدث
+                {t("p8.admin.ads.sort_newest")}
               </button>
               <button type="button" onClick={() => setSortBy("views")} className={adminPillBtn(sortBy === "views")}>
-                الأعلى مشاهدة
+                {t("p8.admin.ads.sort_views")}
               </button>
             </div>
           </div>
 
           {adsQuery.isLoading ? (
-            <div className="flex items-center justify-center gap-2 rounded-2xl border border-primary/25 bg-zinc-900/40 py-12 text-muted-foreground ring-1 ring-primary/10">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              جاري تحميل الإعلانات...
-            </div>
+            <AdminPageLoading message={t("p8.admin.ads.loading")} />
           ) : adsQuery.isError ? (
-            <div className="rounded-2xl border border-red-500/35 bg-red-950/25 px-4 py-10 text-center text-sm text-red-200 ring-1 ring-red-500/20">
-              تعذر تحميل الإعلانات. حاول التحديث مرة أخرى.
-            </div>
+            <AdminErrorState
+              title={t("p8.admin.ads.load_error")}
+              description={t("p8.admin.ads.load_error_hint")}
+              onRetry={() => adsQuery.refetch()}
+            />
           ) : visibleAds.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-primary/30 bg-zinc-900/40 py-12 text-center text-sm text-muted-foreground">
-              لا يوجد إعلانات مطابقة للفلاتر الحالية.
-            </div>
+            <AdminEmptyState
+              title={t("p8.admin.ads.empty_title")}
+              description={t("p8.admin.ads.empty_body")}
+              nextStep={t("p8.admin.ads.empty_next")}
+            />
           ) : (
-            <div className={SURFACE_TABLE_WRAP}>
-              <table className="w-full min-w-[1080px] text-sm">
-                <thead className="border-b border-primary/25 bg-zinc-900/50 text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-3 text-right font-medium">#</th>
-                    <th className="px-3 py-3 text-right font-medium">العنوان</th>
-                    <th className="px-3 py-3 text-right font-medium">المدينة</th>
-                    <th className="px-3 py-3 text-right font-medium">السعر</th>
-                    <th className="px-3 py-3 text-right font-medium">الحالة</th>
-                    <th className="px-3 py-3 text-right font-medium">تمييز</th>
-                    <th className="px-3 py-3 text-right font-medium">المشاهدات</th>
-                    <th className="px-3 py-3 text-center font-medium">الإجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleAds.map((ad) => (
-                    <tr key={ad.id} className={cn(ADMIN_TABLE_ROW, "last:border-0")}>
-                      <td className="px-3 py-3 align-middle tabular-nums text-muted-foreground">{ad.id}</td>
-                      <td className="px-3 py-3 align-middle">
-                        <p className="line-clamp-1 font-medium text-foreground">{ad.title}</p>
-                        <p className="text-xs text-muted-foreground">{ad.categoryName || "بدون تصنيف"}</p>
-                      </td>
-                      <td className="px-3 py-3 align-middle">{ad.city}</td>
-                      <td className="px-3 py-3 align-middle tabular-nums">
-                        {ad.price === null ? "غير محدد" : `${ad.price} €`}
-                      </td>
-                      <td className="px-3 py-3 align-middle">
-                        <span
-                          className={cn(
-                            "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                            statusBadgeClass(ad.status),
-                          )}
-                        >
-                          {statusLabel(ad.status)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 align-middle">
-                        <FeaturedStripBadge featured={ad.featured} />
-                      </td>
-                      <td className="px-3 py-3 align-middle tabular-nums text-primary">{ad.views.toLocaleString("ar-EG")}</td>
-                      <td className="px-3 py-3 align-middle">
-                        <div className="flex flex-wrap justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => openAdDetails(ad)}
-                            className={cn(
-                              ADMIN_ROW_ACTION_BASE,
-                              "border-primary/40 bg-primary/10 text-primary hover:border-primary/55 hover:bg-primary/18 focus-visible:ring-primary/40",
-                            )}
-                          >
-                            <Eye className="h-3.5 w-3.5" aria-hidden />
-                            التفاصيل
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => statusMutation.mutate({ id: ad.id, nextStatus: "approved" })}
-                            disabled={actionBusy}
-                            className={cn(
-                              ADMIN_ROW_ACTION_BASE,
-                              "border-emerald-500/45 bg-emerald-600/15 text-emerald-200 hover:bg-emerald-600/25 focus-visible:ring-emerald-500/40",
-                            )}
-                          >
-                            <Check className="h-3.5 w-3.5" aria-hidden />
-                            قبول
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => statusMutation.mutate({ id: ad.id, nextStatus: "rejected" })}
-                            disabled={actionBusy}
-                            className={cn(
-                              ADMIN_ROW_ACTION_BASE,
-                              "border-orange-500/45 bg-orange-600/12 text-orange-100 hover:bg-orange-600/22 focus-visible:ring-orange-500/35",
-                            )}
-                          >
-                            <XCircle className="h-3.5 w-3.5" aria-hidden />
-                            رفض
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => statusMutation.mutate({ id: ad.id, nextStatus: "hidden" })}
-                            disabled={actionBusy}
-                            className={cn(
-                              ADMIN_ROW_ACTION_BASE,
-                              "border-zinc-600 bg-zinc-800/90 text-zinc-200 hover:border-zinc-500 hover:bg-zinc-800 focus-visible:ring-zinc-500/40",
-                            )}
-                          >
-                            <EyeOff className="h-3.5 w-3.5" aria-hidden />
-                            إخفاء
-                          </button>
-                          <FeaturedToggleButtons
-                            ad={ad}
-                            disabled={actionBusy}
-                            onRequest={(a, next) => setFeaturedConfirm({ ad: a, nextFeatured: next })}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => requestDelete(ad)}
-                            disabled={actionBusy}
-                            className={cn(
-                              ADMIN_ROW_ACTION_BASE,
-                              "border-red-500/45 bg-red-950/40 text-red-200 hover:border-red-400/55 hover:bg-red-950/60 focus-visible:ring-red-500/40",
-                            )}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                            حذف
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <AdminScrollableTable
+              items={visibleAds}
+              minWidth="min-w-[1080px]"
+              head={
+                <tr>
+                  <th className="px-3 py-3 text-right font-medium">{t("p8.admin.ads.col_id")}</th>
+                  <th className="px-3 py-3 text-right font-medium">{t("p8.admin.ads.col_title")}</th>
+                  <th className="px-3 py-3 text-right font-medium">{t("p8.admin.ads.col_city")}</th>
+                  <th className="px-3 py-3 text-right font-medium">{t("p8.admin.ads.col_price")}</th>
+                  <th className="px-3 py-3 text-right font-medium">{t("p8.admin.ads.col_status")}</th>
+                  <th className="px-3 py-3 text-right font-medium">{t("p8.admin.ads.col_sla")}</th>
+                  <th className="px-3 py-3 text-right font-medium">{t("p8.admin.ads.col_featured")}</th>
+                  <th className="px-3 py-3 text-right font-medium">{t("p8.admin.ads.col_views")}</th>
+                  <th className="px-3 py-3 text-center font-medium">{t("p8.admin.ads.col_actions")}</th>
+                </tr>
+              }
+              getRowKey={(ad) => ad.id}
+              renderRow={(ad) => (
+                <AdminAdsTableRow
+                  ad={ad}
+                  actionBusy={actionBusy}
+                  onOpenDetails={openAdDetails}
+                  onApprove={(id) => statusMutation.mutate({ id, nextStatus: "approved" })}
+                  onReject={setPendingReject}
+                  onHide={(id) => statusMutation.mutate({ id, nextStatus: "hidden" })}
+                  onFeaturedRequest={(a, next) => setFeaturedConfirm({ ad: a, nextFeatured: next })}
+                  onDelete={requestDelete}
+                />
+              )}
+            />
           )}
+
+          <AdminPaginationBar
+            pagination={pagination}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+            isLoading={adsQuery.isFetching}
+          />
         </section>
       </div>
 
@@ -652,7 +535,7 @@ export default function AdminAdsPage() {
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <h2 id="admin-ad-detail-title" className="text-xl font-semibold text-foreground">
-                    تفاصيل الإعلان #{selectedAd.id}
+                    {t("p8.admin.ads.detail_title", { id: selectedAd.id })}
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground line-clamp-1">{selectedAd.title}</p>
                 </div>
@@ -661,16 +544,16 @@ export default function AdminAdsPage() {
                   onClick={() => closeAdDetails()}
                   className={cn(buttonVariants({ variant: "outline", size: "sm" }), BTN_MODAL_GHOST, "shrink-0")}
                 >
-                  إغلاق
+                  {t("p8.admin.common.close")}
                 </button>
               </div>
               <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                 <p>
-                  <span className="text-muted-foreground">العنوان:</span>{" "}
+                  <span className="text-muted-foreground">{t("p8.admin.ads.field_title")}</span>{" "}
                   <span className="text-foreground">{selectedAd.title}</span>
                 </p>
                 <p>
-                  <span className="text-muted-foreground">الحالة:</span>{" "}
+                  <span className="text-muted-foreground">{t("p8.admin.ads.field_status")}</span>{" "}
                   <span
                     className={cn(
                       "inline-flex rounded-full border px-2 py-0.5 text-xs font-medium",
@@ -681,47 +564,55 @@ export default function AdminAdsPage() {
                   </span>
                 </p>
                 <p>
-                  <span className="text-muted-foreground">المدينة:</span>{" "}
+                  <span className="text-muted-foreground">{t("p8.admin.ads.field_city")}</span>{" "}
                   <span className="text-foreground">{selectedAd.city}</span>
                 </p>
                 <p>
-                  <span className="text-muted-foreground">السعر:</span>{" "}
+                  <span className="text-muted-foreground">{t("p8.admin.ads.field_price")}</span>{" "}
                   <span className="text-foreground">
-                    {selectedAd.price === null ? "غير محدد" : `${selectedAd.price} €`}
+                    {selectedAd.price === null ? t("p8.admin.common.price_unset") : `${selectedAd.price} €`}
                   </span>
                 </p>
                 <p>
-                  <span className="text-muted-foreground">البائع:</span>{" "}
+                  <span className="text-muted-foreground">{t("p8.admin.ads.field_seller")}</span>{" "}
                   <span className="text-foreground">{selectedAd.sellerName}</span>
                 </p>
                 <p>
-                  <span className="text-muted-foreground">الهاتف:</span>{" "}
+                  <span className="text-muted-foreground">{t("p8.admin.ads.field_phone")}</span>{" "}
                   <span className="text-foreground">{selectedAd.sellerPhone}</span>
                 </p>
                 <p>
-                  <span className="text-muted-foreground">التصنيف:</span>{" "}
-                  <span className="text-foreground">{selectedAd.categoryName || "بدون تصنيف"}</span>
+                  <span className="text-muted-foreground">{t("p8.admin.ads.field_category")}</span>{" "}
+                  <span className="text-foreground">{selectedAd.categoryName || t("p8.admin.common.no_category")}</span>
                 </p>
                 <p>
-                  <span className="text-muted-foreground">المشاهدات:</span>{" "}
-                  <span className="tabular-nums text-primary">{selectedAd.views.toLocaleString("ar-EG")}</span>
+                  <span className="text-muted-foreground">{t("p8.admin.ads.field_views")}</span>{" "}
+                  <span className="tabular-nums text-primary">{selectedAd.views.toLocaleString(localeTag())}</span>
                 </p>
                 <div className="sm:col-span-2">
-                  <span className="text-muted-foreground">تمييز الرئيسية:</span>{" "}
+                  <span className="text-muted-foreground">{t("p8.admin.ads.field_featured_home")}</span>{" "}
                   <span className="mr-1 inline-flex align-middle">
                     <FeaturedStripBadge featured={selectedAd.featured} />
                   </span>
                   {selectedAd.status !== "approved" ? (
-                    <p className="mt-2 text-xs leading-relaxed text-amber-200/90">
-                      لن يظهر الإعلان في الشريط المميز للجميع حتى تصبح حالته «مقبول». يمكن تفعيل التمييز من لوحة الإجراءات بعد
-                      الاعتماد.
-                    </p>
+                    <p className="mt-2 text-xs leading-relaxed text-amber-200/90">{t("p8.admin.ads.featured_tooltip")}</p>
                   ) : null}
                 </div>
               </div>
               <div className="mt-4 rounded-2xl border border-primary/25 bg-zinc-900/50 p-4 ring-1 ring-primary/10">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">الوصف</p>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">{t("p8.admin.ads.field_description")}</p>
                 <p className="text-sm leading-relaxed text-foreground">{selectedAd.description}</p>
+              </div>
+
+              <div className="mt-4">
+                <StaffWorkflowPanel
+                  assignment={selectedAd.assignment}
+                  busy={workflowMutation.isPending || assignMutation.isPending}
+                  canAssign={access.isFounder}
+                  onAssign={() => setAssignOpen(true)}
+                  onClaim={() => workflowMutation.mutate({ type: "claim", id: selectedAd.id })}
+                  onRelease={() => workflowMutation.mutate({ type: "release", id: selectedAd.id })}
+                />
               </div>
 
               <div className="mt-5 flex flex-wrap gap-2 border-t border-primary/15 pt-5">
@@ -740,11 +631,11 @@ export default function AdminAdsPage() {
                   )}
                 >
                   <Check className="h-3.5 w-3.5" aria-hidden />
-                  قبول
+                  {t("p8.admin.ads.approve")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => statusMutation.mutate({ id: selectedAd.id, nextStatus: "rejected" })}
+                  onClick={() => setPendingReject(selectedAd)}
                   disabled={actionBusy}
                   className={cn(
                     ADMIN_ROW_ACTION_BASE,
@@ -752,7 +643,7 @@ export default function AdminAdsPage() {
                   )}
                 >
                   <XCircle className="h-3.5 w-3.5" aria-hidden />
-                  رفض
+                  {t("p8.admin.ads.reject")}
                 </button>
                 <button
                   type="button"
@@ -764,7 +655,7 @@ export default function AdminAdsPage() {
                   )}
                 >
                   <EyeOff className="h-3.5 w-3.5" aria-hidden />
-                  إخفاء
+                  {t("p8.admin.ads.hide")}
                 </button>
                 <button
                   type="button"
@@ -776,7 +667,7 @@ export default function AdminAdsPage() {
                   )}
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                  حذف
+                  {t("p8.admin.ads.delete")}
                 </button>
               </div>
 
@@ -787,7 +678,7 @@ export default function AdminAdsPage() {
                   rel="noopener noreferrer"
                   className={cn(buttonVariants(), BTN_SEARCH, "inline-flex")}
                 >
-                  عرض صفحة الإعلان
+                  {t("p8.admin.ads.view_ad_page")}
                 </a>
               </div>
             </div>
@@ -807,25 +698,23 @@ export default function AdminAdsPage() {
         >
           <AlertDialogHeader className="space-y-2 text-right sm:text-right">
             <AlertDialogTitle className="text-lg font-semibold text-foreground">
-              {featuredConfirm?.nextFeatured ? "تأكيد تمييز الإعلان؟" : "تأكيد إزالة التمييز؟"}
+              {featuredConfirm?.nextFeatured
+                ? t("p8.admin.ads.featured_confirm_add_title")
+                : t("p8.admin.ads.featured_confirm_remove_title")}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
-              {featuredConfirm?.nextFeatured ? (
-                <>
-                  سيُعرض الإعلان «{featuredConfirm.ad.title}» في شريط الإعلانات المميزة على الصفحة الرئيسية لأن حالته معتمدة.
-                </>
-              ) : (
-                <>
-                  سيُزال الإعلان «{featuredConfirm?.ad.title ?? ""}» من شريط الإعلانات المميزة ولن يظهر هناك بعد الآن.
-                </>
-              )}
+              {featuredConfirm?.nextFeatured
+                ? t("p8.admin.ads.featured_confirm_add_body", { title: featuredConfirm.ad.title })
+                : t("p8.admin.ads.featured_confirm_remove_body", {
+                    title: featuredConfirm?.ad.title ?? "",
+                  })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-row-reverse flex-wrap gap-2 sm:flex-row-reverse sm:justify-start sm:gap-2 sm:space-x-0">
             <AlertDialogCancel
               className={cn(buttonVariants({ variant: "outline", size: "default" }), BTN_MODAL_GHOST, "mt-0")}
             >
-              إلغاء
+              {t("p8.admin.common.cancel")}
             </AlertDialogCancel>
             <button
               type="button"
@@ -840,17 +729,17 @@ export default function AdminAdsPage() {
               {featuredMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  جاري التحديث...
+                  {t("p8.admin.ads.updating")}
                 </>
               ) : featuredConfirm?.nextFeatured ? (
                 <>
                   <Sparkles className="h-4 w-4" aria-hidden />
-                  تمييز
+                  {t("p8.admin.common.feature")}
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4" aria-hidden />
-                  إزالة التمييز
+                  {t("p8.admin.common.remove_featured")}
                 </>
               )}
             </button>
@@ -869,26 +758,23 @@ export default function AdminAdsPage() {
           className="max-w-md rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
         >
           <AlertDialogHeader className="space-y-2 text-right sm:text-right">
-            <AlertDialogTitle className="text-lg font-semibold text-foreground">تأكيد حذف الإعلان</AlertDialogTitle>
+            <AlertDialogTitle className="text-lg font-semibold text-foreground">{t("p8.admin.ads.delete_confirm_title")}</AlertDialogTitle>
             <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
-              {pendingDelete ? (
-                <>
-                  هل أنت متأكد من حذف الإعلان «{pendingDelete.title}» (#{pendingDelete.id})؟ لا يمكن التراجع عن هذا
-                  الإجراء وسيُزال الإعلان نهائياً من المنصة.
-                </>
-              ) : null}
+              {pendingDelete
+                ? t("p8.admin.ads.delete_confirm_body", { title: pendingDelete.title, id: pendingDelete.id })
+                : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-row-reverse flex-wrap gap-2 sm:flex-row-reverse sm:justify-start sm:gap-2 sm:space-x-0">
             <AlertDialogCancel
               className={cn(buttonVariants({ variant: "outline", size: "default" }), BTN_MODAL_GHOST, "mt-0")}
             >
-              إلغاء
+              {t("p8.admin.common.cancel")}
             </AlertDialogCancel>
             <button
               type="button"
               disabled={deleteMutation.isPending || !pendingDelete}
-              title={deleteMutation.isPending ? "جاري الحذف…" : undefined}
+              title={deleteMutation.isPending ? t("p8.admin.ads.deleting") : undefined}
               className={cn(
                 buttonVariants({ variant: "destructive", size: "default" }),
                 BTN_FIX,
@@ -899,18 +785,48 @@ export default function AdminAdsPage() {
               {deleteMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  جاري الحذف...
+                  {t("p8.admin.ads.deleting")}
                 </>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4" aria-hidden />
-                  حذف
+                  {t("p8.admin.ads.delete")}
                 </>
               )}
             </button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <StaffAssignDialog
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        title={t("p8.admin.ads.assign_title")}
+        description={t("p8.admin.ads.assign_description")}
+        currentAssignee={selectedAd?.assignment?.staffName}
+        busy={assignMutation.isPending}
+        onConfirm={(staffActorId) => {
+          if (!selectedAd) return;
+          assignMutation.mutate({ id: selectedAd.id, staffId: staffActorId });
+        }}
+      />
+
+      <ModerationReasonDialog
+        open={pendingReject !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingReject(null);
+        }}
+        title={t("p8.admin.ads.reject_reason_title")}
+        description={t("p8.admin.moderation.reason_hint")}
+        confirmLabel={t("p8.admin.ads.reject_confirm_label")}
+        onConfirm={(reason) => {
+          if (!pendingReject) return;
+          statusMutation.mutate(
+            { id: pendingReject.id, nextStatus: "rejected", reason },
+            { onSettled: () => setPendingReject(null) },
+          );
+        }}
+      />
     </AdminShell>
   );
 }

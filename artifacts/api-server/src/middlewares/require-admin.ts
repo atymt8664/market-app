@@ -27,6 +27,15 @@ export function clearAdminIdentityOnSession(req: Request): void {
   req.session.admin2faSetupSecret = undefined;
   req.session.admin2faSetupExpiresAt = undefined;
   req.session.adminTotpFailedAttempts = undefined;
+  req.session.adminMustChangePassword = undefined;
+}
+
+export function isAdminPasswordChangeExemptPath(path: string): boolean {
+  return (
+    path === "/admin/staff/change-initial-password" ||
+    path === "/staff/change-initial-password" ||
+    path.endsWith("/staff/change-initial-password")
+  );
 }
 
 export function hasValidAdminSession(req: Request): boolean {
@@ -73,6 +82,15 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
     if (isAdminSecurityRevisionStale(req.session.adminSecurityRevision, dbRev)) {
       clearAdminIdentityOnSession(req);
       return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (
+      req.session.adminMustChangePassword === true &&
+      !isAdminPasswordChangeExemptPath(req.path)
+    ) {
+      return res.status(403).json({
+        error: "Password change required before continuing",
+        code: "ADMIN_PASSWORD_CHANGE_REQUIRED",
+      });
     }
     return next();
   } catch (err) {

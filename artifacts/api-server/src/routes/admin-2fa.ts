@@ -10,6 +10,8 @@ import {
   requireAdminCsrf,
 } from "../middlewares/require-admin";
 import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
+import { requireAdminPermission } from "../middlewares/require-admin-permission";
+import { okAdminActionFeedback } from "../lib/admin-action-feedback";
 import { generateBackupCodes, consumeBackupCodeIfValid } from "../lib/admin-backup-codes";
 import { generateTotpSecret, verifyTotpCode, totpQrDataUrl } from "../lib/admin-totp";
 import { ADMIN_2FA_SETUP_PENDING_MS, ADMIN_BACKUP_CODE_COUNT } from "../lib/admin-2fa-constants";
@@ -41,6 +43,7 @@ router.post(
   "/admin/2fa/setup/start",
   requireAdminAccessGrant,
   requireAdmin,
+  requireAdminPermission("settings"),
   requireAdminCsrf,
   async (req, res) => {
     const currentPassword =
@@ -66,11 +69,24 @@ router.post(
     req.session.admin2faSetupSecret = secret;
     req.session.admin2faSetupExpiresAt = Date.now() + ADMIN_2FA_SETUP_PENDING_MS;
 
-    return res.json({ ok: true });
+    return res.json({
+      ok: true,
+      ...okAdminActionFeedback({
+        title: "بدء إعداد المصادقة الثنائية",
+        description: "تم التحقق من كلمة المرور — امسح رمز QR في الخطوة التالية.",
+        nextStep: "افتح GET /admin/2fa/setup/qr ثم أدخل رمز التطبيق.",
+        auditActivityId: null,
+      }),
+    });
   },
 );
 
-router.get("/admin/2fa/setup/qr", requireAdminAccessGrant, requireAdmin, async (req, res) => {
+router.get(
+  "/admin/2fa/setup/qr",
+  requireAdminAccessGrant,
+  requireAdmin,
+  requireAdminPermission("settings"),
+  async (req, res) => {
   const secret = readSetupSecret(req);
   if (!secret) {
     return res.status(400).json({ error: "No pending 2FA setup; start setup again" });
@@ -87,6 +103,7 @@ router.post(
   "/admin/2fa/setup/confirm",
   requireAdminAccessGrant,
   requireAdmin,
+  requireAdminPermission("settings"),
   requireAdminCsrf,
   async (req, res) => {
     const currentPassword =
@@ -141,7 +158,7 @@ router.post(
     req.session.admin2faSetupExpiresAt = undefined;
     req.session.adminSecurityRevision = newRev;
 
-    await logAdminActivity({
+    const auditActivityId = await logAdminActivity({
       action: "admin.2fa.enable",
       actorAdminId: getAdminActorId(req),
       targetType: "system",
@@ -149,7 +166,16 @@ router.post(
       details: { backupCodesIssued: String(ADMIN_BACKUP_CODE_COUNT) },
     });
 
-    return res.json({ ok: true, backupCodes: plainCodes });
+    return res.json({
+      ok: true,
+      backupCodes: plainCodes,
+      ...okAdminActionFeedback({
+        title: "تم تفعيل المصادقة الثنائية",
+        description: "حُفظت إعدادات 2FA — احفظ رموز النسخ الاحتياطي.",
+        nextStep: "خزّن رموز النسخ الاحتياطي في مكان آمن.",
+        auditActivityId,
+      }),
+    });
   },
 );
 
@@ -157,6 +183,7 @@ router.post(
   "/admin/2fa/disable",
   requireAdminAccessGrant,
   requireAdmin,
+  requireAdminPermission("settings"),
   requireAdminCsrf,
   async (req, res) => {
     const currentPassword =
@@ -209,7 +236,7 @@ router.post(
     const newRev = await bumpAdminSecurityRevision();
     req.session.adminSecurityRevision = newRev;
 
-    await logAdminActivity({
+    const auditActivityId = await logAdminActivity({
       action: "admin.2fa.disable",
       actorAdminId: getAdminActorId(req),
       targetType: "system",
@@ -217,7 +244,15 @@ router.post(
       details: {},
     });
 
-    return res.json({ ok: true });
+    return res.json({
+      ok: true,
+      ...okAdminActionFeedback({
+        title: "تم تعطيل المصادقة الثنائية",
+        description: "أُزيلت 2FA من حساب المؤسس.",
+        nextStep: "يمكنك إعادة التفعيل من الإعدادات في أي وقت.",
+        auditActivityId,
+      }),
+    });
   },
 );
 

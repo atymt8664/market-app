@@ -34,6 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 const LIME_RING =
@@ -44,36 +45,6 @@ const LIME_GLOW_BADGE =
 type Props = {
   twoFactorEnabled: boolean;
   onStatusChanged: () => void;
-};
-
-const T = {
-  sectionTitle: "المصادقة الثنائية 2FA",
-  sectionHint:
-    "تتطلب تطبيقًا مثل Google Authenticator أو Microsoft Authenticator. لا تُرسل الرموز عبر SMS.",
-  statusOn: "مفعّل",
-  statusOff: "غير مفعّل",
-  enable: "تفعيل 2FA",
-  disable: "تعطيل 2FA",
-  stepPassword: "تأكيد كلمة المرور",
-  stepScan: "مسح رمز QR",
-  stepCode: "أول رمز من التطبيق",
-  passwordLabel: "كلمة مرور الأدمن الحالية",
-  openEnable: "بدء التفعيل",
-  next: "متابعة",
-  back: "رجوع",
-  confirm: "تأكيد التفعيل",
-  scanHint:
-    "امسح الرمز بكاميرا تطبيق المصادقة. لا تشارك اللقطة أو تخزّنها في مكان غير آمن.",
-  codeLabel: "أدخل الرمز المكوّن من 6 أرقام",
-  backupTitle: "أكواد الاسترداد — احفظها الآن",
-  backupWarn:
-    "لن تُعرض هذه الأكواد مرة أخرى. احفظها في مدير كلمات مرور أو مكان آمن. كل كود يعمل لمرة واحدة.",
-  savedConfirm: "تم الحفظ — متابعة",
-  disableTitle: "تعطيل المصادقة الثنائية",
-  disableHint: "أدخل كلمة المرور ورمزًا من التطبيق أو أحد أكواد الاسترداد.",
-  disableSubmit: "تعطيل",
-  genericErr: "تعذر إكمال العملية. تحقق من البيانات وحاول مرة أخرى.",
-  copied: "تم النسخ",
 };
 
 export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Props) {
@@ -118,7 +89,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
   const startQrFlow = async () => {
     setErr("");
     if (!setupPassword.trim()) {
-      setErr("أدخل كلمة المرور.");
+      setErr(t("p8.admin.two_factor.err_password_required"));
       return;
     }
     setBusy(true);
@@ -128,7 +99,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
       setQrDataUrl(url);
       setStep(1);
     } catch {
-      setErr(T.genericErr);
+      setErr(t("p8.admin.two_factor.generic_err"));
     } finally {
       setBusy(false);
     }
@@ -138,7 +109,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
     setErr("");
     const c = totpCode.trim();
     if (!/^\d{6}$/.test(c)) {
-      setErr("الرمز يجب أن يكون 6 أرقام.");
+      setErr(t("p8.admin.two_factor.err_code_digits"));
       return;
     }
     setBusy(true);
@@ -150,9 +121,9 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
       setBackupOpen(true);
       onStatusChanged();
       void queryClient.invalidateQueries({ queryKey: ["admin", "me"] });
-      toast({ title: "تم تفعيل المصادقة الثنائية" });
+      toast({ title: t("p8.admin.two_factor.toast_enabled") });
     } catch {
-      setErr(T.genericErr);
+      setErr(t("p8.admin.two_factor.generic_err"));
     } finally {
       setBusy(false);
     }
@@ -166,7 +137,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
   const submitDisable = async () => {
     setDisableErr("");
     if (!disablePassword.trim() || !disableCode.trim()) {
-      setDisableErr("أكمل جميع الحقول.");
+      setDisableErr(t("p8.admin.two_factor.err_fill_all"));
       return;
     }
     setDisableBusy(true);
@@ -177,9 +148,9 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
       setDisableCode("");
       onStatusChanged();
       void queryClient.invalidateQueries({ queryKey: ["admin", "me"] });
-      toast({ title: "تم تعطيل المصادقة الثنائية" });
+      toast({ title: t("p8.admin.two_factor.toast_disabled") });
     } catch {
-      setDisableErr(T.genericErr);
+      setDisableErr(t("p8.admin.two_factor.generic_err"));
     } finally {
       setDisableBusy(false);
     }
@@ -188,7 +159,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
   const copyBackups = async () => {
     try {
       await navigator.clipboard.writeText(backupCodes.join("\n"));
-      toast({ title: T.copied });
+      toast({ title: t("p8.admin.two_factor.copied") });
     } catch {
       /* ignore */
     }
@@ -210,22 +181,22 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
             </span>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-lg font-semibold text-foreground">{T.sectionTitle}</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t("p8.admin.two_factor.section_title")}</h2>
                 <span className={LIME_GLOW_BADGE}>
                   {twoFactorEnabled ? (
                     <>
                       <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-                      {T.statusOn}
+                      {t("p8.admin.two_factor.status_on")}
                     </>
                   ) : (
                     <>
                       <ShieldOff className="h-3.5 w-3.5 opacity-80" aria-hidden />
-                      {T.statusOff}
+                      {t("p8.admin.two_factor.status_off")}
                     </>
                   )}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">{T.sectionHint}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("p8.admin.two_factor.section_hint")}</p>
             </div>
           </div>
         </div>
@@ -244,7 +215,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
               )}
             >
               <KeyRound className="h-4 w-4" aria-hidden />
-              {T.enable}
+              {t("p8.admin.two_factor.enable")}
             </button>
           ) : (
             <button
@@ -261,7 +232,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
               )}
             >
               <ShieldOff className="h-4 w-4" aria-hidden />
-              {T.disable}
+              {t("p8.admin.two_factor.disable")}
             </button>
           )}
         </div>
@@ -272,10 +243,14 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
           <DialogHeader className="space-y-2 text-right sm:text-right">
             <DialogTitle className="flex items-center gap-2 text-foreground">
               <QrCode className="h-5 w-5 text-lime-400" aria-hidden />
-              {step === 0 ? T.stepPassword : step === 1 ? T.stepScan : T.stepCode}
+              {step === 0
+                ? t("p8.admin.two_factor.step_password")
+                : step === 1
+                  ? t("p8.admin.two_factor.step_scan")
+                  : t("p8.admin.two_factor.step_code")}
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              {step === 1 ? T.scanHint : null}
+              {step === 1 ? t("p8.admin.two_factor.scan_hint") : null}
             </DialogDescription>
           </DialogHeader>
 
@@ -289,7 +264,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
             {step === 0 ? (
               <div className="space-y-2">
                 <Label htmlFor="twofa-setup-pw" className="text-muted-foreground">
-                  {T.passwordLabel}
+                  {t("p8.admin.two_factor.password_label")}
                 </Label>
                 <Input
                   id="twofa-setup-pw"
@@ -312,7 +287,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
                 >
                   <img
                     src={qrDataUrl}
-                    alt="رمز QR لإعداد المصادقة الثنائية"
+                    alt={t("p8.admin.two_factor.qr_alt")}
                     className="h-44 w-44 max-w-full md:h-52 md:w-52"
                     decoding="async"
                   />
@@ -324,7 +299,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
                   disabled={busy}
                   onClick={() => setStep(2)}
                 >
-                  {T.next}
+                  {t("p8.admin.two_factor.next")}
                 </Button>
               </div>
             ) : null}
@@ -332,7 +307,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
             {step === 2 ? (
               <div className="space-y-2">
                 <Label htmlFor="twofa-first-code" className="text-muted-foreground">
-                  {T.codeLabel}
+                  {t("p8.admin.two_factor.code_label")}
                 </Label>
                 <Input
                   id="twofa-first-code"
@@ -361,10 +336,10 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
                 {busy ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                    {T.openEnable}
+                    {t("p8.admin.two_factor.open_enable")}
                   </span>
                 ) : (
-                  T.openEnable
+                  t("p8.admin.two_factor.open_enable")
                 )}
               </Button>
             ) : null}
@@ -379,7 +354,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
                   setQrDataUrl(null);
                 }}
               >
-                {T.back}
+                {t("p8.admin.two_factor.back")}
               </Button>
             ) : null}
             {step === 2 ? (
@@ -393,10 +368,10 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
                   {busy ? (
                     <span className="inline-flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                      {T.confirm}
+                      {t("p8.admin.two_factor.confirm")}
                     </span>
                   ) : (
-                    T.confirm
+                    t("p8.admin.two_factor.confirm")
                   )}
                 </Button>
                 <Button
@@ -406,7 +381,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
                   disabled={busy}
                   onClick={() => setStep(1)}
                 >
-                  {T.back}
+                  {t("p8.admin.two_factor.back")}
                 </Button>
               </>
             ) : null}
@@ -417,8 +392,8 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
       <Dialog open={backupOpen} onOpenChange={(o) => !o && closeBackup()}>
         <DialogContent dir="rtl" className={cn(DIALOG_SURFACE, "max-w-lg border-amber-500/30")}>
           <DialogHeader className="text-right sm:text-right">
-            <DialogTitle className="text-amber-100">{T.backupTitle}</DialogTitle>
-            <DialogDescription className="text-amber-200/85">{T.backupWarn}</DialogDescription>
+            <DialogTitle className="text-amber-100">{t("p8.admin.two_factor.backup_title")}</DialogTitle>
+            <DialogDescription className="text-amber-200/85">{t("p8.admin.two_factor.backup_warn")}</DialogDescription>
           </DialogHeader>
           <div className="max-h-[45vh] overflow-auto rounded-xl border border-amber-500/25 bg-zinc-950/90 p-3 ring-1 ring-amber-500/15">
             <ul className="grid grid-cols-1 gap-2 font-mono text-sm text-amber-50 sm:grid-cols-2" dir="ltr">
@@ -440,14 +415,14 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
               onClick={() => void copyBackups()}
             >
               <Copy className="ms-1 h-4 w-4" aria-hidden />
-              نسخ الكل
+              {t("p8.admin.two_factor.copy_all")}
             </Button>
             <Button
               type="button"
               className={cn(BTN_MODAL_PRIMARY, "bg-amber-600 text-black hover:bg-amber-500")}
               onClick={closeBackup}
             >
-              {T.savedConfirm}
+              {t("p8.admin.two_factor.saved_confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -456,8 +431,8 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
       <Dialog open={disableOpen} onOpenChange={setDisableOpen}>
         <DialogContent dir="rtl" className={cn(DIALOG_SURFACE, "max-w-md")}>
           <DialogHeader className="text-right sm:text-right">
-            <DialogTitle>{T.disableTitle}</DialogTitle>
-            <DialogDescription>{T.disableHint}</DialogDescription>
+            <DialogTitle>{t("p8.admin.two_factor.disable_title")}</DialogTitle>
+            <DialogDescription>{t("p8.admin.two_factor.disable_hint")}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 py-2">
             {disableErr ? (
@@ -466,7 +441,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
               </p>
             ) : null}
             <div className="space-y-2">
-              <Label htmlFor="twofa-dis-pw">{T.passwordLabel}</Label>
+              <Label htmlFor="twofa-dis-pw">{t("p8.admin.two_factor.password_label")}</Label>
               <Input
                 id="twofa-dis-pw"
                 type="password"
@@ -478,7 +453,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="twofa-dis-code">رمز التطبيق أو رمز الاسترداد</Label>
+              <Label htmlFor="twofa-dis-code">{t("p8.admin.two_factor.disable_code_label")}</Label>
               <Input
                 id="twofa-dis-code"
                 autoComplete="one-time-code"
@@ -500,7 +475,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
               {disableBusy ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               ) : (
-                T.disableSubmit
+                t("p8.admin.two_factor.disable_submit")
               )}
             </Button>
             <Button
@@ -510,7 +485,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
               disabled={disableBusy}
               onClick={() => setDisableOpen(false)}
             >
-              إلغاء
+              {t("p8.admin.two_factor.cancel")}
             </Button>
           </DialogFooter>
         </DialogContent>

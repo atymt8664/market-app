@@ -34,13 +34,14 @@ export async function fetchAdsList(params: {
   currentUserId?: number | null;
   where?: SQL;
   limit: number;
+  offset?: number;
   /** When set, restricts to ads favorited by this user (GET /ads/favorites). */
   favoritesForUserId?: number;
   /** Phase 7A.4 — relevance-ranked search (requires USE_FTS_AD_SEARCH=1 + migration). */
   textSearch?: AdTextSearchContext | null;
   searchCursor?: DecodedCursor | null;
 }): Promise<AdListQueryRow[]> {
-  const { currentUserId, where, limit, favoritesForUserId, textSearch, searchCursor } =
+  const { currentUserId, where, limit, offset = 0, favoritesForUserId, textSearch, searchCursor } =
     params;
   if (limit <= 0) return [];
 
@@ -98,14 +99,17 @@ export async function fetchAdsList(params: {
     idQuery = idQuery.where(combinedWhere) as typeof idQuery;
   }
 
-  const pageRows = (await (rankExpr
+  let orderedIdQuery = rankExpr
     ? idQuery.orderBy(
         desc(rankExpr),
         desc(adsTable.createdAt),
         desc(adsTable.id),
       )
-    : idQuery.orderBy(desc(adsTable.createdAt), desc(adsTable.id))
-  ).limit(limit)) as PageIdRow[];
+    : idQuery.orderBy(desc(adsTable.createdAt), desc(adsTable.id));
+  if (offset > 0) {
+    orderedIdQuery = orderedIdQuery.offset(offset) as typeof orderedIdQuery;
+  }
+  const pageRows = (await orderedIdQuery.limit(limit)) as PageIdRow[];
 
   const pageIds = pageRows.map((r) => r.id);
   if (pageIds.length === 0) return [];

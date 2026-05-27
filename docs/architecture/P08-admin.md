@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Code** | P8 |
-| **Status** | Active |
+| **Status** | Active (High protection) — **#2 execution priority** (admin maturity, `p8.admin.*` i18n) |
 | **Protection level** | High for auth integration — coordinate with **P2**
 
 ---

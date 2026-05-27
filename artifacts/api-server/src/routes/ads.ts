@@ -15,7 +15,26 @@ import {
   subcategoriesTable,
 } from "@workspace/db";
 import { and, desc, eq, gte, ilike, lte, sql, or, inArray } from "drizzle-orm";
-import { getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
+import { getAdminActorId } from "../lib/admin-activity-log";
+import { okAdminActionFeedback } from "../lib/admin-action-feedback";
+import { adminDeepLink, writeAdminAudit } from "../lib/admin-audit";
+import {
+  assertStaffCanClaim,
+  buildQueueSql,
+  getDomainQueueCounts,
+  mapSlaFields,
+  runAutoEscalationAll,
+} from "../lib/admin-operations-queue";
+import { isOpsQueueKey } from "../lib/admin-operations-sla";
+import { loadAdminStaffContext } from "../lib/admin-rbac";
+import {
+  buildStaffAssignmentView,
+  assignAd,
+  claimAd,
+  ensureStaffWorkflowSchema,
+  releaseAd,
+} from "../lib/admin-staff-workflow";
+import { parseModerationReason } from "../lib/admin-moderation-reason";
 import crypto from "crypto";
 import {
   ListAdsQueryParams,
@@ -35,13 +54,18 @@ import { logger } from "../lib/logger";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
+import { requireAdminPermission } from "../middlewares/require-admin-permission";
+import { requireAdminFounder } from "../middlewares/require-admin-founder";
 import {
+  buildAdminPageMeta,
   finalizePage,
   handlePaginationError,
   keysetWhereDesc,
   PAGINATION,
+  parseAdminPageQuery,
   parsePaginationQuery,
   sanitizeQueryLimit,
+  sendJsonAdminPage,
   sendJsonArrayPage,
 } from "../lib/pagination";
 import { fetchAdsList } from "../lib/ads-list-query";
@@ -54,6 +78,16 @@ import {
   ensureCounterRow,
   useDenormalizedReactionCounters,
 } from "../lib/ad-reaction-counts";
+import {
+  adSnapshotFromRow,
+  computeAdStatusAfterUserEdit,
+  shouldClearFeaturedOnReReview,
+} from "../lib/trust-safety/ad-moderation";
+import {
+  assertUserCanCreateAd,
+  findDuplicateAd,
+} from "../lib/trust-safety/abuse-checks";
+import { createAdLimiter } from "../lib/trust-safety/trust-limits";
 
 const router: IRouter = Router();
 let ensureAdsDetailsColumnPromise: Promise<void> | null = null;
@@ -152,12 +186,33 @@ router.get("/ads/featured", async (req, res) => {
   });
   res.json(rows.map(serializeAd));
 });
-router.get("/admin/ads", requireAdminAccessGrant, requireAdmin, async (req, res) => {
+router.get("/admin/ads/stats", requireAdminAccessGrant, requireAdmin, requireAdminPermission("ads"), async (req, res) => {
+  const staff = req.adminStaff ?? (await loadAdminStaffContext(req));
+  await runAutoEscalationAll();
+  const counts = await getDomainQueueCounts(staff, "ads");
+  return res.json(counts);
+});
+
+router.get("/admin/ads", requireAdminAccessGrant, requireAdmin, requireAdminPermission("ads"), async (req, res) => {
+  await ensureStaffWorkflowSchema();
+  const staff = req.adminStaff ?? (await loadAdminStaffContext(req));
+  await runAutoEscalationAll();
+
+  const queueRaw = String(req.query.queue || "").trim();
+  const queue = isOpsQueueKey(queueRaw) ? queueRaw : null;
+  const actorId = staff.actorAdminId;
+
   const statusRaw = String(req.query.status ?? "").trim().toLowerCase();
   const q = (req.query.q as string | undefined)?.trim();
   const featuredRaw = req.query.featured as string | undefined;
 
   const clauses = [];
+
+  if (queue && queue !== "all") {
+    clauses.push(
+      sql`${adsTable.id} IN (SELECT a.id FROM ads a WHERE ${buildQueueSql("ads", queue, actorId, "a")})`,
+    );
+  }
 
   /** Treat missing, "all", or unknown as no status filter (never `eq(status, "all")` — no such row). */
   const adminAdStatuses = ["pending", "approved", "rejected", "hidden"] as const;
@@ -184,9 +239,9 @@ router.get("/admin/ads", requireAdminAccessGrant, requireAdmin, async (req, res)
     clauses.push(eq(adsTable.featured, false));
   }
 
-  let pagination;
+  let pageQuery;
   try {
-    pagination = parsePaginationQuery(
+    pageQuery = parseAdminPageQuery(
       req.query as Record<string, unknown>,
       PAGINATION.ADS_ADMIN,
     );
@@ -194,32 +249,52 @@ router.get("/admin/ads", requireAdminAccessGrant, requireAdmin, async (req, res)
     if (handlePaginationError(err, res)) return;
     throw err;
   }
-  if (pagination.cursor) {
-    clauses.push(keysetWhereDesc(adsTable.createdAt, adsTable.id, pagination.cursor));
-  }
+  const { page, pageSize, offset } = pageQuery;
+
+  const whereClause = clauses.length > 0 ? and(...clauses) : undefined;
+
+  const [countRow] = await db
+    .select({ value: sql<number>`count(*)::int` })
+    .from(adsTable)
+    .where(whereClause);
+  const totalItems = Number(countRow?.value ?? 0);
 
   const rows = await fetchAdsList({
     currentUserId: null,
-    where: clauses.length > 0 ? and(...clauses) : undefined,
-    limit: pagination.fetchLimit,
+    where: whereClause,
+    limit: pageSize,
+    offset,
   });
 
-  const { items, meta } = finalizePage(rows, pagination.limit, (ad) => ({
-    at: ad.ads.createdAt,
-    id: ad.ads.id,
-  }));
-
-  return sendJsonArrayPage(
-    res,
-    items.map((ad: any) => ({
+  const serialized = await Promise.all(
+    rows.map(async (ad: any) => ({
       ...serializeAd(ad),
       status: (ad as any).status,
+      assignment: await buildStaffAssignmentView({
+        assignedStaffId: ad.ads.assignedStaffId ?? null,
+        assignedAt: ad.ads.assignedAt ?? null,
+        assignedByAdminId: ad.ads.assignedByAdminId ?? null,
+      }),
+      ...mapSlaFields({
+        domain: "ads",
+        createdAt: ad.ads.createdAt,
+        slaDueAt: ad.ads.slaDueAt ?? null,
+        status: String((ad as any).status ?? ad.ads.status),
+        row: {
+          createdAt: ad.ads.createdAt,
+          updatedAt: ad.ads.updatedAt ?? null,
+          status: String((ad as any).status ?? ad.ads.status),
+        },
+      }),
     })),
-    meta,
   );
+
+  const meta = buildAdminPageMeta(page, pageSize, totalItems);
+
+  return sendJsonAdminPage(res, serialized, meta);
 });
 
-router.delete("/admin/ads/:id", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {
+router.delete("/admin/ads/:id", requireAdminAccessGrant, requireAdmin, requireAdminPermission("ads"), requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -253,15 +328,25 @@ router.delete("/admin/ads/:id", requireAdminAccessGrant, requireAdmin, requireAd
     }
   }
 
-  await logAdminActivity({
-    action: "ad.delete",
-    actorAdminId: getAdminActorId(req),
+  const auditActivityId = await writeAdminAudit({
+    req,
+    actionKey: "ad.delete",
     targetType: "ad",
     targetId: id,
-    details: { fromStatus: existing.status, source: "admin.ads.delete" },
+    previousState: existing.status,
+    newState: "deleted",
+    deepLink: adminDeepLink(`/admin/ads?focusId=${id}`),
+    extra: { source: "admin.ads.delete" },
   });
 
-  return res.json({ ok: true });
+  return res.json(
+    okAdminActionFeedback({
+      title: "تم حذف الإعلان",
+      description: `حُذف الإعلان #${id} نهائياً.`,
+      nextStep: "لن يظهر للمستخدمين بعد الآن.",
+      auditActivityId,
+    }),
+  );
 });
 
 router.get("/ads/recommended", async (req, res) => {
@@ -674,8 +759,23 @@ router.delete("/ads/:adId/favorite", requireAuth, requireUserCsrf, async (req, r
   res.json(await reactionResponse("favorite", adFavoritesTable, adId, userId));
 });
 
-router.post("/ads", requireAuth, requireUserCsrf, async (req, res) => {
+router.post("/ads", requireAuth, requireUserCsrf, createAdLimiter, async (req, res) => {
+  const userId = req.session.userId!;
+  const newAccountLimit = await assertUserCanCreateAd(userId);
+  if (newAccountLimit) {
+    res.status(429).json({ error: newAccountLimit, code: "NEW_ACCOUNT_AD_LIMIT" });
+    return;
+  }
+
   const body = CreateAdBody.parse(req.body);
+  if (await findDuplicateAd(userId, body.title, body.description)) {
+    res.status(409).json({
+      error: "يبدو أنك نشرت إعلاناً مشابهاً مؤخراً",
+      code: "DUPLICATE_AD",
+    });
+    return;
+  }
+
   const rawBody = req.body as Record<string, unknown>;
   const rawDetails = rawBody["details"];
   const details =
@@ -764,32 +864,78 @@ router.patch("/ads/:adId", requireAuth, requireUserCsrf, async (req, res) => {
       ? (b.images as string[])
       : (prevRow.images as string[]);
 
+  const prevSnapshot = adSnapshotFromRow(prevRow);
+  const nextSnapshot = adSnapshotFromRow({
+    ...prevRow,
+    title: typeof b.title === "string" ? b.title : prevRow.title,
+    description:
+      typeof b.description === "string" ? b.description : prevRow.description,
+    price: nextPrice,
+    priceType: typeof b.priceType === "string" ? b.priceType : prevRow.priceType,
+    type: typeof b.type === "string" ? b.type : prevRow.type,
+    city: typeof b.city === "string" ? b.city : prevRow.city,
+    images: nextImages,
+    categoryId: typeof b.categoryId === "number" ? b.categoryId : prevRow.categoryId,
+    subcategoryId: nextSubcategory,
+    sellerName:
+      typeof b.sellerName === "string" ? b.sellerName : prevRow.sellerName,
+    sellerPhone:
+      typeof b.sellerPhone === "string" ? b.sellerPhone : prevRow.sellerPhone,
+    details:
+      b.details && typeof b.details === "object"
+        ? (b.details as Record<string, unknown>)
+        : (prevRow.details as Record<string, unknown>),
+  });
+
+  const nextStatus = isAdminWithValidSession
+    ? prevRow.status
+    : computeAdStatusAfterUserEdit(prevRow.status, prevSnapshot, nextSnapshot);
+  const clearFeatured = shouldClearFeaturedOnReReview(
+    prevRow.status,
+    nextStatus,
+    prevRow.featured === true,
+  );
+
   await db
     .update(adsTable)
     .set({
-      title: typeof b.title === "string" ? b.title : prevRow.title,
-      description:
-        typeof b.description === "string" ? b.description : prevRow.description,
-      price: nextPrice,
-      priceType:
-        typeof b.priceType === "string" ? b.priceType : prevRow.priceType,
-      type: typeof b.type === "string" ? b.type : prevRow.type,
-      city: typeof b.city === "string" ? b.city : prevRow.city,
-      images: nextImages,
-      categoryId:
-        typeof b.categoryId === "number" ? b.categoryId : prevRow.categoryId,
-      subcategoryId: nextSubcategory,
-      sellerName:
-        typeof b.sellerName === "string" ? b.sellerName : prevRow.sellerName,
-      sellerPhone:
-        typeof b.sellerPhone === "string" ? b.sellerPhone : prevRow.sellerPhone,
-      details:
-        b.details && typeof b.details === "object"
-          ? (b.details as Record<string, unknown>)
-          : (prevRow.details as Record<string, unknown>),
-      status: prevRow.status,
+      title: nextSnapshot.title,
+      description: nextSnapshot.description,
+      price: nextSnapshot.price,
+      priceType: nextSnapshot.priceType,
+      type: nextSnapshot.type,
+      city: nextSnapshot.city,
+      images: nextSnapshot.images,
+      categoryId: nextSnapshot.categoryId,
+      subcategoryId: nextSnapshot.subcategoryId,
+      sellerName: nextSnapshot.sellerName,
+      sellerPhone: nextSnapshot.sellerPhone,
+      details: nextSnapshot.details,
+      status: nextStatus,
+      ...(clearFeatured ? { featured: false } : {}),
     })
     .where(eq(adsTable.id, adId));
+
+  if (
+    !isAdminWithValidSession &&
+    nextStatus === "pending" &&
+    prevRow.status === "approved" &&
+    prevRow.userId != null
+  ) {
+    try {
+      await createNotification({
+        userId: prevRow.userId,
+        type: "ad.pending_review",
+        title: "إعلانك قيد المراجعة",
+        body: "تم تعديل إعلانك وسيُراجع من الإدارة قبل إعادة النشر",
+        entityType: "ad",
+        entityId: adId,
+        metadata: { adId, fromStatus: prevRow.status, toStatus: nextStatus },
+      });
+    } catch (err) {
+      logger.warn({ err, adId }, "createNotification failed (ad.pending_review)");
+    }
+  }
 
   const rows = await fetchAdsList({
     currentUserId: req.session.userId ?? null,
@@ -869,7 +1015,7 @@ router.delete("/ads/:adId", requireAuth, requireUserCsrf, async (req, res) => {
   res.status(204).end();
 });
 
-router.patch("/admin/ads/:id/status", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {
+router.patch("/admin/ads/:id/status", requireAdminAccessGrant, requireAdmin, requireAdminPermission("ads"), requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   const status = req.body?.status;
 
@@ -892,9 +1038,16 @@ router.patch("/admin/ads/:id/status", requireAdminAccessGrant, requireAdmin, req
     return res.status(404).json({ error: "Ad not found" });
   }
 
+  let moderationReason = "";
+  if (status === "rejected") {
+    const parsed = parseModerationReason(req.body?.reason, "ad_reject");
+    if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+    moderationReason = parsed.reason;
+  }
+
   await db.update(adsTable).set({ status }).where(eq(adsTable.id, id));
 
-  const action =
+  const actionKey =
     status === "approved"
       ? before.status === "hidden"
         ? "ad.unhide"
@@ -902,12 +1055,15 @@ router.patch("/admin/ads/:id/status", requireAdminAccessGrant, requireAdmin, req
       : status === "rejected"
         ? "ad.reject"
         : "ad.hide";
-  await logAdminActivity({
-    action,
-    actorAdminId: getAdminActorId(req),
+  const auditActivityId = await writeAdminAudit({
+    req,
+    actionKey,
     targetType: "ad",
     targetId: id,
-    details: { fromStatus: before.status, toStatus: status },
+    previousState: before.status,
+    newState: status,
+    reason: moderationReason || null,
+    deepLink: adminDeepLink(`/admin/ads?focusId=${id}`),
   });
 
   if (before.userId != null) {
@@ -928,10 +1084,10 @@ router.patch("/admin/ads/:id/status", requireAdminAccessGrant, requireAdmin, req
           userId: before.userId,
           type: "ad.rejected",
           title: "تم رفض إعلانك",
-          body: `لم يُعتمد الإعلان: ${shortTitle}`,
+          body: moderationReason || `لم يُعتمد الإعلان: ${shortTitle}`,
           entityType: "ad",
           entityId: id,
-          metadata: { adTitle: shortTitle },
+          metadata: { adTitle: shortTitle, reason: moderationReason },
         });
       } else if (status === "hidden") {
         await createNotification({
@@ -949,11 +1105,132 @@ router.patch("/admin/ads/:id/status", requireAdminAccessGrant, requireAdmin, req
     }
   }
 
-  return res.json({ success: true });
+  const statusLabels: Record<string, string> = {
+    approved: "مقبول",
+    rejected: "مرفوض",
+    hidden: "مخفي",
+  };
+  return res.json(
+    okAdminActionFeedback({
+      title:
+        status === "approved"
+          ? "تم قبول الإعلان"
+          : status === "rejected"
+            ? "تم رفض الإعلان"
+            : "تم إخفاء الإعلان",
+      description: `الإعلان #${id} — الحالة: ${statusLabels[status] ?? status}`,
+      nextStep:
+        status === "approved"
+          ? "سيتم إشعار البائع وقد يظهر الإعلان للمستخدمين."
+          : "سيتم إشعار البائع بالقرار.",
+      auditActivityId,
+    }),
+  );
+});
+
+router.post("/admin/ads/:id/claim", requireAdminAccessGrant, requireAdmin, requireAdminPermission("ads"), requireAdminCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "معرّف غير صالح" });
+  }
+  const [row] = await db.select({ id: adsTable.id }).from(adsTable).where(eq(adsTable.id, id)).limit(1);
+  if (!row) return res.status(404).json({ error: "الإعلان غير موجود" });
+
+  try {
+    const staff = req.adminStaff ?? (await loadAdminStaffContext(req));
+    await assertStaffCanClaim(staff, "ads");
+    const assignment = await claimAd({ adId: id, actorAdminId: getAdminActorId(req) });
+    const auditActivityId = await writeAdminAudit({
+      req,
+      actionKey: "ad.claim",
+      targetType: "ad",
+      targetId: id,
+      newState: assignment.staffName,
+      deepLink: adminDeepLink(`/admin/ads?focusId=${id}`),
+    });
+    return res.json({
+      assignment,
+      ...okAdminActionFeedback({
+        title: "تم استلام الإعلان",
+        description: `أصبحت مسؤولاً عن مراجعة الإعلان #${id}`,
+        nextStep: "راجع التفاصيل واتخذ قرار قبول أو رفض.",
+        auditActivityId,
+      }),
+    });
+  } catch (err) {
+    if (err instanceof Error && (err.message === "STAFF_CLAIM_LIMIT_REACHED" || err.message === "STAFF_DOMAIN_CLAIM_LIMIT_REACHED")) {
+      return res.status(409).json({
+        error: "لا يمكن استلام المزيد من الإعلانات حاليًا — تم بلوغ حد الحمل",
+        code: err.message,
+      });
+    }
+    throw err;
+  }
+});
+
+router.post("/admin/ads/:id/assign", requireAdminAccessGrant, requireAdmin, requireAdminPermission("ads"), requireAdminFounder(), requireAdminCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  const staffId = Number(req.body?.staffId);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "معرّف غير صالح" });
+  }
+  if (!Number.isInteger(staffId) || staffId <= 0) {
+    return res.status(400).json({ error: "معرّف الموظف غير صالح" });
+  }
+  const [row] = await db.select({ id: adsTable.id }).from(adsTable).where(eq(adsTable.id, id)).limit(1);
+  if (!row) return res.status(404).json({ error: "الإعلان غير موجود" });
+
+  const assignment = await assignAd({
+    adId: id,
+    staffId,
+    actorAdminId: getAdminActorId(req),
+  });
+  const auditActivityId = await writeAdminAudit({
+    req,
+    actionKey: "ad.assign",
+    targetType: "ad",
+    targetId: id,
+    newState: assignment.staffName,
+    deepLink: adminDeepLink(`/admin/ads?focusId=${id}`),
+    extra: { staffId },
+  });
+  return res.json({
+    assignment,
+    ...okAdminActionFeedback({
+      title: "تم إسناد الإعلان",
+      description: `أُسند الإعلان #${id} إلى ${assignment.staffName ?? "الموظف"}.`,
+      nextStep: "سيظهر في طابور الموظف المُسند.",
+      auditActivityId,
+    }),
+  });
+});
+
+router.post("/admin/ads/:id/release", requireAdminAccessGrant, requireAdmin, requireAdminPermission("ads"), requireAdminCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "معرّف غير صالح" });
+  }
+  const assignment = await releaseAd(id);
+  const auditActivityId = await writeAdminAudit({
+    req,
+    actionKey: "ad.release",
+    targetType: "ad",
+    targetId: id,
+    deepLink: adminDeepLink(`/admin/ads?focusId=${id}`),
+  });
+  return res.json({
+    assignment,
+    ...okAdminActionFeedback({
+      title: "تم إلغاء الإسناد",
+      description: `الإعلان #${id} أصبح غير مُسند`,
+      nextStep: "يمكن لموظف آخر استلامه من الطابور.",
+      auditActivityId,
+    }),
+  });
 });
 
 // يدوي من الأدمن فقط حالياً؛ لاحقاً يمكن ربط التفعيل بعمليات دفع/مدة (featuredUntil) دون تغيير المسار العام.
-router.patch("/admin/ads/:id/featured", requireAdminAccessGrant, requireAdmin, requireAdminCsrf, async (req, res) => {
+router.patch("/admin/ads/:id/featured", requireAdminAccessGrant, requireAdmin, requireAdminPermission("ads"), requireAdminCsrf, async (req, res) => {
   const id = Number(req.params.id);
   const featured = req.body?.featured;
 
@@ -988,6 +1265,12 @@ router.patch("/admin/ads/:id/featured", requireAdminAccessGrant, requireAdmin, r
 
   if (before.featured === featured) {
     return res.json({
+      ...okAdminActionFeedback({
+        title: featured ? "الإعلان مميز مسبقاً" : "الإعلان غير مميز مسبقاً",
+        description: `الإعلان #${id} — لا تغيير مطلوب.`,
+        nextStep: "يمكنك المتابعة دون إجراء.",
+        auditActivityId: null,
+      }),
       ok: true,
       id,
       featured: before.featured,
@@ -997,16 +1280,15 @@ router.patch("/admin/ads/:id/featured", requireAdminAccessGrant, requireAdmin, r
 
   await db.update(adsTable).set({ featured }).where(eq(adsTable.id, id));
 
-  await logAdminActivity({
-    action: featured ? "ad.feature_on" : "ad.feature_off",
-    actorAdminId: getAdminActorId(req),
+  const auditActivityId = await writeAdminAudit({
+    req,
+    actionKey: featured ? "ad.feature_on" : "ad.feature_off",
     targetType: "ad",
     targetId: id,
-    details: {
-      featured,
-      prevFeatured: before.featured,
-      status: before.status,
-    },
+    previousState: before.featured ? "featured" : "not_featured",
+    newState: featured ? "featured" : "not_featured",
+    deepLink: adminDeepLink(`/admin/ads?focusId=${id}`),
+    extra: { status: before.status },
   });
 
   if (before.userId != null) {
@@ -1038,6 +1320,14 @@ router.patch("/admin/ads/:id/featured", requireAdminAccessGrant, requireAdmin, r
     .limit(1);
 
   return res.json({
+    ...okAdminActionFeedback({
+      title: featured ? "تم تمييز الإعلان" : "تمت إزالة التمييز",
+      description: `الإعلان #${id} — ${featured ? "أصبح ضمن المميزة" : "أُزيل التمييز"}.`,
+      nextStep: featured
+        ? "سيظهر في قسم المميزة إن كان معتمداً."
+        : "لن يظهر في قسم المميزة.",
+      auditActivityId,
+    }),
     ok: true,
     id,
     featured: after?.featured ?? featured,

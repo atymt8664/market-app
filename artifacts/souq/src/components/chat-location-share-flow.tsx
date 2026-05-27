@@ -21,11 +21,12 @@ import {
 } from "@/components/chat-location-map-picker";
 import {
   chatLocationAccuracyToZoom,
-  openDeviceLocationRecovery,
-  startChatLocationTracking,
-  type ChatGeolocationError,
-  type ChatWatchController,
-} from "@/lib/chat-geolocation";
+  queryChatLocationPermission,
+  recoverChatLocationAccess,
+  startChatLocationSession,
+  type ChatLocationSession,
+  type ChatLocationSessionError,
+} from "@/lib/chat-location-session";
 import { DEFAULT_SEARCH_MAP_CENTER } from "@/lib/search-location";
 import { scrollPopstateGuard } from "@/components/scroll-restoration-guard";
 import { t } from "@/i18n";
@@ -63,150 +64,119 @@ export function ChatLocationShareFlow({
   onSendLocation,
 }: ChatLocationShareFlowProps) {
   const [step, setStep] = useState<FlowStep>("intro");
-  const [draftLat, setDraftLat] = useState<number>(DEFAULT_SEARCH_MAP_CENTER.lat);
-  const [draftLng, setDraftLng] = useState<number>(DEFAULT_SEARCH_MAP_CENTER.lng);
+  const [lat, setLat] = useState<number>(DEFAULT_SEARCH_MAP_CENTER.lat);
+  const [lng, setLng] = useState<number>(DEFAULT_SEARCH_MAP_CENTER.lng);
   const [accuracyMeters, setAccuracyMeters] = useState<number | null>(null);
-  const [flyTo, setFlyTo] = useState<ChatLocationMapFlyTarget | null>(null);
-  const [userAdjusted, setUserAdjusted] = useState(false);
   const [hasGpsFix, setHasGpsFix] = useState(false);
+  const [userPicked, setUserPicked] = useState(false);
+  const [flyTo, setFlyTo] = useState<ChatLocationMapFlyTarget | null>(null);
 
-  const userAdjustedRef = useRef(false);
-  const flyTokenRef = useRef(0);
   const openRef = useRef(open);
-  const watchRef = useRef<ChatWatchController | null>(null);
-  const accuracyRef = useRef<number | null>(null);
+  const sessionRef = useRef<ChatLocationSession | null>(null);
+  const userPickedRef = useRef(false);
+  const flyTokenRef = useRef(0);
   openRef.current = open;
 
-  const stopWatch = useCallback(() => {
-    watchRef.current?.stop();
-    watchRef.current = null;
+  const stopSession = useCallback(() => {
+    sessionRef.current?.stop();
+    sessionRef.current = null;
   }, []);
 
   const resetMapState = useCallback(() => {
-    stopWatch();
-    userAdjustedRef.current = false;
+    stopSession();
+    userPickedRef.current = false;
     flyTokenRef.current = 0;
-    accuracyRef.current = null;
-    setDraftLat(DEFAULT_SEARCH_MAP_CENTER.lat);
-    setDraftLng(DEFAULT_SEARCH_MAP_CENTER.lng);
+    setLat(DEFAULT_SEARCH_MAP_CENTER.lat);
+    setLng(DEFAULT_SEARCH_MAP_CENTER.lng);
     setAccuracyMeters(null);
-    setFlyTo(null);
-    setUserAdjusted(false);
     setHasGpsFix(false);
-  }, [stopWatch]);
+    setUserPicked(false);
+    setFlyTo(null);
+  }, [stopSession]);
 
   useEffect(() => {
     if (!open) {
-      stopWatch();
+      stopSession();
+      setStep("intro");
       return;
     }
-    setStep("intro");
-    resetMapState();
-  }, [open, resetMapState, stopWatch]);
 
-  const flyMapTo = useCallback((lat: number, lng: number, accuracy: number | null) => {
-    const zoom = chatLocationAccuracyToZoom(accuracy);
+    resetMapState();
+    let cancelled = false;
+
+    void queryChatLocationPermission().then((status) => {
+      if (cancelled || !openRef.current) return;
+      setStep(status === "granted" ? "map" : "intro");
+    });
+
+    return () => {
+      cancelled = true;
+      stopSession();
+    };
+  }, [open, resetMapState, stopSession]);
+
+  const flyMap = useCallback((nextLat: number, nextLng: number, accuracy: number | null) => {
     flyTokenRef.current += 1;
     setFlyTo({
-      lat,
-      lng,
-      zoom,
+      lat: nextLat,
+      lng: nextLng,
+      zoom: chatLocationAccuracyToZoom(accuracy),
       token: flyTokenRef.current,
     });
   }, []);
 
-  const applyPositionUpdate = useCallback(
-    (lat: number, lng: number, accuracy: number | null, isPreview?: boolean) => {
-      if (!openRef.current || userAdjustedRef.current) return;
-
-      setDraftLat(lat);
-      setDraftLng(lng);
-      flyMapTo(lat, lng, accuracy);
-
-      if (isPreview) return;
-
+  const onReading = useCallback(
+    (reading: { lat: number; lng: number; accuracyMeters: number | null }) => {
+      if (!openRef.current || userPickedRef.current) return;
+      setLat(reading.lat);
+      setLng(reading.lng);
+      setAccuracyMeters(reading.accuracyMeters);
       setHasGpsFix(true);
-      accuracyRef.current = accuracy;
-      setAccuracyMeters(accuracy);
+      flyMap(reading.lat, reading.lng, reading.accuracyMeters);
     },
-    [flyMapTo],
+    [flyMap],
   );
 
-  const handleWatchError = useCallback((error: ChatGeolocationError) => {
-    if (!openRef.current || userAdjustedRef.current) return;
-    if (error === "timeout" || error === "unsupported" || error === "insecure") return;
-    openDeviceLocationRecovery(error);
+  const onSessionError = useCallback((error: ChatLocationSessionError) => {
+    if (!openRef.current || userPickedRef.current) return;
+    recoverChatLocationAccess(error);
   }, []);
 
-  const startTracking = useCallback(() => {
-    if (!openRef.current || userAdjustedRef.current) return;
-    stopWatch();
-
-    const controller = startChatLocationTracking(
-      (update) =>
-        applyPositionUpdate(update.lat, update.lng, update.accuracyMeters, update.isPreview),
-      handleWatchError,
-    );
-    watchRef.current = controller;
-  }, [applyPositionUpdate, handleWatchError, stopWatch]);
+  const startSession = useCallback(() => {
+    if (!openRef.current || userPickedRef.current) return;
+    stopSession();
+    sessionRef.current = startChatLocationSession(onReading, onSessionError);
+  }, [onReading, onSessionError, stopSession]);
 
   useEffect(() => {
     if (!open || step !== "map") return;
-    startTracking();
-    return () => stopWatch();
-  }, [open, step, startTracking, stopWatch]);
+    startSession();
+    return stopSession;
+  }, [open, step, startSession, stopSession]);
 
   useEffect(() => {
     if (!open || step !== "map") return;
 
-    const resumeAfterSettings = () => {
+    const resume = () => {
       if (document.visibilityState !== "visible" || !openRef.current) return;
-      if (userAdjustedRef.current) return;
-      startTracking();
+      if (userPickedRef.current) return;
+      startSession();
     };
 
-    document.addEventListener("visibilitychange", resumeAfterSettings);
-    window.addEventListener("focus", resumeAfterSettings);
-    window.addEventListener("pageshow", resumeAfterSettings);
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("focus", resume);
+    window.addEventListener("pageshow", resume);
     return () => {
-      document.removeEventListener("visibilitychange", resumeAfterSettings);
-      window.removeEventListener("focus", resumeAfterSettings);
-      window.removeEventListener("pageshow", resumeAfterSettings);
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("focus", resume);
+      window.removeEventListener("pageshow", resume);
     };
-  }, [open, step, startTracking]);
-
-  const onIntroContinue = useCallback(() => {
-    setStep("map");
-  }, []);
-
-  const onIntroDismiss = useCallback(() => {
-    onOpenChange(false);
-  }, [onOpenChange]);
-
-  const onMapCenterChange = useCallback((lat: number, lng: number) => {
-    setDraftLat(lat);
-    setDraftLng(lng);
-  }, []);
-
-  const onUserAdjust = useCallback(() => {
-    stopWatch();
-    userAdjustedRef.current = true;
-    setUserAdjusted(true);
-    accuracyRef.current = null;
-    setAccuracyMeters(null);
-  }, [stopWatch]);
-
-  const sendPickedLocation = useCallback(() => {
-    stopWatch();
-    onSendLocation(draftLat, draftLng);
-    onOpenChange(false);
-  }, [draftLat, draftLng, onOpenChange, onSendLocation, stopWatch]);
+  }, [open, step, startSession]);
 
   useEffect(() => {
     if (!open || step !== "map") return;
 
     history.pushState({ souqChatLocationShare: FLOW_HISTORY_MARKER }, "", window.location.href);
-
     const onPopState = () => {
       if (!openRef.current) return;
       scrollPopstateGuard.skipNext = true;
@@ -223,9 +193,30 @@ export function ChatLocationShareFlow({
     };
   }, [open, step, onOpenChange]);
 
+  const onIntroContinue = () => setStep("map");
+  const onIntroDismiss = () => onOpenChange(false);
+
+  const onMapCenterChange = useCallback((nextLat: number, nextLng: number) => {
+    setLat(nextLat);
+    setLng(nextLng);
+  }, []);
+
+  const onUserAdjust = useCallback(() => {
+    stopSession();
+    userPickedRef.current = true;
+    setUserPicked(true);
+    setAccuracyMeters(null);
+  }, [stopSession]);
+
+  const sendLocation = useCallback(() => {
+    stopSession();
+    onSendLocation(lat, lng);
+    onOpenChange(false);
+  }, [lat, lng, onOpenChange, onSendLocation, stopSession]);
+
   const sheetTitle = t("message_thread.location_share_sheet_title");
-  const canSendCurrent = userAdjusted || hasGpsFix;
-  const showLocatingOverlay = !userAdjusted && !hasGpsFix;
+  const canSend = hasGpsFix || userPicked;
+  const locating = !hasGpsFix && !userPicked;
 
   return (
     <>
@@ -305,15 +296,15 @@ export function ChatLocationShareFlow({
           >
             <div className="relative min-h-[280px] overflow-hidden rounded-2xl border border-primary/35 ring-1 ring-primary/15">
               <ChatLocationMapPicker
-                lat={draftLat}
-                lng={draftLng}
+                lat={lat}
+                lng={lng}
                 flyTo={flyTo}
                 onCenterChange={onMapCenterChange}
                 onUserAdjust={onUserAdjust}
                 active={open && step === "map"}
                 className="h-[min(46dvh,340px)]"
               />
-              {showLocatingOverlay ? (
+              {locating ? (
                 <div
                   className="pointer-events-none absolute inset-x-0 top-0 z-[550] bg-gradient-to-b from-black/70 to-transparent px-3 py-2.5"
                   role="status"
@@ -334,12 +325,12 @@ export function ChatLocationShareFlow({
               ) : null}
             </div>
 
-            {canSendCurrent ? (
+            {canSend ? (
               <button
                 type="button"
                 disabled={sending}
                 className={sendListRow}
-                onClick={sendPickedLocation}
+                onClick={sendLocation}
                 data-testid="chat-location-send-current-row"
               >
                 <span className={iconWrap} aria-hidden>
@@ -350,11 +341,11 @@ export function ChatLocationShareFlow({
                     className="block text-sm font-semibold text-white"
                     data-testid="chat-location-send-title"
                   >
-                    {userAdjusted
+                    {userPicked
                       ? t("message_thread.location_share_send_selected")
                       : t("message_thread.location_share_send_current")}
                   </span>
-                  {!userAdjusted && accuracyMeters != null ? (
+                  {!userPicked && accuracyMeters != null ? (
                     <span
                       className="mt-0.5 block text-[12px] text-zinc-400"
                       data-testid="chat-location-send-subtitle"

@@ -12,7 +12,7 @@
     "locations:compare-csc": "node scripts/compare-marketplace-locations-to-csc.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:chat-geolocation": "node ./src/lib/chat-geolocation.test.mjs",
+    "test:chat-location": "node ./src/lib/chat-location-session.test.mjs",
     "test:ws-url": "node ./src/lib/build-ws-url.test.mjs",
     "test:ad-image-url": "node ./src/lib/ad-image-url.test.mjs",
     "test:visual:ad-detail-map": "node ./scripts/visual/ad-detail-map-check.mjs"

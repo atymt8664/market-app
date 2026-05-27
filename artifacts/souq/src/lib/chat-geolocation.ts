@@ -11,19 +11,35 @@ export type ChatPositionUpdate = {
   lat: number;
   lng: number;
   accuracyMeters: number | null;
+  /** Cached / fast fix — map preview only, never unlocks “current location” send. */
+  isPreview?: boolean;
 };
 
 export type ChatWatchController = {
   stop: () => void;
 };
 
-/** Stop refining GPS once accuracy is at or below this threshold (metres). */
-export const CHAT_LOCATION_ACCURACY_TARGET_M = 20;
+export {
+  CHAT_LOCATION_ACCURACY_IMPROVING_M,
+  CHAT_LOCATION_ACCURACY_NEAR_M,
+  CHAT_LOCATION_ACCURACY_TARGET_M,
+  canSendChatCurrentLocation,
+  chatLocationAccuracyToZoom,
+} from "@/lib/chat-geolocation-gate";
+
+/** Accept a recent cached fix for instant map centre (not for send). */
+export const CHAT_LOCATION_RECENT_MAX_AGE_MS = 60_000;
+
+const FAST_PREVIEW_OPTIONS: PositionOptions = {
+  enableHighAccuracy: false,
+  maximumAge: CHAT_LOCATION_RECENT_MAX_AGE_MS,
+  timeout: 2_000,
+};
 
 const WATCH_OPTIONS: PositionOptions = {
   enableHighAccuracy: true,
   maximumAge: 0,
-  timeout: 15_000,
+  timeout: 10_000,
 };
 
 function mapPositionError(err: GeolocationPositionError): ChatGeolocationError {
@@ -36,16 +52,30 @@ function roundAccuracyMeters(accuracy: number): number | null {
   return Number.isFinite(accuracy) && accuracy > 0 ? Math.round(accuracy) : null;
 }
 
-/** Map GPS accuracy (metres) to an appropriate street-level zoom. */
-export function chatLocationAccuracyToZoom(accuracyMeters: number | null | undefined): number {
-  if (accuracyMeters == null || !Number.isFinite(accuracyMeters)) return 15;
-  const acc = Math.max(5, accuracyMeters);
-  if (acc <= 20) return 17;
-  if (acc <= 50) return 16;
-  if (acc <= 150) return 15;
-  if (acc <= 500) return 14;
-  if (acc <= 2000) return 13;
-  return 12;
+function positionToUpdate(pos: GeolocationPosition, isPreview: boolean): ChatPositionUpdate {
+  return {
+    lat: pos.coords.latitude,
+    lng: pos.coords.longitude,
+    accuracyMeters: roundAccuracyMeters(pos.coords.accuracy),
+    isPreview,
+  };
+}
+
+/** Rough distance in metres — good enough for live map tracking. */
+function positionDeltaMeters(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 export function isAndroidDevice(): boolean {
@@ -65,8 +95,7 @@ function detectAndroidBrowserPackage(): string | null {
 /** Opens Android system location (GPS) settings — no in-app copy. */
 export function openAndroidLocationSourceSettings(): void {
   if (typeof window === "undefined" || !isAndroidDevice()) return;
-  const intent =
-    "intent:#Intent;action=android.settings.LOCATION_SOURCE_SETTINGS;end";
+  const intent = "intent:#Intent;action=android.settings.LOCATION_SOURCE_SETTINGS;end";
   window.location.assign(intent);
 }
 
@@ -83,22 +112,23 @@ export function openAndroidLocationPermissionSettings(): void {
   );
 }
 
+/** System settings only — no custom in-app UI. */
 export function openDeviceLocationRecovery(error: ChatGeolocationError): void {
   if (error === "denied") {
     openAndroidLocationPermissionSettings();
     return;
   }
-  if (error === "unavailable" || error === "timeout") {
+  if (error === "unavailable") {
     openAndroidLocationSourceSettings();
   }
 }
 
 /**
- * Live GPS refinement for chat location share.
- * Stops automatically when accuracy ≤ CHAT_LOCATION_ACCURACY_TARGET_M.
- * Caller must invoke `stop()` when the sheet closes or the user picks manually.
+ * WhatsApp-like location session:
+ * 1) Instant recent cached fix for map centre (preview).
+ * 2) High-accuracy watch — live tracking, keeps refining in background.
  */
-export function startChatPositionWatch(
+export function startChatLocationTracking(
   onUpdate: (update: ChatPositionUpdate) => void,
   onError: (error: ChatGeolocationError) => void,
 ): ChatWatchController | null {
@@ -114,6 +144,9 @@ export function startChatPositionWatch(
 
   let watchId: number | null = null;
   let stopped = false;
+  let bestGpsAccuracyMeters: number | null = null;
+  let lastLat: number | null = null;
+  let lastLng: number | null = null;
 
   const stop = () => {
     stopped = true;
@@ -123,18 +156,46 @@ export function startChatPositionWatch(
     }
   };
 
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      if (stopped) return;
+      onUpdate(positionToUpdate(pos, true));
+    },
+    () => {
+      /* Preview is best-effort — high-accuracy watch continues. */
+    },
+    FAST_PREVIEW_OPTIONS,
+  );
+
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
       if (stopped) return;
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
       const accuracyMeters = roundAccuracyMeters(pos.coords.accuracy);
-      onUpdate({
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-        accuracyMeters,
-      });
-      if (accuracyMeters != null && accuracyMeters <= CHAT_LOCATION_ACCURACY_TARGET_M) {
-        stop();
+
+      const firstFix = bestGpsAccuracyMeters == null;
+      const accuracyImproved =
+        accuracyMeters != null &&
+        (bestGpsAccuracyMeters == null || accuracyMeters < bestGpsAccuracyMeters);
+      const sameOrBetterAccuracy =
+        accuracyMeters != null &&
+        bestGpsAccuracyMeters != null &&
+        accuracyMeters <= bestGpsAccuracyMeters;
+      const moved =
+        lastLat != null &&
+        lastLng != null &&
+        positionDeltaMeters(lastLat, lastLng, lat, lng) >= 3;
+
+      if (!firstFix && !accuracyImproved && !(sameOrBetterAccuracy && moved)) return;
+
+      if (accuracyImproved || firstFix) {
+        bestGpsAccuracyMeters = accuracyMeters;
       }
+      lastLat = lat;
+      lastLng = lng;
+      onUpdate(positionToUpdate(pos, false));
     },
     (err) => {
       if (stopped) return;
@@ -144,4 +205,12 @@ export function startChatPositionWatch(
   );
 
   return { stop };
+}
+
+/** @deprecated Use {@link startChatLocationTracking}. */
+export function startChatPositionWatch(
+  onUpdate: (update: ChatPositionUpdate) => void,
+  onError: (error: ChatGeolocationError) => void,
+): ChatWatchController | null {
+  return startChatLocationTracking(onUpdate, onError);
 }

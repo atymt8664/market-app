@@ -20,10 +20,10 @@ import {
   type ChatLocationMapFlyTarget,
 } from "@/components/chat-location-map-picker";
 import {
+  canSendChatCurrentLocation,
   chatLocationAccuracyToZoom,
-  CHAT_LOCATION_ACCURACY_TARGET_M,
   openDeviceLocationRecovery,
-  startChatPositionWatch,
+  startChatLocationTracking,
   type ChatGeolocationError,
   type ChatWatchController,
 } from "@/lib/chat-geolocation";
@@ -35,7 +35,6 @@ import { cn } from "@/lib/utils";
 const FLOW_HISTORY_MARKER = 3;
 
 type FlowStep = "intro" | "map";
-type GpsPhase = "locating" | "ready";
 
 type ChatLocationShareFlowProps = {
   open: boolean;
@@ -57,30 +56,6 @@ const sendListRow =
 const iconWrap =
   "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-zinc-900 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.28)]";
 
-function sendRowTitle(userAdjusted: boolean): string {
-  if (userAdjusted) return t("message_thread.location_share_send_selected");
-  return t("message_thread.location_share_send_current");
-}
-
-function sendRowSubtitle(
-  userAdjusted: boolean,
-  accuracyMeters: number | null,
-  phase: GpsPhase,
-  hasFix: boolean,
-): string | null {
-  if (userAdjusted) return null;
-  if (phase === "locating" && !hasFix) {
-    return t("message_thread.location_share_locating_title");
-  }
-  if (accuracyMeters != null) {
-    return t("message_thread.location_share_accuracy_reaches", { meters: accuracyMeters });
-  }
-  if (phase === "locating") {
-    return t("message_thread.location_share_locating_title");
-  }
-  return null;
-}
-
 export function ChatLocationShareFlow({
   open,
   onOpenChange,
@@ -91,17 +66,15 @@ export function ChatLocationShareFlow({
   const [step, setStep] = useState<FlowStep>("intro");
   const [draftLat, setDraftLat] = useState<number>(DEFAULT_SEARCH_MAP_CENTER.lat);
   const [draftLng, setDraftLng] = useState<number>(DEFAULT_SEARCH_MAP_CENTER.lng);
-  const [gpsPhase, setGpsPhase] = useState<GpsPhase>("locating");
   const [accuracyMeters, setAccuracyMeters] = useState<number | null>(null);
   const [flyTo, setFlyTo] = useState<ChatLocationMapFlyTarget | null>(null);
   const [userAdjusted, setUserAdjusted] = useState(false);
-  const [hasGpsFix, setHasGpsFix] = useState(false);
 
   const userAdjustedRef = useRef(false);
   const flyTokenRef = useRef(0);
   const openRef = useRef(open);
   const watchRef = useRef<ChatWatchController | null>(null);
-  const lastAccuracyRef = useRef<number | null>(null);
+  const accuracyRef = useRef<number | null>(null);
   openRef.current = open;
 
   const stopWatch = useCallback(() => {
@@ -113,14 +86,12 @@ export function ChatLocationShareFlow({
     stopWatch();
     userAdjustedRef.current = false;
     flyTokenRef.current = 0;
-    lastAccuracyRef.current = null;
+    accuracyRef.current = null;
     setDraftLat(DEFAULT_SEARCH_MAP_CENTER.lat);
     setDraftLng(DEFAULT_SEARCH_MAP_CENTER.lng);
-    setGpsPhase("locating");
     setAccuracyMeters(null);
     setFlyTo(null);
     setUserAdjusted(false);
-    setHasGpsFix(false);
   }, [stopWatch]);
 
   useEffect(() => {
@@ -132,47 +103,46 @@ export function ChatLocationShareFlow({
     resetMapState();
   }, [open, resetMapState, stopWatch]);
 
-  const applyPositionUpdate = useCallback((lat: number, lng: number, accuracy: number | null) => {
-    if (!openRef.current || userAdjustedRef.current) return;
-
-    setHasGpsFix(true);
-    setDraftLat(lat);
-    setDraftLng(lng);
-    setAccuracyMeters(accuracy);
-
-    const reachedTarget =
-      accuracy != null && accuracy <= CHAT_LOCATION_ACCURACY_TARGET_M;
-    setGpsPhase(reachedTarget ? "ready" : "locating");
-
-    const prevAcc = lastAccuracyRef.current;
-    const improved =
-      prevAcc == null ||
-      (accuracy != null && (prevAcc == null || accuracy < prevAcc));
-    if (improved) {
-      lastAccuracyRef.current = accuracy;
-      const zoom = chatLocationAccuracyToZoom(accuracy);
-      flyTokenRef.current += 1;
-      setFlyTo({
-        lat,
-        lng,
-        zoom,
-        token: flyTokenRef.current,
-      });
-    }
+  const flyMapTo = useCallback((lat: number, lng: number, accuracy: number | null) => {
+    const zoom = chatLocationAccuracyToZoom(accuracy);
+    flyTokenRef.current += 1;
+    setFlyTo({
+      lat,
+      lng,
+      zoom,
+      token: flyTokenRef.current,
+    });
   }, []);
+
+  const applyPositionUpdate = useCallback(
+    (lat: number, lng: number, accuracy: number | null, isPreview?: boolean) => {
+      if (!openRef.current || userAdjustedRef.current) return;
+
+      setDraftLat(lat);
+      setDraftLng(lng);
+      flyMapTo(lat, lng, accuracy);
+
+      if (isPreview) return;
+
+      accuracyRef.current = accuracy;
+      setAccuracyMeters(accuracy);
+    },
+    [flyMapTo],
+  );
 
   const handleWatchError = useCallback((error: ChatGeolocationError) => {
     if (!openRef.current || userAdjustedRef.current) return;
+    if (error === "timeout" || error === "unsupported" || error === "insecure") return;
     openDeviceLocationRecovery(error);
   }, []);
 
-  const startWatch = useCallback(() => {
+  const startTracking = useCallback(() => {
     if (!openRef.current || userAdjustedRef.current) return;
     stopWatch();
-    setGpsPhase("locating");
 
-    const controller = startChatPositionWatch(
-      (update) => applyPositionUpdate(update.lat, update.lng, update.accuracyMeters),
+    const controller = startChatLocationTracking(
+      (update) =>
+        applyPositionUpdate(update.lat, update.lng, update.accuracyMeters, update.isPreview),
       handleWatchError,
     );
     watchRef.current = controller;
@@ -180,9 +150,9 @@ export function ChatLocationShareFlow({
 
   useEffect(() => {
     if (!open || step !== "map") return;
-    startWatch();
+    startTracking();
     return () => stopWatch();
-  }, [open, step, startWatch, stopWatch]);
+  }, [open, step, startTracking, stopWatch]);
 
   useEffect(() => {
     if (!open || step !== "map") return;
@@ -190,7 +160,7 @@ export function ChatLocationShareFlow({
     const resumeAfterSettings = () => {
       if (document.visibilityState !== "visible" || !openRef.current) return;
       if (userAdjustedRef.current) return;
-      startWatch();
+      startTracking();
     };
 
     document.addEventListener("visibilitychange", resumeAfterSettings);
@@ -201,7 +171,7 @@ export function ChatLocationShareFlow({
       window.removeEventListener("focus", resumeAfterSettings);
       window.removeEventListener("pageshow", resumeAfterSettings);
     };
-  }, [open, step, startWatch]);
+  }, [open, step, startTracking]);
 
   const onIntroContinue = useCallback(() => {
     setStep("map");
@@ -220,8 +190,8 @@ export function ChatLocationShareFlow({
     stopWatch();
     userAdjustedRef.current = true;
     setUserAdjusted(true);
+    accuracyRef.current = null;
     setAccuracyMeters(null);
-    setGpsPhase("ready");
   }, [stopWatch]);
 
   const sendPickedLocation = useCallback(() => {
@@ -252,9 +222,8 @@ export function ChatLocationShareFlow({
   }, [open, step, onOpenChange]);
 
   const sheetTitle = t("message_thread.location_share_sheet_title");
-  const locating = gpsPhase === "locating" && !userAdjusted;
-  const sendTitle = sendRowTitle(userAdjusted);
-  const sendSubtitle = sendRowSubtitle(userAdjusted, accuracyMeters, gpsPhase, hasGpsFix);
+  const canSendCurrent = userAdjusted || canSendChatCurrentLocation(accuracyMeters);
+  const showLocatingOverlay = !userAdjusted && !canSendChatCurrentLocation(accuracyMeters);
 
   return (
     <>
@@ -342,17 +311,19 @@ export function ChatLocationShareFlow({
                 active={open && step === "map"}
                 className="h-[min(46dvh,340px)]"
               />
-              {locating ? (
+              {showLocatingOverlay ? (
                 <div
                   className="pointer-events-none absolute inset-x-0 top-0 z-[550] bg-gradient-to-b from-black/70 to-transparent px-3 py-2.5"
                   role="status"
                   aria-live="polite"
+                  data-testid="chat-location-locating-overlay"
                 >
                   <p
                     className={cn(
                       "flex items-center gap-2 text-[12px] font-medium text-primary",
                       dirRtl ? "flex-row-reverse justify-end" : "justify-start",
                     )}
+                    data-testid="chat-location-locating-message"
                   >
                     <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
                     {t("message_thread.location_share_locating_title")}
@@ -361,33 +332,39 @@ export function ChatLocationShareFlow({
               ) : null}
             </div>
 
-            <button
-              type="button"
-              disabled={sending}
-              className={sendListRow}
-              onClick={sendPickedLocation}
-              data-testid="chat-location-send-current-row"
-            >
-              <span className={iconWrap} aria-hidden>
-                <MapPin className="h-5 w-5" strokeWidth={2.25} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span
-                  className="block text-sm font-semibold text-white"
-                  data-testid="chat-location-send-title"
-                >
-                  {sendTitle}
+            {canSendCurrent ? (
+              <button
+                type="button"
+                disabled={sending}
+                className={sendListRow}
+                onClick={sendPickedLocation}
+                data-testid="chat-location-send-current-row"
+              >
+                <span className={iconWrap} aria-hidden>
+                  <MapPin className="h-5 w-5" strokeWidth={2.25} />
                 </span>
-                {sendSubtitle ? (
+                <span className="min-w-0 flex-1">
                   <span
-                    className="mt-0.5 block text-[12px] text-zinc-400"
-                    data-testid="chat-location-send-subtitle"
+                    className="block text-sm font-semibold text-white"
+                    data-testid="chat-location-send-title"
                   >
-                    {sendSubtitle}
+                    {userAdjusted
+                      ? t("message_thread.location_share_send_selected")
+                      : t("message_thread.location_share_send_current")}
                   </span>
-                ) : null}
-              </span>
-            </button>
+                  {!userAdjusted && accuracyMeters != null ? (
+                    <span
+                      className="mt-0.5 block text-[12px] text-zinc-400"
+                      data-testid="chat-location-send-subtitle"
+                    >
+                      {t("message_thread.location_share_accuracy_reaches", {
+                        meters: accuracyMeters,
+                      })}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            ) : null}
           </div>
         </SheetContent>
       </Sheet>

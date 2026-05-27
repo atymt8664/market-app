@@ -20,7 +20,6 @@ import {
   type ChatLocationMapFlyTarget,
 } from "@/components/chat-location-map-picker";
 import {
-  canSendChatCurrentLocation,
   chatLocationAccuracyToZoom,
   openDeviceLocationRecovery,
   startChatLocationTracking,
@@ -69,6 +68,7 @@ export function ChatLocationShareFlow({
   const [accuracyMeters, setAccuracyMeters] = useState<number | null>(null);
   const [flyTo, setFlyTo] = useState<ChatLocationMapFlyTarget | null>(null);
   const [userAdjusted, setUserAdjusted] = useState(false);
+  const [hasGpsFix, setHasGpsFix] = useState(false);
 
   const userAdjustedRef = useRef(false);
   const flyTokenRef = useRef(0);
@@ -92,6 +92,7 @@ export function ChatLocationShareFlow({
     setAccuracyMeters(null);
     setFlyTo(null);
     setUserAdjusted(false);
+    setHasGpsFix(false);
   }, [stopWatch]);
 
   useEffect(() => {
@@ -124,6 +125,7 @@ export function ChatLocationShareFlow({
 
       if (isPreview) return;
 
+      setHasGpsFix(true);
       accuracyRef.current = accuracy;
       setAccuracyMeters(accuracy);
     },
@@ -222,8 +224,8 @@ export function ChatLocationShareFlow({
   }, [open, step, onOpenChange]);
 
   const sheetTitle = t("message_thread.location_share_sheet_title");
-  const canSendCurrent = userAdjusted || canSendChatCurrentLocation(accuracyMeters);
-  const showLocatingOverlay = !userAdjusted && !canSendChatCurrentLocation(accuracyMeters);
+  const canSendCurrent = userAdjusted || hasGpsFix;
+  const showLocatingOverlay = !userAdjusted && !hasGpsFix;
 
   return (
     <>

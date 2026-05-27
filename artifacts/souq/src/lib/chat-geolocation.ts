@@ -11,7 +11,7 @@ export type ChatPositionUpdate = {
   lat: number;
   lng: number;
   accuracyMeters: number | null;
-  /** Cached / fast fix — map preview only, never unlocks “current location” send. */
+  /** Cached / fast fix — map preview only, never unlocks send. */
   isPreview?: boolean;
 };
 
@@ -22,8 +22,7 @@ export type ChatWatchController = {
 export {
   CHAT_LOCATION_ACCURACY_IMPROVING_M,
   CHAT_LOCATION_ACCURACY_NEAR_M,
-  CHAT_LOCATION_ACCURACY_TARGET_M,
-  canSendChatCurrentLocation,
+  CHAT_LOCATION_ACCURACY_PRECISE_M,
   chatLocationAccuracyToZoom,
 } from "@/lib/chat-geolocation-gate";
 
@@ -33,13 +32,19 @@ export const CHAT_LOCATION_RECENT_MAX_AGE_MS = 60_000;
 const FAST_PREVIEW_OPTIONS: PositionOptions = {
   enableHighAccuracy: false,
   maximumAge: CHAT_LOCATION_RECENT_MAX_AGE_MS,
-  timeout: 2_000,
+  timeout: 3_000,
+};
+
+const HIGH_ACCURACY_OPTIONS: PositionOptions = {
+  enableHighAccuracy: true,
+  maximumAge: 0,
+  timeout: 20_000,
 };
 
 const WATCH_OPTIONS: PositionOptions = {
   enableHighAccuracy: true,
   maximumAge: 0,
-  timeout: 10_000,
+  timeout: 30_000,
 };
 
 function mapPositionError(err: GeolocationPositionError): ChatGeolocationError {
@@ -76,6 +81,29 @@ function positionDeltaMeters(
       Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLng / 2) ** 2;
   return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function shouldAcceptGpsReading(
+  lat: number,
+  lng: number,
+  accuracyMeters: number | null,
+  bestAccuracyMeters: number | null,
+  lastLat: number | null,
+  lastLng: number | null,
+): boolean {
+  if (bestAccuracyMeters == null) return true;
+  if (accuracyMeters != null && accuracyMeters < bestAccuracyMeters) return true;
+  if (
+    accuracyMeters != null &&
+    bestAccuracyMeters != null &&
+    accuracyMeters <= bestAccuracyMeters &&
+    lastLat != null &&
+    lastLng != null &&
+    positionDeltaMeters(lastLat, lastLng, lat, lng) >= 3
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function isAndroidDevice(): boolean {
@@ -123,10 +151,54 @@ export function openDeviceLocationRecovery(error: ChatGeolocationError): void {
   }
 }
 
+function emitBestReading(
+  pos: GeolocationPosition,
+  isPreview: boolean,
+  onUpdate: (update: ChatPositionUpdate) => void,
+  state: {
+    bestAccuracyMeters: number | null;
+    lastLat: number | null;
+    lastLng: number | null;
+  },
+): void {
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+  const accuracyMeters = roundAccuracyMeters(pos.coords.accuracy);
+
+  if (
+    !isPreview &&
+    !shouldAcceptGpsReading(
+      lat,
+      lng,
+      accuracyMeters,
+      state.bestAccuracyMeters,
+      state.lastLat,
+      state.lastLng,
+    )
+  ) {
+    return;
+  }
+
+  if (
+    !isPreview &&
+    accuracyMeters != null &&
+    (state.bestAccuracyMeters == null || accuracyMeters < state.bestAccuracyMeters)
+  ) {
+    state.bestAccuracyMeters = accuracyMeters;
+  }
+
+  if (!isPreview) {
+    state.lastLat = lat;
+    state.lastLng = lng;
+  }
+
+  onUpdate(positionToUpdate(pos, isPreview));
+}
+
 /**
  * WhatsApp-like location session:
- * 1) Instant recent cached fix for map centre (preview).
- * 2) High-accuracy watch — live tracking, keeps refining in background.
+ * 1) Optional recent cached fix for instant map centre (preview only).
+ * 2) High-accuracy getCurrentPosition + watchPosition — best reading, keeps refining.
  */
 export function startChatLocationTracking(
   onUpdate: (update: ChatPositionUpdate) => void,
@@ -144,9 +216,11 @@ export function startChatLocationTracking(
 
   let watchId: number | null = null;
   let stopped = false;
-  let bestGpsAccuracyMeters: number | null = null;
-  let lastLat: number | null = null;
-  let lastLng: number | null = null;
+  const state = {
+    bestAccuracyMeters: null as number | null,
+    lastLat: null as number | null,
+    lastLng: null as number | null,
+  };
 
   const stop = () => {
     stopped = true;
@@ -159,43 +233,29 @@ export function startChatLocationTracking(
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       if (stopped) return;
-      onUpdate(positionToUpdate(pos, true));
+      emitBestReading(pos, true, onUpdate, state);
     },
     () => {
-      /* Preview is best-effort — high-accuracy watch continues. */
+      /* Preview is best-effort. */
     },
     FAST_PREVIEW_OPTIONS,
+  );
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      if (stopped) return;
+      emitBestReading(pos, false, onUpdate, state);
+    },
+    () => {
+      /* watchPosition continues. */
+    },
+    HIGH_ACCURACY_OPTIONS,
   );
 
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
       if (stopped) return;
-
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const accuracyMeters = roundAccuracyMeters(pos.coords.accuracy);
-
-      const firstFix = bestGpsAccuracyMeters == null;
-      const accuracyImproved =
-        accuracyMeters != null &&
-        (bestGpsAccuracyMeters == null || accuracyMeters < bestGpsAccuracyMeters);
-      const sameOrBetterAccuracy =
-        accuracyMeters != null &&
-        bestGpsAccuracyMeters != null &&
-        accuracyMeters <= bestGpsAccuracyMeters;
-      const moved =
-        lastLat != null &&
-        lastLng != null &&
-        positionDeltaMeters(lastLat, lastLng, lat, lng) >= 3;
-
-      if (!firstFix && !accuracyImproved && !(sameOrBetterAccuracy && moved)) return;
-
-      if (accuracyImproved || firstFix) {
-        bestGpsAccuracyMeters = accuracyMeters;
-      }
-      lastLat = lat;
-      lastLng = lng;
-      onUpdate(positionToUpdate(pos, false));
+      emitBestReading(pos, false, onUpdate, state);
     },
     (err) => {
       if (stopped) return;

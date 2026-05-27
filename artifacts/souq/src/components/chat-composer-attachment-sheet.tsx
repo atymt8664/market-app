@@ -1,4 +1,4 @@
-import { Camera, FileText, ImageIcon, MapPin, Paperclip } from "lucide-react";
+import { Camera, FileText, ImageIcon, Paperclip } from "lucide-react";
 import {
   Sheet,
   SheetClose,
@@ -9,7 +9,7 @@ import {
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
-export type ChatAttachmentKind = "camera" | "gallery" | "location" | "file";
+export type ChatAttachmentKind = "camera" | "gallery" | "file";
 
 type ChatComposerAttachmentSheetProps = {
   open: boolean;
@@ -32,7 +32,6 @@ const OPTIONS: Array<{
 }> = [
   { kind: "camera", icon: Camera, labelKey: "message_thread.attach_camera" },
   { kind: "gallery", icon: ImageIcon, labelKey: "message_thread.attach_gallery" },
-  { kind: "location", icon: MapPin, labelKey: "message_thread.attach_location" },
   { kind: "file", icon: FileText, labelKey: "message_thread.attach_file" },
 ];
 
@@ -79,7 +78,7 @@ export function ChatComposerAttachmentSheet({
               key={kind}
               type="button"
               disabled={disabled}
-              data-testid={kind === "location" ? "chat-attach-location" : undefined}
+              data-testid={kind === "camera" ? "chat-attach-camera" : kind === "gallery" ? "chat-attach-gallery" : kind === "file" ? "chat-attach-file" : undefined}
               onClick={() => {
                 onSelect(kind);
                 onOpenChange(false);

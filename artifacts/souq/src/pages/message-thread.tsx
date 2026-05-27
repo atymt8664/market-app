@@ -24,7 +24,6 @@ import {
   invalidateUserPresenceBatchQueries,
   useUserPresenceBatch,
   type Message as ChatMessage,
-  type SendMessageBody,
   ApiError,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -56,7 +55,6 @@ import {
 } from "@/components/chat-composer-attachment-sheet";
 import { CHAT_COMPOSER_FIELD_SHELL, CHAT_COMPOSER_TEXTAREA } from "@/lib/chat-composer-styles";
 import { ChatLocationMessageCard } from "@/components/chat-location-message-card";
-import { ChatLocationShareFlow } from "@/components/chat-location-share-flow";
 import {
   CHAT_LOCATION_MESSAGE_TYPE,
   parseChatLocationBody,
@@ -507,8 +505,6 @@ export default function MessageThread() {
   const [body, setBody] = useState("");
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
-  const [locationSendBusy, setLocationSendBusy] = useState(false);
-  const [locationShareOpen, setLocationShareOpen] = useState(false);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileAttachInputRef = useRef<HTMLInputElement>(null);
@@ -1307,46 +1303,7 @@ export default function MessageThread() {
     applyPickedImageFile(f);
   };
 
-  const busy = send.isPending || uploadBusy || locationSendBusy;
-
-  const sendLocationMessage = (latitude: number, longitude: number) => {
-    if (!conversationOk || !user || composerLocked) return;
-    setLocationSendBusy(true);
-    send.mutate(
-      {
-        convId: conversationId,
-        data: { latitude, longitude } satisfies SendMessageBody,
-      },
-      {
-        onSuccess: (newMsg) => {
-          scrollToBottom();
-          queryClient.setQueryData<ChatMessage[]>(
-            getListMessagesQueryKey(convIdForQuery),
-            (old) => mergeMessagesIntoList(old, newMsg),
-          );
-        },
-        onError: (err: unknown) => {
-          if (err instanceof ApiError && err.status === 403) {
-            void queryClient.invalidateQueries({ queryKey: peerBlockQueryKey });
-            void invalidateUserPresenceBatchQueries(queryClient, peerPresenceTargets);
-            toast({
-              title: t("message_thread.chat_send_blocked_toast_title"),
-              description:
-                err.message || t("message_thread.chat_send_blocked_toast_body"),
-              variant: "destructive",
-            });
-            return;
-          }
-          toast({
-            title: t("message_thread.location_send_failed"),
-            description: t("message_thread.location_send_failed_desc"),
-            variant: "destructive",
-          });
-        },
-        onSettled: () => setLocationSendBusy(false),
-      },
-    );
-  };
+  const busy = send.isPending || uploadBusy;
 
   const onAttachmentSelect = (kind: ChatAttachmentKind) => {
     if (composerLocked || busy) return;
@@ -1356,10 +1313,6 @@ export default function MessageThread() {
     }
     if (kind === "gallery") {
       galleryInputRef.current?.click();
-      return;
-    }
-    if (kind === "location") {
-      setLocationShareOpen(true);
       return;
     }
     if (kind === "file") {
@@ -1810,14 +1763,6 @@ export default function MessageThread() {
         dirRtl={dirRtl}
         disabled={busy || composerLocked}
         onSelect={onAttachmentSelect}
-      />
-
-      <ChatLocationShareFlow
-        open={locationShareOpen}
-        onOpenChange={setLocationShareOpen}
-        dirRtl={dirRtl}
-        sending={locationSendBusy}
-        onSendLocation={sendLocationMessage}
       />
 
       <AlertDialog

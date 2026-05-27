@@ -79,6 +79,7 @@ export function ChatComposerAttachmentSheet({
               key={kind}
               type="button"
               disabled={disabled}
+              data-testid={kind === "location" ? "chat-attach-location" : undefined}
               onClick={() => {
                 onSelect(kind);
                 onOpenChange(false);
@@ -119,6 +120,7 @@ export function ChatComposerAttachButton({
         dirRtl ? "order-first" : "order-first",
       )}
       aria-label={t("message_thread.attach_open")}
+      data-testid="chat-composer-attach-btn"
     >
       <Paperclip className="h-5 w-5" strokeWidth={2.25} aria-hidden />
     </button>

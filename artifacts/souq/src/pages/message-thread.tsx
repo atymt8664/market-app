@@ -56,6 +56,7 @@ import {
 } from "@/components/chat-composer-attachment-sheet";
 import { CHAT_COMPOSER_FIELD_SHELL, CHAT_COMPOSER_TEXTAREA } from "@/lib/chat-composer-styles";
 import { ChatLocationMessageCard } from "@/components/chat-location-message-card";
+import { ChatLocationShareFlow } from "@/components/chat-location-share-flow";
 import {
   CHAT_LOCATION_MESSAGE_TYPE,
   parseChatLocationBody,
@@ -507,6 +508,7 @@ export default function MessageThread() {
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [locationSendBusy, setLocationSendBusy] = useState(false);
+  const [locationShareOpen, setLocationShareOpen] = useState(false);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileAttachInputRef = useRef<HTMLInputElement>(null);
@@ -1337,7 +1339,7 @@ export default function MessageThread() {
           }
           toast({
             title: t("message_thread.location_send_failed"),
-            description: err instanceof Error && err.message ? err.message : undefined,
+            description: t("message_thread.location_send_failed_desc"),
             variant: "destructive",
           });
         },
@@ -1357,50 +1359,7 @@ export default function MessageThread() {
       return;
     }
     if (kind === "location") {
-      if (typeof window !== "undefined" && !window.isSecureContext) {
-        toast({
-          title: t("message_thread.attach_location_insecure"),
-          description: t("message_thread.attach_location_insecure_hint"),
-          variant: "destructive",
-        });
-        return;
-      }
-      if (typeof navigator === "undefined" || !navigator.geolocation) {
-        toast({
-          title: t("message_thread.attach_location_unsupported"),
-          variant: "destructive",
-        });
-        return;
-      }
-      setLocationSendBusy(true);
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          sendLocationMessage(pos.coords.latitude, pos.coords.longitude);
-        },
-        (err) => {
-          setLocationSendBusy(false);
-          const code = err?.code;
-          if (code === 1) {
-            toast({
-              title: t("message_thread.attach_location_denied"),
-              variant: "destructive",
-            });
-            return;
-          }
-          if (code === 3) {
-            toast({
-              title: t("message_thread.attach_location_timeout"),
-              variant: "destructive",
-            });
-            return;
-          }
-          toast({
-            title: t("message_thread.attach_location_unavailable"),
-            variant: "destructive",
-          });
-        },
-        { enableHighAccuracy: true, timeout: 12_000, maximumAge: 0 },
-      );
+      setLocationShareOpen(true);
       return;
     }
     if (kind === "file") {
@@ -1851,6 +1810,14 @@ export default function MessageThread() {
         dirRtl={dirRtl}
         disabled={busy || composerLocked}
         onSelect={onAttachmentSelect}
+      />
+
+      <ChatLocationShareFlow
+        open={locationShareOpen}
+        onOpenChange={setLocationShareOpen}
+        dirRtl={dirRtl}
+        sending={locationSendBusy}
+        onSendLocation={sendLocationMessage}
       />
 
       <AlertDialog

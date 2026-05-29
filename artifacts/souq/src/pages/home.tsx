@@ -11,14 +11,17 @@ import {
   type Category,
 } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
-import { ChevronLeft } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
+import {
+  adCardNoImageIconClassName,
+} from "@/components/ad-card-no-image-placeholder";
 import { CategoryIcon } from "@/components/category-icon";
 import { MarketplaceSearchBar } from "@/components/marketplace-search-bar";
 import { NotificationBell } from "@/components/notification-bell";
 import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
 import { HomeFeaturedDivider } from "@/components/home-featured-divider";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
 import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useSearchLocation } from "@/hooks/use-search-location";
@@ -29,12 +32,22 @@ import { t } from "@/i18n";
 import type { Locale } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
+import { splitHomeCategoryLabel } from "@/lib/home-category-display";
+import {
+  HOME_PAGE_INSET,
+} from "@/lib/home-page-layout";
 import { cn } from "@/lib/utils";
 
-/** توحيد كروت الإعلانات مع ad-detail / user-profile (طبقة أب فقط) */
-/** على الموبايل ظل أخف قليلًا لتقليل تكلفة التركيب أثناء التمرير؛ md+ يبقى كما كان. */
-const homeAdCardTone =
-  "[&>div]:h-full [&_article]:flex [&_article]:h-full [&_article]:flex-col [&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-card/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] max-md:[&_article]:shadow-[0_0_12px_-14px_hsl(var(--primary)/0.09)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:dark:bg-zinc-950/70 [&_article]:transition-[transform,border-color,box-shadow] [&_article]:duration-200 [&_article]:ease-out [&_article]:hover:border-primary/45 [&_article]:hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.2)] [&_article]:active:scale-[0.985] [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55 [&_article_button]:transition-transform [&_article_button]:active:scale-95";
+/** Home feed ad cards — layout only; shell styling lives in AdCard HOME_FEED_CARD_SHELL. */
+const homeAdCardTone = cn(
+  "[&>div]:h-full",
+  "[&_article]:flex [&_article]:h-full [&_article]:flex-col",
+  "[&_article]:transition-none",
+  "[&_article]:active:scale-100",
+  "[&_article_img]:transition-none [&_article_img]:group-hover:scale-100",
+  "[&_article>div:first-child]:rounded-t-xl",
+  "[&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55 [&_article_button]:shadow-none [&_article_button]:transition-none [&_article_button]:active:scale-95",
+);
 
 /** React Query: تقليل إعادة الجلب عند التنقل للرئيسية دون المساس بـ invalidate بعد الطفرات/الأدمن. */
 const HOME_STALE_CATEGORIES_MS = 10 * 60 * 1000;
@@ -47,10 +60,11 @@ const GRID_SKELETON_KEYS = [
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
 ] as const;
 
-/** No mx-auto — centering made the first featured card look mid-screen in RTL scroll. */
+/** Featured strip — gutter applied on wrapper; cards align with section titles. */
 const featuredStripClassName = cn(
-  "flex w-max max-w-none items-stretch justify-start gap-3 px-4 pb-0.5 md:gap-3.5 md:pb-1 md:px-6 lg:px-8",
+  "flex w-max max-w-none items-start justify-start gap-2 pb-0.5 md:gap-2.5 md:pb-1",
   homeAdCardTone,
+  "[&>div]:h-auto [&_article]:h-auto",
 );
 
 const recommendedGridClassName = cn(
@@ -58,53 +72,276 @@ const recommendedGridClassName = cn(
   homeAdCardTone,
 );
 
-/** Section titles only — inline mini-chip; same type size/margins as before. */
+/** Section titles — border/chip only; no lime shadow glow. */
 const homeSectionHeading = cn(
   "inline-flex max-w-full items-center rounded-2xl border border-primary/30 bg-zinc-950/55 px-2 py-px",
-  "text-base font-semibold leading-tight tracking-tight text-foreground md:text-lg",
-  "shadow-[0_0_14px_-14px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10",
+  "text-[15px] font-semibold leading-tight tracking-tight text-foreground md:text-base",
+  "ring-1 ring-primary/10",
 );
 
-/** Category name under icon — single-line pill; fixed row height, width fits up to max. */
-const homeCategoryLabelPill = cn(
-  "inline-flex h-4 max-h-4 w-fit min-w-0 max-w-[6.75rem] items-center justify-center rounded-full",
-  "border border-primary/20 bg-zinc-950/50 px-1.5",
-  "text-xs font-medium leading-none text-foreground/90 truncate whitespace-nowrap",
-  "shadow-[0_0_10px_-12px_hsl(var(--primary)/0.1)] ring-1 ring-primary/5",
+/** Unified home category tile — fixed width for strip alignment. */
+const HOME_CATEGORY_TILE_W = "w-16";
+
+/** Category icon shell — same border/bg/ring as no-image inner box; no outer glow shadow. */
+const homeCategoryIconShell = cn(
+  "flex items-center justify-center border border-primary/32 bg-primary/[0.07] ring-1 ring-primary/18",
+  "relative h-10 w-10 shrink-0 rounded-xl transition-none",
 );
+
+const homeCategoryTileShell = cn(
+  HOME_CATEGORY_TILE_W,
+  "shrink-0 touch-manipulation transition-none",
+);
+
+const homeCategoryIconGlyphClassName = cn(
+  "h-[1.125rem] w-[1.125rem]",
+  adCardNoImageIconClassName,
+);
+
+function HomeCategoryIconBox({ iconName }: { iconName?: string }) {
+  return (
+    <div className={homeCategoryIconShell}>
+      {iconName ? (
+        <CategoryIcon name={iconName} className={homeCategoryIconGlyphClassName} />
+      ) : (
+        <span className={cn(homeCategoryIconGlyphClassName, "opacity-0")} aria-hidden>
+          •
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Two-line label box — fixed height; no truncate / no ellipsis. */
+const homeCategoryLabelBox = cn(
+  "flex h-7 w-full shrink-0 flex-col items-center justify-center gap-px text-center",
+  "text-[10px] font-medium leading-[1.08] text-foreground/90",
+  "[overflow-wrap:anywhere] break-words",
+);
+
+/** Fixed edge overlay — subtle glass fade; arrow stays put while categories scroll beneath. */
+function homeCategoriesArrowLink() {
+  return cn(
+    "absolute end-0 top-0 z-20 flex h-full min-h-[4.25rem] w-10 items-center justify-center",
+    "bg-transparent text-foreground/85 touch-manipulation",
+    "transition-[color,transform] duration-150",
+    "hover:text-foreground active:scale-95",
+    "[&_svg]:relative [&_svg]:z-[1]",
+  );
+}
+
+function homeCategoriesArrowFade(isRtl: boolean) {
+  return cn(
+    "pointer-events-none absolute inset-y-0 inset-x-0",
+    isRtl
+      ? "bg-gradient-to-r from-black/[0.10] via-black/[0.04] to-transparent"
+      : "bg-gradient-to-l from-black/[0.10] via-black/[0.04] to-transparent",
+    "backdrop-blur-[3px] backdrop-saturate-150",
+    "[-webkit-backdrop-filter:blur(3px)_saturate(1.5)]",
+  );
+}
+
+function homeCategoriesStripInner() {
+  return cn(
+    "flex w-max max-w-none items-start gap-1 pb-0.5 md:gap-1.5",
+  );
+}
+
+function HomeCategoryLabel({ label }: { label: string }) {
+  const lines = splitHomeCategoryLabel(label);
+  if (lines.length === 1) {
+    return (
+      <span className={homeCategoryLabelBox}>
+        <span className="block w-full">{lines[0]}</span>
+      </span>
+    );
+  }
+  return (
+    <span className={homeCategoryLabelBox}>
+      <span className="block w-full">{lines[0]}</span>
+      <span className="block w-full">{lines[1]}</span>
+    </span>
+  );
+}
+
+type HomeCategoriesStripProps = {
+  isRtl: boolean;
+  locale: Locale;
+  isLoadingCategories: boolean;
+  categories: Category[] | undefined;
+};
+
+const HomeCategoriesStrip = memo(function HomeCategoriesStrip({
+  isRtl,
+  locale,
+  isLoadingCategories,
+  categories,
+}: HomeCategoriesStripProps) {
+  /** Stable index keys + one Link shell — avoids skeleton→loaded DOM teardown (root flicker cause). */
+  const categoryTiles = useMemo(() => {
+    if (Array.isArray(categories)) {
+      return categories.map((cat, index) => ({
+        slotKey: `home-cat-${index}`,
+        href: `/category/${cat.id}`,
+        icon: cat.icon,
+        label: getCreateAdTaxonomyLabel(locale, cat.name),
+        isPlaceholder: false,
+      }));
+    }
+    if (categories === undefined && isLoadingCategories) {
+      return CATEGORY_SKELETON_KEYS.map((i) => ({
+        slotKey: `home-cat-${i}`,
+        href: null,
+        icon: undefined,
+        label: null,
+        isPlaceholder: true,
+      }));
+    }
+    return [];
+  }, [categories, isLoadingCategories, locale]);
+
+  return (
+    <div className="min-w-0 pt-2.5 transition-none" dir={isRtl ? "rtl" : "ltr"}>
+      <div className="relative min-w-0 w-full transition-none">
+        <HorizontalScrollStrip className="min-w-0 w-full">
+          <div className={cn(homeCategoriesStripInner(), "pe-10 transition-none")}>
+            {categoryTiles.map((tile) => (
+              <Link
+                key={tile.slotKey}
+                href={tile.href ?? "#"}
+                aria-hidden={tile.isPlaceholder ? true : undefined}
+                aria-busy={tile.isPlaceholder ? true : undefined}
+                tabIndex={tile.isPlaceholder ? -1 : undefined}
+                onClick={
+                  tile.isPlaceholder
+                    ? (event) => {
+                        event.preventDefault();
+                      }
+                    : undefined
+                }
+                className={cn(
+                  homeCategoryTileShell,
+                  tile.isPlaceholder && "pointer-events-none",
+                )}
+              >
+                <div className="flex w-full flex-col items-center gap-1">
+                  <HomeCategoryIconBox iconName={tile.icon} />
+                  {tile.label ? (
+                    <HomeCategoryLabel label={tile.label} />
+                  ) : (
+                    <span className={homeCategoryLabelBox}>
+                      <span className="block w-full opacity-0" aria-hidden>
+                        &nbsp;
+                      </span>
+                    </span>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </HorizontalScrollStrip>
+        <Link
+          href="/categories"
+          aria-label={t("home.view_all")}
+          className={homeCategoriesArrowLink()}
+        >
+          <span aria-hidden className={homeCategoriesArrowFade(isRtl)} />
+          <ChevronDown
+            className="h-[18px] w-[18px] shrink-0 stroke-[2.75]"
+            aria-hidden
+          />
+        </Link>
+      </div>
+    </div>
+  );
+});
+
+/** Header divider — static line only; no radial/shadow glow. */
+const HomeStickyHeaderDivider = memo(function HomeStickyHeaderDivider({
+  isRtl,
+}: {
+  isRtl: boolean;
+}) {
+  return (
+    <div role="separator" aria-hidden className="relative pb-1.5 pt-1 max-md:pb-1">
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-zinc-950/45 to-transparent md:h-4"
+        aria-hidden
+      />
+      <div className="relative flex items-center gap-2 md:gap-2.5">
+        <div
+          className={cn(
+            "h-px min-w-0 flex-1",
+            isRtl
+              ? "bg-gradient-to-l from-transparent via-primary/28 to-primary/12"
+              : "bg-gradient-to-r from-transparent via-primary/28 to-primary/12",
+          )}
+        />
+        <div
+          className="h-1 w-1 shrink-0 rounded-full bg-primary/55 ring-1 ring-primary/25"
+          aria-hidden
+        />
+        <div
+          className={cn(
+            "h-px min-w-0 flex-1",
+            isRtl
+              ? "bg-gradient-to-r from-transparent via-primary/28 to-primary/12"
+              : "bg-gradient-to-l from-transparent via-primary/28 to-primary/12",
+          )}
+        />
+      </div>
+    </div>
+  );
+});
 
 type HomeFeedHeaderProps = {
   isRtl: boolean;
+  locale: Locale;
   reserveBellSlot: boolean;
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
   onSearchSubmit: (e: React.FormEvent) => void;
+  isLoadingCategories: boolean;
+  categories: Category[] | undefined;
 };
 
 const HomeFeedHeader = memo(function HomeFeedHeader({
   isRtl,
+  locale,
   reserveBellSlot,
   searchQuery,
   onSearchQueryChange,
   onSearchSubmit,
-}: HomeFeedHeaderProps) {
+  isLoadingCategories,
+  categories,
+  headerRef,
+}: HomeFeedHeaderProps & { headerRef?: React.RefObject<HTMLElement | null> }) {
   return (
     <header
-      className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]"
+      ref={headerRef}
+      className="fixed inset-x-0 top-0 z-40 bg-[#0A0A0A]/96 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)] backdrop-blur-[2px]"
       dir={isRtl ? "rtl" : "ltr"}
     >
-      <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2 overflow-x-hidden px-3 py-2.5 md:px-6 md:py-3 lg:px-8">
-        <MarketplaceSearchBar
+      <div className={HOME_PAGE_INSET}>
+        <div className="flex items-center gap-2 pt-3 pb-0">
+          <MarketplaceSearchBar
+            compact
+            isRtl={isRtl}
+            value={searchQuery}
+            onChange={onSearchQueryChange}
+            onSubmit={onSearchSubmit}
+          />
+          {reserveBellSlot ? (
+            <NotificationBell className="h-8 w-8 shrink-0 [&_svg]:h-4 [&_svg]:w-4" />
+          ) : null}
+        </div>
+        <HomeCategoriesStrip
           isRtl={isRtl}
-          value={searchQuery}
-          onChange={onSearchQueryChange}
-          onSubmit={onSearchSubmit}
+          locale={locale}
+          isLoadingCategories={isLoadingCategories}
+          categories={categories}
         />
-        {reserveBellSlot ? (
-          <div className="shrink-0">
-            <NotificationBell />
-          </div>
-        ) : null}
+        <HomeStickyHeaderDivider isRtl={isRtl} />
       </div>
     </header>
   );
@@ -112,9 +349,6 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
 
 type HomeFeedSectionsProps = {
   isRtl: boolean;
-  locale: Locale;
-  isLoadingCategories: boolean;
-  categories: Category[] | undefined;
   isLoadingFeatured: boolean;
   featuredAds: Ad[] | undefined;
   isLoadingRecommended: boolean;
@@ -127,9 +361,6 @@ type HomeFeedSectionsProps = {
  */
 const HomeFeedSections = memo(function HomeFeedSections({
   isRtl,
-  locale,
-  isLoadingCategories,
-  categories,
   isLoadingFeatured,
   featuredAds,
   isLoadingRecommended,
@@ -137,91 +368,55 @@ const HomeFeedSections = memo(function HomeFeedSections({
 }: HomeFeedSectionsProps) {
   return (
     <>
-      {/* Categories Horizontal Scroll */}
-      <section className="pt-3 pb-1 max-md:pb-0.5 md:py-4">
-        <div className="mx-auto mb-2 flex w-full max-w-screen-xl items-center justify-between px-4 max-md:mb-2 md:mb-3 md:px-6 lg:px-8">
-          <h2 className={homeSectionHeading}>{t("home.categories")}</h2>
-          <Link
-            href="/categories"
-            className="text-primary text-sm font-medium flex items-center"
-          >
-            {t("home.view_all")} <ChevronLeft className="w-4 h-4" />
-          </Link>
-        </div>
-        <HorizontalScrollStrip dir={isRtl ? "rtl" : "ltr"}>
-          <div className="mx-auto flex w-max max-w-none gap-4 px-4 pb-1 max-md:pb-0.5 md:pb-2 md:px-6 lg:px-8">
-            {isLoadingCategories
-              ? CATEGORY_SKELETON_KEYS.map((i) => (
-                  <div key={i} className="flex shrink-0 flex-col items-center gap-2">
-                    <div className="w-16 h-16 rounded-full bg-muted animate-pulse" />
-                    <div className="h-4 w-12 max-w-[6.75rem] rounded-full bg-muted/60 animate-pulse" />
-                  </div>
-                ))
-              : Array.isArray(categories) &&
-                categories.map((cat) => (
-                  <Link key={cat.id} href={`/category/${cat.id}`} className="shrink-0">
-                    <div className="flex flex-col items-center gap-2 group cursor-pointer">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/35 bg-zinc-950/75 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-transform group-active:scale-95">
-                        <CategoryIcon name={cat.icon} className="w-7 h-7" />
-                      </div>
-                      <span className={homeCategoryLabelPill}>
-                        {getCreateAdTaxonomyLabel(locale, cat.name)}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-          </div>
-        </HorizontalScrollStrip>
-      </section>
-
-      <HomeFeaturedDivider isRtl={isRtl} placement="featured-top" />
-
       {/* Featured Ads */}
-      <section className="min-w-0 bg-zinc-950/40 pb-1.5 pt-1 max-md:pb-1 max-md:pt-0.5 md:py-5">
-        <div className="mx-auto mb-2 w-full max-w-screen-xl px-4 md:mb-3 md:px-6 lg:px-8">
+      <section className="min-w-0 bg-zinc-950/40 pb-1 pt-0.5 max-md:pb-0.5 md:py-4">
+        <div className={cn(HOME_PAGE_INSET, "mb-1.5 md:mb-2")}>
           <h2 className={homeSectionHeading}>{t("home.featured_ads")}</h2>
         </div>
-        <HorizontalScrollStrip dir={isRtl ? "rtl" : "ltr"}>
-          <div className={featuredStripClassName} dir={isRtl ? "rtl" : "ltr"}>
-            {isLoadingFeatured ? (
-              FEATURED_SKELETON_KEYS.map((i) => (
-                <AdCardSkeleton key={i} featured />
-              ))
-            ) : Array.isArray(featuredAds) && featuredAds.length ? (
-              featuredAds.map((ad, index) => (
-                <AdCard
-                  key={ad.id}
-                  ad={ad}
-                  featured
-                  featuredLead={index === 0}
-                />
-              ))
-            ) : (
-              <div className="w-full py-6 text-center text-sm text-muted-foreground">
-                {t("home.no_featured_ads")}
-              </div>
-            )}
-          </div>
-        </HorizontalScrollStrip>
+        <div className={HOME_PAGE_INSET}>
+          <HorizontalScrollStrip dir={isRtl ? "rtl" : "ltr"}>
+            <div className={featuredStripClassName} dir={isRtl ? "rtl" : "ltr"}>
+              {isLoadingFeatured ? (
+                FEATURED_SKELETON_KEYS.map((i) => (
+                  <AdCardSkeleton key={i} featured homeFeed />
+                ))
+              ) : Array.isArray(featuredAds) && featuredAds.length ? (
+                featuredAds.map((ad, index) => (
+                  <AdCard
+                    key={ad.id}
+                    ad={ad}
+                    featured
+                    homeFeed
+                    featuredLead={index === 0}
+                  />
+                ))
+              ) : (
+                <div className="w-full py-5 text-center text-sm text-muted-foreground">
+                  {t("home.no_featured_ads")}
+                </div>
+              )}
+            </div>
+          </HorizontalScrollStrip>
+        </div>
       </section>
 
       <HomeFeaturedDivider isRtl={isRtl} placement="featured-bottom" />
 
       {/* Recommended Ads Grid */}
-      <section className="mx-auto w-full max-w-screen-xl px-4 pb-4 pt-1.5 max-md:pb-3.5 max-md:pt-1 md:px-6 md:py-5 lg:px-8">
-        <h2 className={cn(homeSectionHeading, "mb-2 md:mb-3")}>{t("home.recommended")}</h2>
+      <section className={cn(HOME_PAGE_INSET, "pb-3 pt-1 max-md:pb-3 max-md:pt-0.5 md:py-4")}>
+        <h2 className={cn(homeSectionHeading, "mb-1.5 md:mb-2")}>{t("home.recommended")}</h2>
 
         <div className={recommendedGridClassName}>
           {isLoadingRecommended ? (
             GRID_SKELETON_KEYS.map((i) => (
               <div key={i} className="h-full min-h-0">
-                <AdCardSkeleton />
+                <AdCardSkeleton homeFeed />
               </div>
             ))
           ) : Array.isArray(recommendedAds) && recommendedAds.length ? (
             recommendedAds.map((ad) => (
               <div key={ad.id} className="h-full min-h-0">
-                <AdCard ad={ad} />
+                <AdCard ad={ad} homeFeed />
               </div>
             ))
           ) : (
@@ -338,21 +533,38 @@ export default function Home() {
     [searchQuery, feedCity, setLocation],
   );
 
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerOffsetPx, setHeaderOffsetPx] = useState(106);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const sync = () => setHeaderOffsetPx(el.getBoundingClientRect().height);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isLoadingCategories, reserveBellSlot]);
+
   return (
-    <main className="flex min-h-0 w-full flex-col bg-[#0A0A0A]">
+    <main
+      className="flex min-h-0 w-full flex-col bg-[#0A0A0A]"
+      style={{ paddingTop: headerOffsetPx }}
+    >
       <HomeFeedHeader
+        headerRef={headerRef}
         isRtl={isRtl}
+        locale={locale}
         reserveBellSlot={reserveBellSlot}
         searchQuery={searchQuery}
         onSearchQueryChange={onSearchQueryChange}
         onSearchSubmit={handleSearch}
+        isLoadingCategories={isLoadingCategories}
+        categories={categories}
       />
 
       <HomeFeedSections
         isRtl={isRtl}
-        locale={locale}
-        isLoadingCategories={isLoadingCategories}
-        categories={categories}
         isLoadingFeatured={isLoadingFeaturedUi}
         featuredAds={featuredAdsForHome}
         isLoadingRecommended={isLoadingRecommended}

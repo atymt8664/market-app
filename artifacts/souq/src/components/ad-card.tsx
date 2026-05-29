@@ -23,6 +23,8 @@ export interface AdCardProps {
   featured?: boolean;
   /** First visible featured card: eager decode for perceived load (strip only). */
   featuredLead?: boolean;
+  /** Dense tile for home feed sections — tighter image ratio and body spacing. */
+  homeFeed?: boolean;
   /**
    * Legacy prop — all cards use the same compact vertical tile.
    * Kept for call-site compatibility (`variant="grid"`).
@@ -43,8 +45,20 @@ const PRICE_BOX_COMPACT = "min-h-[2rem] shrink-0";
 /** صفحة المفضلة — نفس هوية كروت البروفايل / نشر إعلان، بحجم مدمج للموبايل */
 const FAVORITES_CARD_SHELL =
   "rounded-2xl border border-primary/40 bg-zinc-950/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[transform,border-color,box-shadow] duration-200 hover:border-primary/45 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.22)]";
+
+/** Home feed — Dark Premium black shell (matches favorites/create-ad identity). */
+const HOME_FEED_CARD_SHELL =
+  "rounded-xl border border-primary/35 bg-[#0A0A0A] ring-1 ring-primary/10 shadow-[0_0_18px_-14px_hsl(var(--primary)/0.12)] transition-none";
 /** Location + time */
 const META_BOX = "h-[1.25rem] min-h-[1.25rem] max-h-[1.25rem] shrink-0";
+
+/** Featured strip card width — home feed compact; balanced near recommended grid tiles. */
+const FEATURED_HOME_FEED_CARD_W =
+  "w-[168px] max-w-[168px] shrink-0 sm:w-[172px] sm:max-w-[172px] md:w-[175px] md:max-w-[175px]";
+
+/** Legacy featured width when not using home feed compact body. */
+const FEATURED_DEFAULT_CARD_W =
+  "w-[136px] max-w-[136px] shrink-0 sm:w-[148px] sm:max-w-[148px] md:w-[160px] md:max-w-[160px]";
 
 function priceTypeBadgeText(type: Ad["priceType"]) {
   if (type === "negotiable") return t("ad-card.negotiable");
@@ -53,7 +67,15 @@ function priceTypeBadgeText(type: Ad["priceType"]) {
   return t("ad-card.swap");
 }
 
-const PriceBlock = memo(function PriceBlock({ ad, compact }: { ad: Ad; compact?: boolean }) {
+const PriceBlock = memo(function PriceBlock({
+  ad,
+  compact,
+  inlineBadge,
+}: {
+  ad: Ad;
+  compact?: boolean;
+  inlineBadge?: boolean;
+}) {
   const adWithDetails = ad as Ad & {
     details?: Record<string, unknown>;
   };
@@ -65,6 +87,19 @@ const PriceBlock = memo(function PriceBlock({ ad, compact }: { ad: Ad; compact?:
   const main = ad.price == null
     ? formatPrice(ad.price, ad.priceType, selectedCurrency)
     : formatCurrencyAmount(ad.price, selectedCurrency, 0);
+
+  if (inlineBadge) {
+    return (
+      <div className="flex h-[1.25rem] min-h-[1.25rem] w-full min-w-0 items-center gap-1">
+        <p className="min-w-0 truncate text-[12px] font-bold leading-none tabular-nums text-primary">
+          {main}
+        </p>
+        <span className="inline-flex shrink-0 rounded-full border border-primary/35 bg-primary/10 px-1 py-0 text-[8px] text-primary">
+          {priceTypeBadgeText(ad.priceType)}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -149,6 +184,7 @@ function areAdCardPropsEqual(prev: AdCardMemoProps, next: AdCardMemoProps): bool
   if (
     prev.featured !== next.featured ||
     prev.featuredLead !== next.featuredLead ||
+    prev.homeFeed !== next.homeFeed ||
     prev.favoritesList !== next.favoritesList ||
     prev.variant !== next.variant
   ) {
@@ -181,6 +217,7 @@ function AdCardInner({
   ad,
   featured,
   featuredLead,
+  homeFeed,
   variant: _variant,
   favoritesList,
   viewerAuthKey: _viewerAuthKey,
@@ -230,19 +267,22 @@ function AdCardInner({
 
   const hasImage = !!(ad.images && ad.images.length > 0 && ad.images[0]) && !imageFailed;
   const favCompact = Boolean(favoritesList);
+  const feedCompact = Boolean(homeFeed && !favoritesList);
   /** Hint decode size for the CDN/browser without changing layout (object-cover + fixed aspect). */
   const imageSizes = featured
-    ? "(max-width: 640px) 160px, 172px"
+    ? feedCompact
+      ? "(max-width: 640px) 168px, 175px"
+      : "(max-width: 640px) 148px, 160px"
     : "(max-width: 640px) 50vw, (max-width: 1024px) 34vw, 360px";
 
   return (
     <div
       className={cn(
         "flex min-h-0 w-full flex-col outline-none",
-        favCompact ? "gap-1" : "gap-2",
+        favCompact ? "gap-1" : feedCompact ? "gap-1" : "gap-2",
         featured ? "h-full" : "h-full",
         featured &&
-          "w-[148px] max-w-[148px] shrink-0 sm:w-[160px] sm:max-w-[160px] md:w-[172px] md:max-w-[172px]",
+          (feedCompact ? FEATURED_HOME_FEED_CARD_W : FEATURED_DEFAULT_CARD_W),
       )}
     >
     <Link
@@ -252,10 +292,12 @@ function AdCardInner({
       <article
         className={cn(
           "group flex h-full w-full flex-col overflow-hidden text-start [contain:layout]",
-          "active:scale-[0.98]",
+          !feedCompact && "active:scale-[0.98]",
           favCompact
             ? FAVORITES_CARD_SHELL
-            : [
+            : feedCompact
+              ? HOME_FEED_CARD_SHELL
+              : [
                 "rounded-xl border border-border/45 bg-card",
                 "shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
                 "transition-[transform,border-color,box-shadow] duration-200 ease-out",
@@ -267,10 +309,15 @@ function AdCardInner({
         {/* Image — صفحة المفضلة: ارتفاع ثابت أصغر؛ باقي الصفحات: aspect 4/3 */}
         <div
           className={cn(
-            "relative w-full shrink-0 overflow-hidden bg-zinc-950/80",
+            "relative w-full shrink-0 overflow-hidden",
+            feedCompact ? "bg-[#0A0A0A]" : "bg-zinc-950/80",
             favCompact
               ? "h-[88px] sm:h-[96px] md:h-[104px]"
-              : "aspect-[4/3]",
+              : feedCompact
+                ? featured
+                  ? "aspect-[4/3]"
+                  : "aspect-[4/3]"
+                : "aspect-[4/3]",
           )}
         >
           {hasImage ? (
@@ -290,7 +337,7 @@ function AdCardInner({
               onError={handleImageError}
             />
           ) : (
-            <AdCardNoImagePlaceholder />
+            <AdCardNoImagePlaceholder plainBackdrop={feedCompact} />
           )}
           <button
             type="button"
@@ -301,7 +348,7 @@ function AdCardInner({
             }
             className={cn(
               "absolute flex items-center justify-center rounded-full border border-primary/25 bg-black/50 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.15)] backdrop-blur-[2px] transition-colors hover:bg-black/65 disabled:pointer-events-none disabled:opacity-70",
-              favCompact ? "end-1 top-1 h-6 w-6" : "end-1.5 top-1.5 h-7 w-7",
+              favCompact ? "end-1 top-1 h-6 w-6" : feedCompact ? "end-1 top-1 h-6 w-6" : "end-1.5 top-1.5 h-7 w-7",
             )}
           >
             <span className="inline-flex">
@@ -309,7 +356,7 @@ function AdCardInner({
                 strokeWidth={2.25}
                 className={cn(
                   "transition-colors",
-                  favCompact ? "h-3 w-3" : "h-3.5 w-3.5",
+                  favCompact ? "h-3 w-3" : feedCompact ? "h-3 w-3" : "h-3.5 w-3.5",
                   isFavorite
                     ? "fill-primary stroke-primary text-primary"
                     : "fill-transparent stroke-white text-white",
@@ -323,49 +370,59 @@ function AdCardInner({
         <div
           className={cn(
             "flex shrink-0 flex-col",
-            favCompact ? "gap-1 px-1.5 pb-2 pt-1" : "gap-1.5 px-2 pb-2.5 pt-1.5",
+            favCompact
+              ? "gap-1 px-1.5 pb-2 pt-1"
+              : feedCompact
+                ? "gap-0.5 px-1.5 pb-1.5 pt-1"
+                : "gap-1.5 px-2 pb-2.5 pt-1.5",
           )}
         >
           <h3
             className={cn(
-              favCompact ? TITLE_BOX_FAVORITES : TITLE_BOX,
-              "overflow-hidden font-semibold text-foreground line-clamp-2 [overflow-wrap:anywhere]",
               favCompact
-                ? "text-[12px] leading-[1.06rem]"
-                : "text-[13px] leading-[1.25rem]",
+                ? TITLE_BOX_FAVORITES
+                : feedCompact
+                  ? "h-4 min-h-4 max-h-4 shrink-0"
+                  : TITLE_BOX,
+              "overflow-hidden font-semibold text-foreground [overflow-wrap:anywhere]",
+              favCompact
+                ? "text-[12px] leading-[1.06rem] line-clamp-2"
+                : feedCompact
+                  ? "text-[11px] leading-4 line-clamp-1"
+                  : "text-[13px] leading-[1.25rem] line-clamp-2",
             )}
           >
             {ad.title}
           </h3>
 
-          <PriceBlock ad={ad} compact={favCompact} />
+          <PriceBlock ad={ad} compact={favCompact} inlineBadge={feedCompact} />
 
           {/* Engagement — equal thirds, fixed inner row height, vertically centered */}
           <div
             className={cn(
-              "shrink-0 border-t border-primary/15 text-[10px] leading-none text-primary/60",
-              favCompact ? "pt-1" : "pt-1.5",
+              "shrink-0 border-t border-primary/15 leading-none text-primary/60",
+              favCompact ? "pt-1 text-[10px]" : feedCompact ? "pt-0.5 text-[9px]" : "pt-1.5 text-[10px]",
             )}
           >
             <div
               className={cn(
                 "grid w-full grid-cols-3 items-center gap-x-0.5",
-                favCompact ? "h-4" : "h-5",
+                favCompact ? "h-4" : feedCompact ? "h-3.5" : "h-5",
               )}
             >
               <StatCell
                 kind="views"
-                compact={favCompact}
+                compact={favCompact || feedCompact}
                 value={(ad.views ?? 0).toLocaleString(numberLocale)}
               />
               <StatCell
                 kind="favorites"
-                compact={favCompact}
+                compact={favCompact || feedCompact}
                 value={(ad.favoriteCount ?? 0).toLocaleString(numberLocale)}
               />
               <StatCell
                 kind="likes"
-                compact={favCompact}
+                compact={favCompact || feedCompact}
                 value={(ad.likeCount ?? 0).toLocaleString(numberLocale)}
               />
             </div>
@@ -374,9 +431,15 @@ function AdCardInner({
           {/* Location + time */}
           <div
             className={cn(
-              favCompact ? "h-[1.1rem] min-h-[1.1rem] max-h-[1.1rem]" : META_BOX,
-              "flex w-full min-w-0 items-center gap-0.5 text-[10px] leading-none text-primary/55",
+              favCompact
+                ? "h-[1.1rem] min-h-[1.1rem] max-h-[1.1rem]"
+                : feedCompact
+                  ? "h-3 min-h-3 max-h-3"
+                  : META_BOX,
+              "flex w-full min-w-0 items-center gap-0.5 leading-none text-primary/55",
               favCompact && "text-[9px] text-primary/50",
+              feedCompact && "text-[8px] text-primary/50",
+              !favCompact && !feedCompact && "text-[10px]",
             )}
           >
             <MapPin
@@ -423,56 +486,79 @@ export function AdCard(props: AdCardProps) {
 
 export function AdCardSkeleton({
   featured,
+  homeFeed,
   variant: _variant,
   favoritesList,
 }: {
   featured?: boolean;
+  homeFeed?: boolean;
   variant?: "default" | "grid";
   favoritesList?: boolean;
 }) {
   const compact = Boolean(favoritesList);
+  const feedCompact = Boolean(homeFeed && !favoritesList);
   return (
     <div
       className={cn(
         "flex w-full flex-col overflow-hidden",
         compact
           ? FAVORITES_CARD_SHELL
-          : "rounded-xl border border-border/45 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
+          : feedCompact
+            ? HOME_FEED_CARD_SHELL
+            : "rounded-xl border border-border/45 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
         featured ? "h-full" : "h-auto",
         featured &&
-          "w-[148px] max-w-[148px] shrink-0 sm:w-[160px] sm:max-w-[160px] md:w-[172px] md:max-w-[172px]",
+          (feedCompact ? FEATURED_HOME_FEED_CARD_W : FEATURED_DEFAULT_CARD_W),
       )}
     >
       <Skeleton
         className={cn(
-          "w-full shrink-0 rounded-none bg-muted/40",
-          compact ? "h-[88px] sm:h-[96px] md:h-[104px]" : "aspect-[4/3]",
+          "w-full shrink-0 rounded-none",
+          feedCompact ? "bg-primary/[0.06]" : "bg-muted/40",
+          compact
+            ? "h-[88px] sm:h-[96px] md:h-[104px]"
+            : feedCompact
+              ? featured
+                ? "aspect-[4/3]"
+                : "aspect-[4/3]"
+              : "aspect-[4/3]",
         )}
       />
       <div
         className={cn(
           "flex flex-col",
-          compact ? "gap-1 px-1.5 pb-2 pt-1" : "gap-1.5 px-2 pb-2.5 pt-1.5",
+          compact
+            ? "gap-1 px-1.5 pb-2 pt-1"
+            : feedCompact
+              ? "gap-0.5 px-1.5 pb-1.5 pt-1"
+              : "gap-1.5 px-2 pb-2.5 pt-1.5",
         )}
       >
         <Skeleton
           className={cn(
-            "w-full rounded-md bg-muted/50",
-            compact ? "h-[2.125rem]" : "h-[2.5rem]",
+            "w-full rounded-md",
+            feedCompact ? "bg-primary/[0.08]" : "bg-muted/50",
+            compact ? "h-[2.125rem]" : feedCompact ? "h-4" : "h-[2.5rem]",
           )}
         />
-        <Skeleton className={cn("rounded-md bg-muted/50", compact ? "h-3.5 w-2/5" : "h-[1.5rem] w-2/5")} />
+        <Skeleton
+          className={cn(
+            "rounded-md",
+            feedCompact || compact ? "bg-primary/[0.08]" : "bg-muted/50",
+            compact || feedCompact ? "h-3.5 w-2/5" : "h-[1.5rem] w-2/5",
+          )}
+        />
         <div
           className={cn(
             "grid grid-cols-3 items-center gap-x-0.5 border-t border-primary/15",
-            compact ? "h-4 pt-1" : "h-5 border-border/35 pt-1.5",
+            compact ? "h-4 pt-1" : feedCompact ? "h-3.5 pt-0.5" : "h-5 border-border/35 pt-1.5",
           )}
         >
-          <Skeleton className="mx-auto h-2.5 w-8 rounded bg-muted/45" />
-          <Skeleton className="mx-auto h-2.5 w-8 rounded bg-muted/45" />
-          <Skeleton className="mx-auto h-2.5 w-8 rounded bg-muted/45" />
+          <Skeleton className={cn("mx-auto h-2.5 w-8 rounded", feedCompact ? "bg-primary/[0.07]" : "bg-muted/45")} />
+          <Skeleton className={cn("mx-auto h-2.5 w-8 rounded", feedCompact ? "bg-primary/[0.07]" : "bg-muted/45")} />
+          <Skeleton className={cn("mx-auto h-2.5 w-8 rounded", feedCompact ? "bg-primary/[0.07]" : "bg-muted/45")} />
         </div>
-        <Skeleton className={cn("w-full rounded bg-muted/40", compact ? "h-3" : "h-[1.25rem]")} />
+        <Skeleton className={cn("w-full rounded", feedCompact ? "bg-primary/[0.06]" : "bg-muted/40", compact ? "h-3" : feedCompact ? "h-3" : "h-[1.25rem]")} />
       </div>
       {compact ? (
         <div className="px-0 pb-0.5 pt-0">

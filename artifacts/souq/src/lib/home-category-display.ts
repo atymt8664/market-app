@@ -29,3 +29,19 @@ export function splitHomeCategoryLabel(label: string): readonly [string] | reado
 
   return [trimmed];
 }
+
+/** Home strip only — hide disposable staging test categories from display (no DB change). */
+export function filterHomeCategories<T extends { name?: string | null }>(
+  categories: T[] | undefined | null,
+): T[] | undefined {
+  if (!Array.isArray(categories)) return categories ?? undefined;
+  return categories.filter((cat) => !isHomeTestCategory(cat));
+}
+
+function isHomeTestCategory(cat: { name?: string | null }): boolean {
+  const name = (cat.name ?? "").trim().toLowerCase();
+  if (!name) return false;
+  if (name === "test cat 1777565550") return true;
+  if (/^test cat\s+\d{10,}$/.test(name)) return true;
+  return false;
+}

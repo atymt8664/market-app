@@ -32,7 +32,7 @@ import { t } from "@/i18n";
 import type { Locale } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
-import { splitHomeCategoryLabel } from "@/lib/home-category-display";
+import { splitHomeCategoryLabel, filterHomeCategories } from "@/lib/home-category-display";
 import {
   HOME_PAGE_INSET,
 } from "@/lib/home-page-layout";
@@ -201,7 +201,10 @@ const HomeCategoriesStrip = memo(function HomeCategoriesStrip({
   }, [categories, isLoadingCategories, locale]);
 
   return (
-    <div className="min-w-0 pt-2.5 transition-none" dir={isRtl ? "rtl" : "ltr"}>
+    <div
+      className="min-w-0 pt-2.5 transition-none -mx-4 md:-mx-6 lg:-mx-8"
+      dir={isRtl ? "rtl" : "ltr"}
+    >
       <div className="relative min-w-0 w-full transition-none">
         <HorizontalScrollStrip className="min-w-0 w-full">
           <div className={cn(homeCategoriesStripInner(), "pe-10 transition-none")}>
@@ -265,7 +268,7 @@ const HomeStickyHeaderDivider = memo(function HomeStickyHeaderDivider({
   return (
     <div role="separator" aria-hidden className="relative pb-1.5 pt-1 max-md:pb-1">
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-zinc-950/45 to-transparent md:h-4"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-[#0A0A0A]/45 to-transparent md:h-4"
         aria-hidden
       />
       <div className="relative flex items-center gap-2 md:gap-2.5">
@@ -323,7 +326,7 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
       dir={isRtl ? "rtl" : "ltr"}
     >
       <div className={HOME_PAGE_INSET}>
-        <div className="flex items-center gap-2 pt-3 pb-0">
+        <div className="flex items-center gap-2 pt-3 pb-0 -mx-2 md:-mx-3 lg:-mx-4">
           <MarketplaceSearchBar
             compact
             isRtl={isRtl}
@@ -369,7 +372,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
   return (
     <>
       {/* Featured Ads */}
-      <section className="min-w-0 bg-zinc-950/40 pb-1 pt-0.5 max-md:pb-0.5 md:py-4">
+      <section className="min-w-0 pb-1 pt-0.5 max-md:pb-0.5 md:py-4">
         <div className={cn(HOME_PAGE_INSET, "mb-1.5 md:mb-2")}>
           <h2 className={homeSectionHeading}>{t("home.featured_ads")}</h2>
         </div>
@@ -450,6 +453,10 @@ export default function Home() {
         staleTime: HOME_STALE_CATEGORIES_MS,
       },
     });
+  const homeCategories = useMemo(
+    () => filterHomeCategories(categories),
+    [categories],
+  );
 
   const [featuredQueryEnabled, setFeaturedQueryEnabled] = useState(false);
   useEffect(() => {
@@ -560,7 +567,7 @@ export default function Home() {
         onSearchQueryChange={onSearchQueryChange}
         onSearchSubmit={handleSearch}
         isLoadingCategories={isLoadingCategories}
-        categories={categories}
+        categories={homeCategories}
       />
 
       <HomeFeedSections

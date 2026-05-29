@@ -37,8 +37,8 @@ export const HomeFeaturedDivider = memo(function HomeFeaturedDivider({
           className={cn(
             "pointer-events-none absolute inset-x-0",
             isTop
-              ? "bottom-0 h-4 max-md:h-3 bg-gradient-to-t from-zinc-950/45 to-transparent md:h-6"
-              : "top-0 h-4 max-md:h-3 bg-gradient-to-b from-zinc-950/55 to-transparent md:h-8 md:from-zinc-950/50",
+              ? "bottom-0 h-4 max-md:h-3 bg-gradient-to-t from-[#0A0A0A]/45 to-transparent md:h-6"
+              : "top-0 h-4 max-md:h-3 bg-gradient-to-b from-[#0A0A0A]/55 to-transparent md:h-8 md:from-[#0A0A0A]/50",
           )}
           aria-hidden
         />

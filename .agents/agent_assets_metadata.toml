@@ -3,9 +3,9 @@ outputs = []
 
 [[generated]]
 id = "hY9Zh3-xFAUKWrJd8az71"
-uri = "file://artifacts/souq/public/logo.png"
+uri = "file://artifacts/souq/public/brand/logo-master.png"
 type = "image"
-title = "Clean Arabic calligraphy logo Souq Al Arab"
+title = "Souq Arab EU Logo Master (SA)"
 
 [[generated]]
 id = "noW01uHlJJWmsmYVxVVqC"

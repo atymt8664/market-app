@@ -39,6 +39,8 @@ import { parseStoredAdDetails } from "@/lib/ad-stored-details";
 import { AD_SHIPPING_LABELS } from "@/lib/ad-meta-labels";
 import { useToast } from "@/hooks/use-toast";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { usePageSeo } from "@/hooks/use-page-seo";
+import { getDefaultSiteDescription, truncateForMeta } from "@/lib/seo-foundation";
 import { useLocale } from "@/hooks/use-locale";
 import { BuyerSafetyNote } from "@/components/buyer-safety-note";
 import { UserPresenceBadge } from "@/components/user-presence-badge";
@@ -250,6 +252,20 @@ export default function AdDetail() {
       staleTime: STALE_AD_DETAIL_MS,
     },
   });
+
+  const adPageSeo = useMemo(() => {
+    if (!id || !ad?.title) return null;
+    const descRaw = ad.description?.trim() ?? "";
+    const description = descRaw
+      ? truncateForMeta(descRaw)
+      : getDefaultSiteDescription(locale);
+    return {
+      title: `${ad.title} | Souq Arab EU`,
+      description,
+      canonicalPath: `/ad/${id}`,
+    };
+  }, [id, ad?.title, ad?.description, locale]);
+  usePageSeo(adPageSeo);
 
   const sellerPresenceTargets = useMemo(() => {
     if (!ad?.userId || !user?.id || ad.userId === user.id) return [];

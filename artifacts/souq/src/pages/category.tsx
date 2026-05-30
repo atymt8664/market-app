@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   useListAds,
   useListSubcategories,
@@ -13,6 +14,8 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
+import { usePageSeo } from "@/hooks/use-page-seo";
+import { getDefaultSiteDescription } from "@/lib/seo-foundation";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 import { CategoryIcon } from "@/components/category-icon";
 import { cn } from "@/lib/utils";
@@ -77,6 +80,19 @@ export default function Category() {
   const title = selectedCategory
     ? getCreateAdTaxonomyLabel(locale, selectedCategory.name)
     : t("category.title_fallback");
+
+  const pageSeo = useMemo(() => {
+    if (!categoryId) return null;
+    const seoTitle = selectedCategory
+      ? `${getCreateAdTaxonomyLabel(locale, selectedCategory.name)} | Souq Arab EU`
+      : t("p11.seo.category_title_generic");
+    return {
+      title: seoTitle,
+      description: getDefaultSiteDescription(locale),
+      canonicalPath: `/category/${categoryId}`,
+    };
+  }, [categoryId, selectedCategory, locale]);
+  usePageSeo(pageSeo);
 
   const hasArabicText = (value?: string | null) =>
     !!value && /[\u0600-\u06FF]/.test(value);

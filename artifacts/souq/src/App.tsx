@@ -19,6 +19,8 @@ import {
 import { cn } from "@/lib/utils";
 import NotFound from "@/pages/not-found";
 import { ChatSocketProvider } from "@/contexts/chat-socket-context";
+import { SeoRouteSync } from "@/components/seo-route-sync";
+import { applyPageSeo, resolveSeoForPath } from "@/lib/seo-foundation";
 
 const Home = lazy(() => import("@/pages/home"));
 
@@ -77,9 +79,18 @@ const Login = lazy(() => import("@/pages/login"));
 const Signup = lazy(() => import("@/pages/signup"));
 const GuestWelcome = lazy(() => import("@/pages/guest-welcome"));
 
+function SeoHomeBootstrap() {
+  const { locale } = useLocale();
+  useEffect(() => {
+    return applyPageSeo(resolveSeoForPath("/", locale));
+  }, [locale]);
+  return null;
+}
+
 function Router() {
   return (
     <Layout>
+      <SeoRouteSync />
       <ChatSocketProvider>
         <Suspense fallback={<RouteLoadingFallback />}>
           <Switch>
@@ -172,7 +183,7 @@ function FirstLaunchLanguageGate({ onDone }: { onDone: () => void }) {
 
   return (
     <div className={cn(AUTH_PAGE_BG, "items-center justify-center px-4 py-10")}>
-      <div className={cn(AUTH_CARD, "w-full max-w-md")}>
+      <div className={cn(AUTH_CARD, "w-full max-w-md")} data-nosnippet>
         <h1 className="text-lg font-semibold text-foreground">{t("first_launch.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("first_launch.subtitle")}</p>
         <div className="mt-4 space-y-1.5">
@@ -237,7 +248,10 @@ function App() {
   }, []);
 
   const main = showFirstLaunchSelector ? (
-    <FirstLaunchLanguageGate onDone={() => setShowFirstLaunchSelector(false)} />
+    <>
+      <SeoHomeBootstrap />
+      <FirstLaunchLanguageGate onDone={() => setShowFirstLaunchSelector(false)} />
+    </>
   ) : (
     <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
       <RouteScrollRestoration />

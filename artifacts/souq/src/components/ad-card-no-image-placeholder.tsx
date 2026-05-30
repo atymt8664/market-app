@@ -84,7 +84,7 @@ export const AdCardNoImagePlaceholder = memo(function AdCardNoImagePlaceholder({
       {!plainBackdrop ? (
         <>
           <div
-            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-950 via-[#0c1008] to-zinc-950"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0A0A0A] via-[#0A0A0A] to-[#0A0A0A]"
             aria-hidden
           />
           <div

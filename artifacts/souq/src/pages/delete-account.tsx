@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+﻿import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
   ArrowUpRight,
@@ -139,7 +139,7 @@ export default function DeleteAccountPage() {
             كيفية حذف الحساب من داخل التطبيق
           </p>
 
-          <div className="mt-4 flex flex-col gap-2 rounded-xl border border-primary/35 bg-zinc-950/70 p-3 shadow-[0_0_18px_-14px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12">
+          <div className="mt-4 flex flex-col gap-2 rounded-xl border border-primary/35 bg-[#0A0A0A]/70 p-3 shadow-[0_0_18px_-14px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12">
             <div className="flex items-center gap-2 text-sm font-semibold text-primary">
               <SettingsIcon className="h-4 w-4" aria-hidden />
               <span>Settings → Delete Account</span>
@@ -172,9 +172,9 @@ export default function DeleteAccountPage() {
             {DELETED_ITEMS.map((item) => (
               <li
                 key={item.en}
-                className="flex items-start gap-3 rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3 shadow-[0_0_20px_-14px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10"
+                className="flex items-start gap-3 rounded-xl border border-primary/25 bg-[#0A0A0A]/75 px-3 py-3 shadow-[0_0_20px_-14px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10"
               >
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/35 bg-zinc-950/80 text-primary">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/35 bg-[#0A0A0A]/80 text-primary">
                   {item.icon}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -199,7 +199,7 @@ export default function DeleteAccountPage() {
         {/* Retention notice */}
         <div className={SETTINGS_CARD}>
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-zinc-950/80 text-primary">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A]/80 text-primary">
               <ShieldCheck className="h-4 w-4" aria-hidden />
             </span>
             <h3 className="text-sm font-semibold text-foreground">
@@ -241,7 +241,7 @@ export default function DeleteAccountPage() {
 
           <a
             href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Account deletion request")}`}
-            className="mt-4 inline-flex items-center gap-1 rounded-lg border border-primary/30 bg-zinc-950/80 px-3 py-2 text-sm font-medium text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.28)] ring-1 ring-primary/15 transition hover:border-primary/55 hover:bg-zinc-900/95 hover:underline"
+            className="mt-4 inline-flex items-center gap-1 rounded-lg border border-primary/30 bg-[#0A0A0A]/80 px-3 py-2 text-sm font-medium text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.28)] ring-1 ring-primary/15 transition hover:border-primary/55 hover:bg-black/95 hover:underline"
           >
             <span dir="ltr">{SUPPORT_EMAIL}</span>
             <ArrowUpRight className="h-4 w-4" aria-hidden />

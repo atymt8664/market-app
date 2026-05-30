@@ -1,25 +1,25 @@
-/**
+﻿/**
  * Settings subtree visuals — **copied from existing app patterns** (do not invent new tokens):
  * - Cards / glow: `create-ad.tsx` (`adCardShell`, `adCardShellCompact`) + `profile.tsx` (`AD_CARD_SHELL`)
  * - Page bg + sticky header: `create-ad.tsx` (lines ~1357–1372)
  * - Back button: `create-ad.tsx` (`adHeaderBackBtn`)
  * - Inputs: `create-ad.tsx` (`adInputClass`)
- * - Category-style rows: `create-ad.tsx` (Sheet list rows, e.g. `border-primary/25 bg-zinc-950/75`)
+ * - Category-style rows: `create-ad.tsx` (Sheet list rows, e.g. `border-primary/25 bg-[#0A0A0A]/75`)
  *
  * Navigation / scroll logic stays unchanged in consuming files.
  */
 
 /** `profile.tsx` / `create-ad.tsx` — card without outer padding (tabs shell, section wrapper) */
 export const SETTINGS_CARD_SHELL =
-  "rounded-2xl border border-primary/40 bg-zinc-950/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10";
+  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10";
 
 /** `create-ad.tsx` `adCardShell` — full padded card */
 export const SETTINGS_CARD =
-  "rounded-2xl border border-primary/40 bg-zinc-950/75 p-4 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-5";
+  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 p-4 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-5";
 
 /** `create-ad.tsx` `adCardShellCompact` */
 export const SETTINGS_CARD_COMPACT =
-  "rounded-2xl border border-primary/35 bg-zinc-950/70 p-3 shadow-[0_0_18px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10";
+  "rounded-2xl border border-primary/35 bg-[#0A0A0A]/70 p-3 shadow-[0_0_18px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10";
 
 export const SETTINGS_PAGE_BG = "min-h-[100svh] w-full bg-[#0A0A0A]";
 
@@ -64,11 +64,11 @@ export const SETTINGS_DIALOG_CONTENT =
 
 /** Compact action area for dialogs (shorter than SETTINGS_ACTION_PANEL) */
 export const SETTINGS_DIALOG_ACTION_PANEL =
-  "rounded-xl border border-primary/35 bg-zinc-950/75 p-3 shadow-[0_0_22px_-14px_hsl(var(--primary)/0.2)] ring-1 ring-primary/14 md:p-3.5";
+  "rounded-xl border border-primary/35 bg-[#0A0A0A]/75 p-3 shadow-[0_0_22px_-14px_hsl(var(--primary)/0.2)] ring-1 ring-primary/14 md:p-3.5";
 
 /** `create-ad.tsx` `adInputClass` + full-width field sizing */
 export const SETTINGS_FIELD =
-  "w-full rounded-xl border border-primary/30 bg-zinc-950/90 px-3 py-2.5 text-sm text-foreground placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0 focus-visible:ring-offset-[#0A0A0A]";
+  "w-full rounded-xl border border-primary/30 bg-[#0A0A0A]/90 px-3 py-2.5 text-sm text-foreground placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0 focus-visible:ring-offset-[#0A0A0A]";
 
 /** Same field geometry as category / city triggers on create-ad (`h-11`/`h-12` unified) */
 export const SETTINGS_INPUT =
@@ -86,26 +86,26 @@ export const SETTINGS_INPUT_ICON_BUTTON =
 export const SETTINGS_INPUT_ICON_CLASS = "h-[18px] w-[18px] text-primary";
 
 /**
- * Panel wrapping primary CTAs — dark surface + lime rim + glow (`bg-card`-style zinc).
+ * Panel wrapping primary CTAs — dark surface + lime rim + glow (`bg-[#0A0A0A]`-style zinc).
  * Place **inside** form cards so the action reads as part of the card system, not a lone pill.
  */
 export const SETTINGS_ACTION_PANEL =
-  "rounded-2xl border border-primary/35 bg-zinc-950/70 p-4 shadow-[0_0_28px_-14px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12 md:p-5";
+  "rounded-2xl border border-primary/35 bg-[#0A0A0A]/70 p-4 shadow-[0_0_28px_-14px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12 md:p-5";
 
 /**
  * Primary CTA — matches `create-ad.tsx` publish `Button` (zinc fill + primary text, not flat lime).
  * Use inside SETTINGS_ACTION_PANEL for integrated footer actions.
  */
 export const SETTINGS_PRIMARY_BUTTON =
-  "inline-flex h-12 w-full cursor-pointer select-none items-center justify-center rounded-full border border-primary/45 bg-zinc-950/80 text-base font-bold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-zinc-900/90 active:opacity-90 disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex h-12 w-full cursor-pointer select-none items-center justify-center rounded-full border border-primary/45 bg-[#0A0A0A]/80 text-base font-bold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-black/90 active:opacity-90 disabled:pointer-events-none disabled:opacity-50";
 
 /** Outline / secondary CTA — lime border on zinc (create-ad outline buttons) */
 export const SETTINGS_OUTLINE_BUTTON =
-  "inline-flex min-h-[3rem] w-full items-center justify-center rounded-xl border border-primary/45 bg-zinc-950/90 px-4 text-sm font-semibold text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.28)] ring-1 ring-primary/15 transition hover:border-primary/60 hover:bg-zinc-900/95 sm:w-auto sm:min-w-[200px]";
+  "inline-flex min-h-[3rem] w-full items-center justify-center rounded-xl border border-primary/45 bg-[#0A0A0A]/90 px-4 text-sm font-semibold text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.28)] ring-1 ring-primary/15 transition hover:border-primary/60 hover:bg-black/95 sm:w-auto sm:min-w-[200px]";
 
 /** Trigger for custom selects / city-style pickers */
 export const SETTINGS_DROPDOWN_TRIGGER =
-  "flex min-h-[3rem] w-full items-center justify-between gap-2 rounded-xl border border-primary/35 bg-zinc-950/90 px-3 text-sm text-foreground shadow-[0_0_18px_-14px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10 transition hover:border-primary/48 hover:bg-zinc-900/85";
+  "flex min-h-[3rem] w-full items-center justify-between gap-2 rounded-xl border border-primary/35 bg-[#0A0A0A]/90 px-3 text-sm text-foreground shadow-[0_0_18px_-14px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10 transition hover:border-primary/48 hover:bg-black/85";
 
 /** Radix SelectTrigger — matches SETTINGS_FIELD visual weight */
 export const SETTINGS_SELECT_TRIGGER =
@@ -117,11 +117,11 @@ export const SETTINGS_SELECT_CONTENT =
 
 /** Radix SelectItem */
 export const SETTINGS_SELECT_ITEM =
-  "relative cursor-pointer rounded-lg py-2.5 pl-3 pr-10 text-right text-sm text-foreground outline-none focus:bg-zinc-900/95 focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[highlighted]:bg-zinc-900/95 data-[state=checked]:bg-primary/10";
+  "relative cursor-pointer rounded-lg py-2.5 pl-3 pr-10 text-right text-sm text-foreground outline-none focus:bg-black/95 focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[highlighted]:bg-black/95 data-[state=checked]:bg-primary/10";
 
 /** Ticket list row */
 export const SETTINGS_TICKET_ROW =
-  "w-full rounded-xl border border-primary/30 bg-zinc-950/80 px-3 py-3 text-right shadow-[0_0_20px_-14px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10 transition hover:border-primary/42 hover:bg-zinc-900/75";
+  "w-full rounded-xl border border-primary/30 bg-[#0A0A0A]/80 px-3 py-3 text-right shadow-[0_0_20px_-14px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10 transition hover:border-primary/42 hover:bg-black/75";
 
 export const SETTINGS_TICKET_ROW_SELECTED =
   "border-primary/48 bg-primary/[0.1] shadow-[0_0_26px_-12px_hsl(var(--primary)/0.32)] ring-primary/22";
@@ -132,15 +132,15 @@ export const SETTINGS_STATUS_BADGE =
 
 /** Ticket / chat message row */
 export const SETTINGS_MESSAGE_BUBBLE =
-  "rounded-xl border border-primary/28 bg-zinc-950/75 p-3 text-sm shadow-[0_0_18px_-14px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10";
+  "rounded-xl border border-primary/28 bg-[#0A0A0A]/75 p-3 text-sm shadow-[0_0_18px_-14px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10";
 
 /** List / secondary action row — category picker row pattern (`create-ad.tsx` ~1551) */
 export const SETTINGS_ROW_BUTTON =
-  "flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3 text-right text-sm text-foreground transition-colors hover:border-primary/45 hover:bg-zinc-900/85";
+  "flex w-full items-center justify-between rounded-xl border border-primary/25 bg-[#0A0A0A]/75 px-3 py-3 text-right text-sm text-foreground transition-colors hover:border-primary/45 hover:bg-black/85";
 
 /** Icon tile in settings rows — matches bordered zinc tiles used around create-ad controls */
 export const SETTINGS_ICON_TILE =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-zinc-950/80 text-primary [&_svg]:h-4 [&_svg]:w-4";
+  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A]/80 text-primary [&_svg]:h-4 [&_svg]:w-4";
 
 export const SETTINGS_ICON_TILE_DESTRUCTIVE =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-destructive/30 bg-destructive/10 text-destructive [&_svg]:h-4 [&_svg]:w-4";

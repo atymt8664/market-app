@@ -1,4 +1,4 @@
-import { Copy, Trash2, X } from "lucide-react";
+﻿import { Copy, Trash2, X } from "lucide-react";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -72,7 +72,7 @@ export function ChatSelectionActionBar({
             onClick={onCopy}
             className={cn(
               ACTION_BTN,
-              "border-primary/35 bg-zinc-950 text-white hover:border-primary/55 hover:bg-zinc-900",
+              "border-primary/35 bg-[#0A0A0A] text-white hover:border-primary/55 hover:bg-black/30",
             )}
           >
             <Copy className="h-4 w-4 shrink-0 text-primary" aria-hidden />
@@ -85,7 +85,7 @@ export function ChatSelectionActionBar({
           onClick={onCancel}
           className={cn(
             ACTION_BTN,
-            "max-w-[5.5rem] border-primary/30 bg-zinc-950/80 text-zinc-300 hover:border-primary/45 hover:text-white",
+            "max-w-[5.5rem] border-primary/30 bg-[#0A0A0A]/80 text-zinc-300 hover:border-primary/45 hover:text-white",
           )}
         >
           <X className="h-4 w-4 shrink-0" aria-hidden />

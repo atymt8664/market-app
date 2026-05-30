@@ -1,4 +1,4 @@
-import { useGetAdsStats } from "@workspace/api-client-react";
+﻿import { useGetAdsStats } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { ArrowRight, BarChart3, MapPin, Tag } from "lucide-react";
 import { motion } from "framer-motion";
@@ -15,9 +15,9 @@ export default function Stats() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="flex flex-col w-full min-h-[100dvh] bg-background pb-20"
+      className="flex flex-col w-full min-h-[100dvh] bg-[#0A0A0A] pb-20"
     >
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
+      <header className="sticky top-0 z-40 bg-[#0A0A0A]/95 backdrop-blur border-b border-border">
         <div className="mx-auto w-full max-w-5xl px-4 md:px-6 py-4 flex items-center gap-4">
           <Link href="/profile">
             <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">
@@ -59,7 +59,7 @@ export default function Stats() {
           </div>
 
           {/* Top Categories */}
-          <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+          <div className="bg-[#0A0A0A] border border-border rounded-xl p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <Tag className="w-5 h-5 text-muted-foreground" />
               <h2 className="font-bold text-lg">الأقسام الأكثر نشاطاً</h2>
@@ -85,7 +85,7 @@ export default function Stats() {
           </div>
 
           {/* Top Cities */}
-          <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+          <div className="bg-[#0A0A0A] border border-border rounded-xl p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <MapPin className="w-5 h-5 text-muted-foreground" />
               <h2 className="font-bold text-lg">المدن الأكثر نشاطاً</h2>

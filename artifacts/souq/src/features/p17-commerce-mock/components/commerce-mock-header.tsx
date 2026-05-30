@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+﻿import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { P17_BACK_BTN, P17_HEADER, P17_HEADER_INNER } from "../styles";
 
@@ -57,7 +57,7 @@ export function CheckoutWizardProgress({ activeStep, labels }: CheckoutWizardPro
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-bold",
                     done && "border-primary/60 bg-primary/20 text-primary",
                     active && "border-primary bg-primary/30 text-primary shadow-[0_0_14px_-4px_hsl(var(--primary)/0.5)]",
-                    !done && !active && "border-zinc-700 bg-zinc-900 text-zinc-500",
+                    !done && !active && "border-zinc-700 bg-[#0A0A0A] text-zinc-500",
                   )}
                 >
                   {done ? "✓" : index + 1}

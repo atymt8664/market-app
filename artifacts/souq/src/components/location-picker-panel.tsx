@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -38,7 +38,7 @@ const LOCATION_PICKER_HISTORY_MARKER = 1;
 
 /** نفس زر الرجوع الدائري في ad-detail (lime + glow) */
 const locationPickerFloatingBackBtn =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-card/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
+  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-[#0A0A0A]/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
 
 function getViewportScrollY(): number {
   if (typeof window === "undefined") return 0;
@@ -74,14 +74,14 @@ function isPickerHistoryState(state: unknown): boolean {
 const pickerSheetShell =
   "border-t border-primary/35 bg-[#0A0A0A] shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.72)] ring-1 ring-primary/14";
 const pickerHeaderBar =
-  "border-b border-primary/25 bg-zinc-950/50 shadow-[inset_0_-1px_0_rgba(163,230,53,0.06)]";
+  "border-b border-primary/25 bg-[#0A0A0A]/50 shadow-[inset_0_-1px_0_rgba(163,230,53,0.06)]";
 const pickerSearchCard =
-  "rounded-2xl border border-primary/32 bg-zinc-950/88 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12";
+  "rounded-2xl border border-primary/32 bg-[#0A0A0A]/88 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12";
 const pickerInputInner =
   "border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0";
 const pickerListPad = "px-3 pb-4 pt-2 sm:px-4";
 const pickerRowCard =
-  "flex w-full items-center justify-between rounded-xl border border-primary/22 bg-zinc-950/78 px-3 py-3 text-right shadow-[0_0_14px_-14px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10 transition-[color,background-color,border-color,box-shadow,transform] duration-150 hover:border-primary/40 hover:bg-zinc-900/88 active:scale-[0.99] md:hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.22)]";
+  "flex w-full items-center justify-between rounded-xl border border-primary/22 bg-[#0A0A0A]/78 px-3 py-3 text-right shadow-[0_0_14px_-14px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10 transition-[color,background-color,border-color,box-shadow,transform] duration-150 hover:border-primary/40 hover:bg-black/88 active:scale-[0.99] md:hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.22)]";
 const pickerRowSelected =
   "border-primary/55 bg-primary/[0.12] text-primary shadow-[0_0_22px_-10px_hsl(var(--primary)/0.28)] ring-primary/28 [&_.row-title]:text-primary [&_.row-sub]:text-primary/75";
 
@@ -391,11 +391,11 @@ export function LocationPickerPanel({ open, onOpenChange }: LocationPickerPanelP
                       ) : null}
                     </button>
                     {countryOptionsLoading ? (
-                      <div className="rounded-xl border border-primary/15 bg-zinc-950/40 px-4 py-10 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
+                      <div className="rounded-xl border border-primary/15 bg-[#0A0A0A]/40 px-4 py-10 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
                         {t("location_picker.loading_countries")}
                       </div>
                     ) : filteredCountries.length === 0 ? (
-                      <div className="rounded-xl border border-primary/15 bg-zinc-950/40 px-4 py-10 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
+                      <div className="rounded-xl border border-primary/15 bg-[#0A0A0A]/40 px-4 py-10 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
                         {t("location_picker.no_countries")}
                       </div>
                     ) : (
@@ -464,12 +464,12 @@ export function LocationPickerPanel({ open, onOpenChange }: LocationPickerPanelP
                   )}
                 >
                   {cityListLoad === "loading" ? (
-                    <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/15 bg-zinc-950/40 px-6 py-14 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
+                    <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/15 bg-[#0A0A0A]/40 px-6 py-14 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
                       <Loader2 className="h-9 w-9 animate-spin text-primary/50" />
                       <p>{t("location_picker.loading_cities")}</p>
                     </div>
                   ) : cityListLoad === "error" ? (
-                    <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/20 bg-zinc-950/50 px-6 py-12 text-center text-sm ring-1 ring-primary/10">
+                    <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/20 bg-[#0A0A0A]/50 px-6 py-12 text-center text-sm ring-1 ring-primary/10">
                       <p className="text-muted-foreground">
                         {t("location_picker.cities_load_error")}
                       </p>
@@ -477,7 +477,7 @@ export function LocationPickerPanel({ open, onOpenChange }: LocationPickerPanelP
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="min-w-[8rem] border-primary/35 bg-zinc-950/80 text-foreground shadow-[0_0_14px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12 hover:border-primary/50 hover:bg-zinc-900/90"
+                        className="min-w-[8rem] border-primary/35 bg-[#0A0A0A]/80 text-foreground shadow-[0_0_14px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12 hover:border-primary/50 hover:bg-black/90"
                         onClick={() => setCityListRetryNonce((n) => n + 1)}
                       >
                         {t("location_picker.cities_retry")}
@@ -487,7 +487,7 @@ export function LocationPickerPanel({ open, onOpenChange }: LocationPickerPanelP
                     <div className="space-y-4 py-4">
                       <div
                         className={cn(
-                          "rounded-2xl border border-primary/28 bg-zinc-950/75 p-4 text-center text-sm text-muted-foreground shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10",
+                          "rounded-2xl border border-primary/28 bg-[#0A0A0A]/75 p-4 text-center text-sm text-muted-foreground shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10",
                         )}
                       >
                         <MapPin className="mx-auto mb-3 h-9 w-9 text-primary/35" />
@@ -495,7 +495,7 @@ export function LocationPickerPanel({ open, onOpenChange }: LocationPickerPanelP
                         {cityQuery.trim().length >= 2 ? (
                           <Button
                             type="button"
-                            className="mt-4 w-full border border-primary/40 bg-zinc-950/90 text-primary shadow-[0_0_18px_-10px_hsl(var(--primary)/0.25)] hover:border-primary/55 hover:bg-zinc-900/95"
+                            className="mt-4 w-full border border-primary/40 bg-[#0A0A0A]/90 text-primary shadow-[0_0_18px_-10px_hsl(var(--primary)/0.25)] hover:border-primary/55 hover:bg-black/95"
                             variant="secondary"
                             onClick={() => handlePickCity(cityQuery.trim())}
                           >
@@ -509,16 +509,16 @@ export function LocationPickerPanel({ open, onOpenChange }: LocationPickerPanelP
                       </div>
                     </div>
                   ) : cityListLoad === "ready" && cityList.length === 0 && !draftAllowsManual ? (
-                    <div className="rounded-xl border border-primary/15 bg-zinc-950/40 px-6 py-12 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
+                    <div className="rounded-xl border border-primary/15 bg-[#0A0A0A]/40 px-6 py-12 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
                       <p>{t("location_picker.no_cities_data")}</p>
                     </div>
                   ) : cityQuery.trim().length < 2 ? (
-                    <div className="flex flex-col items-center gap-2 rounded-xl border border-primary/15 bg-zinc-950/40 px-6 py-12 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
+                    <div className="flex flex-col items-center gap-2 rounded-xl border border-primary/15 bg-[#0A0A0A]/40 px-6 py-12 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
                       <MapPin className="h-10 w-10 text-primary/30" />
                       <p>{t("location_picker.type_to_search")}</p>
                     </div>
                   ) : filteredCities.length === 0 ? (
-                    <div className="rounded-xl border border-primary/15 bg-zinc-950/40 px-4 py-10 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
+                    <div className="rounded-xl border border-primary/15 bg-[#0A0A0A]/40 px-4 py-10 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
                       {t("location_picker.no_cities")}
                     </div>
                   ) : (

@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+﻿import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -72,7 +72,7 @@ export function CreateAdImproveDialog({
                 <p className="text-xs font-medium text-zinc-500">
                   {t("create_ad.ai.preview_title_label")}
                 </p>
-                <div className="rounded-xl border border-primary/25 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-400 line-through decoration-zinc-600">
+                <div className="rounded-xl border border-primary/25 bg-[#0A0A0A]/70 px-3 py-2 text-sm text-zinc-400 line-through decoration-zinc-600">
                   {original.title.trim() || "—"}
                 </div>
                 {titleChanged ? (
@@ -88,7 +88,7 @@ export function CreateAdImproveDialog({
                 <p className="text-xs font-medium text-zinc-500">
                   {t("create_ad.ai.preview_description_label")}
                 </p>
-                <div className="rounded-xl border border-primary/25 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-400 whitespace-pre-wrap line-through decoration-zinc-600 max-h-24 overflow-y-auto">
+                <div className="rounded-xl border border-primary/25 bg-[#0A0A0A]/70 px-3 py-2 text-sm text-zinc-400 whitespace-pre-wrap line-through decoration-zinc-600 max-h-24 overflow-y-auto">
                   {original.description.trim() || "—"}
                 </div>
                 {descChanged ? (
@@ -113,7 +113,7 @@ export function CreateAdImproveDialog({
           <div className="flex flex-col gap-2">
             <Button
               type="button"
-              className="h-11 w-full rounded-full border border-primary/45 bg-zinc-950/80 text-base font-bold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] hover:border-primary/60 hover:bg-zinc-900/90"
+              className="h-11 w-full rounded-full border border-primary/45 bg-[#0A0A0A]/80 text-base font-bold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] hover:border-primary/60 hover:bg-black/90"
               disabled={isLoading || !hasChanges}
               onClick={onApply}
             >
@@ -122,7 +122,7 @@ export function CreateAdImproveDialog({
             <Button
               type="button"
               variant="outline"
-              className="h-11 w-full rounded-full border-primary/40 bg-zinc-950/80 text-base font-semibold text-foreground hover:border-primary/55 hover:bg-zinc-900/90"
+              className="h-11 w-full rounded-full border-primary/40 bg-[#0A0A0A]/80 text-base font-semibold text-foreground hover:border-primary/55 hover:bg-black/90"
               disabled={isLoading}
               onClick={() => onOpenChange(false)}
             >

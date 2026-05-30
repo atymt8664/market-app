@@ -1,10 +1,10 @@
-import { ChevronLeft, ChevronRight, Megaphone } from "lucide-react";
+﻿import { ChevronLeft, ChevronRight, Megaphone } from "lucide-react";
 import { Link } from "wouter";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 const SHELL =
-  "rounded-2xl border border-primary/42 bg-zinc-950/80 p-2.5 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/14 md:p-3";
+  "rounded-2xl border border-primary/42 bg-[#0A0A0A]/80 p-2.5 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/14 md:p-3";
 
 const ICON_WRAP =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/45 bg-primary/10 text-primary shadow-[0_0_16px_-8px_hsl(var(--primary)/0.38)] [&_svg]:h-5 [&_svg]:w-5";
@@ -28,7 +28,7 @@ export function CreateAdPromotionTeaser({
           </span>
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex rounded-full border border-zinc-600/55 bg-zinc-900/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">
+              <span className="inline-flex rounded-full border border-zinc-600/55 bg-[#0A0A0A]/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">
                 {t("create_ad.promotion_teaser.badge_soon")}
               </span>
             </div>

@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+﻿import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -204,7 +204,7 @@ function FirstLaunchLanguageGate({ onDone }: { onDone: () => void }) {
               className={cn(
                 AUTH_SELECT_ROW,
                 "py-3 text-start",
-                option.code === selectedLocale && "border-primary/40 bg-zinc-900/90 shadow-[0_0_14px_-10px_hsl(var(--primary)/0.25)]",
+                option.code === selectedLocale && "border-primary/40 bg-[#0A0A0A]/90 shadow-[0_0_14px_-10px_hsl(var(--primary)/0.25)]",
               )}
             >
               <span className="inline-flex min-w-0 flex-1 flex-wrap items-center gap-2">
@@ -223,7 +223,7 @@ function FirstLaunchLanguageGate({ onDone }: { onDone: () => void }) {
           onClick={() => {
             void setLocale(selectedLocale).then(onDone);
           }}
-          className={cn(AUTH_ACCENT_OUTLINE_BTN, "mt-5 text-sm hover:bg-zinc-900")}
+          className={cn(AUTH_ACCENT_OUTLINE_BTN, "mt-5 text-sm hover:bg-black/30")}
         >
           {t("first_launch.confirm")}
         </button>

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Isolated ad-detail hero (gallery + top actions) — memoized so like/fav
  * toggles on the rest of the page do not re-render the image gallery (P9).
  */
@@ -11,7 +11,7 @@ import { t } from "@/i18n";
 import { adImageListEqual } from "@/lib/ad-image-preload";
 
 const floatingHeaderBtn =
-  "inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-primary/55 bg-card/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] duration-150 hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
+  "inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-primary/55 bg-[#0A0A0A]/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] duration-150 hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
 
 type AdDetailHeroSectionProps = {
   pageMax: string;

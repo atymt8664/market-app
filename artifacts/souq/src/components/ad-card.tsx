@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+﻿import { Link, useLocation } from "wouter";
 import { Heart, MapPin, Eye, ThumbsUp, Star } from "lucide-react";
 import { AdCardNoImagePlaceholder } from "@/components/ad-card-no-image-placeholder";
 import { formatRelativeTime, formatPrice, formatCurrencyAmount } from "@/lib/format";
@@ -44,7 +44,7 @@ const PRICE_BOX_COMPACT = "min-h-[2rem] shrink-0";
 
 /** صفحة المفضلة — نفس هوية كروت البروفايل / نشر إعلان، بحجم مدمج للموبايل */
 const FAVORITES_CARD_SHELL =
-  "rounded-2xl border border-primary/40 bg-zinc-950/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[transform,border-color,box-shadow] duration-200 hover:border-primary/45 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.22)]";
+  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[transform,border-color,box-shadow] duration-200 hover:border-primary/45 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.22)]";
 
 /** Home feed — #0A0A0A shell; thin lime rim, no card glow. */
 const HOME_FEED_CARD_SHELL =
@@ -298,7 +298,7 @@ function AdCardInner({
             : feedCompact
               ? HOME_FEED_CARD_SHELL
               : [
-                "rounded-xl border border-border/45 bg-card",
+                "rounded-xl border border-border/45 bg-[#0A0A0A]",
                 "shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
                 "transition-[transform,border-color,box-shadow] duration-200 ease-out",
                 "hover:border-primary/25 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_2px_10px_rgba(0,0,0,0.45)]",
@@ -310,7 +310,7 @@ function AdCardInner({
         <div
           className={cn(
             "relative w-full shrink-0 overflow-hidden",
-            feedCompact ? "bg-[#0A0A0A]" : "bg-zinc-950/80",
+            feedCompact ? "bg-[#0A0A0A]" : "bg-[#0A0A0A]/80",
             favCompact
               ? "h-[88px] sm:h-[96px] md:h-[104px]"
               : feedCompact
@@ -463,7 +463,7 @@ function AdCardInner({
         type="button"
         variant="outline"
         size="sm"
-        className="h-8 w-full shrink-0 gap-1.5 rounded-full border-primary/35 bg-zinc-950/85 px-3 text-[11px] font-medium text-primary shadow-[0_0_12px_-8px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 hover:border-primary/50 hover:bg-zinc-900/90 hover:text-primary"
+        className="h-8 w-full shrink-0 gap-1.5 rounded-full border-primary/35 bg-[#0A0A0A]/85 px-3 text-[11px] font-medium text-primary shadow-[0_0_12px_-8px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 hover:border-primary/50 hover:bg-black/90 hover:text-primary"
         disabled={favMut.isPending || unfavMut.isPending}
         onClick={(e) => toggleFavorite(e)}
       >
@@ -505,7 +505,7 @@ export function AdCardSkeleton({
           ? FAVORITES_CARD_SHELL
           : feedCompact
             ? HOME_FEED_CARD_SHELL
-            : "rounded-xl border border-border/45 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
+            : "rounded-xl border border-border/45 bg-[#0A0A0A] shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
         featured ? "h-full" : "h-auto",
         featured &&
           (feedCompact ? FEATURED_HOME_FEED_CARD_W : FEATURED_DEFAULT_CARD_W),

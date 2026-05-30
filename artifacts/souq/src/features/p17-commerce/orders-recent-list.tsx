@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+﻿import { Skeleton } from "@/components/ui/skeleton";
 import { t } from "@/i18n";
 import type { OrderListItem } from "./orders-api.types";
 
@@ -22,7 +22,7 @@ export function OrdersRecentList({
         {items.map((order) => (
           <li
             key={order.id}
-            className="rounded-xl border border-primary/25 bg-zinc-950/85 p-2.5 shadow-[0_0_12px_-10px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10"
+            className="rounded-xl border border-primary/25 bg-[#0A0A0A]/85 p-2.5 shadow-[0_0_12px_-10px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10"
           >
             <div className="flex items-start justify-between gap-2">
               <p className="text-xs font-bold text-primary">{order.orderNumber}</p>

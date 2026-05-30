@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -158,7 +158,7 @@ export default function ResetPassword() {
             <div className="flex flex-col items-center gap-4 text-center">
               <div className="relative flex items-center justify-center">
                 <div className="absolute h-28 w-28 rounded-full bg-primary/15 blur-2xl" />
-                <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/40 bg-zinc-950/90 shadow-[0_0_24px_-10px_hsl(var(--primary)/0.35)] ring-1 ring-primary/20">
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/40 bg-[#0A0A0A]/90 shadow-[0_0_24px_-10px_hsl(var(--primary)/0.35)] ring-1 ring-primary/20">
                   <CheckCircle2 className="h-8 w-8 text-primary" strokeWidth={2.25} />
                 </div>
               </div>
@@ -180,7 +180,7 @@ export default function ResetPassword() {
             <div className="mb-6 flex flex-col items-center gap-4 text-center">
               <div className="relative flex items-center justify-center">
                 <div className="absolute h-32 w-32 rounded-full bg-primary/12 blur-3xl" />
-                <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-primary/40 bg-zinc-950/90 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.32)] ring-1 ring-primary/22">
+                <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-primary/40 bg-[#0A0A0A]/90 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.32)] ring-1 ring-primary/22">
                   <KeyRound className="h-9 w-9 text-primary" strokeWidth={2.25} />
                 </div>
               </div>

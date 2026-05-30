@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+﻿import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -94,46 +94,46 @@ const USER_REPORT_REASON_KEYS = [
 ] as const;
 
 const dropdownSurface =
-  "z-50 max-h-[min(70vh,520px)] min-w-[14rem] overflow-y-auto rounded-2xl border border-primary/35 bg-zinc-950/95 p-1.5 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15";
+  "z-50 max-h-[min(70vh,520px)] min-w-[14rem] overflow-y-auto rounded-2xl border border-primary/35 bg-[#0A0A0A]/95 p-1.5 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15";
 
 const dropdownItemClass =
-  "cursor-pointer gap-2 rounded-xl border border-transparent px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary/25 focus:bg-zinc-900/90 data-[highlighted]:border-primary/20 data-[highlighted]:bg-zinc-900/90";
+  "cursor-pointer gap-2 rounded-xl border border-transparent px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary/25 focus:bg-black/90 data-[highlighted]:border-primary/20 data-[highlighted]:bg-black/90";
 
 const dialogSurface =
-  "rounded-2xl border border-primary/35 bg-zinc-950/95 p-0 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15 gap-0 overflow-hidden sm:max-w-md";
+  "rounded-2xl border border-primary/35 bg-[#0A0A0A]/95 p-0 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15 gap-0 overflow-hidden sm:max-w-md";
 
 const alertSurface =
-  "rounded-2xl border border-primary/35 bg-zinc-950/95 p-5 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15 sm:max-w-md";
+  "rounded-2xl border border-primary/35 bg-[#0A0A0A]/95 p-5 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15 sm:max-w-md";
 
 const reportReasonBtn = (active: boolean, alignClass: string) =>
   cn(
     "w-full rounded-xl border px-3 py-2.5 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
     alignClass,
     active
-      ? "border-primary/45 bg-zinc-900/95 ring-1 ring-primary/18 shadow-[0_0_14px_-10px_hsl(var(--primary)/0.2)]"
-      : "border-primary/25 bg-zinc-950/85 hover:border-primary/38 hover:bg-zinc-900/70",
+      ? "border-primary/45 bg-[#0A0A0A]/95 ring-1 ring-primary/18 shadow-[0_0_14px_-10px_hsl(var(--primary)/0.2)]"
+      : "border-primary/25 bg-[#0A0A0A]/85 hover:border-primary/38 hover:bg-black/70",
   );
 
 /** مطابقة أزرار الرأس في ad-detail */
 const floatingHeaderBtn =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-card/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
+  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-[#0A0A0A]/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
 
 const pageMax =
   "mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6";
 
 /** كرت المحتوى — نفس ad-detail (lime + glow) */
 const deviceInfoShell =
-  "rounded-2xl border border-primary/40 bg-card/80 p-4 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 dark:bg-zinc-950/70 md:p-5";
+  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/80 p-4 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 bg-[#0A0A0A]/70 md:p-5";
 
 const sellerInnerShell =
-  "rounded-2xl border border-zinc-700/45 bg-zinc-950/85 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] ring-1 ring-white/[0.05] md:p-5";
+  "rounded-2xl border border-zinc-700/45 bg-[#0A0A0A]/85 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] ring-1 ring-white/[0.05] md:p-5";
 
 const statsStripSurface =
-  "rounded-2xl border border-primary/40 bg-muted/25 p-1 shadow-[0_0_28px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 dark:bg-zinc-950/70";
+  "rounded-2xl border border-primary/40 bg-muted/25 p-1 shadow-[0_0_28px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 bg-[#0A0A0A]/70";
 
 /** تجاوز مظهر AdCard ليتوافق مع ad-detail دون تعديل المكوّن */
 const sellerAdsGridCardTone =
-  "[&_article]:rounded-2xl [&_article]:border-primary/40 [&_article]:bg-card/80 [&_article]:shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] [&_article]:ring-1 [&_article]:ring-primary/15 [&_article]:dark:bg-zinc-950/70 [&_article]:hover:border-primary/50 [&_article]:hover:shadow-[0_0_32px_-10px_hsl(var(--primary)/0.28)] [&_article>div:first-child]:rounded-t-2xl [&_button]:rounded-full [&_button]:border [&_button]:border-primary/50 [&_button]:bg-black/55 [&_button]:shadow-[0_0_14px_-4px_hsl(var(--primary)/0.35)] [&_button]:hover:border-primary/65";
+  "[&_article]:rounded-2xl [&_article]:border-primary/40 [&_article]:bg-[#0A0A0A]/80 [&_article]:shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] [&_article]:ring-1 [&_article]:ring-primary/15 [&_article]:bg-[#0A0A0A]/70 [&_article]:hover:border-primary/50 [&_article]:hover:shadow-[0_0_32px_-10px_hsl(var(--primary)/0.28)] [&_article>div:first-child]:rounded-t-2xl [&_button]:rounded-full [&_button]:border [&_button]:border-primary/50 [&_button]:bg-black/55 [&_button]:shadow-[0_0_14px_-4px_hsl(var(--primary)/0.35)] [&_button]:hover:border-primary/65";
 
 export default function UserProfile() {
   const params = useParams();
@@ -630,7 +630,7 @@ export default function UserProfile() {
         <div
           className={`${pageMax} pb-3`}
         >
-          <div className="flex items-start justify-between gap-2 rounded-2xl border border-amber-500/35 bg-zinc-950/80 px-3 py-2.5 text-xs leading-relaxed text-foreground/90 shadow-[0_0_20px_-8px_hsl(var(--primary)/0.15)] ring-1 ring-amber-500/15">
+          <div className="flex items-start justify-between gap-2 rounded-2xl border border-amber-500/35 bg-[#0A0A0A]/80 px-3 py-2.5 text-xs leading-relaxed text-foreground/90 shadow-[0_0_20px_-8px_hsl(var(--primary)/0.15)] ring-1 ring-amber-500/15">
             <span>
               يمكنك الإبلاغ عن هذا المستخدم أو حظره من قائمة «المزيد» (⋮) أعلى الصفحة.
             </span>
@@ -757,8 +757,8 @@ export default function UserProfile() {
               className={cn(
                 "h-12 w-full gap-2 rounded-2xl border-2 text-sm font-semibold shadow-[0_0_12px_-6px_hsl(var(--primary)/0.2)] transition-colors",
                 profile.isFollowing
-                  ? "border-primary/40 bg-zinc-950/90 text-foreground hover:bg-zinc-900/95"
-                  : "border-primary/55 bg-zinc-950/90 text-primary hover:border-primary/70 hover:bg-zinc-900/95",
+                  ? "border-primary/40 bg-[#0A0A0A]/90 text-foreground hover:bg-black/95"
+                  : "border-primary/55 bg-[#0A0A0A]/90 text-primary hover:border-primary/70 hover:bg-black/95",
               )}
             >
               {isPending ? (
@@ -927,7 +927,7 @@ export default function UserProfile() {
               <textarea
                 placeholder={t("user_profile.report.details_placeholder")}
                 className={cn(
-                  "min-h-[88px] w-full rounded-xl border border-primary/28 bg-zinc-950/90 p-3 text-sm text-foreground shadow-inner ring-1 ring-primary/10 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                  "min-h-[88px] w-full rounded-xl border border-primary/28 bg-[#0A0A0A]/90 p-3 text-sm text-foreground shadow-inner ring-1 ring-primary/10 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
                   reportTextAlign,
                 )}
                 value={reportExtra}
@@ -946,7 +946,7 @@ export default function UserProfile() {
               }
               className={cn(
                 AUTH_ACCENT_OUTLINE_BTN,
-                "hover:bg-zinc-900",
+                "hover:bg-black/30",
               )}
               onClick={() => void submitUserReport()}
             >
@@ -973,14 +973,14 @@ export default function UserProfile() {
               type="button"
               onClick={() => void attemptBlockUser()}
               className={cn(
-                "inline-flex h-11 min-w-[8rem] flex-1 items-center justify-center rounded-xl border border-red-500/40 bg-zinc-950/90 px-4 text-sm font-semibold text-red-200 shadow-[0_0_18px_-12px_rgba(239,68,68,0.35)] ring-1 ring-red-500/15 transition-colors hover:border-red-500/55 hover:bg-red-950/25 sm:flex-none",
+                "inline-flex h-11 min-w-[8rem] flex-1 items-center justify-center rounded-xl border border-red-500/40 bg-[#0A0A0A]/90 px-4 text-sm font-semibold text-red-200 shadow-[0_0_18px_-12px_rgba(239,68,68,0.35)] ring-1 ring-red-500/15 transition-colors hover:border-red-500/55 hover:bg-red-950/25 sm:flex-none",
               )}
             >
               {t("user_profile.block_confirm_cta")}
             </button>
             <AlertDialogCancel
               className={cn(
-                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-zinc-950/90 text-sm font-semibold text-foreground hover:bg-zinc-900 sm:flex-none",
+                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-[#0A0A0A]/90 text-sm font-semibold text-foreground hover:bg-black/30 sm:flex-none",
               )}
             >
               {t("user_profile.block_cancel")}
@@ -1011,7 +1011,7 @@ export default function UserProfile() {
             </button>
             <AlertDialogCancel
               className={cn(
-                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-zinc-950/90 text-sm font-semibold text-foreground hover:bg-zinc-900 sm:flex-none",
+                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-[#0A0A0A]/90 text-sm font-semibold text-foreground hover:bg-black/30 sm:flex-none",
               )}
             >
               {t("user_profile.unblock_cancel")}

@@ -1,4 +1,4 @@
-import * as React from "react"
+﻿import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 
 /** كرت تنبيه / نجاح — dark premium + حدود lime + توهج خفيف (بدون تعبئة lime مسطحة) */
 const PREMIUM_TOAST_CARD =
-  "mx-auto w-full max-w-[min(100%,20rem)] rounded-2xl border border-primary/40 bg-zinc-950/95 p-4 pr-10 text-foreground shadow-[0_0_32px_-10px_hsl(var(--primary)/0.32)] ring-1 ring-primary/18 backdrop-blur-sm sm:max-w-sm"
+  "mx-auto w-full max-w-[min(100%,20rem)] rounded-2xl border border-primary/40 bg-[#0A0A0A]/95 p-4 pr-10 text-foreground shadow-[0_0_32px_-10px_hsl(var(--primary)/0.32)] ring-1 ring-primary/18 backdrop-blur-sm sm:max-w-sm"
 
 const ToastProvider = ToastPrimitives.Provider
 

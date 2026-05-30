@@ -131,7 +131,7 @@ export default function VerifyEmail() {
 
   return (
     <div
-      className={`min-h-[100dvh] flex flex-col items-center justify-center bg-background px-6 ${SETTINGS_IMMERSIVE_BOTTOM}`}
+      className={`min-h-[100dvh] flex flex-col items-center justify-center bg-[#0A0A0A] px-6 ${SETTINGS_IMMERSIVE_BOTTOM}`}
       dir={dir}
     >
       <h1 className="text-xl font-bold mb-2">{t("auth.verify.title")}</h1>

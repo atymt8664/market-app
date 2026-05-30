@@ -1,4 +1,4 @@
-import { useListFavoriteAds } from "@workspace/api-client-react";
+﻿import { useListFavoriteAds } from "@workspace/api-client-react";
 import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
 import { Link } from "wouter";
 import { Heart, Search } from "lucide-react";
@@ -13,13 +13,13 @@ import { cn } from "@/lib/utils";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 
 const emptyCardShell =
-  "rounded-2xl border border-primary/40 bg-zinc-950/75 p-6 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-8";
+  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 p-6 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-8";
 
 /** نفس mini-card عنوان «إنشاء إعلان» — dark/lime خفيف */
 const favoritesSectionHeading = cn(
-  "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-card/80 px-2 py-px",
+  "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 px-2 py-px",
   "text-sm font-semibold leading-tight tracking-tight text-foreground md:text-base",
-  "shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 dark:bg-zinc-950/70",
+  "shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 bg-[#0A0A0A]/70",
 );
 const favoritesPageTitleHeading = cn(
   favoritesSectionHeading,
@@ -29,7 +29,7 @@ const favoritesPageTitleHeading = cn(
 /** دائرة القلب — h-11 مثل أزرار الرجوع + هوية dark/lime لكرت العنوان */
 const favoritesHeaderHeartCircle = cn(
   "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
-  "border border-primary/40 bg-zinc-950/75",
+  "border border-primary/40 bg-[#0A0A0A]/75",
   "shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10",
   "text-primary transition-[border-color,box-shadow] duration-200",
 );
@@ -96,7 +96,7 @@ export default function Favorites() {
               )}
               dir="rtl"
             >
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-primary/35 bg-zinc-950/90 shadow-[0_0_18px_-8px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12 md:h-[4.5rem] md:w-[4.5rem]">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-primary/35 bg-[#0A0A0A]/90 shadow-[0_0_18px_-8px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12 md:h-[4.5rem] md:w-[4.5rem]">
                 <Heart
                   className="h-8 w-8 fill-primary/25 text-primary md:h-9 md:w-9"
                   strokeWidth={2}
@@ -111,7 +111,7 @@ export default function Favorites() {
               </p>
               <Link
                 href="/"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/40 bg-zinc-950/90 px-4 py-2.5 text-sm font-semibold text-primary shadow-[0_0_14px_-6px_hsl(var(--primary)/0.22)] ring-1 ring-primary/10 transition-colors hover:border-primary/55 hover:bg-zinc-900/95"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/40 bg-[#0A0A0A]/90 px-4 py-2.5 text-sm font-semibold text-primary shadow-[0_0_14px_-6px_hsl(var(--primary)/0.22)] ring-1 ring-primary/10 transition-colors hover:border-primary/55 hover:bg-black/95"
               >
                 <Search className="h-4 w-4 shrink-0" strokeWidth={2.25} />
                 {t("favorites.browse_ads")}

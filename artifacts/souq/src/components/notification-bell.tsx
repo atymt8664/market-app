@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+﻿import { Link } from "wouter";
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,7 +22,7 @@ export function NotificationBell({ className }: { className?: string } = {}) {
     <Link
       href="/notifications"
       className={cn(
-        "relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/35 bg-zinc-950/80 text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.32)] ring-1 ring-primary/15 transition-colors hover:border-primary/50 hover:bg-zinc-900/90 hover:shadow-[0_0_20px_-10px_hsl(var(--primary)/0.38)]",
+        "relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.32)] ring-1 ring-primary/15 transition-colors hover:border-primary/50 hover:bg-black/90 hover:shadow-[0_0_20px_-10px_hsl(var(--primary)/0.38)]",
         className,
       )}
       aria-label={t("notifications.bell_aria")}
@@ -31,7 +31,7 @@ export function NotificationBell({ className }: { className?: string } = {}) {
       {count > 0 ? (
         <span
           dir="ltr"
-          className="absolute -top-1 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-zinc-950 bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
+          className="absolute -top-1 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-[#0A0A0A] bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
         >
           {count > 99 ? "99+" : count}
         </span>

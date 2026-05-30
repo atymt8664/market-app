@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Package, Truck, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -124,7 +124,7 @@ function SellerOrderDetailMock({ orderId }: { orderId: string }) {
       <main className={P17_MAIN}>
         <div className={P17_CARD}>
           <div className="flex items-center gap-3">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-zinc-900 text-primary">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A] text-primary">
               <Package className="h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1">
@@ -192,13 +192,13 @@ function SellerOrderDetailMock({ orderId }: { orderId: string }) {
               value={trackingNumber}
               onChange={(e) => setTrackingNumber(e.target.value)}
               placeholder="MOCK-TRK-12345"
-              className="mb-3 w-full rounded-xl border border-primary/30 bg-zinc-950/90 px-3 py-2.5 text-sm text-foreground placeholder:text-zinc-600 focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+              className="mb-3 w-full rounded-xl border border-primary/30 bg-[#0A0A0A]/90 px-3 py-2.5 text-sm text-foreground placeholder:text-zinc-600 focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
             />
             <p className={P17_SECTION_LABEL}>{P17_MOCK.seller.carrier}</p>
             <select
               value={carrier}
               onChange={(e) => setCarrier(e.target.value)}
-              className="mb-4 w-full rounded-xl border border-primary/30 bg-zinc-950/90 px-3 py-2.5 text-sm text-foreground focus-visible:border-primary/50 focus-visible:outline-none"
+              className="mb-4 w-full rounded-xl border border-primary/30 bg-[#0A0A0A]/90 px-3 py-2.5 text-sm text-foreground focus-visible:border-primary/50 focus-visible:outline-none"
             >
               {MOCK_CARRIERS.map((c) => (
                 <option key={c} value={c}>

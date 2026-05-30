@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+﻿import { Skeleton } from "@/components/ui/skeleton";
 import { P17_PREVIEW_STAT_ROW } from "./schema-preview-styles";
 
 type OrdersPreviewStatsSkeletonProps = {
@@ -12,7 +12,7 @@ export function OrdersPreviewStatsSkeleton({
 }: OrdersPreviewStatsSkeletonProps) {
   return (
     <ul
-      className="space-y-2 rounded-xl border border-primary/20 bg-zinc-950/80 p-2.5 shadow-[0_0_14px_-10px_hsl(var(--primary)/0.12)] ring-1 ring-primary/8"
+      className="space-y-2 rounded-xl border border-primary/20 bg-[#0A0A0A]/80 p-2.5 shadow-[0_0_14px_-10px_hsl(var(--primary)/0.12)] ring-1 ring-primary/8"
       data-testid="p17-preview-stats-skeleton"
       aria-hidden
     >

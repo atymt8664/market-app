@@ -1,4 +1,4 @@
-import { Redirect, useLocation } from "wouter";
+﻿import { Redirect, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { AccountHeader } from "@/components/account-header";
 import { CheckCircle2, Lock, Mail, ShieldAlert } from "lucide-react";
@@ -55,7 +55,7 @@ export default function AccountEmail() {
           <div
             className={cn(
               SETTINGS_CARD_COMPACT,
-              "flex items-start gap-3 border-primary/30 bg-zinc-950/70 p-4 shadow-[0_0_18px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10",
+              "flex items-start gap-3 border-primary/30 bg-[#0A0A0A]/70 p-4 shadow-[0_0_18px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10",
             )}
           >
             <div className={SETTINGS_ICON_TILE}>
@@ -140,12 +140,12 @@ export default function AccountEmail() {
               disabled
               aria-disabled="true"
               className={cn(
-                "flex min-h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-primary/28 bg-zinc-950/85 px-4 py-2.5 text-sm font-semibold text-zinc-500 shadow-none ring-1 ring-primary/8",
+                "flex min-h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-primary/28 bg-[#0A0A0A]/85 px-4 py-2.5 text-sm font-semibold text-zinc-500 shadow-none ring-1 ring-primary/8",
               )}
             >
               <Lock className="h-4 w-4 shrink-0 opacity-75" aria-hidden />
               <span>{t("account_email.change_email")}</span>
-              <span className="inline-flex rounded-full border border-zinc-600/55 bg-zinc-900/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">
+              <span className="inline-flex rounded-full border border-zinc-600/55 bg-[#0A0A0A]/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">
                 {t("account_email.soon")}
               </span>
             </button>

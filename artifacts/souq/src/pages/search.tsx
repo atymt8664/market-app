@@ -1,4 +1,4 @@
-import { keepPreviousData } from "@tanstack/react-query";
+﻿import { keepPreviousData } from "@tanstack/react-query";
 import { useListAds, getListAdsQueryKey } from "@workspace/api-client-react";
 import { STALE_AD_LIST_MS } from "@/lib/query-stale-times";
 import { Link, useSearch } from "wouter";
@@ -22,7 +22,7 @@ import {
 } from "@/components/settings-shell";
 
 const listingGridCardTone =
-  "[&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-card/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:dark:bg-zinc-950/70 [&_article]:hover:border-primary/40 [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55";
+  "[&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-[#0A0A0A]/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:bg-[#0A0A0A]/70 [&_article]:hover:border-primary/40 [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55";
 
 export default function Search() {
   const { locale } = useLocale();
@@ -146,7 +146,7 @@ export default function Search() {
               <div
                 className={cn(
                   "flex h-16 w-16 items-center justify-center rounded-2xl",
-                  "border border-primary/35 bg-zinc-950/75 text-primary",
+                  "border border-primary/35 bg-[#0A0A0A]/75 text-primary",
                   "shadow-[0_0_20px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/12",
                 )}
               >

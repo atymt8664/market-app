@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+﻿import { useCallback } from "react";
 import { Redirect, useParams, useLocation } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
@@ -42,7 +42,7 @@ function SegmentPageTitle({ segment }: { segment: Segment }) {
 const PLAN_SECTION_LABEL = "mb-1.5 px-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500";
 
 const PLAN_FEATURE_TILE =
-  "rounded-xl border border-primary/28 bg-zinc-950/70 px-3 py-2.5 text-xs font-medium leading-snug text-foreground ring-1 ring-primary/10";
+  "rounded-xl border border-primary/28 bg-[#0A0A0A]/70 px-3 py-2.5 text-xs font-medium leading-snug text-foreground ring-1 ring-primary/10";
 
 /** صفحة «الحساب الشخصي» — هيكل منتج جاهز للتوسع، بدون منطق دفع أو اشتراك */
 function PersonalAccountPlanPage({ dir, textStart }: { dir: "rtl" | "ltr"; textStart: string }) {
@@ -98,7 +98,7 @@ function PersonalAccountPlanPage({ dir, textStart }: { dir: "rtl" | "ltr"; textS
         <Button
           type="button"
           disabled
-          className="h-11 w-full cursor-default rounded-2xl border border-primary/48 bg-zinc-900/95 text-sm font-semibold text-primary shadow-[0_0_22px_-12px_hsl(var(--primary)/0.28)] ring-1 ring-primary/25 opacity-100 disabled:opacity-100"
+          className="h-11 w-full cursor-default rounded-2xl border border-primary/48 bg-[#0A0A0A]/95 text-sm font-semibold text-primary shadow-[0_0_22px_-12px_hsl(var(--primary)/0.28)] ring-1 ring-primary/25 opacity-100 disabled:opacity-100"
         >
           {t("pro_seller_page.personal.cta_active")}
         </Button>
@@ -113,10 +113,10 @@ const PREMIUM_PLAN_SECTION_LABEL =
   "mb-0.5 px-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-primary/75 md:mb-1 md:text-[11px]";
 
 const PREMIUM_FEATURE_TILE =
-  "rounded-xl border border-primary/34 bg-zinc-950/80 px-2.5 py-2 text-[11px] font-medium leading-snug text-foreground shadow-[inset_0_1px_0_0_hsl(var(--primary)/0.05)] ring-1 ring-primary/14 md:px-3 md:py-2.5 md:text-xs";
+  "rounded-xl border border-primary/34 bg-[#0A0A0A]/80 px-2.5 py-2 text-[11px] font-medium leading-snug text-foreground shadow-[inset_0_1px_0_0_hsl(var(--primary)/0.05)] ring-1 ring-primary/14 md:px-3 md:py-2.5 md:text-xs";
 
 const PREMIUM_PRICE_ROW =
-  "flex flex-wrap items-baseline justify-between gap-1.5 rounded-xl border border-primary/28 bg-zinc-950/85 px-2.5 py-2 ring-1 ring-primary/12 md:px-3 md:py-2.5";
+  "flex flex-wrap items-baseline justify-between gap-1.5 rounded-xl border border-primary/28 bg-[#0A0A0A]/85 px-2.5 py-2 ring-1 ring-primary/12 md:px-3 md:py-2.5";
 
 const PREMIUM_CARD_SHELL = cn(
   SETTINGS_CARD,
@@ -133,10 +133,10 @@ const PRO_PLAN_SECTION_LABEL =
   "mb-0.5 px-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary/85 md:mb-1 md:text-[11px] md:tracking-[0.14em]";
 
 const PRO_FEATURE_TILE =
-  "rounded-xl border border-primary/40 bg-zinc-950/[0.82] px-2.5 py-2 text-[11px] font-medium leading-snug text-foreground shadow-[inset_0_1px_0_0_hsl(var(--primary)/0.07)] ring-1 ring-primary/18 md:px-3 md:py-2.5 md:text-xs";
+  "rounded-xl border border-primary/40 bg-[#0A0A0A]/[0.82] px-2.5 py-2 text-[11px] font-medium leading-snug text-foreground shadow-[inset_0_1px_0_0_hsl(var(--primary)/0.07)] ring-1 ring-primary/18 md:px-3 md:py-2.5 md:text-xs";
 
 const PRO_PRICE_ROW =
-  "flex flex-wrap items-baseline justify-between gap-1.5 rounded-xl border border-primary/32 bg-zinc-950/88 px-2.5 py-2 ring-1 ring-primary/14 md:px-3 md:py-2.5";
+  "flex flex-wrap items-baseline justify-between gap-1.5 rounded-xl border border-primary/32 bg-[#0A0A0A]/88 px-2.5 py-2 ring-1 ring-primary/14 md:px-3 md:py-2.5";
 
 const PRO_CARD_SHELL = cn(
   SETTINGS_CARD,
@@ -226,7 +226,7 @@ function PremiumAccountPlanPage({ dir, textStart }: { dir: "rtl" | "ltr"; textSt
         <Button
           type="button"
           disabled
-          className="h-10 w-full cursor-default rounded-2xl border border-primary/52 bg-zinc-900/95 text-sm font-semibold text-primary/95 shadow-[0_0_28px_-14px_hsl(var(--primary)/0.38)] ring-1 ring-primary/28 opacity-100 disabled:opacity-100 md:h-11"
+          className="h-10 w-full cursor-default rounded-2xl border border-primary/52 bg-[#0A0A0A]/95 text-sm font-semibold text-primary/95 shadow-[0_0_28px_-14px_hsl(var(--primary)/0.38)] ring-1 ring-primary/28 opacity-100 disabled:opacity-100 md:h-11"
         >
           {t("pro_seller_page.premium.cta_disabled")}
         </Button>
@@ -324,7 +324,7 @@ function ProfessionalAccountPlanPage({ dir, textStart }: { dir: "rtl" | "ltr"; t
         <Button
           type="button"
           disabled
-          className="h-10 w-full cursor-default rounded-2xl border border-primary/55 bg-zinc-900/95 text-sm font-semibold text-primary shadow-[0_0_32px_-14px_hsl(var(--primary)/0.42)] ring-1 ring-primary/30 opacity-100 disabled:opacity-100 md:h-11"
+          className="h-10 w-full cursor-default rounded-2xl border border-primary/55 bg-[#0A0A0A]/95 text-sm font-semibold text-primary shadow-[0_0_32px_-14px_hsl(var(--primary)/0.42)] ring-1 ring-primary/30 opacity-100 disabled:opacity-100 md:h-11"
         >
           {t("pro_seller_page.pro_plan.cta_disabled")}
         </Button>
@@ -339,7 +339,7 @@ const TRUST_SECTION_LABEL =
   "mb-0.5 px-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500 md:mb-1 md:text-[11px]";
 
 const TRUST_SIGNAL_CARD =
-  "rounded-xl border border-primary/26 bg-zinc-950/72 px-2.5 py-2 text-[11px] font-medium leading-snug text-foreground ring-1 ring-primary/10 md:text-xs";
+  "rounded-xl border border-primary/26 bg-[#0A0A0A]/72 px-2.5 py-2 text-[11px] font-medium leading-snug text-foreground ring-1 ring-primary/10 md:text-xs";
 
 const TRUST_CARD_SHELL = cn(
   SETTINGS_CARD,
@@ -422,7 +422,7 @@ function TrustScorePlanPage({ dir, textStart }: { dir: "rtl" | "ltr"; textStart:
         <Button
           type="button"
           disabled
-          className="h-10 w-full cursor-default rounded-2xl border border-primary/48 bg-zinc-900/95 text-sm font-semibold text-primary/95 shadow-[0_0_22px_-14px_hsl(var(--primary)/0.3)] ring-1 ring-primary/22 opacity-100 disabled:opacity-100 md:h-11"
+          className="h-10 w-full cursor-default rounded-2xl border border-primary/48 bg-[#0A0A0A]/95 text-sm font-semibold text-primary/95 shadow-[0_0_22px_-14px_hsl(var(--primary)/0.3)] ring-1 ring-primary/22 opacity-100 disabled:opacity-100 md:h-11"
         >
           {t("pro_seller_page.trust_plan.cta_disabled")}
         </Button>

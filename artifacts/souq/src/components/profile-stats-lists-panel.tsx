@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+﻿import { Link } from "wouter";
 import { useMemo } from "react";
 import {
   useGetUserFollowers,
@@ -18,7 +18,7 @@ import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 
 const rowShell =
-  "flex min-h-[3.25rem] items-start gap-3 rounded-xl border border-primary/25 bg-zinc-950/80 px-3 py-2.5 transition-colors hover:border-primary/40 hover:bg-zinc-900/85";
+  "flex min-h-[3.25rem] items-start gap-3 rounded-xl border border-primary/25 bg-[#0A0A0A]/80 px-3 py-2.5 transition-colors hover:border-primary/40 hover:bg-black/85";
 
 export function ProfileStatsListsPanel({
   sheet,

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Interactive city map for ad detail (P3) — zoom/drag in-card, lazy-loaded with Leaflet.
  */
 import { memo, useEffect, useRef, type MouseEvent } from "react";
@@ -38,7 +38,7 @@ const limeMarkerIcon = L.divIcon({
 });
 
 const mapControlBtnClass =
-  "pointer-events-auto flex h-8 w-8 touch-manipulation items-center justify-center rounded-xl border border-primary/50 bg-zinc-950/90 text-primary shadow-[0_0_14px_-6px_hsl(var(--primary)/0.45)] ring-1 ring-primary/20 transition-[transform,border-color] hover:border-primary/70 active:scale-95";
+  "pointer-events-auto flex h-8 w-8 touch-manipulation items-center justify-center rounded-xl border border-primary/50 bg-[#0A0A0A]/90 text-primary shadow-[0_0_14px_-6px_hsl(var(--primary)/0.45)] ring-1 ring-primary/20 transition-[transform,border-color] hover:border-primary/70 active:scale-95";
 
 export type AdDetailInteractiveMapProps = {
   lat: number;

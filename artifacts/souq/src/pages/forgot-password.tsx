@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -97,7 +97,7 @@ export default function ForgotPassword() {
         <div className="flex flex-col items-center gap-4">
           <div className="relative flex items-center justify-center">
             <div className="absolute h-36 w-36 rounded-full bg-primary/15 blur-3xl" />
-            <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border border-primary/35 bg-zinc-950/80 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15">
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15">
               <KeyRound className="h-10 w-10 text-primary" strokeWidth={2} />
             </div>
           </div>
@@ -123,7 +123,7 @@ export default function ForgotPassword() {
                   variant="ghost"
                   className={cn(
                     AUTH_ACCENT_OUTLINE_BTN,
-                    "inline-flex items-center justify-center font-semibold hover:bg-zinc-900",
+                    "inline-flex items-center justify-center font-semibold hover:bg-black/30",
                   )}
                 >
                   {t("auth.forgot.back_to_login")}
@@ -179,7 +179,7 @@ export default function ForgotPassword() {
                 <Button
                   type="submit"
                   variant="ghost"
-                  className={cn(AUTH_ACCENT_OUTLINE_BTN, "hover:bg-zinc-900")}
+                  className={cn(AUTH_ACCENT_OUTLINE_BTN, "hover:bg-black/30")}
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (

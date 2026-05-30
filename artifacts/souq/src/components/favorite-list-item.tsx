@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+﻿import { Link, useLocation } from "wouter";
 import {
   Eye,
   Heart,
@@ -35,10 +35,10 @@ import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { cn } from "@/lib/utils";
 
 const CARD_SHELL =
-  "rounded-2xl border border-primary/40 bg-zinc-950/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[border-color,box-shadow] duration-200 hover:border-primary/45 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.22)]";
+  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[border-color,box-shadow] duration-200 hover:border-primary/45 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.22)]";
 
 const dropdownSurface =
-  "border border-primary/30 bg-zinc-950/95 text-foreground shadow-[0_0_24px_-8px_hsl(var(--primary)/0.2)]";
+  "border border-primary/30 bg-[#0A0A0A]/95 text-foreground shadow-[0_0_24px_-8px_hsl(var(--primary)/0.2)]";
 
 const dropdownItemClass =
   "flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm focus:bg-primary/10 focus:text-foreground";
@@ -186,7 +186,7 @@ function FavoriteListItemInner({ ad, viewerAuthKey: _viewerAuthKey }: FavoriteLi
         dir="rtl"
       >
         <div className="flex min-h-[5.75rem] items-stretch gap-2.5 p-2.5 sm:min-h-[6rem] sm:gap-3 sm:p-3">
-          <div className="h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-zinc-900 sm:h-24 sm:w-24">
+          <div className="h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-[#0A0A0A] sm:h-24 sm:w-24">
             <FavoriteListImage ad={ad} />
           </div>
 
@@ -232,7 +232,7 @@ function FavoriteListItemInner({ ad, viewerAuthKey: _viewerAuthKey }: FavoriteLi
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 bg-zinc-900/80 text-primary/80 transition-colors hover:border-primary/35 hover:text-primary"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 bg-[#0A0A0A]/80 text-primary/80 transition-colors hover:border-primary/35 hover:text-primary"
                   aria-label={t("favorites.more_options")}
                   onClick={(e) => e.stopPropagation()}
                 >

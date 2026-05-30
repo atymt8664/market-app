@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type ReactNode } from "react";
+﻿import { useCallback, useMemo, type ReactNode } from "react";
 import {
   ArrowUpCircle,
   Award,
@@ -23,10 +23,10 @@ import {
 } from "@/components/settings-shell";
 
 const ROW_CARD =
-  "rounded-2xl border border-primary/36 bg-zinc-950/76 p-3 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-3.5";
+  "rounded-2xl border border-primary/36 bg-[#0A0A0A]/76 p-3 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-3.5";
 
 const BUNDLE_CARD =
-  "rounded-2xl border border-primary/44 bg-zinc-950/82 p-3.5 shadow-[0_0_26px_-10px_hsl(var(--primary)/0.26)] ring-1 ring-primary/16 md:p-4";
+  "rounded-2xl border border-primary/44 bg-[#0A0A0A]/82 p-3.5 shadow-[0_0_26px_-10px_hsl(var(--primary)/0.26)] ring-1 ring-primary/16 md:p-4";
 
 const ICON_WRAP =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/45 bg-primary/10 text-primary shadow-[0_0_16px_-8px_hsl(var(--primary)/0.42)] md:h-11 md:w-11";
@@ -72,7 +72,7 @@ function PromoteRow({
           <button
             type="button"
             onClick={onInfo}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-primary/32 bg-zinc-950/85 text-primary/80 shadow-[0_0_12px_-8px_hsl(var(--primary)/0.3)] transition hover:border-primary/48 hover:bg-zinc-900/90 active:scale-[0.97]"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-primary/32 bg-[#0A0A0A]/85 text-primary/80 shadow-[0_0_12px_-8px_hsl(var(--primary)/0.3)] transition hover:border-primary/48 hover:bg-black/90 active:scale-[0.97]"
             aria-label={t("promote.pkg_info_aria")}
           >
             <Info className="h-4 w-4" strokeWidth={2.25} />
@@ -152,7 +152,7 @@ export function PromoteAdMarketingBody() {
             <div key={row.id} className="relative">
               <span
                 className={cn(
-                  "pointer-events-none absolute -top-1.5 end-3 z-[1] inline-flex rounded-full border border-primary/40 bg-zinc-950/95 px-2 py-0.5 text-[10px] font-semibold text-primary shadow-[0_0_12px_-4px_hsl(var(--primary)/0.35)]",
+                  "pointer-events-none absolute -top-1.5 end-3 z-[1] inline-flex rounded-full border border-primary/40 bg-[#0A0A0A]/95 px-2 py-0.5 text-[10px] font-semibold text-primary shadow-[0_0_12px_-4px_hsl(var(--primary)/0.35)]",
                 )}
               >
                 {t("promote.bundle_badge")}
@@ -180,7 +180,7 @@ export function PromoteAdMarketingBody() {
         <Button
           type="button"
           disabled
-          className="h-12 w-full rounded-2xl border border-primary/35 bg-zinc-950/80 text-sm font-semibold text-zinc-500 opacity-90 shadow-none"
+          className="h-12 w-full rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 text-sm font-semibold text-zinc-500 opacity-90 shadow-none"
         >
           {t("promote.pay_disabled")}
         </Button>

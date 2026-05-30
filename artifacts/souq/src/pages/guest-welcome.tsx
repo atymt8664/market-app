@@ -1,4 +1,4 @@
-import { Link, useSearch } from "wouter";
+﻿import { Link, useSearch } from "wouter";
 import { ArrowRight, LogIn, UserPlus } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -62,7 +62,7 @@ export default function GuestWelcome() {
         <div className="flex w-full max-w-md flex-col items-center gap-4">
           <div className="relative flex items-center justify-center">
             <div className="absolute h-36 w-36 rounded-full bg-primary/15 blur-3xl" />
-            <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border border-primary/35 bg-zinc-950/80 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15">
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15">
               <UserPlus className="h-11 w-11 text-primary" strokeWidth={2} />
             </div>
           </div>
@@ -82,7 +82,7 @@ export default function GuestWelcome() {
               <Button
                 type="button"
                 variant="ghost"
-                className={cn(AUTH_ACCENT_OUTLINE_BTN, "inline-flex items-center justify-center gap-2 hover:bg-zinc-900")}
+                className={cn(AUTH_ACCENT_OUTLINE_BTN, "inline-flex items-center justify-center gap-2 hover:bg-black/30")}
               >
                 <LogIn className="h-4 w-4 shrink-0" />
                 {t("auth.login.submit")}
@@ -92,7 +92,7 @@ export default function GuestWelcome() {
               <Button
                 type="button"
                 variant="ghost"
-                className={cn(AUTH_ACCENT_GHOST_BTN, "inline-flex items-center justify-center gap-2 hover:bg-zinc-900/90")}
+                className={cn(AUTH_ACCENT_GHOST_BTN, "inline-flex items-center justify-center gap-2 hover:bg-black/90")}
               >
                 <UserPlus className="h-4 w-4 shrink-0" />
                 {t("auth.signup.submit")}

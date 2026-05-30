@@ -1,4 +1,4 @@
-import {
+﻿import {
   getListCategoriesQueryKey,
   useListCategories,
 } from "@workspace/api-client-react";
@@ -25,12 +25,12 @@ function CategoryCardSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-primary/25 bg-zinc-950/60 p-4 shadow-[0_0_18px_-14px_hsl(var(--primary)/0.14)] ring-1 ring-primary/8",
+        "rounded-2xl border border-primary/25 bg-[#0A0A0A]/60 p-4 shadow-[0_0_18px_-14px_hsl(var(--primary)/0.14)] ring-1 ring-primary/8",
         className,
       )}
     >
       <div className="flex items-center gap-3">
-        <div className="h-14 w-14 shrink-0 animate-pulse rounded-2xl bg-zinc-900/90 ring-1 ring-primary/15" />
+        <div className="h-14 w-14 shrink-0 animate-pulse rounded-2xl bg-[#0A0A0A]/90 ring-1 ring-primary/15" />
         <div className="min-w-0 flex-1 space-y-2">
           <div className="h-4 w-[72%] max-w-[12rem] animate-pulse rounded-md bg-zinc-800/90" />
           <div className="h-3 w-[88%] max-w-[14rem] animate-pulse rounded-md bg-zinc-800/70" />
@@ -132,7 +132,7 @@ export default function Categories() {
             <Button
               type="button"
               variant="outline"
-              className="rounded-full border-primary/45 bg-zinc-950/80 text-primary hover:bg-zinc-900/90"
+              className="rounded-full border-primary/45 bg-[#0A0A0A]/80 text-primary hover:bg-black/90"
               onClick={() => void refetch()}
               disabled={isFetching}
             >
@@ -146,7 +146,7 @@ export default function Categories() {
               "flex flex-col items-center gap-3 px-5 py-12 text-center",
             )}
           >
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/35 bg-zinc-950/75 text-primary shadow-[0_0_20px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/12">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/75 text-primary shadow-[0_0_20px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/12">
               <LayoutGrid className="h-8 w-8" aria-hidden />
             </div>
             <h2 className="text-base font-semibold text-foreground">
@@ -184,7 +184,7 @@ export default function Categories() {
                       <div
                         className={cn(
                           "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl",
-                          "border border-primary/35 bg-zinc-950/75 text-primary",
+                          "border border-primary/35 bg-[#0A0A0A]/75 text-primary",
                           "shadow-[0_0_14px_-10px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10",
                           "transition-transform group-hover:shadow-[0_0_18px_-10px_hsl(var(--primary)/0.28)]",
                           "group-active:scale-95 motion-reduce:group-active:scale-100",

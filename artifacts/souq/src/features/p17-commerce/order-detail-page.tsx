@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowRight, Check, Package } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -148,7 +148,7 @@ function OrderSummaryReadyCard({ orderId }: { orderId: string }) {
     <div className={cn(ORDERS_CARD_COMPACT, "py-3")} data-testid="p17-order-detail-summary">
       <div className="flex items-start gap-3">
         <div
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-zinc-900 text-primary md:h-16 md:w-16"
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A] text-primary md:h-16 md:w-16"
           aria-hidden
         >
           <Package className="h-6 w-6 md:h-7 md:w-7" strokeWidth={2} />

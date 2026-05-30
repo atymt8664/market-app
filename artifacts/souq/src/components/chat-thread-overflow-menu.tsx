@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+﻿import { useCallback, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   getListConversationsQueryKey,
@@ -45,17 +45,17 @@ import {
 
 /** نفس زر الرجوع في رأس الشات */
 const CHAT_HEADER_ICON_BTN =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/60 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 hover:bg-zinc-900/90 active:opacity-90";
+  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/60 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 hover:bg-black/90 active:opacity-90";
 
 /** نفس أسلوب bottom sheet صفحة إنشاء إعلان */
 const SHEET_SHELL =
   "flex max-h-[min(90dvh,720px)] flex-col gap-0 rounded-t-2xl border-t border-primary/35 bg-[#0A0A0A] p-0 shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.55)] ring-1 ring-primary/20";
 
 const SHEET_CLOSE_BTN =
-  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-zinc-950/90 text-primary transition-colors hover:border-primary/65 hover:bg-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 active:opacity-90";
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-[#0A0A0A]/90 text-primary transition-colors hover:border-primary/65 hover:bg-black/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 active:opacity-90";
 
 const MENU_CARD_BTN =
-  "flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-zinc-950/90 px-4 py-3.5 text-start shadow-[0_0_16px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/12 transition-colors hover:border-primary/48 hover:bg-zinc-900/92 active:scale-[0.99]";
+  "flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-[#0A0A0A]/90 px-4 py-3.5 text-start shadow-[0_0_16px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/12 transition-colors hover:border-primary/48 hover:bg-black/92 active:scale-[0.99]";
 
 /** أيقونات بنود القائمة — lime/subtle مثل أزرار الحظر */
 const MENU_ITEM_ICON =
@@ -66,12 +66,12 @@ const REASON_CHIP = (active: boolean) =>
     "rounded-xl border px-3 py-2 text-[13px] font-medium transition-colors",
     active
       ? "border-primary/55 bg-primary/15 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.35)]"
-      : "border-primary/25 bg-zinc-950/80 text-zinc-200 hover:border-primary/40 hover:bg-zinc-900/85",
+      : "border-primary/25 bg-[#0A0A0A]/80 text-zinc-200 hover:border-primary/40 hover:bg-black/85",
   ].join(" ");
 
 /** مطابقة نافذة تأكيد الحظر في user-profile */
 const alertSurface =
-  "rounded-2xl border border-primary/35 bg-zinc-950/95 p-5 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15 sm:max-w-md";
+  "rounded-2xl border border-primary/35 bg-[#0A0A0A]/95 p-5 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15 sm:max-w-md";
 
 type Panel = "main" | "report-user" | "report-conversation";
 
@@ -528,7 +528,7 @@ export function ChatThreadOverflowMenu({
                     placeholder={t("message_thread.report_user_details_placeholder")}
                     value={reportExtra}
                     onChange={(e) => setReportExtra(e.target.value)}
-                    className="min-h-[88px] resize-none rounded-xl border border-primary/28 bg-zinc-950/90 text-sm text-white placeholder:text-zinc-500 focus-visible:border-primary/45 focus-visible:ring-primary/20"
+                    className="min-h-[88px] resize-none rounded-xl border border-primary/28 bg-[#0A0A0A]/90 text-sm text-white placeholder:text-zinc-500 focus-visible:border-primary/45 focus-visible:ring-primary/20"
                   />
                   <button
                     type="button"
@@ -596,7 +596,7 @@ export function ChatThreadOverflowMenu({
             <AlertDialogCancel
               disabled={hideConversationMutation.isPending}
               className={cn(
-                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-zinc-950/90 text-sm font-semibold text-foreground hover:bg-zinc-900 disabled:opacity-45 sm:flex-none",
+                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-[#0A0A0A]/90 text-sm font-semibold text-foreground hover:bg-black/30 disabled:opacity-45 sm:flex-none",
               )}
             >
               {t("message_thread.hide_confirm_cancel")}
@@ -630,14 +630,14 @@ export function ChatThreadOverflowMenu({
               type="button"
               onClick={() => void attemptBlockPeer()}
               className={cn(
-                "inline-flex h-11 min-w-[8rem] flex-1 items-center justify-center rounded-xl border border-red-500/40 bg-zinc-950/90 px-4 text-sm font-semibold text-red-200 shadow-[0_0_18px_-12px_rgba(239,68,68,0.35)] ring-1 ring-red-500/15 transition-colors hover:border-red-500/55 hover:bg-red-950/25 sm:flex-none",
+                "inline-flex h-11 min-w-[8rem] flex-1 items-center justify-center rounded-xl border border-red-500/40 bg-[#0A0A0A]/90 px-4 text-sm font-semibold text-red-200 shadow-[0_0_18px_-12px_rgba(239,68,68,0.35)] ring-1 ring-red-500/15 transition-colors hover:border-red-500/55 hover:bg-red-950/25 sm:flex-none",
               )}
             >
               {t("message_thread.chat_block_confirm_cta")}
             </button>
             <AlertDialogCancel
               className={cn(
-                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-zinc-950/90 text-sm font-semibold text-foreground hover:bg-zinc-900 sm:flex-none",
+                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-[#0A0A0A]/90 text-sm font-semibold text-foreground hover:bg-black/30 sm:flex-none",
               )}
             >
               {t("message_thread.chat_block_cancel")}
@@ -678,7 +678,7 @@ export function ChatThreadOverflowMenu({
             </button>
             <AlertDialogCancel
               className={cn(
-                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-zinc-950/90 text-sm font-semibold text-foreground hover:bg-zinc-900 sm:flex-none",
+                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-[#0A0A0A]/90 text-sm font-semibold text-foreground hover:bg-black/30 sm:flex-none",
               )}
             >
               {t("message_thread.chat_unblock_cancel")}

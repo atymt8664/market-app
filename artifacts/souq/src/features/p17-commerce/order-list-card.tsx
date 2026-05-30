@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode } from "react";
+﻿import type { KeyboardEvent, ReactNode } from "react";
 import { ChevronLeft, Package } from "lucide-react";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -38,7 +38,7 @@ export function OrderListCard({ order, variant, className }: OrderListCardProps)
     >
       <div className="flex items-start gap-3">
         <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-zinc-900 text-primary md:h-14 md:w-14"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A] text-primary md:h-14 md:w-14"
           aria-hidden
         >
           <Package className="h-5 w-5 md:h-6 md:w-6" strokeWidth={2} />

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Ad detail location card (P3) — interactive in-card map; external maps via dedicated button only.
  */
 import { lazy, memo, Suspense, useCallback, useEffect, useState } from "react";
@@ -19,10 +19,10 @@ const AdDetailInteractiveMap = lazy(() =>
 );
 
 const locationCardShell =
-  "w-full min-w-0 overflow-hidden rounded-2xl border border-primary/40 bg-zinc-950/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10";
+  "w-full min-w-0 overflow-hidden rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10";
 
 const sectionHeading =
-  "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-card/80 px-2 py-px text-sm font-semibold leading-tight tracking-tight text-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 dark:bg-zinc-950/70";
+  "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 px-2 py-px text-sm font-semibold leading-tight tracking-tight text-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 bg-[#0A0A0A]/70";
 
 export type AdDetailLocationCardProps = {
   city: string;
@@ -121,7 +121,7 @@ function AdDetailLocationCardInner({
 
         <div
           className={cn(
-            "relative z-0 aspect-[16/10] min-h-[11rem] w-full max-h-[220px] bg-zinc-900/90 sm:min-h-[12.5rem]",
+            "relative z-0 aspect-[16/10] min-h-[11rem] w-full max-h-[220px] bg-[#0A0A0A]/90 sm:min-h-[12.5rem]",
             overlayActive && "pointer-events-none [&_.leaflet-container]:invisible",
           )}
           aria-hidden={overlayActive || undefined}

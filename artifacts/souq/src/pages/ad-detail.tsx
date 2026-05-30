@@ -1,4 +1,4 @@
-import {
+﻿import {
   useGetAd,
   getGetAdQueryKey,
   useRecordAdView,
@@ -623,19 +623,19 @@ export default function AdDetail() {
     "mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6";
   /** عناوين أقسام — mini-card مثل Create Ad */
   const adDetailSectionHeading = cn(
-    "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-card/80 px-2 py-px",
+    "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 px-2 py-px",
     "text-sm font-semibold leading-tight tracking-tight text-foreground",
-    "shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 dark:bg-zinc-950/70",
+    "shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 bg-[#0A0A0A]/70",
   );
   /** كرت العنوان/السعر/الموقع — نفس روح الإحصائيات ومعلومات الجهاز (lime + glow) */
   const heroTitlePriceSurface =
-    "rounded-2xl border border-primary/40 bg-card/80 p-4 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 dark:bg-zinc-950/70 md:p-5";
+    "rounded-2xl border border-primary/40 bg-[#0A0A0A]/80 p-4 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 bg-[#0A0A0A]/70 md:p-5";
   /** شريط إحصائيات: حدود lime خفيفة + خلفية داكنة (متناسق مع مرجع الصفحة) */
   const statsStripSurface =
-    "rounded-2xl border border-primary/40 bg-muted/25 p-1 shadow-[0_0_28px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 dark:bg-zinc-950/70";
+    "rounded-2xl border border-primary/40 bg-muted/25 p-1 shadow-[0_0_28px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 bg-[#0A0A0A]/70";
   /** كروت أقسام المحتوى — مدمجة */
   const deviceInfoShell =
-    "rounded-2xl border border-primary/40 bg-card/80 p-3 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/15 dark:bg-zinc-950/70";
+    "rounded-2xl border border-primary/40 bg-[#0A0A0A]/80 p-3 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/15 bg-[#0A0A0A]/70";
   /** بطاقة مواصفة داخل الشبكة */
   const deviceSpecTile =
     "flex min-h-[3.75rem] flex-col justify-start gap-0.5 rounded-xl border border-primary/30 bg-muted/20 p-2.5 text-right shadow-[0_0_14px_-12px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10 dark:bg-black/40";
@@ -648,7 +648,7 @@ export default function AdDetail() {
     "flex h-12 w-full items-center gap-3 rounded-xl border border-primary/35 bg-black/55 px-3.5 ring-1 ring-primary/10 transition-colors hover:border-primary/45 hover:ring-primary/15 dark:bg-black/50";
   /** زر عرض الملف الشخصي — حد مشابه لصف الهاتف */
   const sellerProfileLinkBtn =
-    "flex h-12 w-full items-center justify-center rounded-2xl border border-primary/32 bg-zinc-950/80 text-sm font-semibold text-foreground ring-1 ring-primary/8 transition-colors hover:border-primary/42 hover:bg-zinc-900/90 hover:ring-primary/12";
+    "flex h-12 w-full items-center justify-center rounded-2xl border border-primary/32 bg-[#0A0A0A]/80 text-sm font-semibold text-foreground ring-1 ring-primary/8 transition-colors hover:border-primary/42 hover:bg-black/90 hover:ring-primary/12";
   const otherReason = t("ad_detail.report.opt_other");
   const reportReasonOptions = [
     t("ad_detail.report.opt_fraud"),
@@ -974,14 +974,14 @@ export default function AdDetail() {
               </div>
 
               <div className={cn(sellerInnerShell, "space-y-2.5")}>
-                <div className="rounded-xl border border-primary/30 bg-zinc-950/90 p-3 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10">
+                <div className="rounded-xl border border-primary/30 bg-[#0A0A0A]/90 p-3 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10">
                   <p className="mb-1.5 block text-xs font-medium text-muted-foreground">
                     {t("ad_detail.report.choose_reason")}
                   </p>
                   <button
                     type="button"
                     onClick={() => setReportReasonOpen(true)}
-                    className="flex h-11 w-full items-center justify-between rounded-xl border border-primary/35 bg-[#0A0A0A] px-3 text-right text-sm text-foreground outline-none ring-1 ring-primary/10 transition-colors hover:border-primary/48 hover:bg-zinc-900/90 focus-visible:ring-2 focus-visible:ring-primary/25"
+                    className="flex h-11 w-full items-center justify-between rounded-xl border border-primary/35 bg-[#0A0A0A] px-3 text-right text-sm text-foreground outline-none ring-1 ring-primary/10 transition-colors hover:border-primary/48 hover:bg-black/90 focus-visible:ring-2 focus-visible:ring-primary/25"
                   >
                     <ChevronDown className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                     <span className="truncate text-right">
@@ -990,7 +990,7 @@ export default function AdDetail() {
                   </button>
                 </div>
 
-                <div className="rounded-xl border border-primary/30 bg-zinc-950/90 p-2.5 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10">
+                <div className="rounded-xl border border-primary/30 bg-[#0A0A0A]/90 p-2.5 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10">
                   <Button
                     type="button"
                     variant="ghost"
@@ -1006,7 +1006,7 @@ export default function AdDetail() {
                     }
                     className={cn(
                       AUTH_ACCENT_OUTLINE_BTN,
-                      "w-full hover:bg-zinc-900",
+                      "w-full hover:bg-black/30",
                       reportDisabled && "pointer-events-none opacity-50",
                     )}
                     onClick={() => {
@@ -1030,7 +1030,7 @@ export default function AdDetail() {
                 <div className={sellerInnerShell}>
                   <textarea
                     placeholder={t("ad_detail.report.details_placeholder")}
-                    className="min-h-[88px] w-full rounded-xl border border-primary/28 bg-zinc-950/90 p-3 text-right text-sm text-foreground shadow-inner ring-1 ring-primary/10 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className="min-h-[88px] w-full rounded-xl border border-primary/28 bg-[#0A0A0A]/90 p-3 text-right text-sm text-foreground shadow-inner ring-1 ring-primary/10 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     value={reportExtra}
                     onChange={(e) => setReportExtra(e.target.value)}
                   />
@@ -1043,7 +1043,7 @@ export default function AdDetail() {
           <Suspense
             fallback={
               <div
-                className="h-[14rem] w-full animate-pulse rounded-2xl border border-primary/30 bg-zinc-950/60"
+                className="h-[14rem] w-full animate-pulse rounded-2xl border border-primary/30 bg-[#0A0A0A]/60"
                 aria-hidden
               />
             }
@@ -1080,7 +1080,7 @@ export default function AdDetail() {
             <button
               type="button"
               onClick={() => setReportReasonOpen(false)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-primary/45 bg-zinc-950/90 text-primary hover:border-primary/65 hover:bg-zinc-900"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-primary/45 bg-[#0A0A0A]/90 text-primary hover:border-primary/65 hover:bg-black/30"
               aria-label={t("common.cancel")}
             >
               <ArrowRight className="h-4 w-4 rotate-180" aria-hidden />
@@ -1105,7 +1105,7 @@ export default function AdDetail() {
                       "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-right text-sm font-medium transition-colors",
                       selected
                         ? "border-primary/55 bg-primary/12 text-primary shadow-[0_0_18px_-10px_hsl(var(--primary)/0.35)] ring-1 ring-primary/22"
-                        : "border-primary/30 bg-zinc-950/90 text-white shadow-[0_0_16px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 hover:border-primary/45 hover:bg-zinc-900/95",
+                        : "border-primary/30 bg-[#0A0A0A]/90 text-white shadow-[0_0_16px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 hover:border-primary/45 hover:bg-black/95",
                     )}
                   >
                     <span>{opt}</span>

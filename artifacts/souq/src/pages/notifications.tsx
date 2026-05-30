@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowRight, Bell } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -43,7 +43,7 @@ function NotificationsListSkeleton() {
       {[1, 2, 3, 4].map((i) => (
         <div
           key={i}
-          className="h-[5.25rem] animate-pulse rounded-2xl border border-primary/20 bg-zinc-950/80 ring-1 ring-primary/8"
+          className="h-[5.25rem] animate-pulse rounded-2xl border border-primary/20 bg-[#0A0A0A]/80 ring-1 ring-primary/8"
         />
       ))}
     </div>
@@ -106,7 +106,7 @@ export default function NotificationsPage() {
             <button
               type="button"
               onClick={goBack}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-zinc-950/75 text-primary ring-1 ring-primary/12 transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-[#0A0A0A]/75 text-primary ring-1 ring-primary/12 transition-colors hover:border-primary/45 hover:bg-black/85"
               aria-label={t("notifications.back")}
             >
               <ArrowRight className="h-5 w-5" strokeWidth={2.25} aria-hidden />
@@ -125,7 +125,7 @@ export default function NotificationsPage() {
           className="flex flex-1 flex-col items-center justify-center px-4 pb-12 pt-8"
           dir={isRtl ? "rtl" : "ltr"}
         >
-          <div className="w-full max-w-md rounded-2xl border border-primary/35 bg-zinc-950/80 p-8 text-center shadow-[0_0_28px_-14px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15">
+          <div className="w-full max-w-md rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 p-8 text-center shadow-[0_0_28px_-14px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/40 bg-primary/10 text-primary shadow-[0_0_20px_-10px_hsl(var(--primary)/0.45)]">
               <Bell className="h-7 w-7" strokeWidth={2} aria-hidden />
             </div>
@@ -135,7 +135,7 @@ export default function NotificationsPage() {
             </p>
             <Link
               href="/login?redirect=/notifications"
-              className="mt-6 inline-flex w-full items-center justify-center rounded-2xl border border-primary/45 bg-zinc-900/90 py-3 text-sm font-semibold text-primary shadow-[0_0_18px_-12px_hsl(var(--primary)/0.3)] ring-1 ring-primary/20 transition-colors hover:border-primary/55 hover:bg-zinc-900"
+              className="mt-6 inline-flex w-full items-center justify-center rounded-2xl border border-primary/45 bg-[#0A0A0A]/90 py-3 text-sm font-semibold text-primary shadow-[0_0_18px_-12px_hsl(var(--primary)/0.3)] ring-1 ring-primary/20 transition-colors hover:border-primary/55 hover:bg-black/30"
             >
               {t("notifications.guest_login")}
             </Link>
@@ -155,7 +155,7 @@ export default function NotificationsPage() {
           <button
             type="button"
             onClick={goBack}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-zinc-950/75 text-primary ring-1 ring-primary/12 transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-[#0A0A0A]/75 text-primary ring-1 ring-primary/12 transition-colors hover:border-primary/45 hover:bg-black/85"
             aria-label={t("notifications.back")}
           >
             <ArrowRight className="h-5 w-5" strokeWidth={2.25} aria-hidden />
@@ -173,8 +173,8 @@ export default function NotificationsPage() {
             className={cn(
               "shrink-0 rounded-2xl border px-3 py-2 text-xs font-semibold transition-colors md:text-sm",
               markAllDisabled
-                ? "cursor-not-allowed border-primary/15 bg-zinc-950/50 text-muted-foreground"
-                : "border-primary/40 bg-zinc-950/90 text-primary shadow-[0_0_18px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15 hover:border-primary/55 hover:bg-zinc-900/95",
+                ? "cursor-not-allowed border-primary/15 bg-[#0A0A0A]/50 text-muted-foreground"
+                : "border-primary/40 bg-[#0A0A0A]/90 text-primary shadow-[0_0_18px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15 hover:border-primary/55 hover:bg-black/95",
             )}
           >
             {t("notifications.mark_all_read")}
@@ -190,7 +190,7 @@ export default function NotificationsPage() {
           {authLoading || (listQuery.isLoading && !listQuery.data) ? (
             <NotificationsListSkeleton />
           ) : listQuery.isError ? (
-            <div className="rounded-2xl border border-destructive/35 bg-zinc-950/75 p-6 text-center shadow-[0_0_20px_-14px_rgba(0,0,0,0.5)] ring-1 ring-destructive/15">
+            <div className="rounded-2xl border border-destructive/35 bg-[#0A0A0A]/75 p-6 text-center shadow-[0_0_20px_-14px_rgba(0,0,0,0.5)] ring-1 ring-destructive/15">
               <p className="text-sm font-medium text-destructive">{t("notifications.error.title")}</p>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">
                 {notificationErrorMessage(listQuery.error)}
@@ -198,13 +198,13 @@ export default function NotificationsPage() {
               <button
                 type="button"
                 onClick={() => void listQuery.refetch()}
-                className="mt-4 rounded-2xl border border-primary/40 bg-zinc-900/90 px-4 py-2 text-xs font-semibold text-primary ring-1 ring-primary/15 hover:border-primary/55"
+                className="mt-4 rounded-2xl border border-primary/40 bg-[#0A0A0A]/90 px-4 py-2 text-xs font-semibold text-primary ring-1 ring-primary/15 hover:border-primary/55"
               >
                 {t("notifications.retry")}
               </button>
             </div>
           ) : items.length === 0 ? (
-            <div className="rounded-2xl border border-primary/35 bg-zinc-950/80 p-10 text-center shadow-[0_0_28px_-14px_hsl(var(--primary)/0.28)] ring-1 ring-primary/12">
+            <div className="rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 p-10 text-center shadow-[0_0_28px_-14px_hsl(var(--primary)/0.28)] ring-1 ring-primary/12">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/30 bg-primary/8 text-primary/90">
                 <Bell className="h-8 w-8" strokeWidth={1.75} aria-hidden />
               </div>
@@ -224,8 +224,8 @@ export default function NotificationsPage() {
                     "w-full rounded-2xl border px-4 py-3.5 shadow-[0_0_20px_-14px_hsl(var(--primary)/0.2)] ring-1 transition-colors",
                     isRtl ? "text-right" : "text-left",
                     unread
-                      ? "border-primary/45 bg-zinc-900/90 ring-primary/25 hover:border-primary/55 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.32)]"
-                      : "border-primary/22 bg-zinc-950/70 ring-primary/10 hover:border-primary/35",
+                      ? "border-primary/45 bg-[#0A0A0A]/90 ring-primary/25 hover:border-primary/55 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.32)]"
+                      : "border-primary/22 bg-[#0A0A0A]/70 ring-primary/10 hover:border-primary/35",
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">

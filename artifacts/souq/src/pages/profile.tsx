@@ -1,4 +1,4 @@
-import { Link, Redirect, useLocation } from "wouter";
+﻿import { Link, Redirect, useLocation } from "wouter";
 import {
   UserPlus,
   Trash2,
@@ -87,11 +87,11 @@ import {
 
 /** أزرار الرأس — ظل ثابت خفيف، بدون transform (يقلّل flicker أثناء التمرير) */
 const profileHeaderIconBtn =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-card/90 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.18)] transition-colors hover:border-primary/75 hover:bg-card/95 active:opacity-90 disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
+  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-[#0A0A0A]/90 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.18)] transition-colors hover:border-primary/75 hover:bg-[#0A0A0A]/95 active:opacity-90 disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
 
 /** نفس تعريفات كروت صفحة «نشر إعلان» (`create-ad.tsx` — adCardShell / adCardShellCompact) */
 const AD_CARD_SHELL =
-  "rounded-2xl border border-primary/40 bg-zinc-950/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10";
+  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10";
 
 /** أزرار إجراءات كرت الإعلان — mini-card موحّد مع هوية الكروت / الشريط السفلي */
 const PROFILE_AD_ACTION_SHELL =
@@ -99,12 +99,12 @@ const PROFILE_AD_ACTION_SHELL =
 
 const profileAdActionSecondary = cn(
   PROFILE_AD_ACTION_SHELL,
-  "border-primary/32 bg-zinc-950/82 text-primary ring-primary/12 hover:border-primary/45 hover:bg-zinc-900/92",
+  "border-primary/32 bg-[#0A0A0A]/82 text-primary ring-primary/12 hover:border-primary/45 hover:bg-black/92",
 );
 
 const profileAdActionPromote = cn(
   PROFILE_AD_ACTION_SHELL,
-  "gap-1 border-primary/48 bg-zinc-950/90 font-bold text-primary shadow-[0_0_26px_-12px_hsl(var(--primary)/0.34)] ring-primary/22 hover:border-primary/58 hover:bg-zinc-900/95 hover:shadow-[0_0_30px_-10px_hsl(var(--primary)/0.4)]",
+  "gap-1 border-primary/48 bg-[#0A0A0A]/90 font-bold text-primary shadow-[0_0_26px_-12px_hsl(var(--primary)/0.34)] ring-primary/22 hover:border-primary/58 hover:bg-black/95 hover:shadow-[0_0_30px_-10px_hsl(var(--primary)/0.4)]",
 );
 
 const profileAdActionDelete = cn(
@@ -113,14 +113,14 @@ const profileAdActionDelete = cn(
 );
 
 const PROFILE_TAB_LIST =
-  "h-auto w-full grid grid-cols-3 gap-1.5 rounded-xl border border-primary/32 bg-zinc-950/78 p-1.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12";
+  "h-auto w-full grid grid-cols-3 gap-1.5 rounded-xl border border-primary/32 bg-[#0A0A0A]/78 p-1.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12";
 
 /** نفس لغة `PROFILE_TAB_LIST` — أربعة أعمدة، صف واحد */
 const PROFILE_PLAN_TAB_LIST =
-  "h-auto w-full min-w-0 grid grid-cols-4 gap-1.5 rounded-xl border border-primary/32 bg-zinc-950/78 p-1.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12";
+  "h-auto w-full min-w-0 grid grid-cols-4 gap-1.5 rounded-xl border border-primary/32 bg-[#0A0A0A]/78 p-1.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12";
 
 const PROFILE_TAB_TRIGGER =
-  "rounded-lg border border-transparent bg-transparent px-2 py-2.5 text-xs font-semibold text-primary/55 transition-all md:text-sm data-[state=active]:border-primary/52 data-[state=active]:bg-zinc-900/95 data-[state=active]:text-primary data-[state=active]:shadow-[0_0_24px_-12px_hsl(var(--primary)/0.32)] data-[state=active]:ring-1 data-[state=active]:ring-primary/28 hover:border-primary/22 hover:bg-zinc-950/85 hover:text-primary/85";
+  "rounded-lg border border-transparent bg-transparent px-2 py-2.5 text-xs font-semibold text-primary/55 transition-all md:text-sm data-[state=active]:border-primary/52 data-[state=active]:bg-black/95 data-[state=active]:text-primary data-[state=active]:shadow-[0_0_24px_-12px_hsl(var(--primary)/0.32)] data-[state=active]:ring-1 data-[state=active]:ring-primary/28 hover:border-primary/22 hover:bg-[#0A0A0A]/85 hover:text-primary/85";
 
 /** تبويبات الخطط: نفس `PROFILE_TAB_TRIGGER` + ضبط بسيط للأربعة في سطر واحد */
 const PROFILE_PLAN_TAB_TRIGGER = cn(
@@ -220,7 +220,7 @@ export default function Profile() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-[100svh] w-full flex-col items-center justify-center bg-background">
+      <div className="flex min-h-[100svh] w-full flex-col items-center justify-center bg-[#0A0A0A]">
         <div className="w-12 h-12 rounded-full border-4 border-muted border-t-primary animate-spin" />
       </div>
     );
@@ -485,7 +485,7 @@ export default function Profile() {
             <TabsList
               className={cn(
                 PROFILE_PLAN_TAB_LIST,
-                "!bg-zinc-950/78 !text-primary/55 ring-offset-0",
+                "!bg-[#0A0A0A]/78 !text-primary/55 ring-offset-0",
               )}
               aria-label={t("profile.plan_tier.nav_aria")}
             >
@@ -513,7 +513,7 @@ export default function Profile() {
                 >
                   <div
                     className={cn(
-                      "rounded-lg border border-primary/28 bg-zinc-950/72 p-2 ring-1 ring-primary/10 md:p-2.5",
+                      "rounded-lg border border-primary/28 bg-[#0A0A0A]/72 p-2 ring-1 ring-primary/10 md:p-2.5",
                     )}
                   >
                     <p
@@ -541,7 +541,7 @@ export default function Profile() {
                       <Link
                         href={PROFILE_PLAN_LEARN_MORE_HREF[tier]}
                         className={cn(
-                          "inline-flex min-h-8 items-center justify-center rounded-lg border border-primary/36 bg-zinc-950/82 px-2.5 py-1.5 text-[11px] font-semibold text-primary shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12 transition-colors hover:border-primary/48 hover:bg-zinc-900/90 active:scale-[0.99] md:text-xs",
+                          "inline-flex min-h-8 items-center justify-center rounded-lg border border-primary/36 bg-[#0A0A0A]/82 px-2.5 py-1.5 text-[11px] font-semibold text-primary shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12 transition-colors hover:border-primary/48 hover:bg-black/90 active:scale-[0.99] md:text-xs",
                         )}
                       >
                         {t("pro_seller.entry_cta")}
@@ -582,7 +582,7 @@ export default function Profile() {
                   <h3 className="font-bold text-base mb-1">{t("profile.empty.first_ad_title")}</h3>
                   <p className="text-sm text-muted-foreground mb-4">{t("profile.empty.first_ad_subtitle")}</p>
                   <Link href="/new">
-                    <Button className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-primary/50 bg-zinc-950/92 px-5 py-2.5 text-sm font-semibold text-primary shadow-[0_0_18px_-10px_hsl(var(--primary)/0.32)] ring-1 ring-primary/18 transition-colors hover:border-primary/65 hover:bg-zinc-900/95 hover:shadow-[0_0_24px_-10px_hsl(var(--primary)/0.42)] active:scale-[0.98]">
+                    <Button className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-primary/50 bg-[#0A0A0A]/92 px-5 py-2.5 text-sm font-semibold text-primary shadow-[0_0_18px_-10px_hsl(var(--primary)/0.32)] ring-1 ring-primary/18 transition-colors hover:border-primary/65 hover:bg-black/95 hover:shadow-[0_0_24px_-10px_hsl(var(--primary)/0.42)] active:scale-[0.98]">
                       <Plus className="w-4 h-4 text-primary" />
                       {t("profile.empty.create_ad")}
                     </Button>
@@ -666,7 +666,7 @@ export default function Profile() {
                 <Link
                   href={`/users/${user.id}`}
                   className={cn(
-                    "mt-5 flex w-full min-w-0 max-w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-zinc-950/90 px-1 py-3.5 text-sm font-semibold text-foreground shadow-[0_0_10px_-6px_hsl(var(--primary)/0.15)] transition-colors hover:border-primary/55 hover:bg-zinc-900/95",
+                    "mt-5 flex w-full min-w-0 max-w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-[#0A0A0A]/90 px-1 py-3.5 text-sm font-semibold text-foreground shadow-[0_0_10px_-6px_hsl(var(--primary)/0.15)] transition-colors hover:border-primary/55 hover:bg-black/95",
                   )}
                 >
                   <UserCheck className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
@@ -788,7 +788,7 @@ export default function Profile() {
       </ProfileStatsDetailSheet>
 
       <Drawer open={!!actionAd} onOpenChange={(open) => !open && setActionAd(null)}>
-        <DrawerContent className="rounded-t-2xl border-border bg-card/95">
+        <DrawerContent className="rounded-t-2xl border-border bg-[#0A0A0A]/95">
           <DrawerHeader className="text-right">
             <DrawerTitle>{t("profile.actions.title")}</DrawerTitle>
             <DrawerDescription className="text-xs">{actionAd?.title}</DrawerDescription>
@@ -1084,7 +1084,7 @@ function ProfileMobileAdCard({
           e.stopPropagation();
           onOpenActions();
         }}
-        className="absolute left-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-primary/35 bg-zinc-950/85 text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.18)] ring-1 ring-primary/14 transition-colors hover:border-primary/48 hover:bg-zinc-900/95 hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.26)]"
+        className="absolute left-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A]/85 text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.18)] ring-1 ring-primary/14 transition-colors hover:border-primary/48 hover:bg-black/95 hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.26)]"
       >
         <MoreVertical className="h-5 w-5" strokeWidth={2.25} />
       </button>

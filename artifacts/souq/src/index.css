@@ -146,13 +146,13 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 220 9% 7%; /* #10131a kleinanzeigen dark */
+  --background: 0 0% 3.92%; /* #0A0A0A — Home baseline (P13-2) */
   --foreground: 0 0% 100%;
   --border: 220 9% 18%;
-  --card: 220 9% 10%;
+  --card: 0 0% 3.92%; /* #0A0A0A — unified with page baseline */
   --card-foreground: 0 0% 100%;
   --card-border: 220 9% 22%;
-  --popover: 220 9% 10%;
+  --popover: 0 0% 3.92%; /* #0A0A0A */
   --popover-foreground: 0 0% 100%;
   --popover-border: 220 9% 22%;
   --primary: 79 76% 67%; /* #c2eb6c kleinanzeigen lime */

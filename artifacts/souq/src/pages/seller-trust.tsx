@@ -1,4 +1,4 @@
-import { useCallback, type ReactNode } from "react";
+﻿import { useCallback, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import {
   Activity,
@@ -28,13 +28,13 @@ import {
 } from "@/components/settings-shell";
 
 const FACTOR_CARD =
-  "rounded-2xl border border-primary/38 bg-zinc-950/78 p-3 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 md:p-3.5";
+  "rounded-2xl border border-primary/38 bg-[#0A0A0A]/78 p-3 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 md:p-3.5";
 
 const ICON_WRAP =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/45 bg-primary/10 text-primary shadow-[0_0_16px_-8px_hsl(var(--primary)/0.42)]";
 
 const LEVEL_CARD =
-  "rounded-2xl border border-primary/35 bg-zinc-950/75 px-2.5 py-3 text-center shadow-[0_0_18px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:py-3.5";
+  "rounded-2xl border border-primary/35 bg-[#0A0A0A]/75 px-2.5 py-3 text-center shadow-[0_0_18px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:py-3.5";
 
 const LEVEL_KEYS = ["new", "good", "trusted", "excellent"] as const;
 
@@ -78,7 +78,7 @@ function FactorRow({
             <h3 className="text-sm font-semibold leading-snug text-foreground">
               {t(`seller_trust.factor.${factorKey}.title`)}
             </h3>
-            <span className="inline-flex rounded-full border border-zinc-600/55 bg-zinc-900/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">
+            <span className="inline-flex rounded-full border border-zinc-600/55 bg-[#0A0A0A]/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">
               {t("seller_trust.badge_soon")}
             </span>
           </div>
@@ -86,7 +86,7 @@ function FactorRow({
           <Button
             type="button"
             disabled
-            className="mt-1 h-8 rounded-xl border border-primary/30 bg-zinc-950/85 px-3 text-[11px] font-semibold text-zinc-500 shadow-none"
+            className="mt-1 h-8 rounded-xl border border-primary/30 bg-[#0A0A0A]/85 px-3 text-[11px] font-semibold text-zinc-500 shadow-none"
           >
             {t("seller_trust.badge_soon")}
           </Button>
@@ -146,7 +146,7 @@ export default function SellerTrustPage() {
             <div key={key} className={LEVEL_CARD} dir={dir}>
               <p className="text-xs font-bold text-foreground md:text-sm">{t(`seller_trust.level.${key}.name`)}</p>
               <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-zinc-500 md:text-[11px]">{t(`seller_trust.level.${key}.hint`)}</p>
-              <span className="mt-2 inline-flex rounded-full border border-zinc-600/55 bg-zinc-900/90 px-2 py-0.5 text-[9px] font-semibold text-zinc-400">
+              <span className="mt-2 inline-flex rounded-full border border-zinc-600/55 bg-[#0A0A0A]/90 px-2 py-0.5 text-[9px] font-semibold text-zinc-400">
                 {t("seller_trust.badge_soon")}
               </span>
             </div>

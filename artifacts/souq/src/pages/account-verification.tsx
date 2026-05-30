@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+﻿import { useMemo, type ReactNode } from "react";
 import {
   BadgeCheck,
   Building2,
@@ -28,7 +28,7 @@ import {
 } from "@/components/settings-shell";
 
 const TYPE_CARD =
-  "rounded-2xl border border-primary/38 bg-zinc-950/78 p-3 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 md:p-3.5";
+  "rounded-2xl border border-primary/38 bg-[#0A0A0A]/78 p-3 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 md:p-3.5";
 
 const ICON_WRAP =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/45 bg-primary/10 text-primary shadow-[0_0_16px_-8px_hsl(var(--primary)/0.42)]";
@@ -71,7 +71,7 @@ function TypeRow({
             <h3 className="text-sm font-semibold leading-snug text-foreground">
               {t(`verification_preview.type.${typeKey}.title`)}
             </h3>
-            <span className="inline-flex rounded-full border border-zinc-600/55 bg-zinc-900/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">
+            <span className="inline-flex rounded-full border border-zinc-600/55 bg-[#0A0A0A]/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">
               {t("verification_preview.soon")}
             </span>
           </div>
@@ -97,7 +97,7 @@ function BenefitRow({
     <div
       className={cn(
         SETTINGS_CARD_COMPACT,
-        "flex items-start gap-3 border-primary/25 bg-zinc-950/55 p-3.5",
+        "flex items-start gap-3 border-primary/25 bg-[#0A0A0A]/55 p-3.5",
       )}
       dir={dir}
     >
@@ -205,7 +205,7 @@ export default function AccountVerification() {
             <Button
               type="button"
               disabled
-              className="h-11 w-full rounded-xl border border-primary/30 bg-zinc-950/90 text-sm font-semibold text-zinc-500 shadow-none"
+              className="h-11 w-full rounded-xl border border-primary/30 bg-[#0A0A0A]/90 text-sm font-semibold text-zinc-500 shadow-none"
             >
               {t("verification_preview.cta")}
             </Button>

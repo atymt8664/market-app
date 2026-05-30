@@ -1,4 +1,4 @@
-import { ShieldAlert } from "lucide-react";
+﻿import { ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ export function BuyerSafetyNote({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border/70 bg-card/40 px-3.5 py-3.5",
+        "rounded-2xl border border-border/70 bg-[#0A0A0A]/40 px-3.5 py-3.5",
         "shadow-[0_0_28px_-12px_rgba(245,158,11,0.2)] ring-1 ring-inset ring-amber-500/20",
         className,
       )}

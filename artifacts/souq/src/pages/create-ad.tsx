@@ -1,4 +1,4 @@
-import {
+﻿import {
   useListCategories,
   useListSubcategories,
   useCreateAd,
@@ -74,19 +74,19 @@ import { GERMAN_CITIES } from "@/lib/german-cities";
 
 /** هوية dark/lime — نفس روح ad-detail / profile */
 const adCardShell =
-  "rounded-2xl border border-primary/40 bg-zinc-950/75 p-3 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-4";
+  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 p-3 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-4";
 const adCardShellCompact =
-  "rounded-2xl border border-primary/35 bg-zinc-950/70 p-2 shadow-[0_0_18px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10 md:p-2.5";
+  "rounded-2xl border border-primary/35 bg-[#0A0A0A]/70 p-2 shadow-[0_0_18px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10 md:p-2.5";
 const adInputClass =
-  "border border-primary/30 bg-zinc-950/90 text-foreground placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0 focus-visible:ring-offset-[#0A0A0A]";
+  "border border-primary/30 bg-[#0A0A0A]/90 text-foreground placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0 focus-visible:ring-offset-[#0A0A0A]";
 const adHeaderBackBtn =
   "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/55 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 active:opacity-90";
 
 /** عناوين أقسام — نفس أسلوب Home (إعلانات مميزة / موصى لك / التصنيفات) */
 const createAdSectionHeading = cn(
-  "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-card/80 px-2 py-px",
+  "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 px-2 py-px",
   "text-sm font-semibold leading-tight tracking-tight text-foreground md:text-base",
-  "shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 dark:bg-zinc-950/70",
+  "shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 bg-[#0A0A0A]/70",
 );
 
 /** عنوان الصفحة في الهيدر — أوضح قليلًا ليتناسب مع زر الرجوع (h-11) دون تكبير الهيدر */
@@ -118,7 +118,7 @@ function isGermanMarketplaceCity(city: string): boolean {
 const createAdSheetContentBase =
   "flex max-h-[min(90dvh,720px)] flex-col gap-0 overflow-hidden rounded-t-2xl border-t border-primary/35 bg-[#0A0A0A] p-0 shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.55)] ring-1 ring-primary/20";
 const createAdSheetCloseBtn =
-  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-zinc-950/90 text-primary transition-colors hover:border-primary/65 hover:bg-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 active:opacity-90";
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-[#0A0A0A]/90 text-primary transition-colors hover:border-primary/65 hover:bg-black/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 active:opacity-90";
 
 function CreateAdSheetHeader({ title }: { title: string }) {
   return (
@@ -1610,7 +1610,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   ].map((tip, tipIndex) => (
                     <div
                       key={`photo-tip-${tipIndex}`}
-                      className="rounded-lg border border-primary/15 bg-zinc-950/80 px-2.5 py-1.5"
+                      className="rounded-lg border border-primary/15 bg-[#0A0A0A]/80 px-2.5 py-1.5"
                     >
                       <p className="text-xs leading-5 text-zinc-300">- {tip}</p>
                     </div>
@@ -1620,7 +1620,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   <SheetClose asChild>
                     <Button
                       type="button"
-                      className="h-11 w-full rounded-full border border-primary/45 bg-zinc-950/80 text-base font-semibold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-zinc-900/90 active:opacity-90"
+                      className="h-11 w-full rounded-full border border-primary/45 bg-[#0A0A0A]/80 text-base font-semibold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-black/90 active:opacity-90"
                       onClick={() => setPhotoTipsOpen(false)}
                     >
                       {t("common.got_it")}
@@ -1711,7 +1711,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   <SheetTrigger asChild>
                     <Button
                       variant="outline"
-                      className="h-11 w-full justify-between rounded-xl border-primary/35 bg-zinc-950/80 px-3 text-start font-normal text-foreground hover:border-primary/50 hover:bg-zinc-900/90"
+                      className="h-11 w-full justify-between rounded-xl border-primary/35 bg-[#0A0A0A]/80 px-3 text-start font-normal text-foreground hover:border-primary/50 hover:bg-black/90"
                     >
                       <span
                         className={
@@ -1740,7 +1740,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                           <button
                             key={main.name}
                             type="button"
-                            className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
+                            className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-[#0A0A0A]/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-black/85"
                             onClick={() => {
                               setPickerMain(main);
                               setPickerSub(null);
@@ -1758,7 +1758,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         <>
                           <button
                             type="button"
-                            className="mb-1 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-zinc-950/85 px-3 py-3 text-start text-sm font-medium text-primary transition-colors hover:border-primary/45 hover:bg-zinc-900/90"
+                            className="mb-1 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-[#0A0A0A]/85 px-3 py-3 text-start text-sm font-medium text-primary transition-colors hover:border-primary/45 hover:bg-black/90"
                             onClick={() => {
                               setPickerMain(null);
                               setPickerSub(null);
@@ -1774,7 +1774,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                             <button
                               key={sub.name}
                               type="button"
-                              className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
+                              className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-[#0A0A0A]/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-black/85"
                               onClick={() => {
                                 if (!sub.options?.length) {
                                   applyCategorySelection(pickerMain.name, sub.name);
@@ -1792,7 +1792,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         <>
                           <button
                             type="button"
-                            className="mb-1 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-zinc-950/85 px-3 py-3 text-start text-sm font-medium text-primary transition-colors hover:border-primary/45 hover:bg-zinc-900/90"
+                            className="mb-1 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-[#0A0A0A]/85 px-3 py-3 text-start text-sm font-medium text-primary transition-colors hover:border-primary/45 hover:bg-black/90"
                             onClick={() => setPickerSub(null)}
                           >
                             <ArrowRight className="h-4 w-4 shrink-0" />
@@ -1808,7 +1808,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                             <button
                               key={leaf.name}
                               type="button"
-                              className="w-full rounded-xl border border-primary/25 bg-zinc-950/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-zinc-900/85"
+                              className="w-full rounded-xl border border-primary/25 bg-[#0A0A0A]/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-black/85"
                               onClick={() => {
                                 applyCategorySelection(
                                   pickerMain.name,
@@ -1884,7 +1884,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         <SheetTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-11 w-full items-center justify-between rounded-lg border border-primary/30 bg-zinc-950/90 px-3 text-sm transition-colors hover:border-primary/45 hover:bg-zinc-900/90"
+                            className="flex h-11 w-full items-center justify-between rounded-lg border border-primary/30 bg-[#0A0A0A]/90 px-3 text-sm transition-colors hover:border-primary/45 hover:bg-black/90"
                             dir={isRtl ? "rtl" : "ltr"}
                           >
                             <span
@@ -1919,7 +1919,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                             <SheetClose asChild>
                               <button
                                 type="button"
-                                className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-zinc-950/70 px-3 py-3 text-start text-sm text-zinc-400 transition-colors hover:border-primary/35 hover:bg-zinc-900/85"
+                                className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-[#0A0A0A]/70 px-3 py-3 text-start text-sm text-zinc-400 transition-colors hover:border-primary/35 hover:bg-black/85"
                                 onClick={() => handleDynamicFieldChange(field.id, "")}
                               >
                                 <span>{t("create_ad.dynamic.clear_selection")}</span>
@@ -1938,7 +1938,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                                       "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-start text-white transition-colors",
                                       selected
                                         ? "border-primary bg-primary/15 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.35)]"
-                                        : "border-primary/25 bg-zinc-950/75 hover:border-primary/45 hover:bg-zinc-900/85",
+                                        : "border-primary/25 bg-[#0A0A0A]/75 hover:border-primary/45 hover:bg-black/85",
                                     )}
                                   >
                                     <span className="font-medium">
@@ -1988,7 +1988,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
                   </div>
                   {pickupOnly ? (
-                    <div className="rounded-lg border border-primary/25 bg-zinc-950/60 px-2.5 py-1.5">
+                    <div className="rounded-lg border border-primary/25 bg-[#0A0A0A]/60 px-2.5 py-1.5">
                       <p className="text-sm font-medium">
                         {t("create_ad.shipping.pickup_only")}
                       </p>
@@ -1998,7 +1998,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       {collapsedShippingMethods.map((method) => (
                         <div
                           key={method.id}
-                          className="rounded-lg border border-primary/20 bg-zinc-950/50 px-2.5 py-1.5"
+                          className="rounded-lg border border-primary/20 bg-[#0A0A0A]/50 px-2.5 py-1.5"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex min-w-0 items-center gap-2">
@@ -2029,7 +2029,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
               >
                 <CreateAdSheetHeader title={t("create_ad.shipping.methods_title")} />
                 <div className="flex-1 space-y-2 overflow-y-auto px-4 py-2.5">
-                  <div className="space-y-1 rounded-xl border border-primary/25 bg-zinc-950/70 px-3 py-2 text-xs text-zinc-500">
+                  <div className="space-y-1 rounded-xl border border-primary/25 bg-[#0A0A0A]/70 px-3 py-2 text-xs text-zinc-500">
                     <p>{t("create_ad.shipping.note_1")}</p>
                     <p>{t("create_ad.shipping.note_2")}</p>
                   </div>
@@ -2044,7 +2044,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         className={`w-full rounded-xl border px-3 py-3 text-start transition-colors ${
                           selected
                             ? "border-primary bg-primary/10"
-                            : "border-primary/25 bg-zinc-950/70"
+                            : "border-primary/25 bg-[#0A0A0A]/70"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -2089,7 +2089,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                     className={`w-full rounded-xl border px-3 py-3 text-start transition-colors ${
                       tempPickupOnly
                         ? "border-primary bg-primary/10"
-                        : "border-primary/25 bg-zinc-950/70"
+                        : "border-primary/25 bg-[#0A0A0A]/70"
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -2134,7 +2134,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           <section className="space-y-1.5" dir={isRtl ? "rtl" : "ltr"}>
             <div className={cn(adCardShell, "space-y-1.5")}>
               <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-2">
+                <div className="rounded-xl border border-primary/25 bg-[#0A0A0A]/60 p-2">
                   <FormField
                     control={form.control}
                     name="price"
@@ -2190,7 +2190,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   />
                 </div>
 
-                <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-2">
+                <div className="rounded-xl border border-primary/25 bg-[#0A0A0A]/60 p-2">
                   <div className="space-y-1.5">
                     <label className={cn(createAdSectionHeading, "mb-0 block w-fit text-start")}>
                       {t("create_ad.price.currency")}
@@ -2202,7 +2202,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                       <SheetTrigger asChild>
                         <button
                           type="button"
-                          className="flex h-11 w-full items-center justify-between rounded-xl border border-primary/35 bg-zinc-950/80 px-3 text-sm text-foreground hover:border-primary/50"
+                          className="flex h-11 w-full items-center justify-between rounded-xl border border-primary/35 bg-[#0A0A0A]/80 px-3 text-sm text-foreground hover:border-primary/50"
                         >
                           <span>
                             {CURRENCY_OPTIONS.find(
@@ -2230,7 +2230,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                                   "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-start text-white transition-colors",
                                   picked
                                     ? "border-primary bg-primary/15 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.35)]"
-                                    : "border-primary/25 bg-zinc-950/75 hover:border-primary/45 hover:bg-zinc-900/85",
+                                    : "border-primary/25 bg-[#0A0A0A]/75 hover:border-primary/45 hover:bg-black/85",
                                 )}
                                 onClick={() => {
                                   setSelectedCurrency(currency.id);
@@ -2258,7 +2258,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-primary/25 bg-zinc-950/60 p-2">
+              <div className="rounded-xl border border-primary/25 bg-[#0A0A0A]/60 p-2">
                 <FormField
                   control={form.control}
                   name="priceType"
@@ -2274,7 +2274,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                         <SheetTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-11 w-full items-center justify-between rounded-xl border border-primary/35 bg-zinc-950/80 px-3 text-sm text-foreground hover:border-primary/50"
+                            className="flex h-11 w-full items-center justify-between rounded-xl border border-primary/35 bg-[#0A0A0A]/80 px-3 text-sm text-foreground hover:border-primary/50"
                           >
                             <span>
                               {field.value === "fixed" &&
@@ -2317,7 +2317,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                                     "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-start text-white transition-colors",
                                     picked
                                       ? "border-primary bg-primary/15 shadow-[0_0_18px_-10px_hsl(var(--primary)/0.35)]"
-                                      : "border-primary/25 bg-zinc-950/75 hover:border-primary/45 hover:bg-zinc-900/85",
+                                      : "border-primary/25 bg-[#0A0A0A]/75 hover:border-primary/45 hover:bg-black/85",
                                   )}
                                   onClick={() => {
                                     field.onChange(pt.id);
@@ -2365,7 +2365,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 dir={isRtl ? "rtl" : "ltr"}
               >
                 <div className="space-y-1.5">
-                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-zinc-950/60 px-3 py-2">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-[#0A0A0A]/60 px-3 py-2">
                     <RadioGroupItem
                       value="yes"
                       className="data-[state=checked]:border-primary [&>span>svg]:fill-primary"
@@ -2383,7 +2383,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   )}
                 </div>
 
-                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-zinc-950/60 px-3 py-2">
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-[#0A0A0A]/60 px-3 py-2">
                   <RadioGroupItem
                     value="no"
                     className="data-[state=checked]:border-primary [&>span>svg]:fill-primary"
@@ -2479,7 +2479,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                           onChange={field.onChange}
                           placeholder={t("create_ad.contact.city_placeholder")}
                           className={cn(
-                            "h-11 rounded-xl py-2 hover:bg-zinc-900/90",
+                            "h-11 rounded-xl py-2 hover:bg-black/90",
                             adInputClass,
                           )}
                         />
@@ -2524,7 +2524,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 </button>
               </div>
 
-              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-primary/25 bg-zinc-950/60 px-2.5 py-2">
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-primary/25 bg-[#0A0A0A]/60 px-2.5 py-2">
                 <input
                   type="checkbox"
                   checked={sellerSafetyAccepted}
@@ -2541,7 +2541,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           <div className="space-y-2 pt-1">
             <Button
               type="submit"
-              className="h-11 w-full rounded-full border border-primary/45 bg-zinc-950/80 text-base font-bold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-zinc-900/90 active:opacity-90"
+              className="h-11 w-full rounded-full border border-primary/45 bg-[#0A0A0A]/80 text-base font-bold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.35)] transition-colors hover:border-primary/60 hover:bg-black/90 active:opacity-90"
               disabled={isSubmittingForm}
             >
               {isSubmittingForm ? (
@@ -2560,7 +2560,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
             <Button
               type="button"
               variant="outline"
-              className="h-11 w-full rounded-full border-primary/40 bg-zinc-950/80 text-base font-semibold text-foreground shadow-[0_0_16px_-12px_hsl(var(--primary)/0.3)] transition-colors hover:border-primary/55 hover:bg-zinc-900/90 active:opacity-90"
+              className="h-11 w-full rounded-full border-primary/40 bg-[#0A0A0A]/80 text-base font-semibold text-foreground shadow-[0_0_16px_-12px_hsl(var(--primary)/0.3)] transition-colors hover:border-primary/55 hover:bg-black/90 active:opacity-90"
               onClick={() => {
                 void form.trigger("city").then((ok) => {
                   if (!ok || !validateCityBeforePublish()) return;

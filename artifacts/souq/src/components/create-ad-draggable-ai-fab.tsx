@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BOTTOM_NAV_HEIGHT_MOBILE_PX } from "@/lib/bottom-nav-layout";
@@ -211,7 +211,7 @@ export function CreateAdDraggableAiFab({
         type="button"
         disabled={isPending}
         aria-label={t("create_ad.ai.aria_label")}
-        className="inline-flex h-9 cursor-grab items-center justify-center gap-1 rounded-full border border-primary/45 bg-zinc-950/92 px-2.5 text-primary shadow-[0_0_12px_-12px_hsl(var(--primary)/0.32)] transition-[transform,colors,box-shadow] hover:border-primary/60 hover:bg-zinc-900/95 hover:shadow-[0_0_16px_-12px_hsl(var(--primary)/0.4)] active:cursor-grabbing active:scale-[0.98] disabled:opacity-60"
+        className="inline-flex h-9 cursor-grab items-center justify-center gap-1 rounded-full border border-primary/45 bg-[#0A0A0A]/92 px-2.5 text-primary shadow-[0_0_12px_-12px_hsl(var(--primary)/0.32)] transition-[transform,colors,box-shadow] hover:border-primary/60 hover:bg-black/95 hover:shadow-[0_0_16px_-12px_hsl(var(--primary)/0.4)] active:cursor-grabbing active:scale-[0.98] disabled:opacity-60"
       >
         {isPending ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -225,7 +225,7 @@ export function CreateAdDraggableAiFab({
 
       <div
         className={cn(
-          "max-w-[min(62vw,150px)] rounded-full border border-primary/35 bg-zinc-950/92 px-3 py-1 text-xs text-zinc-100 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.28)] transition-all duration-300 select-none",
+          "max-w-[min(62vw,150px)] rounded-full border border-primary/35 bg-[#0A0A0A]/92 px-3 py-1 text-xs text-zinc-100 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.28)] transition-all duration-300 select-none",
           showHint
             ? "translate-x-0 opacity-100"
             : "pointer-events-none translate-x-2 opacity-0",

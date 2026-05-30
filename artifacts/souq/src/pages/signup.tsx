@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -294,7 +294,7 @@ export default function Signup() {
         <div className="flex flex-col items-center gap-4">
           <div className="relative flex items-center justify-center">
             <div className="absolute h-36 w-36 rounded-full bg-primary/15 blur-3xl" />
-            <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border border-primary/35 bg-zinc-950/80 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15">
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15">
               <UserPlus className="h-11 w-11 text-primary" strokeWidth={2} />
             </div>
           </div>
@@ -397,7 +397,7 @@ export default function Signup() {
                                 type="button"
                                 className={cn(
                                   AUTH_SELECT_ROW,
-                                  field.value === country.code && "border-primary/35 bg-zinc-900/90",
+                                  field.value === country.code && "border-primary/35 bg-[#0A0A0A]/90",
                                 )}
                                 onMouseDown={(e) => {
                                   e.preventDefault();
@@ -509,7 +509,7 @@ export default function Signup() {
                             ) : (
                               <>
                                 {cityListAllowsManual && countryCities.length === 0 ? (
-                                  <div className="mb-2 rounded-lg border border-primary/20 bg-zinc-950/60 p-3 text-sm leading-relaxed text-muted-foreground">
+                                  <div className="mb-2 rounded-lg border border-primary/20 bg-[#0A0A0A]/60 p-3 text-sm leading-relaxed text-muted-foreground">
                                     <p>{t("auth.signup.manual_city_hint")}</p>
                                     {cityQuery.trim().length >= 2 ? (
                                       <Button
@@ -563,7 +563,7 @@ export default function Signup() {
                                         className={cn(
                                           AUTH_CITY_CARD_ROW,
                                           field.value === city &&
-                                            "border-primary/48 bg-zinc-900/95 shadow-[0_0_20px_-10px_hsl(var(--primary)/0.28)] ring-primary/22",
+                                            "border-primary/48 bg-[#0A0A0A]/95 shadow-[0_0_20px_-10px_hsl(var(--primary)/0.28)] ring-primary/22",
                                         )}
                                       >
                                         <span className="min-w-0 flex-1 truncate text-right">{city}</span>
@@ -719,7 +719,7 @@ export default function Signup() {
                 name="acceptTerms"
                 render={({ field }) => (
                   <FormItem>
-                    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-primary/20 bg-zinc-950/50 p-3 text-sm ring-1 ring-primary/5 transition-colors hover:border-primary/30">
+                    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-primary/20 bg-[#0A0A0A]/50 p-3 text-sm ring-1 ring-primary/5 transition-colors hover:border-primary/30">
                       <input
                         type="checkbox"
                         checked={field.value}
@@ -751,7 +751,7 @@ export default function Signup() {
                 name="acceptPrivacy"
                 render={({ field }) => (
                   <FormItem>
-                    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-primary/20 bg-zinc-950/50 p-3 text-sm ring-1 ring-primary/5 transition-colors hover:border-primary/30">
+                    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-primary/20 bg-[#0A0A0A]/50 p-3 text-sm ring-1 ring-primary/5 transition-colors hover:border-primary/30">
                       <input
                         type="checkbox"
                         checked={field.value}
@@ -788,7 +788,7 @@ export default function Signup() {
                 type="submit"
                 variant="ghost"
                 disabled={isSubmitting || rateLimitSeconds > 0}
-                className={cn(AUTH_ACCENT_OUTLINE_BTN, "mt-1 hover:bg-zinc-900")}
+                className={cn(AUTH_ACCENT_OUTLINE_BTN, "mt-1 hover:bg-black/30")}
               >
                 {isSubmitting ? (
                   <Loader2 className="h-5 w-5 animate-spin" />

@@ -1,4 +1,4 @@
-import type { UserPresenceEntry } from "@workspace/api-client-react";
+﻿import type { UserPresenceEntry } from "@workspace/api-client-react";
 import { formatRelativeTime } from "@/lib/format";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils";
 const BADGE_ONLINE =
   "inline-flex max-w-full min-w-0 items-center gap-2 rounded-full border border-primary/55 bg-primary/[0.14] font-semibold leading-none text-primary shadow-[0_0_22px_-10px_hsl(var(--primary)/0.42)] ring-1 ring-primary/25";
 const BADGE_OFFLINE =
-  "inline-flex max-w-full min-w-0 items-center gap-2 rounded-full border border-zinc-600/50 bg-zinc-950/80 font-medium leading-tight text-zinc-200 ring-1 ring-zinc-700/40";
+  "inline-flex max-w-full min-w-0 items-center gap-2 rounded-full border border-zinc-600/50 bg-[#0A0A0A]/80 font-medium leading-tight text-zinc-200 ring-1 ring-zinc-700/40";
 const BADGE_MUTED =
-  "inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border border-zinc-700/40 bg-zinc-950/55 font-medium leading-tight text-zinc-500 ring-1 ring-zinc-800/45";
+  "inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border border-zinc-700/40 bg-[#0A0A0A]/55 font-medium leading-tight text-zinc-500 ring-1 ring-zinc-800/45";
 
 const SIZE_DEFAULT = "py-1.5 ps-2.5 pe-3 text-[12px] sm:text-[13px]";
 const SIZE_COMPACT = "py-0.5 ps-2 pe-2 text-[10px] sm:text-[11px]";
@@ -29,7 +29,7 @@ export function UserPresenceBadge({
     return (
       <span
         className={cn(
-          "inline-block max-w-full rounded-full border border-zinc-800/60 bg-zinc-950/40",
+          "inline-block max-w-full rounded-full border border-zinc-800/60 bg-[#0A0A0A]/40",
           variant === "compact" ? "h-5 w-24 animate-pulse" : "h-7 w-28 animate-pulse",
           className,
         )}

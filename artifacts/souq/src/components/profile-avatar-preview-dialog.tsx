@@ -1,4 +1,4 @@
-import { Camera, Loader2, Pencil, Trash2 } from "lucide-react";
+﻿import { Camera, Loader2, Pencil, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ const dialogShell =
   "gap-0 overflow-hidden border border-primary/40 bg-[#0A0A0A]/98 p-0 text-right shadow-[0_0_32px_-12px_hsl(var(--primary)/0.28)] ring-1 ring-primary/15 sm:max-w-lg";
 
 const actionsCard =
-  "rounded-2xl border border-primary/35 bg-zinc-950/90 p-3 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.18)] ring-1 ring-primary/12";
+  "rounded-2xl border border-primary/35 bg-[#0A0A0A]/90 p-3 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.18)] ring-1 ring-primary/12";
 
 type Props = {
   open: boolean;

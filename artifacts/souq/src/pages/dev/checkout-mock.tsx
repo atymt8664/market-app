@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Check, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -207,7 +207,7 @@ export default function CheckoutMockPage() {
           <>
             <div className={P17_CARD}>
               <div className="flex items-center gap-3">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-zinc-900 text-primary shadow-[0_0_14px_-8px_hsl(var(--primary)/0.3)]">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A] text-primary shadow-[0_0_14px_-8px_hsl(var(--primary)/0.3)]">
                   <Smartphone className="h-7 w-7" />
                 </div>
                 <div className="min-w-0 flex-1 text-right">

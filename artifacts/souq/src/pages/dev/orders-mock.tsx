@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Package, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,7 @@ function OrdersListMock() {
                 className={cn(P17_CARD, "text-right transition-colors hover:border-primary/55")}
               >
                 <div className="flex items-start gap-3">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-zinc-900 text-primary">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A] text-primary">
                     <Smartphone className="h-6 w-6" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -114,7 +114,7 @@ function OrderDetailMock({ orderId }: { orderId: string }) {
       <main className={P17_MAIN}>
         <div className={P17_CARD}>
           <div className="flex items-center gap-3">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-zinc-900 text-primary">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A] text-primary">
               <Package className="h-7 w-7" />
             </div>
             <div className="min-w-0 flex-1">

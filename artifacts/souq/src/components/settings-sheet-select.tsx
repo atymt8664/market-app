@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, type ReactNode } from "react";
 import { Check, ChevronDown, X } from "lucide-react";
@@ -80,7 +80,7 @@ export function SettingsSheetSelect({
             </SheetTitle>
             <SheetClose
               type="button"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-zinc-950/90 text-primary transition-colors hover:border-primary/65 hover:bg-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 active:opacity-90"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-[#0A0A0A]/90 text-primary transition-colors hover:border-primary/65 hover:bg-black/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 active:opacity-90"
               aria-label="إغلاق"
             >
               <X className="h-4 w-4" />
@@ -99,7 +99,7 @@ export function SettingsSheetSelect({
                   "flex w-full items-center justify-between rounded-xl border px-3 py-3.5 text-right transition-colors",
                   value === opt.value
                     ? "border-primary bg-primary/15 text-white shadow-[0_0_22px_-14px_hsl(var(--primary)/0.4)]"
-                    : "border-primary/25 bg-zinc-950/75 text-white hover:border-primary/45 hover:bg-zinc-900/85",
+                    : "border-primary/25 bg-[#0A0A0A]/75 text-white hover:border-primary/45 hover:bg-black/85",
                 )}
               >
                 <span className="text-sm font-medium">{opt.label}</span>

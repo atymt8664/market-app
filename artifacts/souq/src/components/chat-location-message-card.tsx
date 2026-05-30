@@ -1,4 +1,4 @@
-import { ExternalLink, MapPin } from "lucide-react";
+﻿import { ExternalLink, MapPin } from "lucide-react";
 import { t } from "@/i18n";
 import { buildChatLocationMapsUrl, type ChatLocationPayload } from "@/lib/chat-location-message";
 import { ChatLocationMapPreview } from "@/components/chat-location-map-preview";
@@ -19,7 +19,7 @@ export function ChatLocationMessageCard({
   return (
     <div
       className={cn(
-        "flex min-w-[11.5rem] max-w-[min(100%,280px)] flex-col gap-2.5 rounded-xl border border-primary/35 bg-zinc-950/90 p-3 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.38)] ring-1 ring-primary/20",
+        "flex min-w-[11.5rem] max-w-[min(100%,280px)] flex-col gap-2.5 rounded-xl border border-primary/35 bg-[#0A0A0A]/90 p-3 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.38)] ring-1 ring-primary/20",
         mine ? "text-end" : "text-start",
       )}
       dir={dirRtl ? "rtl" : "ltr"}

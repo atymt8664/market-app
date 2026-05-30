@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /** شبكة موحّدة: صف واحد من أربعة كروت (موبايل + سطح المكتب) */
@@ -7,7 +7,7 @@ export const PROFILE_STATS_GRID =
 
 /** كرت إحصائية واحد — حجم ولمعان وبُعد موحّد مع بروفايل الإعلانات */
 export const profileStatTileShell =
-  "flex min-h-[5rem] w-full min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/35 bg-zinc-950/75 px-1 py-2.5 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:min-h-[5.25rem] md:gap-1.5 md:px-2";
+  "flex min-h-[5rem] w-full min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/35 bg-[#0A0A0A]/75 px-1 py-2.5 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:min-h-[5.25rem] md:gap-1.5 md:px-2";
 
 export const profileStatTileInteractive =
   "cursor-pointer transition-[transform,box-shadow,border-color] hover:border-primary/48 hover:shadow-[0_0_26px_-10px_hsl(var(--primary)/0.22)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35";

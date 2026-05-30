@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SearchLocationMap } from "@/components/search-location-map";
 import { ArrowLeft, ArrowRight, Loader2, MapPin, Minus, Plus, Search } from "lucide-react";
 import {
@@ -32,12 +32,12 @@ const PICKER_HISTORY_MARKER = 2;
 const sheetShell =
   "z-[60] flex h-[min(100dvh,920px)] max-h-[100dvh] w-full flex-col border-t border-primary/35 bg-[#0A0A0A] p-0 shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.72)] ring-1 ring-primary/14 sm:max-h-[92dvh] sm:rounded-t-2xl";
 const headerBar =
-  "shrink-0 border-b border-primary/25 bg-zinc-950/50 px-3 py-3 shadow-[inset_0_-1px_0_rgba(163,230,53,0.06)] sm:px-4";
+  "shrink-0 border-b border-primary/25 bg-[#0A0A0A]/50 px-3 py-3 shadow-[inset_0_-1px_0_rgba(163,230,53,0.06)] sm:px-4";
 const searchCard =
-  "rounded-2xl border border-primary/32 bg-zinc-950/88 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12";
+  "rounded-2xl border border-primary/32 bg-[#0A0A0A]/88 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12";
 
 const radiusStepBtn =
-  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/55 bg-zinc-950/90 text-primary shadow-[0_0_14px_-6px_hsl(var(--primary)/0.45)] ring-1 ring-primary/20 transition-[transform,box-shadow,border-color,background-color] hover:border-primary/70 hover:bg-zinc-900/95 hover:shadow-[0_0_18px_-6px_hsl(var(--primary)/0.55)] active:scale-[0.94] disabled:pointer-events-none disabled:opacity-40 touch-manipulation";
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/55 bg-[#0A0A0A]/90 text-primary shadow-[0_0_14px_-6px_hsl(var(--primary)/0.45)] ring-1 ring-primary/20 transition-[transform,box-shadow,border-color,background-color] hover:border-primary/70 hover:bg-black/95 hover:shadow-[0_0_18px_-6px_hsl(var(--primary)/0.55)] active:scale-[0.94] disabled:pointer-events-none disabled:opacity-40 touch-manipulation";
 
 const NOMINATIM_USER_AGENT = "SouqArabEU/1.0 (location search; contact: support@souqarabeu.com)";
 
@@ -388,7 +388,7 @@ export function SearchLocationPickerPanel({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-card/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] active:scale-[0.96]"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-[#0A0A0A]/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] active:scale-[0.96]"
               aria-label={t("search_location.close")}
             >
               <BackIcon className="h-5 w-5" />
@@ -433,7 +433,7 @@ export function SearchLocationPickerPanel({
                 role="listbox"
                 className={cn(
                   "absolute inset-x-0 top-[calc(100%+6px)] z-[80] max-h-[min(240px,32dvh)] overflow-y-auto overscroll-contain",
-                  "rounded-2xl border border-primary/40 bg-zinc-950/[0.98] p-1.5",
+                  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/[0.98] p-1.5",
                   "shadow-[0_0_28px_-10px_hsl(var(--primary)/0.38)] ring-1 ring-primary/22",
                 )}
               >
@@ -485,7 +485,7 @@ export function SearchLocationPickerPanel({
                 className="h-[min(64dvh,440px)] min-h-[340px] w-full"
               />
             ) : open ? (
-              <div className="flex h-[min(64dvh,440px)] min-h-[340px] items-center justify-center bg-zinc-950 text-sm text-muted-foreground">
+              <div className="flex h-[min(64dvh,440px)] min-h-[340px] items-center justify-center bg-[#0A0A0A] text-sm text-muted-foreground">
                 <Loader2 className="me-2 h-4 w-4 animate-spin text-primary" />
                 {t("search_location.map_loading")}
               </div>
@@ -521,7 +521,7 @@ export function SearchLocationPickerPanel({
           ) : null}
 
           <div
-            className="mt-1 rounded-2xl border border-primary/28 bg-zinc-950/75 px-3 py-3.5 ring-1 ring-primary/10"
+            className="mt-1 rounded-2xl border border-primary/28 bg-[#0A0A0A]/75 px-3 py-3.5 ring-1 ring-primary/10"
             dir={isRtl ? "rtl" : "ltr"}
           >
             <div className="mb-3 flex items-center justify-between gap-2">
@@ -571,15 +571,15 @@ export function SearchLocationPickerPanel({
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-primary/20 bg-zinc-950/90 px-3 py-3 sm:px-4">
+        <div className="shrink-0 border-t border-primary/20 bg-[#0A0A0A]/90 px-3 py-3 sm:px-4">
           <button
             type="button"
             onClick={onApply}
             className={cn(
-              "h-11 w-full rounded-2xl border border-primary/55 bg-zinc-950/90 text-base font-bold text-primary",
+              "h-11 w-full rounded-2xl border border-primary/55 bg-[#0A0A0A]/90 text-base font-bold text-primary",
               "shadow-[0_0_22px_-10px_hsl(var(--primary)/0.42)] ring-1 ring-primary/22",
               "transition-[transform,box-shadow,border-color,background-color]",
-              "hover:border-primary/70 hover:bg-zinc-900/95 hover:shadow-[0_0_28px_-8px_hsl(var(--primary)/0.5)]",
+              "hover:border-primary/70 hover:bg-black/95 hover:shadow-[0_0_28px_-8px_hsl(var(--primary)/0.5)]",
               "active:scale-[0.98]",
             )}
           >

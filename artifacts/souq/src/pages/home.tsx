@@ -134,8 +134,10 @@ function homeCategoriesArrowFade(isRtl: boolean) {
   return cn(
     "pointer-events-none absolute inset-y-0 inset-x-0",
     isRtl
-      ? "bg-gradient-to-r from-[#0A0A0A]/80 via-[#0A0A0A]/30 to-transparent"
-      : "bg-gradient-to-l from-[#0A0A0A]/80 via-[#0A0A0A]/30 to-transparent",
+      ? "bg-gradient-to-r from-black/[0.10] via-black/[0.04] to-transparent"
+      : "bg-gradient-to-l from-black/[0.10] via-black/[0.04] to-transparent",
+    "backdrop-blur-[3px] backdrop-saturate-150",
+    "[-webkit-backdrop-filter:blur(3px)_saturate(1.5)]",
   );
 }
 
@@ -316,13 +318,12 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
   return (
     <header
       ref={headerRef}
-      className="fixed inset-x-0 top-0 z-40 border-b border-primary/12 bg-[#0A0A0A] shadow-[0_1px_0_rgba(255,255,255,0.03)]"
+      className="fixed inset-x-0 top-0 z-40 bg-[#0A0A0A]"
       dir={isRtl ? "rtl" : "ltr"}
     >
       <div className={HOME_PAGE_INSET}>
         <div className="flex items-center gap-2 pt-3 pb-0 -mx-2 md:-mx-3 lg:-mx-4">
           <MarketplaceSearchBar
-            compact
             isRtl={isRtl}
             value={searchQuery}
             onChange={onSearchQueryChange}

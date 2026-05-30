@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Orders pages — tokens copied from existing app patterns only.
  * Header/main: `create-ad.tsx` (lines ~74–95, ~1537–1562)
  * Cards/tabs: `profile.tsx` + `settings-shell.tsx`
@@ -35,7 +35,7 @@ export const CREATE_AD_BACK_BTN =
 
 /** `create-ad.tsx` — createAdSectionHeading base */
 const CREATE_AD_SECTION_HEADING =
-  "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-card/80 px-2 py-px text-sm font-semibold leading-tight tracking-tight text-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 dark:bg-zinc-950/70 md:text-base";
+  "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 px-2 py-px text-sm font-semibold leading-tight tracking-tight text-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 bg-[#0A0A0A]/70 md:text-base";
 
 /** `create-ad.tsx` — createAdPageTitleHeading */
 export const CREATE_AD_PAGE_TITLE_HEADING = `${CREATE_AD_SECTION_HEADING} px-2.5 py-0.5 text-base font-semibold md:px-3 md:py-1 md:text-lg`;
@@ -56,16 +56,16 @@ export const CREATE_AD_MAIN_COLUMN =
 
 /** `profile.tsx` — PROFILE_TAB_LIST */
 export const ORDERS_TAB_LIST =
-  "h-auto w-full gap-1.5 rounded-xl border border-primary/32 bg-zinc-950/78 p-1.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12";
+  "h-auto w-full gap-1.5 rounded-xl border border-primary/32 bg-[#0A0A0A]/78 p-1.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12";
 
 /** `profile.tsx` — PROFILE_TAB_TRIGGER */
 export const ORDERS_TAB_TRIGGER =
-  "rounded-lg border border-transparent bg-transparent px-1.5 py-2.5 text-[10px] font-semibold leading-tight text-primary/55 transition-all sm:px-2 sm:text-xs data-[state=active]:border-primary/52 data-[state=active]:bg-zinc-900/95 data-[state=active]:text-primary data-[state=active]:shadow-[0_0_24px_-12px_hsl(var(--primary)/0.32)] data-[state=active]:ring-1 data-[state=active]:ring-primary/28 hover:border-primary/22 hover:bg-zinc-950/85 hover:text-primary/85";
+  "rounded-lg border border-transparent bg-transparent px-1.5 py-2.5 text-[10px] font-semibold leading-tight text-primary/55 transition-all sm:px-2 sm:text-xs data-[state=active]:border-primary/52 data-[state=active]:bg-black/95 data-[state=active]:text-primary data-[state=active]:shadow-[0_0_24px_-12px_hsl(var(--primary)/0.32)] data-[state=active]:ring-1 data-[state=active]:ring-primary/28 hover:border-primary/22 hover:bg-[#0A0A0A]/85 hover:text-primary/85";
 
 /** Hub order list card — interactive shell (orders-account-card-grid parity) */
 export const ORDERS_LIST_CARD =
-  "w-full rounded-2xl border border-primary/35 bg-zinc-950/78 p-3 text-right shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-3.5";
+  "w-full rounded-2xl border border-primary/35 bg-[#0A0A0A]/78 p-3 text-right shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-3.5";
 
 /** Hub order list card — hover / pressed / touch feedback */
 export const ORDERS_LIST_CARD_INTERACTIVE =
-  "cursor-pointer touch-manipulation transition-[border-color,background-color,box-shadow,transform,opacity] duration-150 hover:border-primary/48 hover:bg-zinc-950/95 hover:shadow-[0_0_28px_-10px_hsl(var(--primary)/0.28)] active:scale-[0.985] active:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]";
+  "cursor-pointer touch-manipulation transition-[border-color,background-color,box-shadow,transform,opacity] duration-150 hover:border-primary/48 hover:bg-[#0A0A0A]/95 hover:shadow-[0_0_28px_-10px_hsl(var(--primary)/0.28)] active:scale-[0.985] active:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]";

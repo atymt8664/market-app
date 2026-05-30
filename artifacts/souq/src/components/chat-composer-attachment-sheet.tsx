@@ -1,4 +1,4 @@
-import { Camera, FileText, ImageIcon, Paperclip } from "lucide-react";
+﻿import { Camera, FileText, ImageIcon, Paperclip } from "lucide-react";
 import {
   Sheet,
   SheetClose,
@@ -20,10 +20,10 @@ type ChatComposerAttachmentSheetProps = {
 };
 
 const ROW_CLASS =
-  "flex w-full items-center gap-3 rounded-2xl border border-primary/30 bg-zinc-950/85 px-4 py-3.5 text-right shadow-[0_0_16px_-10px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10 transition-[border-color,background-color,transform] duration-200 hover:border-primary/45 hover:bg-zinc-900/90 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-45";
+  "flex w-full items-center gap-3 rounded-2xl border border-primary/30 bg-[#0A0A0A]/85 px-4 py-3.5 text-right shadow-[0_0_16px_-10px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10 transition-[border-color,background-color,transform] duration-200 hover:border-primary/45 hover:bg-black/90 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-45";
 
 const ICON_WRAP =
-  "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-zinc-900 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.28)]";
+  "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A] text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.28)]";
 
 const OPTIONS: Array<{
   kind: ChatAttachmentKind;
@@ -60,7 +60,7 @@ export function ChatComposerAttachmentSheet({
             <button
               type="button"
               aria-label={t("message_thread.attach_sheet_close")}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-zinc-950/90 text-primary transition-colors hover:border-primary/65 hover:bg-zinc-900"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-[#0A0A0A]/90 text-primary transition-colors hover:border-primary/65 hover:bg-black/30"
             >
               ✕
             </button>

@@ -1,4 +1,4 @@
-import { Link, Redirect } from "wouter";
+﻿import { Link, Redirect } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { AccountHeader } from "@/components/account-header";
 import { useToast } from "@/hooks/use-toast";
@@ -75,7 +75,7 @@ function CategoryRow({
   return (
     <div className="flex items-start justify-between gap-3 border-b border-primary/10 py-4 last:border-b-0">
       <div className="flex min-w-0 flex-1 items-start gap-3 text-right">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-zinc-950/80 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.35)] [&_svg]:h-4 [&_svg]:w-4">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-[#0A0A0A]/80 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.35)] [&_svg]:h-4 [&_svg]:w-4">
           {icon}
         </div>
         <div className="min-w-0 flex-1">

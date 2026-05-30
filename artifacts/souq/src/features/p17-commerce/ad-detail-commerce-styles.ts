@@ -1,4 +1,4 @@
-/**
+﻿/**
  * P17 ad-detail commerce — visual hierarchy tokens (Dark Premium + Lime).
  * Order: Buy Now → Add to Cart → WhatsApp → Message Seller
  */
@@ -13,11 +13,11 @@ export const P17_ADD_TO_CART_BTN =
 
 /** 🥉 WhatsApp — external contact, distinct from commerce lime */
 export const P17_WHATSAPP_BTN =
-  "flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#25D366]/60 bg-zinc-950/88 text-sm font-semibold text-[#25D366] shadow-[0_0_14px_-8px_rgba(37,211,102,0.38)] transition-[transform,box-shadow,border-color,background-color] hover:border-[#25D366]/80 hover:bg-[#25D366]/[0.09] hover:shadow-[0_0_18px_-6px_rgba(37,211,102,0.42)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40";
+  "flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#25D366]/60 bg-[#0A0A0A]/88 text-sm font-semibold text-[#25D366] shadow-[0_0_14px_-8px_rgba(37,211,102,0.38)] transition-[transform,box-shadow,border-color,background-color] hover:border-[#25D366]/80 hover:bg-[#25D366]/[0.09] hover:shadow-[0_0_18px_-6px_rgba(37,211,102,0.42)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40";
 
 /** 4️⃣ Message seller — lowest prominence */
 export const P17_MESSAGE_SELLER_BTN =
-  "flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/32 bg-[#0A0A0A]/75 text-sm font-medium text-primary/80 shadow-none transition-[transform,border-color,background-color] hover:border-primary/42 hover:bg-zinc-950/85 hover:text-primary/90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50";
+  "flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/32 bg-[#0A0A0A]/75 text-sm font-medium text-primary/80 shadow-none transition-[transform,border-color,background-color] hover:border-primary/42 hover:bg-[#0A0A0A]/85 hover:text-primary/90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50";
 
 /** Utility dismiss — black + lime outline (not a commerce CTA) */
 export const P17_SHEET_OK_BTN =

@@ -1,4 +1,4 @@
-import { memo } from "react";
+﻿import { memo } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Home, Heart, Plus, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -254,7 +254,7 @@ const BottomNav = memo(function BottomNav() {
                 {isAuthenticated && favCount > 0 && (
                   <span
                     dir="ltr"
-                    className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-zinc-950 bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_5px_-1px_hsl(var(--primary)/0.32)] md:shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
+                    className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-[#0A0A0A] bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_5px_-1px_hsl(var(--primary)/0.32)] md:shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
                   >
                     {favCount > 99 ? "99+" : favCount}
                   </span>
@@ -266,7 +266,7 @@ const BottomNav = memo(function BottomNav() {
 
           <button type="button" onClick={handleCreateClick} className="flex min-w-0 flex-1">
             <BottomNavSlot isActive={isCreateActive} promote>
-              <div className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/50 bg-zinc-950/90 text-primary shadow-[0_0_12px_-10px_hsl(var(--primary)/0.26)] ring-1 ring-primary/22 md:h-8 md:w-8 md:shadow-[0_0_16px_-10px_hsl(var(--primary)/0.38)] md:ring-primary/25">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/50 bg-[#0A0A0A]/90 text-primary shadow-[0_0_12px_-10px_hsl(var(--primary)/0.26)] ring-1 ring-primary/22 md:h-8 md:w-8 md:shadow-[0_0_16px_-10px_hsl(var(--primary)/0.38)] md:ring-primary/25">
                 <Plus className="h-4 w-4 md:h-[1.125rem] md:w-[1.125rem]" strokeWidth={2.5} />
               </div>
               <span className="text-[10px] font-medium md:text-xs">{t("bottom_nav.post")}</span>
@@ -280,7 +280,7 @@ const BottomNav = memo(function BottomNav() {
                 {isAuthenticated && unreadTotal > 0 && (
                   <span
                     dir="ltr"
-                    className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-zinc-950 bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_5px_-1px_hsl(var(--primary)/0.32)] md:shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
+                    className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-[#0A0A0A] bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_5px_-1px_hsl(var(--primary)/0.32)] md:shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
                   >
                     {unreadTotal > 99 ? "99+" : unreadTotal}
                   </span>
@@ -320,15 +320,15 @@ function BottomNavSlot({
         "transition-[color,background-color,border-color,box-shadow] duration-150 ease-out md:duration-200",
         isActive
           ? cn(
-              "border-primary/55 bg-zinc-900/95 text-primary ring-1 ring-primary/32 [&_svg]:text-primary [&_span]:font-semibold [&_span]:text-primary",
+              "border-primary/55 bg-[#0A0A0A]/95 text-primary ring-1 ring-primary/32 [&_svg]:text-primary [&_span]:font-semibold [&_span]:text-primary",
               "shadow-[0_0_18px_-12px_hsl(var(--primary)/0.32)] md:border-primary/58 md:shadow-[0_0_30px_-10px_hsl(var(--primary)/0.48)] md:ring-primary/38",
             )
           : cn(
-              "border-primary/30 bg-zinc-950/82 ring-1 ring-primary/14 shadow-[0_0_14px_-14px_hsl(var(--primary)/0.12)] hover:border-primary/42 hover:bg-zinc-900/90 md:shadow-[0_0_22px_-14px_hsl(var(--primary)/0.16)] md:ring-primary/16 md:hover:border-primary/45 md:hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.28)]",
+              "border-primary/30 bg-[#0A0A0A]/82 ring-1 ring-primary/14 shadow-[0_0_14px_-14px_hsl(var(--primary)/0.12)] hover:border-primary/42 hover:bg-black/90 md:shadow-[0_0_22px_-14px_hsl(var(--primary)/0.16)] md:ring-primary/16 md:hover:border-primary/45 md:hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.28)]",
               "[&_svg]:text-primary/58 [&_span]:text-primary/52",
               "md:active:scale-[0.98]",
               promote &&
-                "border-primary/42 bg-zinc-950/88 ring-primary/22 [&_svg]:text-primary/85 [&_span]:text-primary/72",
+                "border-primary/42 bg-[#0A0A0A]/88 ring-primary/22 [&_svg]:text-primary/85 [&_span]:text-primary/72",
             ),
       )}
     >

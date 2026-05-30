@@ -1,4 +1,4 @@
-import { AccountHeader } from "@/components/account-header";
+﻿import { AccountHeader } from "@/components/account-header";
 import {
   ArrowUpCircle,
   Award,
@@ -43,7 +43,7 @@ import {
 } from "@/lib/return-navigation";
 
 const PAYMENTS_FEATURE_ROW =
-  "rounded-2xl border border-primary/36 bg-zinc-950/76 p-3 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-3.5";
+  "rounded-2xl border border-primary/36 bg-[#0A0A0A]/76 p-3 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-3.5";
 
 const PROMOTE_PREVIEW_FROM_PAYMENTS = "/promote-preview?return=%2Faccount%2Fpayments";
 const PAGE_META: Record<string, { titleKey: string; icon: React.ReactNode }> = {
@@ -170,7 +170,7 @@ export default function AccountInfoPage() {
       <section className={SETTINGS_CARD}>
         <div className="mb-3 flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-foreground md:text-base">{t("payments.methods.title")}</h3>
-          <span className="shrink-0 rounded-full border border-primary/40 bg-zinc-950/90 px-2 py-0.5 text-[10px] font-semibold text-primary shadow-[0_0_10px_-6px_hsl(var(--primary)/0.3)]">
+          <span className="shrink-0 rounded-full border border-primary/40 bg-[#0A0A0A]/90 px-2 py-0.5 text-[10px] font-semibold text-primary shadow-[0_0_10px_-6px_hsl(var(--primary)/0.3)]">
             {t("common.coming_soon")}
           </span>
         </div>
@@ -180,7 +180,7 @@ export default function AccountInfoPage() {
               key={method}
               type="button"
               disabled
-              className="w-full cursor-not-allowed rounded-2xl border border-primary/25 bg-zinc-950/80 px-3 py-2.5 text-start text-sm font-medium text-zinc-500 opacity-80 shadow-[inset_0_0_0_1px_rgba(182,227,86,0.06)]"
+              className="w-full cursor-not-allowed rounded-2xl border border-primary/25 bg-[#0A0A0A]/80 px-3 py-2.5 text-start text-sm font-medium text-zinc-500 opacity-80 shadow-[inset_0_0_0_1px_rgba(182,227,86,0.06)]"
             >
               {method}
             </button>
@@ -189,7 +189,7 @@ export default function AccountInfoPage() {
       </section>
       <section className={SETTINGS_CARD}>
         <h3 className="mb-2 text-sm font-semibold text-foreground md:text-base">{t("payments.transactions.title")}</h3>
-        <div className="rounded-2xl border border-dashed border-primary/25 bg-zinc-950/70 px-4 py-6 text-center ring-1 ring-primary/10">
+        <div className="rounded-2xl border border-dashed border-primary/25 bg-[#0A0A0A]/70 px-4 py-6 text-center ring-1 ring-primary/10">
           <p className="text-sm font-medium text-foreground">{t("payments.transactions.empty")}</p>
           <p className="mt-1 text-xs leading-relaxed text-zinc-500">{t("payments.transactions.subtext")}</p>
         </div>
@@ -197,7 +197,7 @@ export default function AccountInfoPage() {
       <section
         className={cn(
           SETTINGS_CARD,
-          "border-primary/40 bg-gradient-to-b from-primary/[0.12] to-zinc-950/90 shadow-[0_0_22px_-14px_hsl(var(--primary)/0.22)] ring-1 ring-primary/14",
+          "border-primary/40 bg-gradient-to-b from-primary/[0.12] to-[#0A0A0A]/90 shadow-[0_0_22px_-14px_hsl(var(--primary)/0.22)] ring-1 ring-primary/14",
         )}
       >
         <h3 className="mb-1 text-sm font-semibold text-foreground md:text-base">{t("payments.promo.title")}</h3>
@@ -241,7 +241,7 @@ export default function AccountInfoPage() {
                     setSubmitted(false);
                   }}
                   aria-label={t("account_info.rate.star_aria", { count: index })}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/25 bg-zinc-950/80 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10 transition-colors hover:border-primary/40 hover:bg-zinc-900/90"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/25 bg-[#0A0A0A]/80 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10 transition-colors hover:border-primary/40 hover:bg-black/90"
                 >
                   <Star
                     className={`h-[18px] w-[18px] ${active ? "fill-primary text-primary" : "text-zinc-500"}`}
@@ -308,7 +308,7 @@ export default function AccountInfoPage() {
       <p
         className={cn(
           SETTINGS_CARD_COMPACT,
-          "border-primary/25 bg-zinc-950/60 px-3 py-2.5 text-xs leading-relaxed text-zinc-500",
+          "border-primary/25 bg-[#0A0A0A]/60 px-3 py-2.5 text-xs leading-relaxed text-zinc-500",
         )}
       >
         {t("account_info.rate.play_store_note")}
@@ -441,14 +441,14 @@ export default function AccountInfoPage() {
           <div className="text-sm leading-relaxed text-zinc-400">{paymentsBody}</div>
         ) : isLanguagePage ? (
           <div className={SETTINGS_CARD}>
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-primary/35 bg-zinc-950/80 text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.2)]">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A]/80 text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.2)]">
               {page.icon}
             </div>
             <div className="text-sm leading-relaxed text-foreground">{languageBody}</div>
           </div>
         ) : (
           <div className={SETTINGS_CARD}>
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-primary/35 bg-zinc-950/80 text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.2)]">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A]/80 text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.2)]">
               {page.icon}
             </div>
             <div className="text-sm leading-relaxed text-muted-foreground [&_p]:text-muted-foreground [&_a]:text-primary">

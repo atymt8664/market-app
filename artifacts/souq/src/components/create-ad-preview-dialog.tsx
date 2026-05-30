@@ -1,4 +1,4 @@
-import { MapPin, Eye, ThumbsUp, Star, X } from "lucide-react";
+﻿import { MapPin, Eye, ThumbsUp, Star, X } from "lucide-react";
 import { AdNoImagePlaceholderBlock } from "@/components/ad-card-no-image-placeholder";
 import {
   Dialog,
@@ -69,7 +69,7 @@ export function CreateAdPreviewDialog({
   const mainImage = previewImages[0];
 
   const previewCloseBtn =
-    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-zinc-950/90 text-primary transition-colors hover:border-primary/65 hover:bg-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 active:opacity-90";
+    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-[#0A0A0A]/90 text-primary transition-colors hover:border-primary/65 hover:bg-black/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 active:opacity-90";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -138,7 +138,7 @@ export function CreateAdPreviewDialog({
           </div>
 
           <div className="space-y-4 px-4 py-4">
-            <div className="rounded-2xl border border-primary/35 bg-zinc-950/75 p-4 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.15)] ring-1 ring-primary/10">
+            <div className="rounded-2xl border border-primary/35 bg-[#0A0A0A]/75 p-4 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.15)] ring-1 ring-primary/10">
               <h2 className="mb-2 text-xl font-bold leading-tight text-white">{values.title || "—"}</h2>
               {isFree ? (
                 <div className="text-2xl font-bold text-primary">{t("ad-card.free")}</div>
@@ -163,7 +163,7 @@ export function CreateAdPreviewDialog({
               </div>
             </div>
 
-            <div className="flex items-stretch divide-x divide-primary/20 rounded-2xl border border-primary/30 bg-zinc-950/70 px-2 py-2 text-xs text-zinc-400 [direction:rtl]">
+            <div className="flex items-stretch divide-x divide-primary/20 rounded-2xl border border-primary/30 bg-[#0A0A0A]/70 px-2 py-2 text-xs text-zinc-400 [direction:rtl]">
               <div className="flex flex-1 items-center justify-center gap-1">
                 <Eye className="h-4 w-4" />
                 <span className="font-semibold tabular-nums text-white">0</span>
@@ -179,14 +179,14 @@ export function CreateAdPreviewDialog({
               </div>
             </div>
 
-            <div className="rounded-2xl border border-primary/35 bg-zinc-950/75 p-4 ring-1 ring-primary/10">
+            <div className="rounded-2xl border border-primary/35 bg-[#0A0A0A]/75 p-4 ring-1 ring-primary/10">
               <h3 className="mb-2 font-semibold text-white">{t("ad_detail.description")}</h3>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">
                 {values.description || "—"}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-primary/35 bg-zinc-950/75 p-4 text-sm ring-1 ring-primary/10">
+            <div className="rounded-2xl border border-primary/35 bg-[#0A0A0A]/75 p-4 text-sm ring-1 ring-primary/10">
               <div className="flex justify-between gap-2 border-b border-primary/15 py-2 first:pt-0">
                 <span className="text-zinc-500">{t("create_ad.preview_dialog.category")}</span>
                 <span className="max-w-[60%] text-end font-medium text-white">{categoryLabel}</span>
@@ -211,7 +211,7 @@ export function CreateAdPreviewDialog({
               </div>
             </div>
 
-            <div className="rounded-2xl border border-primary/35 bg-zinc-950/75 p-4 text-sm ring-1 ring-primary/10">
+            <div className="rounded-2xl border border-primary/35 bg-[#0A0A0A]/75 p-4 text-sm ring-1 ring-primary/10">
               <h3 className="mb-2 font-semibold text-white">{t("ad_detail.shipping_delivery")}</h3>
               {pickupOnly ? (
                 <p className="text-zinc-200">{t("ad_detail.pickup_only")}</p>
@@ -226,7 +226,7 @@ export function CreateAdPreviewDialog({
               )}
             </div>
 
-            <div className="rounded-2xl border border-primary/35 bg-zinc-950/75 p-4 text-sm ring-1 ring-primary/10">
+            <div className="rounded-2xl border border-primary/35 bg-[#0A0A0A]/75 p-4 text-sm ring-1 ring-primary/10">
               <h3 className="mb-2 font-semibold text-white">{t("create_ad.preview_dialog.promotions_optional")}</h3>
               {promotionsSummary.length > 0 ? (
                 <ul className="list-inside list-disc space-y-1 text-zinc-200">
@@ -239,7 +239,7 @@ export function CreateAdPreviewDialog({
               )}
             </div>
 
-            <div className="rounded-2xl border border-primary/35 bg-zinc-950/75 p-4 text-sm ring-1 ring-primary/10">
+            <div className="rounded-2xl border border-primary/35 bg-[#0A0A0A]/75 p-4 text-sm ring-1 ring-primary/10">
               <h3 className="mb-2 font-semibold text-white">{t("create_ad.contact.title")}</h3>
               <p className="text-zinc-200">
                 <span className="text-zinc-500">{t("create_ad.preview_dialog.name_label")} </span>
@@ -285,7 +285,7 @@ export function CreateAdPreviewDialog({
             <Button
               type="button"
               variant="outline"
-              className="h-11 w-full rounded-full border-primary/40 bg-zinc-950/80 text-foreground hover:border-primary/55 hover:bg-zinc-900 sm:flex-1"
+              className="h-11 w-full rounded-full border-primary/40 bg-[#0A0A0A]/80 text-foreground hover:border-primary/55 hover:bg-black/30 sm:flex-1"
               onClick={onBackToEdit}
               disabled={isSubmitting}
             >

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+﻿import { useEffect, useLayoutEffect, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { ArrowRight, Ticket } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -52,7 +52,7 @@ function ticketStatusBadgeClass(status: string) {
   if (/close|resolved|done|complete|منجز|مغلق/i.test(s)) {
     return `${SETTINGS_STATUS_BADGE} border-emerald-500/35 bg-emerald-500/10 text-emerald-300`;
   }
-  return `${SETTINGS_STATUS_BADGE} border-primary/22 bg-zinc-950/90 text-zinc-200`;
+  return `${SETTINGS_STATUS_BADGE} border-primary/22 bg-[#0A0A0A]/90 text-zinc-200`;
 }
 
 export default function SupportHelpPage() {

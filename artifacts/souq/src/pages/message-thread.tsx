@@ -1,4 +1,4 @@
-import { Link, Redirect, useLocation, useParams, useSearch } from "wouter";
+﻿import { Link, Redirect, useLocation, useParams, useSearch } from "wouter";
 import {
   memo,
   useCallback,
@@ -111,7 +111,7 @@ const CHAT_TIP_CARD =
 
 /** مطابقة نافذة إلغاء الحظر في قائمة الشات */
 const INLINE_UNBLOCK_ALERT_SURFACE =
-  "rounded-2xl border border-primary/35 bg-zinc-950/95 p-5 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15 sm:max-w-md";
+  "rounded-2xl border border-primary/35 bg-[#0A0A0A]/95 p-5 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/15 sm:max-w-md";
 
 const BUYER_QUICK_KEYS = [
   "message_thread.msg_qs_buyer_1",
@@ -1120,7 +1120,7 @@ export default function MessageThread() {
         className="fixed inset-0 z-0 flex h-[100svh] w-full items-center justify-center bg-[#0A0A0A]"
         dir={locale === "ar" ? "rtl" : "ltr"}
       >
-        <Skeleton className="h-12 w-48 rounded-xl bg-zinc-900/70" />
+        <Skeleton className="h-12 w-48 rounded-xl bg-[#0A0A0A]/70" />
       </div>
     );
   }
@@ -1380,7 +1380,7 @@ export default function MessageThread() {
       dir={dirRtl ? "rtl" : "ltr"}
     >
       <header className="shrink-0 bg-[#0A0A0A] px-4 pb-2 pt-3 md:px-6">
-        <div className="mx-auto w-full max-w-[820px] rounded-2xl border border-primary/35 bg-zinc-950 px-3 py-2.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.12),0_4px_20px_-12px_rgba(0,0,0,0.45)] ring-1 ring-primary/15">
+        <div className="mx-auto w-full max-w-[820px] rounded-2xl border border-primary/35 bg-[#0A0A0A] px-3 py-2.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.12),0_4px_20px_-12px_rgba(0,0,0,0.45)] ring-1 ring-primary/15">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-start gap-3">
               <button
@@ -1389,14 +1389,14 @@ export default function MessageThread() {
                   if (selectMode) exitSelectMode();
                   else navigate("/messages");
                 }}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/60 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 hover:bg-zinc-900/90 active:opacity-90"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/60 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 hover:bg-black/90 active:opacity-90"
               >
                 <ArrowRight className="h-5 w-5" />
               </button>
               {conv?.adImage && conv?.adAvailable !== false ? (
                 <Link
                   href={`/ad/${conv.adId}`}
-                  className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-zinc-900"
+                  className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-[#0A0A0A]"
                 >
                   <img
                     src={conv.adImage}
@@ -1409,7 +1409,7 @@ export default function MessageThread() {
                 </Link>
               ) : (
                 <div
-                  className="h-11 w-11 shrink-0 rounded-xl border border-primary/25 bg-zinc-900"
+                  className="h-11 w-11 shrink-0 rounded-xl border border-primary/25 bg-[#0A0A0A]"
                   title={
                     conv?.adAvailable === false
                       ? t("message_thread.menu_ad_unavailable")
@@ -1475,7 +1475,7 @@ export default function MessageThread() {
                         <button
                           type="button"
                           onClick={dismissMenuTip}
-                          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-primary/35 bg-zinc-950 text-primary hover:bg-zinc-900"
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-primary/35 bg-[#0A0A0A] text-primary hover:bg-black/30"
                           aria-label={t("message_thread.tip_close")}
                         >
                           <X className="h-3 w-3" aria-hidden />
@@ -1514,7 +1514,7 @@ export default function MessageThread() {
               <button
                 type="button"
                 onClick={dismissSelectionTip}
-                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-primary/35 bg-zinc-950 text-primary hover:bg-zinc-900"
+                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-primary/35 bg-[#0A0A0A] text-primary hover:bg-black/30"
                 aria-label={t("message_thread.tip_close")}
               >
                 <X className="h-3 w-3" aria-hidden />
@@ -1546,8 +1546,8 @@ export default function MessageThread() {
             ) : null}
             {showMessagesSkeleton ? (
               <>
-                <Skeleton className="h-[3.5rem] max-w-[75%] self-start rounded-2xl rounded-bl-md bg-zinc-900/70" />
-                <Skeleton className="h-[3.5rem] max-w-[75%] self-end rounded-2xl rounded-br-md bg-zinc-900/70" />
+                <Skeleton className="h-[3.5rem] max-w-[75%] self-start rounded-2xl rounded-bl-md bg-[#0A0A0A]/70" />
+                <Skeleton className="h-[3.5rem] max-w-[75%] self-end rounded-2xl rounded-br-md bg-[#0A0A0A]/70" />
               </>
             ) : isError && !hasStoredMessages ? (
               <div className="flex w-full flex-col items-center justify-center gap-3 py-14 text-center">
@@ -1634,7 +1634,7 @@ export default function MessageThread() {
             onChange={onGenericFileSelected}
           />
           {pendingImagePreviewUrl ? (
-            <div className="flex items-center gap-2 rounded-xl border border-primary/25 bg-zinc-950 p-2 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.14)]">
+            <div className="flex items-center gap-2 rounded-xl border border-primary/25 bg-[#0A0A0A] p-2 shadow-[0_0_14px_-12px_hsl(var(--primary)/0.14)]">
               <img
                 src={pendingImagePreviewUrl}
                 alt=""
@@ -1646,7 +1646,7 @@ export default function MessageThread() {
               <button
                 type="button"
                 onClick={() => setPendingImageFile(null)}
-                className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-primary/35 bg-zinc-900 px-3 text-[12px] font-medium text-primary hover:bg-primary/10"
+                className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-primary/35 bg-[#0A0A0A] px-3 text-[12px] font-medium text-primary hover:bg-primary/10"
               >
                 <X className="h-3.5 w-3.5" aria-hidden />
                 {t("message_thread.remove_image")}
@@ -1804,7 +1804,7 @@ export default function MessageThread() {
             <AlertDialogCancel
               disabled={inlineUnblockPending}
               className={cn(
-                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-zinc-950/90 text-sm font-semibold text-foreground hover:bg-zinc-900 disabled:opacity-45 sm:flex-none",
+                "mt-0 h-11 flex-1 rounded-xl border border-primary/35 bg-[#0A0A0A]/90 text-sm font-semibold text-foreground hover:bg-black/30 disabled:opacity-45 sm:flex-none",
               )}
             >
               {t("message_thread.chat_unblock_cancel")}

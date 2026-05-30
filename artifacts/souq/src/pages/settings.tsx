@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+﻿import { Link, useLocation } from "wouter";
 import {
   ArrowRight,
   Bell,
@@ -579,7 +579,7 @@ export default function Settings() {
                     type="button"
                     variant="outline"
                     disabled={deletePending}
-                    className="h-11 min-w-[7rem] rounded-xl border-primary/35 bg-zinc-950/80"
+                    className="h-11 min-w-[7rem] rounded-xl border-primary/35 bg-[#0A0A0A]/80"
                   >
                     {t("settings.account.delete.cancel")}
                   </Button>

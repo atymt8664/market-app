@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+﻿import { Search } from "lucide-react";
 import { memo } from "react";
 import { Input } from "@/components/ui/input";
 import { SearchLocationPickerButton } from "@/components/search-location-picker-button";
@@ -73,7 +73,7 @@ export const MarketplaceSearchBar = memo(function MarketplaceSearchBar({
   return (
     <div
       className={cn(
-        "flex min-h-9 min-w-0 flex-1 items-center gap-1 rounded-2xl border border-primary/30 bg-zinc-950/75 py-0.5 pe-1 ps-1.5 ring-1 ring-primary/10",
+        "flex min-h-9 min-w-0 flex-1 items-center gap-1 rounded-2xl border border-primary/30 bg-[#0A0A0A]/75 py-0.5 pe-1 ps-1.5 ring-1 ring-primary/10",
         "transition-colors focus-within:border-primary/45 focus-within:ring-primary/15",
         className,
       )}

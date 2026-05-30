@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Camera,
   ChevronLeft,
@@ -134,7 +134,7 @@ export function CreateAdImageGallery({
           type="button"
           onClick={pickFiles}
           disabled={isSubmittingUploads}
-          className="flex min-h-[52px] w-full items-center gap-3 rounded-xl border-2 border-dashed border-primary/40 bg-zinc-950/80 px-3 py-2.5 text-right shadow-[0_0_20px_-12px_hsl(var(--primary)/0.2)] transition-[colors,transform,background-color,box-shadow] duration-200 hover:border-primary/55 hover:bg-zinc-900/70 active:scale-[0.995] disabled:opacity-50 sm:px-4"
+          className="flex min-h-[52px] w-full items-center gap-3 rounded-xl border-2 border-dashed border-primary/40 bg-[#0A0A0A]/80 px-3 py-2.5 text-right shadow-[0_0_20px_-12px_hsl(var(--primary)/0.2)] transition-[colors,transform,background-color,box-shadow] duration-200 hover:border-primary/55 hover:bg-black/70 active:scale-[0.995] disabled:opacity-50 sm:px-4"
           dir="rtl"
         >
           <div className="min-w-0 flex-1">
@@ -145,7 +145,7 @@ export function CreateAdImageGallery({
               {t("create_ad.images.up_to_photos_tap_to_choose", { count: maxImages })}
             </span>
           </div>
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/35 bg-zinc-950/90 text-primary shadow-[0_0_12px_-4px_hsl(var(--primary)/0.35)]">
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/35 bg-[#0A0A0A]/90 text-primary shadow-[0_0_12px_-4px_hsl(var(--primary)/0.35)]">
             {isSubmittingUploads ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
@@ -166,7 +166,7 @@ export function CreateAdImageGallery({
             type="button"
             onClick={() => openViewer(heroIndex)}
             className={cn(
-              "relative w-full overflow-hidden rounded-2xl border border-primary/30 bg-zinc-950/50",
+              "relative w-full overflow-hidden rounded-2xl border border-primary/30 bg-[#0A0A0A]/50",
               "aspect-[4/3] max-h-[min(52vw,13.5rem)] sm:max-h-none sm:aspect-[16/10] shadow-[0_0_18px_-12px_hsl(var(--primary)/0.15)] transition-[box-shadow,transform] duration-200",
               "hover:shadow-[0_0_22px_-10px_hsl(var(--primary)/0.22)] active:scale-[0.998] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
             )}
@@ -235,7 +235,7 @@ export function CreateAdImageGallery({
           type="button"
           onClick={pickFiles}
           disabled={isSubmittingUploads}
-          className="flex min-h-[48px] w-full items-center gap-2 rounded-xl border-2 border-dashed border-primary/35 bg-zinc-950/70 px-3 py-2 text-zinc-400 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.18)] transition-[colors,transform,box-shadow] duration-200 hover:border-primary/50 hover:text-primary active:scale-[0.995] disabled:opacity-50"
+          className="flex min-h-[48px] w-full items-center gap-2 rounded-xl border-2 border-dashed border-primary/35 bg-[#0A0A0A]/70 px-3 py-2 text-zinc-400 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.18)] transition-[colors,transform,box-shadow] duration-200 hover:border-primary/50 hover:text-primary active:scale-[0.995] disabled:opacity-50"
           dir="rtl"
         >
           {isSubmittingUploads ? (

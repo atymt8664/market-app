@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import {
   useListAds,
   useListSubcategories,
@@ -34,14 +34,14 @@ import {
 
 /** Same ad grid tone as `home.tsx` recommended section */
 const listingGridCardTone =
-  "[&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-card/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:dark:bg-zinc-950/70 [&_article]:hover:border-primary/40 [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55";
+  "[&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-[#0A0A0A]/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:bg-[#0A0A0A]/70 [&_article]:hover:border-primary/40 [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55";
 
 const subChipClass =
-  "inline-flex shrink-0 items-center rounded-full border border-primary/40 bg-zinc-950/75 px-4 py-2 text-[13px] font-medium text-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[border-color,box-shadow,transform] duration-200 hover:border-primary/55 hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.24)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100";
+  "inline-flex shrink-0 items-center rounded-full border border-primary/40 bg-[#0A0A0A]/75 px-4 py-2 text-[13px] font-medium text-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[border-color,box-shadow,transform] duration-200 hover:border-primary/55 hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.24)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100";
 
 function SubChipSkeleton() {
   return (
-    <div className="h-10 w-[5.5rem] shrink-0 animate-pulse rounded-full border border-primary/20 bg-zinc-900/85 ring-1 ring-primary/8" />
+    <div className="h-10 w-[5.5rem] shrink-0 animate-pulse rounded-full border border-primary/20 bg-[#0A0A0A]/85 ring-1 ring-primary/8" />
   );
 }
 
@@ -135,7 +135,7 @@ export default function Category() {
               <div
                 className={cn(
                   "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
-                  "border border-primary/35 bg-zinc-950/75 text-primary",
+                  "border border-primary/35 bg-[#0A0A0A]/75 text-primary",
                   "shadow-[0_0_14px_-10px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10",
                 )}
               >
@@ -155,7 +155,7 @@ export default function Category() {
         </div>
       </header>
 
-      <div className="border-b border-primary/12 bg-zinc-950/45">
+      <div className="border-b border-primary/12 bg-[#0A0A0A]/45">
         <div className="mx-auto w-full max-w-[900px] px-4 py-3 md:max-w-[760px] md:px-6 md:py-3.5 lg:max-w-[860px]">
           {headerSubtitle ? (
             <p
@@ -236,7 +236,7 @@ export default function Category() {
               <div
                 className={cn(
                   "flex h-16 w-16 items-center justify-center rounded-2xl",
-                  "border border-primary/35 bg-zinc-950/75 text-primary",
+                  "border border-primary/35 bg-[#0A0A0A]/75 text-primary",
                   "shadow-[0_0_20px_-12px_hsl(var(--primary)/0.25)] ring-1 ring-primary/12",
                 )}
               >

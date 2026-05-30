@@ -1,4 +1,4 @@
-import { Link, Redirect } from "wouter";
+﻿import { Link, Redirect } from "wouter";
 import { memo, useCallback, useMemo, useState } from "react";
 import {
   useListConversations,
@@ -32,10 +32,10 @@ import { STALE_CONVERSATIONS_MS } from "@/lib/query-stale-times";
 import { prefetchConversationThread } from "@/lib/prefetch-conversation-thread";
 
 const emptyCardShell =
-  "rounded-2xl border border-primary/40 bg-card/80 p-8 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/15 dark:bg-zinc-950/70 md:p-10";
+  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/80 p-8 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/15 bg-[#0A0A0A]/70 md:p-10";
 
 const conversationRowClass =
-  "flex items-center gap-3 rounded-2xl border border-primary/30 bg-zinc-950/75 p-3.5 shadow-[0_0_16px_-10px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10 transition-colors hover:border-primary/40 hover:bg-zinc-900/80 active:bg-zinc-900/90";
+  "flex items-center gap-3 rounded-2xl border border-primary/30 bg-[#0A0A0A]/75 p-3.5 shadow-[0_0_16px_-10px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10 transition-colors hover:border-primary/40 hover:bg-black/80 active:bg-black/90";
 
 function areInboxListRowsEqual(a: ConversationListItem, b: ConversationListItem): boolean {
   return (
@@ -73,7 +73,7 @@ const MessagesInboxRow = memo(
           dir="rtl"
           onPointerDown={() => onPrefetchThread(c.id)}
         >
-          <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/20 bg-zinc-900">
+          <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/20 bg-[#0A0A0A]">
             {c.adImage ? (
               <img
                 src={c.adImage}
@@ -251,7 +251,7 @@ export default function Messages() {
               setHiddenOpen(true);
               void loadHiddenConversations();
             }}
-            className="inline-flex shrink-0 items-center rounded-xl border border-primary/35 bg-zinc-950/85 px-3 py-1.5 text-[12px] font-semibold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 transition-colors hover:border-primary/52 hover:bg-zinc-900/95"
+            className="inline-flex shrink-0 items-center rounded-xl border border-primary/35 bg-[#0A0A0A]/85 px-3 py-1.5 text-[12px] font-semibold text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 transition-colors hover:border-primary/52 hover:bg-black/95"
           >
             {t("messages.hidden_open")}
           </button>
@@ -264,7 +264,7 @@ export default function Messages() {
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton
                 key={i}
-                className="h-24 w-full rounded-2xl border border-primary/15 bg-zinc-900/80"
+                className="h-24 w-full rounded-2xl border border-primary/15 bg-[#0A0A0A]/80"
               />
             ))}
           </div>
@@ -288,7 +288,7 @@ export default function Messages() {
                 "flex w-full max-w-md flex-col items-center text-center",
               )}
             >
-              <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-primary/35 bg-zinc-950/90 shadow-[0_0_18px_-8px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12">
+              <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-primary/35 bg-[#0A0A0A]/90 shadow-[0_0_18px_-8px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12">
                 <MessageCircle
                   className="h-8 w-8 text-primary"
                   strokeWidth={2.25}
@@ -325,7 +325,7 @@ export default function Messages() {
               <button
                 type="button"
                 aria-label={t("messages.hidden_close")}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-zinc-950/90 text-primary transition-colors hover:border-primary/65 hover:bg-zinc-900"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-[#0A0A0A]/90 text-primary transition-colors hover:border-primary/65 hover:bg-black/30"
               >
                 ✕
               </button>
@@ -338,7 +338,7 @@ export default function Messages() {
                 {Array.from({ length: 3 }).map((_, i) => (
                   <Skeleton
                     key={i}
-                    className="h-24 w-full rounded-2xl border border-primary/15 bg-zinc-900/80"
+                    className="h-24 w-full rounded-2xl border border-primary/15 bg-[#0A0A0A]/80"
                   />
                 ))}
               </div>
@@ -347,10 +347,10 @@ export default function Messages() {
                 {hiddenRows.map((c) => (
                   <li
                     key={c.id}
-                    className="rounded-2xl border border-primary/30 bg-zinc-950/85 p-3.5 shadow-[0_0_16px_-10px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10"
+                    className="rounded-2xl border border-primary/30 bg-[#0A0A0A]/85 p-3.5 shadow-[0_0_16px_-10px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10"
                   >
                     <div className="flex items-center gap-3" dir="rtl">
-                      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/20 bg-zinc-900">
+                      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/20 bg-[#0A0A0A]">
                         {c.adImage ? (
                           <img
                             src={c.adImage}

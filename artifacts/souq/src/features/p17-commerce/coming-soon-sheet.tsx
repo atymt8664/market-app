@@ -104,7 +104,7 @@ export function CommerceComingSoonSheet({ open, onOpenChange }: CommerceComingSo
         </div>
 
         <div
-          className="border-t border-primary/20 px-4 py-3 pb-[max(0.875rem,env(safe-area-inset-bottom))]"
+          className="mt-auto border-t border-primary/25 bg-[#0A0A0A]/95 px-4 py-3.5 pb-[max(1rem,env(safe-area-inset-bottom))]"
           dir="rtl"
         >
           <button type="button" className={P17_SHEET_OK_BTN} onClick={() => onOpenChange(false)}>

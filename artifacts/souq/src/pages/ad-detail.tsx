@@ -46,6 +46,10 @@ import { buildAdStructuredDataJsonLd } from "@/lib/ad-structured-data";
 import { useLocale } from "@/hooks/use-locale";
 import { BuyerSafetyNote } from "@/components/buyer-safety-note";
 import { AdDetailCommerceActions } from "@/features/p17-commerce/ad-detail-commerce-actions";
+import {
+  P17_MESSAGE_SELLER_BTN,
+  P17_WHATSAPP_BTN,
+} from "@/features/p17-commerce/ad-detail-commerce-styles";
 import { UserPresenceBadge } from "@/components/user-presence-badge";
 import { t, type Locale } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -923,30 +927,24 @@ export default function AdDetail() {
                   secondaryButtonClassName={sellerActionH}
                   hidden={Boolean(user?.id && ad.userId && user.id === ad.userId)}
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleMessage}
-                  disabled={startConversation?.isPending}
-                  className={cn(
-                    sellerActionH,
-                    "flex w-full items-center justify-center gap-2 border-2 border-primary/55 bg-zinc-950/90 font-semibold text-primary shadow-[0_0_12px_-6px_hsl(var(--primary)/0.2)] hover:bg-zinc-900/95 hover:text-primary hover:border-primary/65",
-                  )}
-                >
-                  {t("ad_detail.message_seller")}
-                  <MessageSquare className="h-4 w-4 shrink-0" />
-                </Button>
 
                 <button
                   type="button"
                   onClick={handleWhatsappContact}
-                  className={cn(
-                    sellerActionH,
-                    "flex w-full items-center justify-center gap-2 border-2 border-emerald-500/50 bg-zinc-950/90 font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/[0.07] dark:text-emerald-400 dark:border-emerald-500/45",
-                  )}
+                  className={cn(P17_WHATSAPP_BTN, sellerActionH)}
                 >
                   <span>{t("ad_detail.contact_whatsapp")}</span>
                   <FaWhatsapp className="h-5 w-5 shrink-0" aria-hidden />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleMessage}
+                  disabled={startConversation?.isPending}
+                  className={cn(P17_MESSAGE_SELLER_BTN, sellerActionH)}
+                >
+                  {t("ad_detail.message_seller")}
+                  <MessageSquare className="h-4 w-4 shrink-0 opacity-90" />
                 </button>
 
                 <button

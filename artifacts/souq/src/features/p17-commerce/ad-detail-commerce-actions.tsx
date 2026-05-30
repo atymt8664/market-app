@@ -37,7 +37,7 @@ export function AdDetailCommerceActions({
         onClick={openSheet}
       >
         {t("p17.commerce.ad_detail.buy_now")}
-        <ShoppingBag className="h-5 w-5 shrink-0 text-primary-foreground" strokeWidth={2.35} aria-hidden />
+        <ShoppingBag className="h-[1.25rem] w-[1.25rem] shrink-0 text-primary-foreground" strokeWidth={2.5} aria-hidden />
       </button>
 
       <button

@@ -64,6 +64,7 @@ import {
   parseStoredAdDetails,
 } from "@/lib/ad-stored-details";
 import { cn } from "@/lib/utils";
+import { BOTTOM_NAV_SCROLL_OFFSET_CLASS } from "@/lib/bottom-nav-layout";
 import { SETTINGS_PRIMARY_BUTTON } from "@/components/settings-shell";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
@@ -95,11 +96,10 @@ const createAdPageTitleHeading = cn(
 );
 
 /**
- * حجز نهاية التمرير — يطابق `layout.tsx` (64/72px + safe-area) + تنفس (~1.5rem).
+ * حجز نهاية التمرير — يطابق `layout.tsx` BottomNav + safe-area + تنفس (~1.5rem).
  * margin سالب على الجذر يلغي padding الـ Layout المكرر؛ spacer داخل النموذج يضمن ظهور «معاينة» كاملة.
  */
-const createAdPageLayoutBottomCancel =
-  "-mb-[calc(64px+env(safe-area-inset-bottom,0px))] md:-mb-[calc(72px+env(safe-area-inset-bottom,0px))]";
+const createAdPageLayoutBottomCancel = BOTTOM_NAV_SCROLL_OFFSET_CLASS;
 /** زرّان h-11 + فجوة + تنفس فوق الشريط السفلي — دون فراغ زائد أسفل «معاينة» */
 const createAdScrollEndSpacer =
   "min-h-[calc(7rem+env(safe-area-inset-bottom,0px))] md:min-h-[calc(7.25rem+env(safe-area-inset-bottom,0px))]";

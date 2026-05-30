@@ -18,6 +18,7 @@ import {
 } from "@/lib/query-stale-times";
 import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
 import { PushNotificationsRegistrar } from "@/components/push-notifications-registrar";
+import { BOTTOM_NAV_CONTENT_PADDING_CLASS } from "@/lib/bottom-nav-layout";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -48,6 +49,7 @@ export function Layout({ children }: LayoutProps) {
     location === "/promote-preview" ||
     location.startsWith("/professional-seller") ||
     location.startsWith("/seller-trust");
+  const isDevMockRoute = location.startsWith("/dev/");
   const isImmersiveShell =
     isMessageThreadRoute || isNotificationsRoute || isImmersiveSettingsLegalAccountRoute(location);
   const hideBottomNav =
@@ -56,6 +58,7 @@ export function Layout({ children }: LayoutProps) {
     location.startsWith("/signup") ||
     location.startsWith("/forgot-password") ||
     location.startsWith("/admin-login") ||
+    isDevMockRoute ||
     isImmersiveShell ||
     isImmersiveMarketingRoute;
 
@@ -69,9 +72,9 @@ export function Layout({ children }: LayoutProps) {
       <div
         className={cn(
           "relative mx-auto w-full max-w-screen-2xl min-h-[100svh] overflow-x-hidden bg-[#0A0A0A]",
-          isImmersiveShell || isImmersiveMarketingRoute
+          isImmersiveShell || isImmersiveMarketingRoute || isDevMockRoute
             ? "pb-0"
-            : "pb-[calc(64px+env(safe-area-inset-bottom,0px))] md:pb-[calc(72px+env(safe-area-inset-bottom,0px))]",
+            : BOTTOM_NAV_CONTENT_PADDING_CLASS,
         )}
       >
         {children}
@@ -234,12 +237,12 @@ const BottomNav = memo(function BottomNav() {
         )}
       >
         <div
-          className="relative mx-auto flex max-w-screen-2xl items-stretch gap-1.5 px-2 py-2 md:gap-2 md:px-4 md:py-2.5 lg:px-8"
+          className="relative mx-auto flex max-w-screen-2xl items-stretch gap-0.5 px-1 py-0.5 md:gap-1 md:px-2 md:py-1 lg:px-8"
           dir="rtl"
         >
           <NavItem
             href="/"
-            icon={<Home className="h-5 w-5 md:h-6 md:w-6" />}
+            icon={<Home className="h-[1.125rem] w-[1.125rem] md:h-5 md:w-5" />}
             label={t("bottom_nav.home")}
             isActive={location === "/"}
           />
@@ -247,7 +250,7 @@ const BottomNav = memo(function BottomNav() {
           <button type="button" onClick={handleFavoritesClick} className="flex min-w-0 flex-1">
             <BottomNavSlot isActive={isFavoritesActive}>
               <div className="relative">
-                <Heart className="h-5 w-5 md:h-6 md:w-6" />
+                <Heart className="h-[1.125rem] w-[1.125rem] md:h-5 md:w-5" />
                 {isAuthenticated && favCount > 0 && (
                   <span
                     dir="ltr"
@@ -263,8 +266,8 @@ const BottomNav = memo(function BottomNav() {
 
           <button type="button" onClick={handleCreateClick} className="flex min-w-0 flex-1">
             <BottomNavSlot isActive={isCreateActive} promote>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/50 bg-zinc-950/90 text-primary shadow-[0_0_12px_-10px_hsl(var(--primary)/0.26)] ring-1 ring-primary/22 md:h-10 md:w-10 md:shadow-[0_0_16px_-10px_hsl(var(--primary)/0.38)] md:ring-primary/25">
-                <Plus className="h-5 w-5 md:h-6 md:w-6" strokeWidth={2.5} />
+              <div className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/50 bg-zinc-950/90 text-primary shadow-[0_0_12px_-10px_hsl(var(--primary)/0.26)] ring-1 ring-primary/22 md:h-8 md:w-8 md:shadow-[0_0_16px_-10px_hsl(var(--primary)/0.38)] md:ring-primary/25">
+                <Plus className="h-4 w-4 md:h-[1.125rem] md:w-[1.125rem]" strokeWidth={2.5} />
               </div>
               <span className="text-[10px] font-medium md:text-xs">{t("bottom_nav.post")}</span>
             </BottomNavSlot>
@@ -273,7 +276,7 @@ const BottomNav = memo(function BottomNav() {
           <button type="button" onClick={handleMessagesClick} className="flex min-w-0 flex-1">
             <BottomNavSlot isActive={isMessagesActive}>
               <div className="relative">
-                <MessageCircle className="h-5 w-5 md:h-6 md:w-6" />
+                <MessageCircle className="h-[1.125rem] w-[1.125rem] md:h-5 md:w-5" />
                 {isAuthenticated && unreadTotal > 0 && (
                   <span
                     dir="ltr"
@@ -289,7 +292,7 @@ const BottomNav = memo(function BottomNav() {
 
           <button type="button" onClick={handleProfileClick} className="flex min-w-0 flex-1">
             <BottomNavSlot isActive={isProfileActive}>
-              <User className="h-5 w-5 md:h-6 md:w-6" />
+              <User className="h-[1.125rem] w-[1.125rem] md:h-5 md:w-5" />
               <span className="text-[10px] font-medium md:text-xs">{t("bottom_nav.account")}</span>
             </BottomNavSlot>
           </button>
@@ -312,7 +315,7 @@ function BottomNavSlot({
   return (
     <div
       className={cn(
-        "flex h-full min-h-[52px] w-full flex-col items-center justify-center gap-1 rounded-xl border px-1 py-1.5 md:min-h-[56px] md:py-2",
+        "flex h-full min-h-[44px] w-full flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-0.5 md:min-h-[48px] md:px-1 md:py-1",
         /* انتقالات أخف: ألوان/حدود فقط على الموبايل لتقليل repaints */
         "transition-[color,background-color,border-color,box-shadow] duration-150 ease-out md:duration-200",
         isActive

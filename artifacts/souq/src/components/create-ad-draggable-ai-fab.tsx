@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BOTTOM_NAV_HEIGHT_MOBILE_PX } from "@/lib/bottom-nav-layout";
 import { t } from "@/i18n";
 
 const STORAGE_KEY = "souq:create_ad:ai_fab_pos:v1";
 const DRAG_THRESHOLD_PX = 6;
 /** Bottom nav (layout) + safe-area — لا يغطى الشريط السفلي */
-const BOTTOM_NAV_PX = 64;
+const BOTTOM_NAV_PX = BOTTOM_NAV_HEIGHT_MOBILE_PX;
 const TOP_RESERVE_PX = 52;
 const EDGE_PX = 8;
 /** منطقة افتراضية محجوزة لأزرار النشر/المعاينة عند آخر الصفحة */

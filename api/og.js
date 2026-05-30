@@ -9,7 +9,7 @@ import {
   fetchPublicAd,
   fetchPublicProfile,
   renderOgHtml,
-} from "../artifacts/souq/scripts/og-share-meta.mjs";
+} from "../og-share-meta.mjs";
 
 const CACHE = "public, s-maxage=3600, stale-while-revalidate=86400";
 

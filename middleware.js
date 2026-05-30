@@ -9,15 +9,16 @@ import {
   fetchPublicProfile,
   isSocialCrawler,
   renderOgHtml,
-} from "./artifacts/souq/scripts/og-share-meta.mjs";
+} from "./og-share-meta.mjs";
 
 export const config = {
-  matcher: ["/", "/ad/:id", "/users/:id"],
+  matcher: ["/", "/ad/:path*", "/users/:path*"],
 };
 
 const OG_HEADERS = {
   "Content-Type": "text/html; charset=utf-8",
   "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+  "X-P11-Og-Crawler": "1",
 };
 
 export default async function middleware(request) {

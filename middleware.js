@@ -1,30 +1,49 @@
 /**
- * P11-5 — route social crawlers to /api/og (HTML with OG tags) instead of SPA shell.
+ * P11-5 — social crawlers receive OG HTML directly (no SPA, no /api proxy).
  */
-import { isSocialCrawler } from "./artifacts/souq/scripts/og-share-meta.mjs";
+import {
+  buildAdShareMeta,
+  buildHomeShareMeta,
+  buildProfileShareMeta,
+  fetchPublicAd,
+  fetchPublicProfile,
+  isSocialCrawler,
+  renderOgHtml,
+} from "./artifacts/souq/scripts/og-share-meta.mjs";
 
 export const config = {
   matcher: ["/", "/ad/:id", "/users/:id"],
 };
 
-export default function middleware(request) {
+const OG_HEADERS = {
+  "Content-Type": "text/html; charset=utf-8",
+  "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+};
+
+export default async function middleware(request) {
   const ua = request.headers.get("user-agent") ?? "";
   if (!isSocialCrawler(ua)) {
     return;
   }
 
   const { pathname } = new URL(request.url);
+
   const adMatch = pathname.match(/^\/ad\/(\d+)$/);
   if (adMatch) {
-    return Response.rewrite(new URL(`/og?route=ad&id=${adMatch[1]}`, request.url));
+    const ad = await fetchPublicAd(adMatch[1]);
+    const meta = ad ? buildAdShareMeta(ad) : buildHomeShareMeta();
+    return new Response(renderOgHtml(meta), { status: ad ? 200 : 404, headers: OG_HEADERS });
   }
 
   const userMatch = pathname.match(/^\/users\/(\d+)$/);
   if (userMatch) {
-    return Response.rewrite(new URL(`/og?route=profile&id=${userMatch[1]}`, request.url));
+    const profile = await fetchPublicProfile(userMatch[1]);
+    const meta = profile ? buildProfileShareMeta(profile) : buildHomeShareMeta();
+    return new Response(renderOgHtml(meta), {
+      status: profile ? 200 : 404,
+      headers: OG_HEADERS,
+    });
   }
 
-  if (pathname === "/" || pathname === "") {
-    return Response.rewrite(new URL("/og?route=home", request.url));
-  }
+  return new Response(renderOgHtml(buildHomeShareMeta()), { status: 200, headers: OG_HEADERS });
 }

@@ -1,7 +1,12 @@
 /**
  * P11-5 — shared Open Graph HTML builders (Vercel serverless + local tests).
+ * P4-1 — ad JSON-LD for crawler HTML.
  * No private fields (phone, email). Logo Master fallback when image missing.
  */
+import {
+  buildAdStructuredDataJsonLd,
+  P4_AD_STRUCTURED_DATA_SCRIPT_ID,
+} from "./ad-structured-data.mjs";
 
 export const P11_ORIGIN = "https://www.souq-arab.com";
 export const P11_API_ORIGIN = "https://api.souq-arab.com/api";
@@ -149,7 +154,7 @@ export function buildProfileShareMeta(profile) {
   };
 }
 
-export function renderOgHtml(meta) {
+export function renderOgHtml(meta, jsonLd) {
   const title = escapeHtml(meta.title);
   const description = escapeHtml(meta.description);
   const url = escapeHtml(meta.url);
@@ -161,6 +166,10 @@ export function renderOgHtml(meta) {
   const imageWidth = meta.imageWidth ?? P11_OG_IMAGE_WIDTH;
   const imageHeight = meta.imageHeight ?? P11_OG_IMAGE_HEIGHT;
   const imageType = escapeHtml(meta.imageType || "image/jpeg");
+  const ldBlock =
+    jsonLd && typeof jsonLd === "string"
+      ? `<script type="application/ld+json" id="${P4_AD_STRUCTURED_DATA_SCRIPT_ID}">${jsonLd}</script>`
+      : "";
 
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -186,6 +195,7 @@ export function renderOgHtml(meta) {
 <meta name="twitter:description" content="${description}" />
 <meta name="twitter:image" content="${image}" />
 <meta name="twitter:image:alt" content="${imageAlt}" />
+${ldBlock}
 </head>
 <body><p>${title}</p></body>
 </html>`;

@@ -12,6 +12,7 @@
     "seo:p11:validate": "node scripts/validate-p11-seo-foundation.mjs",
     "social:p11:validate": "node scripts/validate-p11-5-social-meta.mjs",
     "structured:p3:validate": "node scripts/validate-p3-5-structured-data.mjs",
+    "structured:p4:validate": "node scripts/validate-p4-1-ad-structured-data.mjs",
     "og:p11:test": "node scripts/test-og-crawler-html.mjs",
     "locations:generate": "node scripts/generate-marketplace-locations-data.mjs",
     "locations:compare-csc": "node scripts/compare-marketplace-locations-to-csc.mjs",

@@ -42,6 +42,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePageSeo } from "@/hooks/use-page-seo";
 import { getDefaultSiteDescription, truncateForMeta } from "@/lib/seo-foundation";
 import { buildAdSocialOverride } from "@/lib/social-meta-foundation";
+import { buildAdStructuredDataJsonLd } from "@/lib/ad-structured-data";
 import { useLocale } from "@/hooks/use-locale";
 import { BuyerSafetyNote } from "@/components/buyer-safety-note";
 import { UserPresenceBadge } from "@/components/user-presence-badge";
@@ -280,7 +281,24 @@ export default function AdDetail() {
     });
   }, [id, ad]);
 
-  usePageSeo(adPageSeo, adSocialOverride);
+  const adStructuredDataJsonLd = useMemo(() => {
+    if (!id || !ad?.title) return null;
+    return buildAdStructuredDataJsonLd({
+      id,
+      title: ad.title,
+      description: ad.description,
+      price: ad.price,
+      priceType: ad.priceType,
+      type: ad.type,
+      city: ad.city,
+      images: ad.images,
+      status: ad.status,
+      categoryName: ad.categoryName,
+      sellerName: ad.sellerName,
+    });
+  }, [id, ad]);
+
+  usePageSeo(adPageSeo, adSocialOverride, adStructuredDataJsonLd);
 
   const sellerPresenceTargets = useMemo(() => {
     if (!ad?.userId || !user?.id || ad.userId === user.id) return [];

@@ -10,6 +10,7 @@ import {
   isSocialCrawler,
   renderOgHtml,
 } from "./scripts/og-share-meta.mjs";
+import { buildAdStructuredDataJsonLd } from "./scripts/ad-structured-data.mjs";
 
 const OG_HEADERS = {
   "Content-Type": "text/html; charset=utf-8",
@@ -31,7 +32,8 @@ export default async function middleware(request) {
   if (adMatch) {
     const ad = await fetchPublicAd(adMatch[1]);
     const meta = ad ? buildAdShareMeta(ad) : buildHomeShareMeta();
-    return new Response(renderOgHtml(meta), { status: ad ? 200 : 404, headers: OG_HEADERS });
+    const jsonLd = ad ? buildAdStructuredDataJsonLd(ad) : null;
+    return new Response(renderOgHtml(meta, jsonLd), { status: ad ? 200 : 404, headers: OG_HEADERS });
   }
 
   const userMatch = pathname.match(/^\/users\/(\d+)$/);

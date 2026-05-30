@@ -11,6 +11,7 @@ import {
   fetchPublicProfile,
   renderOgHtml,
 } from "../scripts/og-share-meta.mjs";
+import { buildAdStructuredDataJsonLd } from "../scripts/ad-structured-data.mjs";
 
 const CACHE = "public, s-maxage=3600, stale-while-revalidate=86400";
 
@@ -29,7 +30,8 @@ export default async function handler(request) {
     if (route === "ad" && /^\d+$/.test(id)) {
       const ad = await fetchPublicAd(id);
       const meta = ad ? buildAdShareMeta(ad) : buildHomeShareMeta();
-      return new Response(renderOgHtml(meta), { status: ad ? 200 : 404, headers });
+      const jsonLd = ad ? buildAdStructuredDataJsonLd(ad) : null;
+      return new Response(renderOgHtml(meta, jsonLd), { status: ad ? 200 : 404, headers });
     }
 
     if (route === "profile" && /^\d+$/.test(id)) {

@@ -90,7 +90,6 @@ export function buildAdSocialOverride(ad: AdShareInput): Partial<PageSocialMetaC
     parts.push("مجاني");
   }
   if (ad.city?.trim()) parts.push(ad.city.trim());
-  parts.push(`إعلان على ${P11_BRAND_OFFICIAL_NAME}`);
   const firstImage = ad.images?.[0];
   return {
     type: "article",
@@ -118,7 +117,7 @@ export function buildProfileSocialOverride(
   const parts: string[] = [];
   const city = profile.city?.trim();
   if (city) parts.push(city);
-  parts.push(`شاهد ملف المستخدم على ${P11_BRAND_OFFICIAL_NAME}`);
+  parts.push("تصفّح إعلانات هذا العضو");
   return {
     title,
     description: truncateForMeta(parts.join(" · "), 200),

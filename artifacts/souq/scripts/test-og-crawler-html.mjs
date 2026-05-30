@@ -40,14 +40,14 @@ const sampleAd = {
 };
 const adHtml = renderOgHtml(buildAdShareMeta(sampleAd));
 assert(adHtml.includes("/ad/1"), "ad canonical url");
-assert(adHtml.includes("إعلان على"), "ad brand in description");
+assert(!adHtml.match(/og:description" content="[^"]*Souq Arab EU/), "ad no brand dup in description");
 assert(!adHtml.includes("sellerPhone"), "ad no private fields");
 
 const sampleProfile = { id: 2, name: "Ahmad", city: "Berlin", avatarUrl: null };
 const profileHtml = renderOgHtml(buildProfileShareMeta(sampleProfile));
 assert(profileHtml.includes("/users/2"), "profile url");
 assert(profileHtml.includes("Berlin"), "profile city in description");
-assert(profileHtml.includes("شاهد ملف المستخدم"), "profile description");
+assert(profileHtml.includes("تصفّح إعلانات"), "profile description");
 assert(profileHtml.includes("og:image:width"), "profile og:image:width");
 
 async function liveApi() {

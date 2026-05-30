@@ -61,7 +61,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot).*"
+          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly).*"
         }
       ],
       "destination": "/api/og?route=home"
@@ -72,7 +72,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot).*"
+          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly).*"
         }
       ],
       "destination": "/api/og?route=ad&id=:id"
@@ -83,7 +83,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot).*"
+          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly).*"
         }
       ],
       "destination": "/api/og?route=profile&id=:id"

@@ -17,7 +17,7 @@ const SUPABASE_OBJECT_PUBLIC =
   /^(https:\/\/[^/]+\.supabase\.co\/storage\/v1)\/object\/public\/(.+)$/;
 
 const SOCIAL_BOT_UA =
-  /facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|vkShare|PinterestBot|Google-Structured-Data-Testing-Tool/i;
+  /facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly|Google-Structured-Data-Testing-Tool/i;
 
 export function isSocialCrawler(userAgent) {
   return SOCIAL_BOT_UA.test(userAgent || "");
@@ -104,7 +104,6 @@ export function buildAdShareMeta(ad) {
     parts.push("مجاني");
   }
   if (ad?.city) parts.push(String(ad.city).trim());
-  parts.push(`إعلان على ${P11_BRAND}`);
   const description =
     parts.length > 0 ? truncateText(parts.join(" · "), 200) : P11_OFFICIAL_DESCRIPTION_AR;
   const firstImage = Array.isArray(ad?.images) ? ad.images[0] : null;
@@ -132,7 +131,7 @@ export function buildProfileShareMeta(profile) {
   const parts = [];
   const city = profile?.city ? String(profile.city).trim() : "";
   if (city) parts.push(city);
-  parts.push(`شاهد ملف المستخدم على ${P11_BRAND}`);
+  parts.push("تصفّح إعلانات هذا العضو");
   const description = truncateText(parts.join(" · "), 200);
   const avatar = profile?.avatarUrl;
   const imageUrl = isPublicShareImageUrl(avatar) ? toOgAvatarUrl(avatar) : P11_OG_HOME_IMAGE_URL;
@@ -140,7 +139,7 @@ export function buildProfileShareMeta(profile) {
     title,
     description,
     url: `${P11_ORIGIN}/users/${id}`,
-    type: "profile",
+    type: "website",
     imageUrl,
     imageAlt: displayName,
     imageWidth: P11_OG_IMAGE_WIDTH,

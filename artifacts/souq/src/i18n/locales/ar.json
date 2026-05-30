@@ -999,6 +999,8 @@
   "p11.seo.search_title": "بحث | Souq Arab EU",
   "p11.seo.terms_title": "الشروط والأحكام | Souq Arab EU",
   "p11.seo.user_profile_title": "ملف مستخدم | Souq Arab EU",
+  "p17.commerce.ad_detail.buy_now": "اشترِ الآن",
+  "p17.commerce.ad_detail.buy_now_aria": "اشترِ الآن — الشراء المباشر قيد التجهيز",
   "p17.commerce.coming_soon.badge": "قريبًا",
   "p17.commerce.coming_soon.feature_create_orders": "إنشاء الطلبات",
   "p17.commerce.coming_soon.feature_order_statuses": "حالات الطلب",

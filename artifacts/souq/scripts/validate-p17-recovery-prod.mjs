@@ -56,10 +56,7 @@ assert(ordersJs?.includes("p17.commerce.page.buyer_title"), "orders-page bundle:
 assert(ordersJs?.includes("p17.commerce.page.seller_title"), "orders-page bundle: seller hub title key");
 
 if (adDetailJs) {
-  assert(
-    !adDetailJs.includes("p17.commerce.buy_now") && !adDetailJs.includes("اشترِ الآن"),
-    "ad-detail: no P17-5 Buy Now (out of recovery scope)",
-  );
+  assert(adDetailJs.includes("p17-ad-detail-buy-now"), "ad-detail: Buy Now placeholder present");
 }
 
 if (errors.length) {

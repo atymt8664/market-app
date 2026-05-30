@@ -29,7 +29,9 @@ for (const prop of [
 }
 
 assert(indexHtml.includes('content="Souq Arab EU"'), "index.html: og:site_name must be Souq Arab EU");
-assert(indexHtml.includes(`${ORIGIN}/brand/logo-master.png`), "index.html: og:image must use Logo Master");
+assert(indexHtml.includes(`${ORIGIN}/brand/og-share-home.jpg`), "index.html: og:image must use OG home share image");
+assert(indexHtml.includes('property="og:image:width"'), "index.html: og:image:width");
+assert(indexHtml.includes('property="og:image:height"'), "index.html: og:image:height");
 assert(indexHtml.includes('name="twitter:card"'), "index.html: missing twitter:card");
 assert(indexHtml.includes('name="twitter:title"'), "index.html: missing twitter:title");
 assert(indexHtml.includes('name="twitter:image"'), "index.html: missing twitter:image");
@@ -55,7 +57,9 @@ assert(routeSync.includes("applyPublicPageMeta"), "seo-route-sync.tsx: wired to 
 
 const ogShare = readFileSync(join(root, "scripts/og-share-meta.mjs"), "utf8");
 assert(ogShare.includes("buildAdShareMeta"), "og-share-meta.mjs: ad builder");
-assert(ogShare.includes("buildProfileShareMeta"), "og-share-meta.mjs: profile builder");
+assert(ogShare.includes("toOgAvatarUrl"), "og-share-meta.mjs: avatar transform");
+assert(ogShare.includes("og-share-home.jpg"), "og-share-meta.mjs: home OG image");
+assert(existsSync(join(root, "public/brand/og-share-home.jpg")), "og-share-home.jpg asset");
 
 const repoRoot = join(root, "..", "..");
 assert(existsSync(join(repoRoot, "api/og.js")), "api/og.js: crawler handler");

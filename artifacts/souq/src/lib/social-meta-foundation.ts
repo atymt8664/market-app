@@ -5,13 +5,17 @@
 import type { Locale } from "@/i18n";
 import {
   buildCanonicalUrl,
+  SEO_CANONICAL_ORIGIN,
   truncateForMeta,
   type PageSeoConfig,
 } from "@/lib/seo-foundation";
-import { P11_BRAND_OFFICIAL_NAME, P11_LOGO_MASTER_URL } from "@/lib/structured-data-foundation";
+import { P11_BRAND_OFFICIAL_NAME } from "@/lib/structured-data-foundation";
 
-export const P11_OG_DEFAULT_IMAGE = P11_LOGO_MASTER_URL;
-export const P11_OG_IMAGE_ALT = `${P11_BRAND_OFFICIAL_NAME} logo`;
+export const P11_OG_HOME_IMAGE_URL = `${SEO_CANONICAL_ORIGIN}/brand/og-share-home.jpg`;
+export const P11_OG_DEFAULT_IMAGE = P11_OG_HOME_IMAGE_URL;
+export const P11_OG_IMAGE_ALT = `${P11_BRAND_OFFICIAL_NAME} — سوق العرب EU`;
+export const P11_OG_IMAGE_WIDTH = 1200;
+export const P11_OG_IMAGE_HEIGHT = 630;
 
 const OG_LOCALE: Record<Locale, string> = {
   ar: "ar_AR",
@@ -47,6 +51,19 @@ export function toOgImageUrl(originalUrl: string | null | undefined): string {
   return trimmed;
 }
 
+/** OG avatar (1200×630 contain — full face visible). */
+export function toOgAvatarUrl(originalUrl: string | null | undefined): string {
+  if (!originalUrl?.trim()) return P11_OG_DEFAULT_IMAGE;
+  const trimmed = originalUrl.trim();
+  if (!/^https:\/\//i.test(trimmed)) return P11_OG_DEFAULT_IMAGE;
+  const match = trimmed.match(SUPABASE_OBJECT_PUBLIC);
+  if (match) {
+    const params = "width=1200&height=630&resize=contain&quality=82";
+    return `${match[1]}/render/image/public/${match[2]}?${params}`;
+  }
+  return trimmed;
+}
+
 export function isPublicShareImageUrl(url: string | null | undefined): boolean {
   if (!url?.trim()) return false;
   return /^https:\/\//i.test(url.trim()) && !/^data:/i.test(url);
@@ -73,6 +90,7 @@ export function buildAdSocialOverride(ad: AdShareInput): Partial<PageSocialMetaC
     parts.push("مجاني");
   }
   if (ad.city?.trim()) parts.push(ad.city.trim());
+  parts.push(`إعلان على ${P11_BRAND_OFFICIAL_NAME}`);
   const firstImage = ad.images?.[0];
   return {
     type: "article",
@@ -88,6 +106,7 @@ export function buildAdSocialOverride(ad: AdShareInput): Partial<PageSocialMetaC
 type ProfileShareInput = {
   id: number;
   name?: string | null;
+  city?: string | null;
   avatarUrl?: string | null;
 };
 
@@ -95,12 +114,16 @@ export function buildProfileSocialOverride(
   profile: ProfileShareInput,
 ): Partial<PageSocialMetaConfig> {
   const name = profile.name?.trim() || "";
-  const title = name ? `${name} | Souq Arab EU` : undefined;
+  const title = name ? `${name} | ${P11_BRAND_OFFICIAL_NAME}` : undefined;
+  const parts: string[] = [];
+  const city = profile.city?.trim();
+  if (city) parts.push(city);
+  parts.push(`شاهد ملف المستخدم على ${P11_BRAND_OFFICIAL_NAME}`);
   return {
     title,
-    description: `ملف شخصي على Souq Arab EU`,
+    description: truncateForMeta(parts.join(" · "), 200),
     imageUrl: isPublicShareImageUrl(profile.avatarUrl)
-      ? toOgImageUrl(profile.avatarUrl)
+      ? toOgAvatarUrl(profile.avatarUrl)
       : P11_OG_DEFAULT_IMAGE,
     imageAlt: name || P11_OG_IMAGE_ALT,
     type: "website",
@@ -192,6 +215,9 @@ export function applyPageSocialMeta(config: PageSocialMetaConfig): () => void {
     upsertPropertyMeta("og:locale", ogLocale),
     upsertPropertyMeta("og:image", imageUrl),
     upsertPropertyMeta("og:image:secure_url", imageUrl),
+    upsertPropertyMeta("og:image:width", String(P11_OG_IMAGE_WIDTH)),
+    upsertPropertyMeta("og:image:height", String(P11_OG_IMAGE_HEIGHT)),
+    upsertPropertyMeta("og:image:type", "image/jpeg"),
     upsertPropertyMeta("og:image:alt", imageAlt),
     upsertNameMeta("twitter:card", "summary_large_image"),
     upsertNameMeta("twitter:title", config.title),

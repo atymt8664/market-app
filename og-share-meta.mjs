@@ -7,6 +7,9 @@ export const P11_ORIGIN = "https://www.souq-arab.com";
 export const P11_API_ORIGIN = "https://api.souq-arab.com/api";
 export const P11_BRAND = "Souq Arab EU";
 export const P11_LOGO_URL = `${P11_ORIGIN}/brand/logo-master.png`;
+export const P11_OG_HOME_IMAGE_URL = `${P11_ORIGIN}/brand/og-share-home.jpg`;
+export const P11_OG_IMAGE_WIDTH = 1200;
+export const P11_OG_IMAGE_HEIGHT = 630;
 export const P11_OFFICIAL_DESCRIPTION_AR =
   "منصة عربية متكاملة للبيع والشراء والخدمات والتواصل بين الأفراد، تجمع بين سهولة الاستخدام والأمان والسرعة، وتوفر بيئة حديثة لنشر الإعلانات واكتشاف الفرص وبناء الثقة والتفاعل داخل مجتمع عربي متنامٍ.";
 
@@ -37,14 +40,27 @@ export function truncateText(text, max = 200) {
   return `${clean.slice(0, max - 1)}…`;
 }
 
-/** OG-friendly hero image (1200×630 cover) for Supabase public URLs. */
+/** OG-friendly hero image (1200×630 cover) for ad/listing photos. */
 export function toOgImageUrl(originalUrl) {
-  if (!originalUrl || typeof originalUrl !== "string") return P11_LOGO_URL;
+  if (!originalUrl || typeof originalUrl !== "string") return P11_OG_HOME_IMAGE_URL;
   const trimmed = originalUrl.trim();
-  if (!/^https:\/\//i.test(trimmed)) return P11_LOGO_URL;
+  if (!/^https:\/\//i.test(trimmed)) return P11_OG_HOME_IMAGE_URL;
   const match = trimmed.match(SUPABASE_OBJECT_PUBLIC);
   if (match) {
     const params = "width=1200&height=630&resize=cover&quality=82";
+    return `${match[1]}/render/image/public/${match[2]}?${params}`;
+  }
+  return trimmed;
+}
+
+/** OG-friendly avatar (1200×630 contain — full face visible, no harsh crop). */
+export function toOgAvatarUrl(originalUrl) {
+  if (!originalUrl || typeof originalUrl !== "string") return P11_OG_HOME_IMAGE_URL;
+  const trimmed = originalUrl.trim();
+  if (!/^https:\/\//i.test(trimmed)) return P11_OG_HOME_IMAGE_URL;
+  const match = trimmed.match(SUPABASE_OBJECT_PUBLIC);
+  if (match) {
+    const params = "width=1200&height=630&resize=contain&quality=82";
     return `${match[1]}/render/image/public/${match[2]}?${params}`;
   }
   return trimmed;
@@ -62,8 +78,11 @@ export function buildHomeShareMeta() {
     description: P11_OFFICIAL_DESCRIPTION_AR,
     url: `${P11_ORIGIN}/`,
     type: "website",
-    imageUrl: P11_LOGO_URL,
-    imageAlt: `${P11_BRAND} logo`,
+    imageUrl: P11_OG_HOME_IMAGE_URL,
+    imageAlt: `${P11_BRAND} — سوق العرب EU`,
+    imageWidth: P11_OG_IMAGE_WIDTH,
+    imageHeight: P11_OG_IMAGE_HEIGHT,
+    imageType: "image/jpeg",
     locale: "ar_AR",
   };
 }
@@ -74,7 +93,7 @@ export function buildAdShareMeta(ad) {
     ? `${truncateText(ad.title, 80)} | ${P11_BRAND}`
     : `إعلان | ${P11_BRAND}`;
   const parts = [];
-  const desc = truncateText(ad?.description, 160);
+  const desc = truncateText(ad?.description, 140);
   if (desc) parts.push(desc);
   if (ad?.price != null && ad?.priceType !== "free") {
     const priceNum = Number(ad.price);
@@ -85,12 +104,13 @@ export function buildAdShareMeta(ad) {
     parts.push("مجاني");
   }
   if (ad?.city) parts.push(String(ad.city).trim());
+  parts.push(`إعلان على ${P11_BRAND}`);
   const description =
     parts.length > 0 ? truncateText(parts.join(" · "), 200) : P11_OFFICIAL_DESCRIPTION_AR;
   const firstImage = Array.isArray(ad?.images) ? ad.images[0] : null;
   const imageUrl = isPublicShareImageUrl(firstImage)
     ? toOgImageUrl(firstImage)
-    : P11_LOGO_URL;
+    : P11_OG_HOME_IMAGE_URL;
   return {
     title,
     description,
@@ -98,24 +118,34 @@ export function buildAdShareMeta(ad) {
     type: "article",
     imageUrl,
     imageAlt: ad?.title ? truncateText(ad.title, 120) : P11_BRAND,
+    imageWidth: P11_OG_IMAGE_WIDTH,
+    imageHeight: P11_OG_IMAGE_HEIGHT,
+    imageType: "image/jpeg",
     locale: "ar_AR",
   };
 }
 
 export function buildProfileShareMeta(profile) {
   const id = profile?.id;
-  const displayName = truncateText(profile?.name, 80) || `مستخدم`;
+  const displayName = truncateText(profile?.name, 80) || "مستخدم";
   const title = `${displayName} | ${P11_BRAND}`;
-  const description = `ملف شخصي على ${P11_BRAND}`;
+  const parts = [];
+  const city = profile?.city ? String(profile.city).trim() : "";
+  if (city) parts.push(city);
+  parts.push(`شاهد ملف المستخدم على ${P11_BRAND}`);
+  const description = truncateText(parts.join(" · "), 200);
   const avatar = profile?.avatarUrl;
-  const imageUrl = isPublicShareImageUrl(avatar) ? toOgImageUrl(avatar) : P11_LOGO_URL;
+  const imageUrl = isPublicShareImageUrl(avatar) ? toOgAvatarUrl(avatar) : P11_OG_HOME_IMAGE_URL;
   return {
     title,
     description,
     url: `${P11_ORIGIN}/users/${id}`,
-    type: "website",
+    type: "profile",
     imageUrl,
     imageAlt: displayName,
+    imageWidth: P11_OG_IMAGE_WIDTH,
+    imageHeight: P11_OG_IMAGE_HEIGHT,
+    imageType: "image/jpeg",
     locale: "ar_AR",
   };
 }
@@ -124,11 +154,14 @@ export function renderOgHtml(meta) {
   const title = escapeHtml(meta.title);
   const description = escapeHtml(meta.description);
   const url = escapeHtml(meta.url);
-  const image = escapeHtml(meta.imageUrl || P11_LOGO_URL);
+  const image = escapeHtml(meta.imageUrl || P11_OG_HOME_IMAGE_URL);
   const imageAlt = escapeHtml(meta.imageAlt || P11_BRAND);
   const type = escapeHtml(meta.type || "website");
   const locale = escapeHtml(meta.locale || "ar_AR");
   const siteName = escapeHtml(P11_BRAND);
+  const imageWidth = meta.imageWidth ?? P11_OG_IMAGE_WIDTH;
+  const imageHeight = meta.imageHeight ?? P11_OG_IMAGE_HEIGHT;
+  const imageType = escapeHtml(meta.imageType || "image/jpeg");
 
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -145,6 +178,9 @@ export function renderOgHtml(meta) {
 <meta property="og:locale" content="${locale}" />
 <meta property="og:image" content="${image}" />
 <meta property="og:image:secure_url" content="${image}" />
+<meta property="og:image:width" content="${imageWidth}" />
+<meta property="og:image:height" content="${imageHeight}" />
+<meta property="og:image:type" content="${imageType}" />
 <meta property="og:image:alt" content="${imageAlt}" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${title}" />

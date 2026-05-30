@@ -56,6 +56,17 @@
       "destination": "/api/og"
     },
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot).*"
+        }
+      ],
+      "destination": "/api/og?route=home"
+    },
+    {
       "source": "/ad/:id",
       "has": [
         {

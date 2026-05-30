@@ -159,18 +159,23 @@ export default function UserProfile() {
 
   const profilePageSeo = useMemo(() => {
     if (!userId || !profile?.name) return null;
+    const cityPart = profile.city?.trim();
+    const description = cityPart
+      ? `${cityPart} · شاهد ملف المستخدم على Souq Arab EU`
+      : "شاهد ملف المستخدم على Souq Arab EU";
     return {
       title: `${profile.name} | Souq Arab EU`,
-      description: `ملف شخصي على Souq Arab EU`,
+      description,
       canonicalPath: `/users/${userId}`,
     };
-  }, [userId, profile?.name]);
+  }, [userId, profile?.name, profile?.city]);
 
   const profileSocialOverride = useMemo(() => {
     if (!userId || !profile) return null;
     return buildProfileSocialOverride({
       id: userId,
       name: profile.name,
+      city: profile.city,
       avatarUrl: profile.avatarUrl,
     });
   }, [userId, profile]);

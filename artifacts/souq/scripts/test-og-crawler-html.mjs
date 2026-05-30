@@ -26,6 +26,8 @@ const homeHtml = renderOgHtml(buildHomeShareMeta());
 assert(homeHtml.includes('property="og:title"'), "home og:title");
 assert(homeHtml.includes("Souq Arab EU"), "home brand");
 assert(homeHtml.includes(P11_OFFICIAL_DESCRIPTION_AR.slice(0, 40)), "home description");
+assert(homeHtml.includes("og-share-home.jpg"), "home og:image asset");
+assert(homeHtml.includes("og:image:width"), "home og:image:width");
 
 const sampleAd = {
   id: 1,
@@ -38,12 +40,15 @@ const sampleAd = {
 };
 const adHtml = renderOgHtml(buildAdShareMeta(sampleAd));
 assert(adHtml.includes("/ad/1"), "ad canonical url");
+assert(adHtml.includes("إعلان على"), "ad brand in description");
 assert(!adHtml.includes("sellerPhone"), "ad no private fields");
 
-const sampleProfile = { id: 2, name: "Ahmad", avatarUrl: null };
+const sampleProfile = { id: 2, name: "Ahmad", city: "Berlin", avatarUrl: null };
 const profileHtml = renderOgHtml(buildProfileShareMeta(sampleProfile));
 assert(profileHtml.includes("/users/2"), "profile url");
-assert(profileHtml.includes("ملف شخصي"), "profile description");
+assert(profileHtml.includes("Berlin"), "profile city in description");
+assert(profileHtml.includes("شاهد ملف المستخدم"), "profile description");
+assert(profileHtml.includes("og:image:width"), "profile og:image:width");
 
 async function liveApi() {
   const adsRes = await fetch("https://api.souq-arab.com/api/ads?limit=1");

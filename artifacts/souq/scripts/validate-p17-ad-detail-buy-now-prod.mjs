@@ -35,6 +35,12 @@ const { text: indexJs } = await fetchText(indexSrc);
 const adDetailJs = await fetchLazyChunk(indexJs, (p) => /^assets\/ad-detail-[A-Za-z0-9_-]+\.js$/.test(p));
 assert(adDetailJs, "ad-detail lazy chunk present");
 assert(adDetailJs.includes("p17-ad-detail-buy-now"), "ad-detail: Buy Now test id");
+assert(adDetailJs.includes("p17-ad-detail-add-to-cart"), "ad-detail: Add to cart test id");
+assert(
+  adDetailJs.includes("p17.commerce.coming_soon.roadmap_title") ||
+    adDetailJs.includes("roadmap_step_cart"),
+  "ad-detail: commerce roadmap in sheet",
+);
 assert(
   adDetailJs.includes("p17.commerce.ad_detail.buy_now") || adDetailJs.includes("اشتر"),
   "ad-detail: Buy Now label / i18n key",

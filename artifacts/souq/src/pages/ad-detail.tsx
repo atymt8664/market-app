@@ -45,7 +45,7 @@ import { buildAdSocialOverride } from "@/lib/social-meta-foundation";
 import { buildAdStructuredDataJsonLd } from "@/lib/ad-structured-data";
 import { useLocale } from "@/hooks/use-locale";
 import { BuyerSafetyNote } from "@/components/buyer-safety-note";
-import { AdDetailBuyNowButton } from "@/features/p17-commerce/ad-detail-buy-now-button";
+import { AdDetailCommerceActions } from "@/features/p17-commerce/ad-detail-commerce-actions";
 import { UserPresenceBadge } from "@/components/user-presence-badge";
 import { t, type Locale } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -919,8 +919,8 @@ export default function AdDetail() {
               </div>
 
               <div className={cn(sellerInnerShell, "flex flex-col gap-2.5")}>
-                <AdDetailBuyNowButton
-                  buttonClassName={sellerActionH}
+                <AdDetailCommerceActions
+                  secondaryButtonClassName={sellerActionH}
                   hidden={Boolean(user?.id && ad.userId && user.id === ad.userId)}
                 />
                 <Button

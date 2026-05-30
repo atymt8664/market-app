@@ -69,11 +69,6 @@
       ],
       "destination": "/api/og?route=profile&id=:id"
     },
-    {
-      "source": "/api/:path*",
-      "missing": [{ "type": "filesystem", "value": "/api/og" }],
-      "destination": "https://api.souq-arab.com/api/:path*"
-    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

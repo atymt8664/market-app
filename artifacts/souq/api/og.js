@@ -1,6 +1,8 @@
 /**
- * P11-5 — crawler-facing Open Graph HTML (Vercel Serverless, artifacts/souq root).
+ * P11-5 — Edge OG handler (fallback when middleware does not match).
  */
+export const config = { runtime: "edge" };
+
 import {
   buildAdShareMeta,
   buildHomeShareMeta,
@@ -12,33 +14,32 @@ import {
 
 const CACHE = "public, s-maxage=3600, stale-while-revalidate=86400";
 
-function sendHtml(res, html, status = 200) {
-  res.statusCode = status;
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.setHeader("Cache-Control", CACHE);
-  res.setHeader("X-P11-Og-Crawler", "1");
-  res.end(html);
-}
+export default async function handler(request) {
+  const url = new URL(request.url);
+  const route = url.searchParams.get("route") || "home";
+  const id = url.searchParams.get("id") || "";
 
-export default async function handler(req, res) {
-  const route = String(req.query?.route || "home");
-  const id = req.query?.id != null ? String(req.query.id) : "";
+  const headers = {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": CACHE,
+    "X-P11-Og-Crawler": "1",
+  };
 
   try {
     if (route === "ad" && /^\d+$/.test(id)) {
       const ad = await fetchPublicAd(id);
       const meta = ad ? buildAdShareMeta(ad) : buildHomeShareMeta();
-      return sendHtml(res, renderOgHtml(meta), ad ? 200 : 404);
+      return new Response(renderOgHtml(meta), { status: ad ? 200 : 404, headers });
     }
 
     if (route === "profile" && /^\d+$/.test(id)) {
       const profile = await fetchPublicProfile(id);
       const meta = profile ? buildProfileShareMeta(profile) : buildHomeShareMeta();
-      return sendHtml(res, renderOgHtml(meta), profile ? 200 : 404);
+      return new Response(renderOgHtml(meta), { status: profile ? 200 : 404, headers });
     }
 
-    return sendHtml(res, renderOgHtml(buildHomeShareMeta()));
+    return new Response(renderOgHtml(buildHomeShareMeta()), { status: 200, headers });
   } catch {
-    return sendHtml(res, renderOgHtml(buildHomeShareMeta()), 500);
+    return new Response(renderOgHtml(buildHomeShareMeta()), { status: 500, headers });
   }
 }

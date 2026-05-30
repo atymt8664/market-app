@@ -1,15 +1,29 @@
 /**
  * Souq Arab EU — PWA shell + Web Push (P11).
- * Precaches install assets; handles push when app is closed/backgrounded.
+ * P9 deploy stability: never precache or serve stale HTML/JS/CSS (prevents mixed bundles).
  */
-const CACHE_VERSION = "souq-arab-eu-v2-push";
+const CACHE_VERSION = "souq-arab-eu-v3-deploy-shell";
+
+/** Static install assets only — no index.html or hashed /assets/* bundles. */
 const PRECACHE_URLS = [
-  "/",
-  "/index.html",
   "/manifest.webmanifest",
   "/icons/pwa-icon-192.png",
   "/icons/pwa-icon-512.png",
 ];
+
+function isHtmlNavigation(request) {
+  if (request.mode === "navigate") return true;
+  const accept = request.headers.get("accept");
+  return Boolean(accept && accept.includes("text/html"));
+}
+
+function shouldBypassServiceWorker(pathname) {
+  return (
+    pathname.startsWith("/assets/") ||
+    pathname.startsWith("/fonts/") ||
+    pathname === "/sw.js"
+  );
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -20,6 +34,7 @@ self.addEventListener("install", (event) => {
   );
 });
 
+/** Purges v1/v2-push buckets that stored stale index.html — keeps only the current shell cache. */
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
@@ -43,18 +58,23 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  /** Hashed bundles + SW script: browser/CDN immutable cache — do not intercept. */
+  if (shouldBypassServiceWorker(url.pathname)) {
+    return;
+  }
+
+  /** App shell HTML: network-only — never cache (avoids old index.html + new CSS/JS mix). */
+  if (isHtmlNavigation(req)) {
+    event.respondWith(fetch(req));
+    return;
+  }
+
+  /** Precached PWA install assets (manifest/icons) — cache-first fallback. */
   event.respondWith(
-    fetch(req)
-      .then((res) => {
-        if (res.ok && req.mode === "navigate") {
-          const copy = res.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(req, copy));
-        }
-        return res;
-      })
-      .catch(() =>
-        caches.match(req).then((hit) => hit || caches.match("/index.html")),
-      ),
+    caches.match(req).then((hit) => {
+      if (hit) return hit;
+      return fetch(req);
+    }),
   );
 });
 

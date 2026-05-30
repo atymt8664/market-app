@@ -20,7 +20,8 @@ import { cn } from "@/lib/utils";
 import NotFound from "@/pages/not-found";
 import { ChatSocketProvider } from "@/contexts/chat-socket-context";
 import { SeoRouteSync } from "@/components/seo-route-sync";
-import { applyPageSeo, resolveSeoForPath } from "@/lib/seo-foundation";
+import { resolveSeoForPath } from "@/lib/seo-foundation";
+import { applyPublicPageMeta } from "@/lib/public-page-meta";
 
 const Home = lazy(() => import("@/pages/home"));
 
@@ -82,7 +83,7 @@ const GuestWelcome = lazy(() => import("@/pages/guest-welcome"));
 function SeoHomeBootstrap() {
   const { locale } = useLocale();
   useEffect(() => {
-    return applyPageSeo(resolveSeoForPath("/", locale));
+    return applyPublicPageMeta(resolveSeoForPath("/", locale), locale);
   }, [locale]);
   return null;
 }

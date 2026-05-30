@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -24,10 +23,6 @@ import {
 } from "@/components/settings-shell";
 
 const SUPPORT_EMAIL = "souqarab.market@gmail.com";
-const PAGE_TITLE = "Delete Your Account · Souq Arab EU | حذف الحساب";
-const PAGE_DESCRIPTION =
-  "How to permanently delete your Souq Arab EU account, profile, ads, favorites, chats and uploaded images directly from inside the app. كيفية حذف حسابك من تطبيق سوق العرب EU.";
-const PAGE_URL = "https://www.souq-arab.com/delete-account";
 
 type DeletedItem = {
   icon: React.ReactNode;
@@ -86,82 +81,7 @@ const STEPS: { en: string; ar: string }[] = [
   },
 ];
 
-function applySeoMeta() {
-  if (typeof document === "undefined") return () => {};
-  const previousTitle = document.title;
-  document.title = PAGE_TITLE;
-
-  const ensureMeta = (selector: string, attrName: "name" | "property", attrValue: string) => {
-    let el = document.head.querySelector<HTMLMetaElement>(selector);
-    let created = false;
-    if (!el) {
-      el = document.createElement("meta");
-      el.setAttribute(attrName, attrValue);
-      document.head.appendChild(el);
-      created = true;
-    }
-    const previousContent = el.getAttribute("content");
-    return { el, created, previousContent };
-  };
-
-  const desc = ensureMeta('meta[name="description"]', "name", "description");
-  desc.el.setAttribute("content", PAGE_DESCRIPTION);
-
-  const ogTitle = ensureMeta('meta[property="og:title"]', "property", "og:title");
-  ogTitle.el.setAttribute("content", PAGE_TITLE);
-
-  const ogDesc = ensureMeta('meta[property="og:description"]', "property", "og:description");
-  ogDesc.el.setAttribute("content", PAGE_DESCRIPTION);
-
-  const ogUrl = ensureMeta('meta[property="og:url"]', "property", "og:url");
-  ogUrl.el.setAttribute("content", PAGE_URL);
-
-  const robots = ensureMeta('meta[name="robots"]', "name", "robots");
-  robots.el.setAttribute("content", "index,follow");
-
-  let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-  let canonicalCreated = false;
-  let previousCanonicalHref: string | null = null;
-  if (!canonical) {
-    canonical = document.createElement("link");
-    canonical.setAttribute("rel", "canonical");
-    document.head.appendChild(canonical);
-    canonicalCreated = true;
-  } else {
-    previousCanonicalHref = canonical.getAttribute("href");
-  }
-  canonical.setAttribute("href", PAGE_URL);
-
-  return () => {
-    document.title = previousTitle;
-    const restore = (entry: { el: HTMLMetaElement; created: boolean; previousContent: string | null }) => {
-      if (entry.created) {
-        entry.el.remove();
-      } else if (entry.previousContent !== null) {
-        entry.el.setAttribute("content", entry.previousContent);
-      }
-    };
-    restore(desc);
-    restore(ogTitle);
-    restore(ogDesc);
-    restore(ogUrl);
-    restore(robots);
-    if (canonical) {
-      if (canonicalCreated) {
-        canonical.remove();
-      } else if (previousCanonicalHref !== null) {
-        canonical.setAttribute("href", previousCanonicalHref);
-      }
-    }
-  };
-}
-
 export default function DeleteAccountPage() {
-  useEffect(() => {
-    const cleanup = applySeoMeta();
-    return cleanup;
-  }, []);
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}

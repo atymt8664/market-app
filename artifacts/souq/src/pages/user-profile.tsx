@@ -63,6 +63,8 @@ import { AUTH_ACCENT_OUTLINE_BTN } from "@/lib/auth-page-styles";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
+import { usePageSeo } from "@/hooks/use-page-seo";
+import { buildProfileSocialOverride } from "@/lib/social-meta-foundation";
 import { apiUrl } from "@/lib/api-url";
 import { t } from "@/i18n";
 import {
@@ -154,6 +156,26 @@ export default function UserProfile() {
   const { data: profile, isLoading, isError } = useGetUserProfile(userId, {
     query: { queryKey: profileKey, enabled: profileQueryEnabled },
   });
+
+  const profilePageSeo = useMemo(() => {
+    if (!userId || !profile?.name) return null;
+    return {
+      title: `${profile.name} | Souq Arab EU`,
+      description: `ملف شخصي على Souq Arab EU`,
+      canonicalPath: `/users/${userId}`,
+    };
+  }, [userId, profile?.name]);
+
+  const profileSocialOverride = useMemo(() => {
+    if (!userId || !profile) return null;
+    return buildProfileSocialOverride({
+      id: userId,
+      name: profile.name,
+      avatarUrl: profile.avatarUrl,
+    });
+  }, [userId, profile]);
+
+  usePageSeo(profilePageSeo, profileSocialOverride);
 
   const recordView = useRecordProfileView();
   const viewedRef = useRef<number | null>(null);

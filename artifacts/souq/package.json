@@ -10,6 +10,8 @@
     "i18n:check": "node scripts/check-i18n-keys.mjs",
     "icons:p11": "node scripts/generate-p11-icon-set.mjs",
     "seo:p11:validate": "node scripts/validate-p11-seo-foundation.mjs",
+    "social:p11:validate": "node scripts/validate-p11-5-social-meta.mjs",
+    "og:p11:test": "node scripts/test-og-crawler-html.mjs",
     "locations:generate": "node scripts/generate-marketplace-locations-data.mjs",
     "locations:compare-csc": "node scripts/compare-marketplace-locations-to-csc.mjs",
     "preview": "vite preview",

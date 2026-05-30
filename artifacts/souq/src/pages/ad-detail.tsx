@@ -41,6 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePageSeo } from "@/hooks/use-page-seo";
 import { getDefaultSiteDescription, truncateForMeta } from "@/lib/seo-foundation";
+import { buildAdSocialOverride } from "@/lib/social-meta-foundation";
 import { useLocale } from "@/hooks/use-locale";
 import { BuyerSafetyNote } from "@/components/buyer-safety-note";
 import { UserPresenceBadge } from "@/components/user-presence-badge";
@@ -265,7 +266,21 @@ export default function AdDetail() {
       canonicalPath: `/ad/${id}`,
     };
   }, [id, ad?.title, ad?.description, locale]);
-  usePageSeo(adPageSeo);
+
+  const adSocialOverride = useMemo(() => {
+    if (!id || !ad) return null;
+    return buildAdSocialOverride({
+      id,
+      title: ad.title,
+      description: ad.description,
+      price: ad.price,
+      priceType: ad.priceType,
+      city: ad.city,
+      images: ad.images,
+    });
+  }, [id, ad]);
+
+  usePageSeo(adPageSeo, adSocialOverride);
 
   const sellerPresenceTargets = useMemo(() => {
     if (!ad?.userId || !user?.id || ad.userId === user.id) return [];

@@ -2,6 +2,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { lazyWithRetry } from "@/lib/lazy-with-retry";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAfterFirstPaint } from "@/lib/after-first-paint";
@@ -29,7 +30,7 @@ const Categories = lazy(() => import("@/pages/categories"));
 const Category = lazy(() => import("@/pages/category"));
 const Search = lazy(() => import("@/pages/search"));
 const AdDetail = lazy(() => import("@/pages/ad-detail"));
-const CreateAd = lazy(() => import("@/pages/create-ad"));
+const CreateAd = lazyWithRetry(() => import("@/pages/create-ad"));
 const Profile = lazy(() => import("@/pages/profile"));
 const Favorites = lazy(() => import("@/pages/favorites"));
 const Stats = lazy(() => import("@/pages/stats"));

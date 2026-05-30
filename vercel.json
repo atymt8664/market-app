@@ -95,6 +95,9 @@
       ],
       "destination": "/api/og?route=profile&id=:id"
     },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/((?!assets/|fonts/|icons/|brand/|sw.js|manifest.webmanifest|favicon.svg|robots.txt|sitemap.xml).*)",
+      "destination": "/index.html"
+    }
   ]
 }

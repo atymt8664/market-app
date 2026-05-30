@@ -37,14 +37,41 @@
       ]
     }
   ],
+  "functions": {
+    "api/og.js": {
+      "maxDuration": 10
+    }
+  },
   "rewrites": [
     {
       "source": "/og",
       "destination": "/api/og"
     },
     {
+      "source": "/ad/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot).*"
+        }
+      ],
+      "destination": "/api/og?route=ad&id=:id"
+    },
+    {
+      "source": "/users/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot).*"
+        }
+      ],
+      "destination": "/api/og?route=profile&id=:id"
+    },
+    {
       "source": "/api/:path*",
-      "missing": [{ "type": "path", "value": "/api/og" }],
+      "missing": [{ "type": "filesystem", "value": "/api/og" }],
       "destination": "https://api.souq-arab.com/api/:path*"
     },
     { "source": "/(.*)", "destination": "/index.html" }

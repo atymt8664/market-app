@@ -48,12 +48,19 @@
   "functions": {
     "api/og.js": {
       "maxDuration": 10
+    },
+    "api/sitemap-ads.js": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
     {
       "source": "/og",
       "destination": "/api/og"
+    },
+    {
+      "source": "/sitemap-ads.xml",
+      "destination": "/api/sitemap-ads"
     },
     {
       "source": "/",
@@ -72,7 +79,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly).*"
+          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly|Googlebot|Google-InspectionTool|Googlebot-Image|Storebot-Google|DuplexWeb-Google).*"
         }
       ],
       "destination": "/api/og?route=ad&id=:id"

@@ -5,3 +5,4 @@ Disallow: /admin-login
 Disallow: /api/
 
 Sitemap: https://www.souq-arab.com/sitemap.xml
+Sitemap: https://www.souq-arab.com/sitemap-ads.xml

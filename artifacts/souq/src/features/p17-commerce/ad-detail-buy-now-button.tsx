@@ -29,12 +29,12 @@ export function AdDetailBuyNowButton({ buttonClassName, hidden }: AdDetailBuyNow
         aria-label={t("p17.commerce.ad_detail.buy_now_aria")}
         className={cn(
           buttonClassName,
-          "flex w-full items-center justify-center gap-2 border-2 border-primary bg-primary font-semibold text-primary-foreground shadow-[0_0_18px_-6px_hsl(var(--primary)/0.45)] transition-[transform,box-shadow,border-color] hover:border-primary hover:bg-primary/92 hover:shadow-[0_0_22px_-4px_hsl(var(--primary)/0.5)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+          "flex w-full items-center justify-center gap-2 border-2 border-primary/70 bg-[#0A0A0A] font-semibold text-primary shadow-[0_0_16px_-8px_hsl(var(--primary)/0.28)] ring-1 ring-primary/15 transition-[transform,box-shadow,border-color,background-color] hover:border-primary/85 hover:bg-zinc-950/95 hover:shadow-[0_0_20px_-6px_hsl(var(--primary)/0.34)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         )}
         onClick={() => setSheetOpen(true)}
       >
         {t("p17.commerce.ad_detail.buy_now")}
-        <ShoppingBag className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+        <ShoppingBag className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} aria-hidden />
       </button>
       <CommerceComingSoonSheet open={sheetOpen} onOpenChange={setSheetOpen} />
     </>

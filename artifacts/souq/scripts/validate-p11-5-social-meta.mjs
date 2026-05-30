@@ -60,6 +60,9 @@ assert(ogShare.includes("buildProfileShareMeta"), "og-share-meta.mjs: profile bu
 const repoRoot = join(root, "..", "..");
 assert(existsSync(join(repoRoot, "api/og.js")), "api/og.js: crawler handler");
 assert(existsSync(join(repoRoot, "middleware.js")), "middleware.js: bot rewrite");
+const vercelJson = readFileSync(join(repoRoot, "vercel.json"), "utf8");
+assert(vercelJson.includes('"/og"'), "vercel.json: /og route to serverless OG handler");
+assert(vercelJson.includes("/api/og"), "vercel.json: excludes /api/og from backend proxy");
 
 const socialTsFull = readFileSync(join(root, "src/lib/social-meta-foundation.ts"), "utf8");
 assert(socialTsFull.includes("buildAdSocialOverride"), "social-meta: ad override");

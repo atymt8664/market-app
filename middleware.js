@@ -16,17 +16,15 @@ export default function middleware(request) {
   const { pathname } = new URL(request.url);
   const adMatch = pathname.match(/^\/ad\/(\d+)$/);
   if (adMatch) {
-    return Response.rewrite(new URL(`/api/og?route=ad&id=${adMatch[1]}`, request.url));
+    return Response.rewrite(new URL(`/og?route=ad&id=${adMatch[1]}`, request.url));
   }
 
   const userMatch = pathname.match(/^\/users\/(\d+)$/);
   if (userMatch) {
-    return Response.rewrite(
-      new URL(`/api/og?route=profile&id=${userMatch[1]}`, request.url),
-    );
+    return Response.rewrite(new URL(`/og?route=profile&id=${userMatch[1]}`, request.url));
   }
 
   if (pathname === "/" || pathname === "") {
-    return Response.rewrite(new URL("/api/og?route=home", request.url));
+    return Response.rewrite(new URL("/og?route=home", request.url));
   }
 }

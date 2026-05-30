@@ -39,7 +39,12 @@
   ],
   "rewrites": [
     {
+      "source": "/og",
+      "destination": "/api/og"
+    },
+    {
       "source": "/api/:path*",
+      "missing": [{ "type": "path", "value": "/api/og" }],
       "destination": "https://api.souq-arab.com/api/:path*"
     },
     { "source": "/(.*)", "destination": "/index.html" }

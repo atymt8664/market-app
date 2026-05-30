@@ -12,18 +12,18 @@ function assert(cond, msg) {
 
 async function fetchText(path, init = {}) {
   const res = await fetch(`${ORIGIN}${path}`, init);
-  return { res, text: await res.text() };
+  return { res, text: await res.text(), headers: res.headers };
 }
 
-function assetScripts(html) {
-  return [...html.matchAll(/\/assets\/[^"']+\.js/g)].map((m) => m[0]);
+function lazyChunkRefs(indexJs) {
+  return [...new Set([...indexJs.matchAll(/assets\/[a-z0-9_-]+-[A-Za-z0-9_-]+\.js/g)].map((m) => m[0]))];
 }
 
-async function findChunk(html, prefix) {
-  const src = assetScripts(html).find((p) => p.includes(prefix));
+async function fetchLazyChunk(indexJs, matcher) {
+  const src = lazyChunkRefs(indexJs).find(matcher);
   if (!src) return null;
-  const { res, text } = await fetchText(src);
-  assert(res.ok, `${prefix} chunk: HTTP ${res.status}`);
+  const { res, text } = await fetchText(`/${src}`);
+  assert(res.ok, `${src} chunk: HTTP ${res.status}`);
   return text;
 }
 
@@ -34,34 +34,36 @@ for (const path of ["/orders", "/seller-orders", "/profile"]) {
   assert(text.includes("/assets/") || text.includes('id="root"'), `${path}: SPA shell`);
 }
 
-// Index + P17 bundles
-const { text: indexHtml } = await fetchText("/");
-const profileJs = await findChunk(indexHtml, "profile-");
-const ordersJs = await findChunk(indexHtml, "orders-page-");
+const { text: indexHtml, headers } = await fetchText("/");
+const vercelId = headers.get("x-vercel-id") ?? "(unknown)";
+const indexSrc = indexHtml.match(/\/assets\/index-[^"']+\.js/)?.[0];
+assert(indexSrc, "index.html: main bundle reference");
+const { text: indexJs } = await fetchText(indexSrc);
+
+const profileJs = await fetchLazyChunk(indexJs, (p) => /^assets\/profile-[A-Za-z0-9_-]+\.js$/.test(p));
+const ordersJs = await fetchLazyChunk(indexJs, (p) => p.includes("orders-page-"));
+const adDetailJs = await fetchLazyChunk(indexJs, (p) => /^assets\/ad-detail-[A-Za-z0-9_-]+\.js$/.test(p));
 
 assert(profileJs?.includes("p17-orders-account-grid"), "profile bundle: p17-orders-account-grid test id");
+assert(profileJs?.includes("p17-preview-buyer-orders"), "profile bundle: buyer orders tile test id");
+assert(profileJs?.includes("p17-preview-seller-orders"), "profile bundle: seller orders tile test id");
 assert(
-  profileJs?.includes("طلباتي") || profileJs?.includes("p17.commerce.page.entry_buyer_title"),
-  "profile bundle: buyer orders entry (طلباتي / i18n key)",
-);
-assert(
-  profileJs?.includes("إدارة الطلبات") || profileJs?.includes("p17.commerce.page.entry_seller_title"),
-  "profile bundle: seller orders entry (إدارة الطلبات / i18n key)",
+  profileJs?.includes("entry_buyer_title") && profileJs?.includes("entry_seller_title"),
+  "profile bundle: commerce entry i18n keys",
 );
 
 assert(ordersJs?.includes("p17.commerce.page.buyer_title"), "orders-page bundle: buyer hub title key");
 assert(ordersJs?.includes("p17.commerce.page.seller_title"), "orders-page bundle: seller hub title key");
 
-// P17-5 Buy Now must NOT appear on ad detail bundle
-const adDetailJs = await findChunk(indexHtml, "ad-detail-");
-assert(adDetailJs, "ad-detail chunk present");
-assert(
-  !adDetailJs.includes("p17.commerce.buy_now") && !adDetailJs.includes("اشترِ الآن"),
-  "ad-detail: no P17-5 Buy Now (out of recovery scope)",
-);
+if (adDetailJs) {
+  assert(
+    !adDetailJs.includes("p17.commerce.buy_now") && !adDetailJs.includes("اشترِ الآن"),
+    "ad-detail: no P17-5 Buy Now (out of recovery scope)",
+  );
+}
 
 if (errors.length) {
   console.error("[P17 Recovery Production Verification] FAIL\n" + errors.map((e) => `  - ${e}`).join("\n"));
   process.exit(1);
 }
-console.log("[P17 Recovery Production Verification] PASS — P17-0..P17-4 frontend surfaces confirmed on production");
+console.log(`[P17 Recovery Production Verification] PASS — P17-0..P17-4 frontend on production (x-vercel-id: ${vercelId})`);

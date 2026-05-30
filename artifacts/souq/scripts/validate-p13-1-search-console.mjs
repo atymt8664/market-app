@@ -5,10 +5,9 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildAdsSitemapXml, P13_ORIGIN } from "../../../sitemap-ads.mjs";
+import { buildAdsSitemapXml, P13_ORIGIN } from "./sitemap-ads.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const repoRoot = join(root, "..", "..");
 const errors = [];
 
 function assert(cond, msg) {
@@ -24,10 +23,10 @@ const sitemap = readFileSync(join(root, "public/sitemap.xml"), "utf8");
 assert(sitemap.includes(`${P13_ORIGIN}/`), "sitemap.xml: home on www");
 assert(sitemap.includes("/categories"), "sitemap.xml: categories");
 
-assert(existsSync(join(repoRoot, "api/sitemap-ads.js")), "api/sitemap-ads.js exists");
-assert(existsSync(join(repoRoot, "sitemap-ads.mjs")), "sitemap-ads.mjs exists");
+assert(existsSync(join(root, "api/sitemap-ads.js")), "api/sitemap-ads.js exists");
+assert(existsSync(join(root, "scripts/sitemap-ads.mjs")), "scripts/sitemap-ads.mjs exists");
 
-const vercel = readFileSync(join(repoRoot, "vercel.json"), "utf8");
+const vercel = readFileSync(join(root, "vercel.json"), "utf8");
 assert(vercel.includes("/sitemap-ads.xml"), "vercel.json: sitemap-ads rewrite");
 assert(vercel.includes("Googlebot"), "vercel.json: Googlebot ad prerender");
 assert(vercel.includes("/api/sitemap-ads"), "vercel.json: sitemap-ads handler");

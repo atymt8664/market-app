@@ -3,7 +3,7 @@
  */
 export const config = { runtime: "edge" };
 
-import { buildAdsSitemapXml } from "../../sitemap-ads.mjs";
+import { buildAdsSitemapXml } from "../scripts/sitemap-ads.mjs";
 
 const CACHE = "public, s-maxage=3600, stale-while-revalidate=86400";
 

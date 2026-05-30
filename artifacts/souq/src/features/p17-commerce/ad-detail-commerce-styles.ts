@@ -19,17 +19,21 @@ export const P17_WHATSAPP_BTN =
 export const P17_MESSAGE_SELLER_BTN =
   "flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/32 bg-[#0A0A0A]/75 text-sm font-medium text-primary/80 shadow-none transition-[transform,border-color,background-color] hover:border-primary/42 hover:bg-zinc-950/85 hover:text-primary/90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50";
 
-/** Utility dismiss — dark premium + lime outline (not a commerce CTA) */
+/** Utility dismiss — black + lime outline (not a commerce CTA) */
 export const P17_SHEET_OK_BTN =
-  "inline-flex h-[3.25rem] w-full items-center justify-center rounded-2xl border border-primary/40 bg-[#0A0A0A] px-4 text-sm font-semibold text-primary shadow-none ring-1 ring-primary/10 transition-[transform,border-color,background-color] hover:border-primary/52 hover:bg-zinc-950/95 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30";
+  "inline-flex h-[3.25rem] w-full items-center justify-center rounded-2xl border border-primary/40 bg-[#0A0A0A] px-4 text-sm font-semibold text-primary shadow-none ring-1 ring-primary/10 transition-[transform,border-color,background-color] hover:border-primary/52 hover:bg-black active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25";
 
-/** Dark Premium card shell */
+/** Dark Premium card shell — black surface, thin lime rim, no glow */
 export const P17_SHEET_CARD =
-  "rounded-2xl border border-primary/35 bg-[#0A0A0A] shadow-[0_0_22px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12";
+  "rounded-2xl border border-primary/35 bg-[#0A0A0A] ring-1 ring-primary/10";
 
 /** Premium sheet backdrop */
-export const P17_SHEET_OVERLAY = "bg-black/72 backdrop-blur-[2px]";
+export const P17_SHEET_OVERLAY = "bg-black/80 backdrop-blur-[1px]";
 
 /** Sheet panel shell */
 export const P17_SHEET_PANEL =
-  "flex min-h-0 w-full flex-col gap-0 rounded-t-2xl border-x-0 border-b-0 border-t-2 border-primary/45 !bg-[#0A0A0A]/98 p-0 shadow-[0_-14px_48px_-16px_rgba(0,0,0,0.62),0_0_28px_-14px_hsl(var(--primary)/0.22)] ring-1 ring-primary/25 backdrop-blur-md sm:mx-auto sm:max-w-lg";
+  "flex min-h-0 w-full flex-col gap-0 rounded-t-2xl border-x-0 border-b-0 border-t border-primary/35 !bg-[#0A0A0A] p-0 shadow-[0_-10px_40px_-18px_rgba(0,0,0,0.85)] sm:mx-auto sm:max-w-lg";
+
+/** Roadmap / icon chip inside sheet — matches app card chips */
+export const P17_SHEET_CHIP =
+  "flex items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A] ring-1 ring-primary/10";

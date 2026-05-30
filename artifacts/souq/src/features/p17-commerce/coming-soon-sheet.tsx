@@ -10,6 +10,7 @@ import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import {
   P17_SHEET_CARD,
+  P17_SHEET_CHIP,
   P17_SHEET_OK_BTN,
   P17_SHEET_OVERLAY,
   P17_SHEET_PANEL,
@@ -49,15 +50,11 @@ export function CommerceComingSoonSheet({ open, onOpenChange }: CommerceComingSo
         <div className="border-b border-primary/25 px-4 pb-2.5 pt-3 text-center" dir="rtl">
           <div
             className={cn(
-              P17_SHEET_CARD,
-              "relative mx-auto mb-2 flex h-14 w-14 items-center justify-center border-primary/50 bg-zinc-950/90 shadow-[0_0_24px_-8px_hsl(var(--primary)/0.42)]",
+              P17_SHEET_CHIP,
+              "mx-auto mb-2 h-14 w-14 border-primary/40",
             )}
           >
             <Rocket className="h-7 w-7 text-primary" strokeWidth={2.25} aria-hidden />
-            <span
-              className="pointer-events-none absolute -inset-1 rounded-2xl bg-primary/10 blur-md"
-              aria-hidden
-            />
           </div>
           <SheetTitle className="text-base font-bold text-primary">
             {t("p17.commerce.coming_soon.sheet_title")}
@@ -75,7 +72,7 @@ export function CommerceComingSoonSheet({ open, onOpenChange }: CommerceComingSo
             <div className="grid grid-cols-4 gap-1">
               {ROADMAP_STEPS.map(({ key, icon: Icon }, index) => (
                 <div key={key} className="flex min-w-0 flex-col items-center gap-1 text-center">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/40 bg-zinc-950/90 shadow-[0_0_12px_-8px_hsl(var(--primary)/0.28)] ring-1 ring-primary/10">
+                  <div className={cn(P17_SHEET_CHIP, "h-9 w-9")}>
                     <Icon className="h-4 w-4 text-primary" strokeWidth={2.25} aria-hidden />
                   </div>
                   <span className="line-clamp-2 text-[10px] font-medium leading-tight text-foreground/90">
@@ -104,7 +101,7 @@ export function CommerceComingSoonSheet({ open, onOpenChange }: CommerceComingSo
         </div>
 
         <div
-          className="mt-auto border-t border-primary/25 bg-[#0A0A0A]/95 px-4 py-3.5 pb-[max(1rem,env(safe-area-inset-bottom))]"
+          className="mt-auto border-t border-primary/25 bg-[#0A0A0A] px-4 py-3.5 pb-[max(1rem,env(safe-area-inset-bottom))]"
           dir="rtl"
         >
           <button type="button" className={P17_SHEET_OK_BTN} onClick={() => onOpenChange(false)}>

@@ -6,6 +6,7 @@ import { t } from "@/i18n";
 import { readPromoteAdPreview } from "@/lib/promote-ad-preview";
 import { cn } from "@/lib/utils";
 import { PromoteAdMarketingBody } from "@/components/promote-ad-marketing-body";
+import { AdCardNoImagePlaceholder } from "@/components/ad-card-no-image-placeholder";
 import {
   SETTINGS_BACK_BUTTON,
   SETTINGS_CARD,
@@ -78,16 +79,14 @@ export default function PromoteAdPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <div
               className={cn(
-                "relative h-20 w-full shrink-0 overflow-hidden rounded-2xl border border-primary/35 bg-zinc-900/80 sm:h-20 sm:w-28",
-                "shadow-[0_0_24px_-12px_hsl(var(--primary)/0.35)]",
+                "relative h-20 w-full shrink-0 overflow-hidden rounded-2xl border border-primary/32 bg-[#0A0A0A] sm:h-20 sm:w-28",
+                "ring-1 ring-primary/10",
               )}
             >
               {imageUrl ? (
                 <img src={imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
               ) : (
-                <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
-                  {t("ad-card.no_image")}
-                </div>
+                <AdCardNoImagePlaceholder plainBackdrop compact className="rounded-2xl" />
               )}
             </div>
             <div className={cn("min-w-0 flex-1 space-y-1.5", textStart)}>

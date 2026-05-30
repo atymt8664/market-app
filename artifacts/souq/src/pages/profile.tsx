@@ -35,6 +35,7 @@ import { useUpload } from "@workspace/object-storage-web";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
+import { AdCardNoImagePlaceholder } from "@/components/ad-card-no-image-placeholder";
 import { AvatarCircle } from "@/components/avatar-circle";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
@@ -926,7 +927,7 @@ function ProfileDesktopAdCard({
       dir="rtl"
     >
       <button type="button" onClick={onOpen} className="w-full text-right">
-        <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-muted">
+        <div className="relative w-full aspect-[16/10] overflow-hidden rounded-xl border border-primary/25 bg-[#0A0A0A]">
           <ProfileAdStatusRibbon status={ad.status} />
           {ad.images?.[0] ? (
             <img
@@ -937,9 +938,7 @@ function ProfileDesktopAdCard({
               decoding="async"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-              {t("ad-card.no_image")}
-            </div>
+            <AdCardNoImagePlaceholder plainBackdrop className="rounded-xl" />
           )}
         </div>
 
@@ -1093,7 +1092,7 @@ function ProfileMobileAdCard({
       <div className="flex items-start gap-3 w-full">
         <div
           className={cn(
-            "relative h-[112px] w-[112px] shrink-0 overflow-hidden rounded-xl bg-muted self-start",
+            "relative h-[112px] w-[112px] shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-[#0A0A0A] self-start",
             isRtl ? "order-1" : "order-2",
           )}
         >
@@ -1107,12 +1106,7 @@ function ProfileMobileAdCard({
               decoding="async"
             />
           ) : (
-            <div
-              className="w-full h-full flex items-center justify-center text-[11px] text-muted-foreground"
-              dir={direction}
-            >
-              {t("ad-card.no_image")}
-            </div>
+            <AdCardNoImagePlaceholder plainBackdrop compact className="rounded-xl" />
           )}
         </div>
 

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { AdNoImagePlaceholderBlock } from "@/components/ad-card-no-image-placeholder";
 import { Button } from "@/components/ui/button";
 import { t } from "@/i18n";
 
@@ -126,9 +127,7 @@ export function CreateAdImageGallery({
   return (
     <>
       {count === 0 && readOnly && (
-        <div className="flex min-h-[180px] w-full items-center justify-center rounded-2xl border border-dashed border-border/80 bg-muted/20 px-4 text-center text-sm text-muted-foreground">
-          لا توجد صور
-        </div>
+        <AdNoImagePlaceholderBlock className="min-h-[180px] w-full" />
       )}
       {count === 0 && !readOnly && (
         <button

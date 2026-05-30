@@ -4,6 +4,7 @@
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { AdNoImagePlaceholderBlock } from "@/components/ad-card-no-image-placeholder";
 import { cn } from "@/lib/utils";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
@@ -308,9 +309,7 @@ function AdImagesPublicInner({ images, title }: AdImagesPublicProps) {
 
 function motionlessEmpty() {
   return (
-    <div className="flex aspect-[4/3] max-h-[380px] w-full items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted/60 text-xs text-muted-foreground sm:aspect-[16/10] sm:text-sm">
-      {t("ad_images_public.no_images")}
-    </div>
+    <AdNoImagePlaceholderBlock className="aspect-[4/3] max-h-[380px] w-full sm:aspect-[16/10]" />
   );
 }
 

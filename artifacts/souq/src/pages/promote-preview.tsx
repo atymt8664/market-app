@@ -5,6 +5,7 @@ import { useLocale } from "@/hooks/use-locale";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { PromoteAdMarketingBody } from "@/components/promote-ad-marketing-body";
+import { AdCardNoImagePlaceholder } from "@/components/ad-card-no-image-placeholder";
 import {
   SETTINGS_BACK_BUTTON,
   SETTINGS_CARD,
@@ -62,13 +63,11 @@ export default function PromotePreviewPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <div
               className={cn(
-                "relative h-20 w-full shrink-0 overflow-hidden rounded-2xl border border-primary/35 bg-zinc-900/80 sm:h-20 sm:w-28",
-                "shadow-[0_0_24px_-12px_hsl(var(--primary)/0.35)]",
+                "relative h-20 w-full shrink-0 overflow-hidden rounded-2xl border border-primary/32 bg-[#0A0A0A] sm:h-20 sm:w-28",
+                "ring-1 ring-primary/10",
               )}
             >
-              <div className="flex h-full items-center justify-center px-2 text-center text-[11px] font-medium leading-snug text-zinc-500">
-                {t("promote_preview.no_image_placeholder")}
-              </div>
+              <AdCardNoImagePlaceholder plainBackdrop compact className="rounded-2xl" />
             </div>
             <div className={cn("min-w-0 flex-1 space-y-1.5", textStart)}>
               <p className="text-base font-bold leading-snug text-foreground line-clamp-2">{t("promote_preview.demo_title")}</p>

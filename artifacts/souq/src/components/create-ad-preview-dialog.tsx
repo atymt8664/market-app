@@ -1,4 +1,5 @@
 import { MapPin, Eye, ThumbsUp, Star, X } from "lucide-react";
+import { AdNoImagePlaceholderBlock } from "@/components/ad-card-no-image-placeholder";
 import {
   Dialog,
   DialogClose,
@@ -103,7 +104,7 @@ export function CreateAdPreviewDialog({
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="px-4 pt-2">
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-primary/25 bg-zinc-950/60">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-primary/32 bg-[#0A0A0A] ring-1 ring-primary/10">
               {mainImage ? (
                 <img
                   src={mainImage}
@@ -111,9 +112,7 @@ export function CreateAdPreviewDialog({
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm text-zinc-500">
-                  {t("ad_images_public.no_images")}
-                </div>
+                <AdNoImagePlaceholderBlock className="h-full w-full rounded-2xl border-0 ring-0" />
               )}
               {previewImages.length > 1 && (
                 <span className="absolute end-3 top-3 rounded-md bg-black/60 px-2 py-1 text-xs text-white">

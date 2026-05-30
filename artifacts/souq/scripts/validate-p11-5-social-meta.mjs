@@ -38,7 +38,10 @@ assert(indexHtml.includes('name="twitter:image"'), "index.html: missing twitter:
 assert(indexHtml.includes('type="application/ld+json"'), "index.html: missing JSON-LD");
 assert(indexHtml.includes('"@type": "Organization"'), "index.html: missing Organization schema");
 assert(indexHtml.includes('"@type": "WebSite"'), "index.html: missing WebSite schema");
+assert(indexHtml.includes('"@type": "WebApplication"'), "index.html: missing WebApplication schema");
+assert(indexHtml.includes('id="p3-structured-data"'), "index.html: JSON-LD script id p3-structured-data");
 assert(indexHtml.includes('"name": "Souq Arab EU"'), "index.html: missing brand in JSON-LD");
+assert(indexHtml.includes('"@type": "SearchAction"'), "index.html: missing SearchAction in JSON-LD");
 
 const socialTs = readFileSync(join(root, "src/lib/social-meta-foundation.ts"), "utf8");
 assert(socialTs.includes("applyPageSocialMeta"), "social-meta-foundation.ts: applyPageSocialMeta");
@@ -47,6 +50,7 @@ assert(socialTs.includes("twitter:card"), "social-meta-foundation.ts: Twitter ca
 const structuredTs = readFileSync(join(root, "src/lib/structured-data-foundation.ts"), "utf8");
 assert(structuredTs.includes("Organization"), "structured-data-foundation.ts: Organization");
 assert(structuredTs.includes("WebSite"), "structured-data-foundation.ts: WebSite");
+assert(structuredTs.includes("WebApplication"), "structured-data-foundation.ts: WebApplication");
 assert(!structuredTs.includes("sameAs"), "structured-data-foundation.ts: no unverified sameAs");
 
 const orchestrator = readFileSync(join(root, "src/lib/public-page-meta.ts"), "utf8");

@@ -26,7 +26,7 @@
     <meta name="twitter:image" content="https://www.souq-arab.com/brand/og-share-home.jpg" />
     <meta name="twitter:image:alt" content="Souq Arab EU — سوق العرب EU" />
     <title>Souq Arab EU | سوق العرب EU</title>
-    <script type="application/ld+json" id="p11-structured-data">
+    <script type="application/ld+json" id="p3-structured-data">
       {
         "@context": "https://schema.org",
         "@graph": [
@@ -36,9 +36,13 @@
             "name": "Souq Arab EU",
             "alternateName": ["سوق العرب EU"],
             "url": "https://www.souq-arab.com/",
+            "description": "منصة عربية متكاملة للبيع والشراء والخدمات والتواصل بين الأفراد، تجمع بين سهولة الاستخدام والأمان والسرعة، وتوفر بيئة حديثة لنشر الإعلانات واكتشاف الفرص وبناء الثقة والتفاعل داخل مجتمع عربي متنامٍ.",
             "logo": {
               "@type": "ImageObject",
-              "url": "https://www.souq-arab.com/brand/logo-master.png"
+              "@id": "https://www.souq-arab.com/#logo",
+              "url": "https://www.souq-arab.com/brand/logo-master.png",
+              "contentUrl": "https://www.souq-arab.com/brand/logo-master.png",
+              "caption": "Souq Arab EU"
             }
           },
           {
@@ -47,7 +51,30 @@
             "url": "https://www.souq-arab.com/",
             "name": "Souq Arab EU",
             "alternateName": "سوق العرب EU",
+            "description": "منصة عربية متكاملة للبيع والشراء والخدمات والتواصل بين الأفراد، تجمع بين سهولة الاستخدام والأمان والسرعة، وتوفر بيئة حديثة لنشر الإعلانات واكتشاف الفرص وبناء الثقة والتفاعل داخل مجتمع عربي متنامٍ.",
             "publisher": { "@id": "https://www.souq-arab.com/#organization" },
+            "inLanguage": ["ar", "en", "de"],
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://www.souq-arab.com/search?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://www.souq-arab.com/#webapp",
+            "name": "Souq Arab EU",
+            "alternateName": "سوق العرب EU",
+            "url": "https://www.souq-arab.com/",
+            "description": "منصة عربية متكاملة للبيع والشراء والخدمات والتواصل بين الأفراد، تجمع بين سهولة الاستخدام والأمان والسرعة، وتوفر بيئة حديثة لنشر الإعلانات واكتشاف الفرص وبناء الثقة والتفاعل داخل مجتمع عربي متنامٍ.",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Any",
+            "browserRequirements": "Requires JavaScript. Requires HTML5.",
+            "publisher": { "@id": "https://www.souq-arab.com/#organization" },
+            "isPartOf": { "@id": "https://www.souq-arab.com/#website" },
             "inLanguage": ["ar", "en", "de"]
           }
         ]

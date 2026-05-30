@@ -10,7 +10,8 @@
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.ts",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
-    "test:pool-config": "node ./src/pool-config.test.mjs"
+    "test:pool-config": "node ./src/pool-config.test.mjs",
+    "test:p17-schema": "node ./src/p17/schema-validation.test.mjs"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",

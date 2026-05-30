@@ -21,6 +21,7 @@ import adminVerificationWorkflowRouter from "./admin-verification-workflow";
 import adminOperationsRouter from "./admin-operations";
 import adminMonitoringRouter from "./admin-monitoring";
 import adminStaffRouter from "./admin-staff";
+import ordersRouter from "./orders";
 
 const router: IRouter = Router();
 
@@ -46,4 +47,5 @@ router.use(supportRouter);
 router.use(notificationsRouter);
 router.use(pushRouter);
 router.use(accountRouter);
+router.use(ordersRouter);
 export default router;

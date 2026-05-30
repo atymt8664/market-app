@@ -36,3 +36,4 @@ export const db = drizzle(pool, { schema });
 export * from "./schema";
 export { citiesTable } from "./schema/cities";
 export { resolvePgPoolConfig, type PgPoolConfig } from "./pool-config";
+export * from "./p17";

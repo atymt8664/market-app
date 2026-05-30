@@ -79,6 +79,10 @@ const NotificationsPage = lazy(() => import("@/pages/notifications"));
 const Login = lazy(() => import("@/pages/login"));
 const Signup = lazy(() => import("@/pages/signup"));
 const GuestWelcome = lazy(() => import("@/pages/guest-welcome"));
+const OrdersPage = lazy(() => import("@/pages/orders"));
+const SellerOrdersPage = lazy(() => import("@/pages/seller-orders"));
+const OrderDetailPage = lazy(() => import("@/pages/order-detail"));
+const SellerOrderDetailPage = lazy(() => import("@/pages/seller-order-detail"));
 
 function SeoHomeBootstrap() {
   const { locale } = useLocale();
@@ -152,6 +156,10 @@ function Router() {
           <Route path="/professional-seller">{() => <Redirect to="/professional-seller/personal" />}</Route>
           <Route path="/seller-trust" component={SellerTrustPage} />
           <Route path="/profile" component={Profile} />
+          <Route path="/orders/:id" component={OrderDetailPage} />
+          <Route path="/orders" component={OrdersPage} />
+          <Route path="/seller-orders/:id" component={SellerOrderDetailPage} />
+          <Route path="/seller-orders" component={SellerOrdersPage} />
           <Route path="/favorites" component={Favorites} />
           <Route path="/stats" component={Stats} />
           <Route path="/messages" component={Messages} />

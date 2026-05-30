@@ -15,6 +15,7 @@
     "structured:p4:validate": "node scripts/validate-p4-1-ad-structured-data.mjs",
     "gsc:p13:validate": "node scripts/validate-p13-1-search-console.mjs",
     "gsc:p13:prod": "node scripts/validate-p13-1-prod.mjs",
+    "p17:prod": "node scripts/validate-p17-recovery-prod.mjs",
     "og:p11:test": "node scripts/test-og-crawler-html.mjs",
     "locations:generate": "node scripts/generate-marketplace-locations-data.mjs",
     "locations:compare-csc": "node scripts/compare-marketplace-locations-to-csc.mjs",

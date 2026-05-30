@@ -4,7 +4,7 @@
 
 | System | Status |
 |--------|--------|
-| **P0 → P16 (P-Domain Architecture)** | ✅ Official |
+| **P0 → P17 (P-Domain Architecture)** | ✅ Official |
 | **Phase 1 / Phase 2 / … as independent roadmap** | ❌ Deprecated for planning — legacy paths mapped below |
 
 Every file, script, feature, and infra folder belongs to **exactly one** P-domain.
@@ -13,7 +13,7 @@ Every file, script, feature, and infra folder belongs to **exactly one** P-domai
 
 ---
 
-## P-Domain map (P0 → P16)
+## P-Domain map (P0 → P17)
 
 | Code | Domain | Doc | Status |
 |------|--------|-----|--------|
@@ -34,6 +34,7 @@ Every file, script, feature, and infra folder belongs to **exactly one** P-domai
 | P14 | Search & ranking | [P14-search-ranking.md](./P14-search-ranking.md) | Active (FTS) / ranking evolving |
 | P15 | Background jobs & workers | [P15-background-jobs.md](./P15-background-jobs.md) | Planned |
 | P16 | Scale architecture | [P16-scale-architecture.md](./P16-scale-architecture.md) | Planned (spike scripts exist) |
+| P17 | Commerce, orders & fulfillment | [P17-commerce-orders.md](./P17-commerce-orders.md) | P17-0..4 recovered on main (spec + mock API + UI); P17-5+ not started |
 
 ---
 
@@ -54,6 +55,7 @@ Use this table first in incidents and planning.
 | Admin dashboard, admin users/ads/cities, support inbox, admin 2FA UI | **P8** |
 | Slow images, Lighthouse, lazy load, query stale times, preload | **P9** |
 | Promote ad, seller plans, billing (future payments) | **P10** |
+| Buy Now, checkout, orders, fulfillment, order timeline | **P17** ([charter](./P17-commerce-orders.md); P17-0..4 on main) |
 | manifest, service worker, TWA, installability | **P11** |
 | AI improve description / suggest price | **P12** |
 | Sentry, metrics, healthz, alerting, VPS monitor snapshots | **P13** |

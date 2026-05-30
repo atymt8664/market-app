@@ -9,6 +9,12 @@ export const adCardNoImageIconBoxClassName = cn(
   "shadow-[0_0_22px_-10px_hsl(var(--primary)/0.42)] ring-1 ring-primary/18",
 );
 
+/** Home feed — icon box without outer glow shadow. */
+export const adCardNoImageIconBoxSubtleClassName = cn(
+  "flex items-center justify-center border border-primary/28 bg-primary/[0.05]",
+  "shadow-none ring-1 ring-primary/10",
+);
+
 export const adCardNoImageIconClassName = "text-primary/75";
 
 /** Standalone no-image block — ad detail hero, previews, read-only galleries. */
@@ -58,11 +64,15 @@ export const AdCardNoImagePlaceholder = memo(function AdCardNoImagePlaceholder({
   plainBackdrop,
   /** Smaller icon + label for profile list thumbnails. */
   compact,
+  /** Home baseline: no icon-box glow shadow. */
+  subtleIcon,
 }: {
   className?: string;
   plainBackdrop?: boolean;
   compact?: boolean;
+  subtleIcon?: boolean;
 }) {
+  const iconBoxClass = subtleIcon ? adCardNoImageIconBoxSubtleClassName : adCardNoImageIconBoxClassName;
   return (
     <div
       className={cn(
@@ -86,7 +96,7 @@ export const AdCardNoImagePlaceholder = memo(function AdCardNoImagePlaceholder({
       <div className={cn("relative flex flex-col items-center gap-2 px-2", compact && "gap-1 px-1")}>
         <div
           className={cn(
-            adCardNoImageIconBoxClassName,
+            iconBoxClass,
             compact ? "h-8 w-8 rounded-xl" : "h-11 w-11 rounded-2xl",
           )}
           aria-hidden

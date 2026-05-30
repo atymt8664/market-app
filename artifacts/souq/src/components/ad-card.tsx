@@ -46,9 +46,9 @@ const PRICE_BOX_COMPACT = "min-h-[2rem] shrink-0";
 const FAVORITES_CARD_SHELL =
   "rounded-2xl border border-primary/40 bg-zinc-950/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[transform,border-color,box-shadow] duration-200 hover:border-primary/45 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.22)]";
 
-/** Home feed — Dark Premium black shell (matches favorites/create-ad identity). */
+/** Home feed — #0A0A0A shell; thin lime rim, no card glow. */
 const HOME_FEED_CARD_SHELL =
-  "rounded-xl border border-primary/35 bg-[#0A0A0A] ring-1 ring-primary/10 shadow-[0_0_18px_-14px_hsl(var(--primary)/0.12)] transition-none";
+  "rounded-xl border border-primary/30 bg-[#0A0A0A] ring-1 ring-primary/8 shadow-none transition-none";
 /** Location + time */
 const META_BOX = "h-[1.25rem] min-h-[1.25rem] max-h-[1.25rem] shrink-0";
 
@@ -337,7 +337,7 @@ function AdCardInner({
               onError={handleImageError}
             />
           ) : (
-            <AdCardNoImagePlaceholder plainBackdrop={feedCompact} />
+            <AdCardNoImagePlaceholder plainBackdrop={feedCompact} subtleIcon={feedCompact} />
           )}
           <button
             type="button"

@@ -72,19 +72,19 @@ const recommendedGridClassName = cn(
   homeAdCardTone,
 );
 
-/** Section titles — border/chip only; no lime shadow glow. */
+/** Section titles — #0A0A0A chip; thin lime rim only. */
 const homeSectionHeading = cn(
-  "inline-flex max-w-full items-center rounded-2xl border border-primary/30 bg-zinc-950/55 px-2 py-px",
+  "inline-flex max-w-full items-center rounded-2xl border border-primary/28 bg-[#0A0A0A] px-2 py-px",
   "text-[15px] font-semibold leading-tight tracking-tight text-foreground md:text-base",
-  "ring-1 ring-primary/10",
+  "ring-1 ring-primary/8",
 );
 
 /** Unified home category tile — fixed width for strip alignment. */
 const HOME_CATEGORY_TILE_W = "w-16";
 
-/** Category icon shell — same border/bg/ring as no-image inner box; no outer glow shadow. */
+/** Category icon shell — lime accent only; no outer glow. */
 const homeCategoryIconShell = cn(
-  "flex items-center justify-center border border-primary/32 bg-primary/[0.07] ring-1 ring-primary/18",
+  "flex items-center justify-center border border-primary/28 bg-primary/[0.05] ring-1 ring-primary/10",
   "relative h-10 w-10 shrink-0 rounded-xl transition-none",
 );
 
@@ -134,10 +134,8 @@ function homeCategoriesArrowFade(isRtl: boolean) {
   return cn(
     "pointer-events-none absolute inset-y-0 inset-x-0",
     isRtl
-      ? "bg-gradient-to-r from-black/[0.10] via-black/[0.04] to-transparent"
-      : "bg-gradient-to-l from-black/[0.10] via-black/[0.04] to-transparent",
-    "backdrop-blur-[3px] backdrop-saturate-150",
-    "[-webkit-backdrop-filter:blur(3px)_saturate(1.5)]",
+      ? "bg-gradient-to-r from-[#0A0A0A]/80 via-[#0A0A0A]/30 to-transparent"
+      : "bg-gradient-to-l from-[#0A0A0A]/80 via-[#0A0A0A]/30 to-transparent",
   );
 }
 
@@ -259,7 +257,7 @@ const HomeCategoriesStrip = memo(function HomeCategoriesStrip({
   );
 });
 
-/** Header divider — static line only; no radial/shadow glow. */
+/** Header divider — static line; minimal lime accent. */
 const HomeStickyHeaderDivider = memo(function HomeStickyHeaderDivider({
   isRtl,
 }: {
@@ -267,29 +265,25 @@ const HomeStickyHeaderDivider = memo(function HomeStickyHeaderDivider({
 }) {
   return (
     <div role="separator" aria-hidden className="relative pb-1.5 pt-1 max-md:pb-1">
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-[#0A0A0A]/45 to-transparent md:h-4"
-        aria-hidden
-      />
       <div className="relative flex items-center gap-2 md:gap-2.5">
         <div
           className={cn(
             "h-px min-w-0 flex-1",
             isRtl
-              ? "bg-gradient-to-l from-transparent via-primary/28 to-primary/12"
-              : "bg-gradient-to-r from-transparent via-primary/28 to-primary/12",
+              ? "bg-gradient-to-l from-transparent via-primary/16 to-primary/8"
+              : "bg-gradient-to-r from-transparent via-primary/16 to-primary/8",
           )}
         />
         <div
-          className="h-1 w-1 shrink-0 rounded-full bg-primary/55 ring-1 ring-primary/25"
+          className="h-1 w-1 shrink-0 rounded-full bg-primary/40 ring-1 ring-primary/15"
           aria-hidden
         />
         <div
           className={cn(
             "h-px min-w-0 flex-1",
             isRtl
-              ? "bg-gradient-to-r from-transparent via-primary/28 to-primary/12"
-              : "bg-gradient-to-l from-transparent via-primary/28 to-primary/12",
+              ? "bg-gradient-to-r from-transparent via-primary/16 to-primary/8"
+              : "bg-gradient-to-l from-transparent via-primary/16 to-primary/8",
           )}
         />
       </div>
@@ -322,7 +316,7 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
   return (
     <header
       ref={headerRef}
-      className="fixed inset-x-0 top-0 z-40 bg-[#0A0A0A]/96 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)] backdrop-blur-[2px]"
+      className="fixed inset-x-0 top-0 z-40 border-b border-primary/12 bg-[#0A0A0A] shadow-[0_1px_0_rgba(255,255,255,0.03)]"
       dir={isRtl ? "rtl" : "ltr"}
     >
       <div className={HOME_PAGE_INSET}>
@@ -333,6 +327,7 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
             value={searchQuery}
             onChange={onSearchQueryChange}
             onSubmit={onSearchSubmit}
+            className="border-primary/28 bg-[#0A0A0A] ring-primary/8 focus-within:border-primary/38 focus-within:ring-primary/12"
           />
           {reserveBellSlot ? (
             <NotificationBell className="h-8 w-8 shrink-0 [&_svg]:h-4 [&_svg]:w-4" />

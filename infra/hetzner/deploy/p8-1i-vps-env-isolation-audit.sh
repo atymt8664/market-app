@@ -35,25 +35,19 @@ else
 fi
 
 # Dedicated env files
-for label envfile ref expected in \
-  "staging file" "${BASE}/config/api.env.staging" "$STAGING_REF" "STAGING" \
-  "production file" "${BASE}/config/api.env.production" "$PROD_REF" "PRODUCTION"; do
-  if [[ -f "$envfile" ]]; then
-    if ref_in_file "$envfile" "$ref"; then
-      ok "${label} has ${expected} ref"
-    else
-      bad "${label} missing ${expected} ref"
-    fi
-    if [[ "$expected" == "STAGING" ]] && ref_in_file "$envfile" "$PROD_REF"; then
-      bad "${label} leaks PRODUCTION ref"
-    fi
-    if [[ "$expected" == "PRODUCTION" ]] && ref_in_file "$envfile" "$STAGING_REF"; then
-      bad "${label} leaks STAGING ref"
-    fi
-  else
-    bad "${label} missing (${envfile})"
-  fi
-done
+if [[ -f "${BASE}/config/api.env.staging" ]]; then
+  ref_in_file "${BASE}/config/api.env.staging" "$STAGING_REF" && ok "staging file has STAGING ref" || bad "staging file missing STAGING ref"
+  ref_in_file "${BASE}/config/api.env.staging" "$PROD_REF" && bad "staging file leaks PRODUCTION ref" || true
+else
+  bad "staging file missing"
+fi
+
+if [[ -f "${BASE}/config/api.env.production" ]]; then
+  ref_in_file "${BASE}/config/api.env.production" "$PROD_REF" && ok "production file has PRODUCTION ref" || bad "production file missing PRODUCTION ref"
+  ref_in_file "${BASE}/config/api.env.production" "$STAGING_REF" && bad "production file leaks STAGING ref" || ok "production file clean of STAGING ref"
+else
+  bad "production file missing"
+fi
 
 # Nginx upstream (public traffic path)
 if grep -q '127.0.0.1:3002' /etc/nginx/sites-enabled/souq-api-ready.conf 2>/dev/null; then

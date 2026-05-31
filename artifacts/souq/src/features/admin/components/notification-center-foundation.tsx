@@ -1,4 +1,5 @@
 import { Bell } from "lucide-react";
+import { dashboardContractAttrs } from "@/features/admin/dashboard-contracts";
 import { CARD_SHELL } from "@/features/admin/admin-interaction-classes";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,11 @@ const CHANNEL_KEYS = [
 /** Architecture contract only — no backend feed yet (P8C / P15). */
 export function NotificationCenterFoundation() {
   return (
-    <section className={cn(CARD_SHELL, "p-4")} aria-labelledby="admin-notifications-foundation-title">
+    <section
+      className={cn(CARD_SHELL, "p-4")}
+      aria-labelledby="admin-notifications-foundation-title"
+      {...dashboardContractAttrs("monitoring.notification_feed")}
+    >
       <div className="mb-4 flex flex-wrap items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/45 bg-primary/12 text-primary">
           <Bell className="h-5 w-5" aria-hidden />

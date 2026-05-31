@@ -39,6 +39,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api-url";
 import { AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
 import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
+import { adminIntlLocale, formatAdminDateTime } from "@/features/admin/admin-locale";
+import { getLocale, t } from "@/i18n";
 import { SETTINGS_SECTION_TITLE } from "@/components/settings-shell";
 import {
   AlertDialog,

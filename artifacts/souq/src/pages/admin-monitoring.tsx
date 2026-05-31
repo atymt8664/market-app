@@ -11,6 +11,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { adminLogout } from "@/features/admin/api";
+import { dashboardContractAttrs } from "@/features/admin/dashboard-contracts";
 import { CARD_SHELL, SUB_CARD } from "@/features/admin/admin-interaction-classes";
 import {
   AdminErrorState,
@@ -60,11 +61,13 @@ function formatNumber(value: number | null | undefined): string {
 }
 
 function MetricCard({
+  contractId,
   label,
   value,
   sub,
   tone,
 }: {
+  contractId?: string;
   label: string;
   value: string;
   sub?: string;
@@ -76,8 +79,9 @@ function MetricCard({
       : tone === "amber"
         ? "border-amber-500/35 bg-amber-950/20"
         : "border-primary/30 bg-zinc-950/60";
+  const contractProps = contractId ? dashboardContractAttrs(contractId) : {};
   return (
-    <div className={cn(SUB_CARD, toneClass, "p-4 text-right")}>
+    <div className={cn(SUB_CARD, toneClass, "p-4 text-right")} {...contractProps}>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
       {sub ? <p className="mt-1 text-xs text-muted-foreground">{sub}</p> : null}
@@ -134,7 +138,7 @@ function AlertCard({ alert }: { alert: MonitoringAlert }) {
 }
 
 export default function AdminMonitoringPage() {
-  const { dir, formatNumber, formatDateTime } = useAdminLocale();
+  const { dir } = useAdminLocale();
   const [, navigate] = useLocation();
   const meQuery = useRequireAdmin();
   const access = useAdminAccess();
@@ -244,6 +248,7 @@ export default function AdminMonitoringPage() {
                   tone={data.founder.downServices.length > 0 ? "red" : "default"}
                 />
                 <MetricCard
+                  contractId="monitoring.founder.sla_exceeded"
                   label={t("p8.admin.monitoring.founder_sla_exceeded")}
                   value={formatNumber(data.founder.slaAlerts.totalSlaExceeded)}
                   tone={data.founder.slaAlerts.totalSlaExceeded > 0 ? "red" : "default"}
@@ -291,6 +296,7 @@ export default function AdminMonitoringPage() {
               </h2>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 <MetricCard
+                  contractId="monitoring.server.cpu"
                   label={t("p8.admin.monitoring.metric_cpu_cores")}
                   value={formatNumber(data.serverMetrics.cpu.cores)}
                   sub={`Load 1m: ${data.serverMetrics.cpu.loadAvg1m?.toFixed(2) ?? t("p8.admin.common.dash")}`}
@@ -347,6 +353,7 @@ export default function AdminMonitoringPage() {
                   value={data.apiMetrics.latencyMs.p50Ms != null ? `${data.apiMetrics.latencyMs.p50Ms}ms` : t("p8.admin.common.dash")}
                 />
                 <MetricCard
+                  contractId="monitoring.api.latency_p95"
                   label={t("p8.admin.monitoring.metric_latency_p95")}
                   value={data.apiMetrics.latencyMs.p95Ms != null ? `${data.apiMetrics.latencyMs.p95Ms}ms` : t("p8.admin.common.dash")}
                 />
@@ -428,7 +435,11 @@ export default function AdminMonitoringPage() {
                 {t("p8.admin.monitoring.ws_metrics")}
               </h2>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <MetricCard label={t("p8.admin.monitoring.metric_ws_online")} value={formatNumber(data.websocketMetrics.onlineUsers)} />
+                <MetricCard
+                  contractId="monitoring.ws.online_users"
+                  label={t("p8.admin.monitoring.metric_ws_online")}
+                  value={formatNumber(data.websocketMetrics.onlineUsers)}
+                />
                 <MetricCard label={t("p8.admin.monitoring.metric_ws_connections")} value={formatNumber(data.websocketMetrics.socketConnections)} />
                 <MetricCard
                   label={t("p8.admin.monitoring.metric_ws_disconnects")}

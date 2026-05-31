@@ -36,6 +36,7 @@ import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { getLocale, t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { AUTH_ACCENT_OUTLINE_BTN, AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
+import { dashboardContractAttrs } from "../dashboard-contracts";
 import { useAdminActiveAppUsersCount } from "../hooks";
 import { useAdminAccess } from "../access";
 import type {
@@ -71,6 +72,7 @@ function formatNumber(value: number): string {
 }
 
 function NocMetricCard({
+  contractId,
   label,
   value,
   sublabel,
@@ -79,6 +81,7 @@ function NocMetricCard({
   onClick,
   className,
 }: {
+  contractId?: string;
   label: string;
   value: ReactNode;
   sublabel?: string;
@@ -121,15 +124,21 @@ function NocMetricCard({
 
   const cardClass = cn(ADMIN_STAT_CARD_BTN, "h-full min-h-[8.5rem]", toneClass, className);
 
+  const contractAttrs = contractId ? dashboardContractAttrs(contractId) : {};
+
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className={cardClass}>
+      <button type="button" onClick={onClick} className={cardClass} {...contractAttrs}>
         {body}
       </button>
     );
   }
 
-  return <div className={cn(cardClass, "cursor-default")}>{body}</div>;
+  return (
+    <div className={cn(cardClass, "cursor-default")} {...contractAttrs}>
+      {body}
+    </div>
+  );
 }
 
 function StatusPill({ ok, label }: { ok: boolean; label: string }) {
@@ -511,15 +520,27 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
               <p className="text-sm font-medium text-foreground">{t("p8.admin.executive.today_title")}</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {[
-                  { key: "users", label: t("p8.admin.executive.today_new_users"), value: executiveHeader.today.newUsers },
-                  { key: "ads", label: t("p8.admin.executive.today_new_ads"), value: executiveHeader.today.newAds },
+                  {
+                    key: "users",
+                    contractId: "noc.executive.today.new_users",
+                    label: t("p8.admin.executive.today_new_users"),
+                    value: executiveHeader.today.newUsers,
+                  },
+                  {
+                    key: "ads",
+                    contractId: "noc.executive.today.new_ads",
+                    label: t("p8.admin.executive.today_new_ads"),
+                    value: executiveHeader.today.newAds,
+                  },
                   {
                     key: "reports",
+                    contractId: "noc.executive.today.new_reports",
                     label: t("p8.admin.executive.today_new_reports"),
                     value: executiveHeader.today.newReports,
                   },
                   {
                     key: "support",
+                    contractId: "noc.executive.today.new_support",
                     label: t("p8.admin.executive.today_new_support"),
                     value: executiveHeader.today.newSupport,
                   },
@@ -540,6 +561,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
                         BTN_FIX,
                         "rounded-xl border border-primary/25 bg-zinc-900/55 px-3 py-2.5 text-right ring-1 ring-primary/8 hover:border-primary/45",
                       )}
+                      {...dashboardContractAttrs(stat.contractId)}
                     >
                       {inner}
                     </button>
@@ -547,6 +569,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
                     <div
                       key={stat.key}
                       className="rounded-xl border border-primary/25 bg-zinc-900/55 px-3 py-2.5 text-right ring-1 ring-primary/8"
+                      {...dashboardContractAttrs(stat.contractId)}
                     >
                       {inner}
                     </div>
@@ -562,6 +585,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
                   ? "border-amber-500/40 bg-amber-950/25 text-amber-100"
                   : "border-emerald-500/35 bg-emerald-950/20 text-emerald-100",
               )}
+              {...dashboardContractAttrs("noc.executive.intervention_count")}
             >
               {executiveHeader.interventionCount > 0
                 ? t("p8.admin.executive.intervention", { count: formatNumber(executiveHeader.interventionCount) })
@@ -595,6 +619,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <NocMetricCard
+            contractId="noc.user.online_now"
             label={t("p8.admin.noc.metric.online_now")}
             value={formatNumber(onlineNow)}
             sublabel={t("p8.admin.noc.metric.online_now_hint")}
@@ -602,18 +627,21 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
             tone="live"
           />
           <NocMetricCard
+            contractId="noc.user.active_5m"
             label={t("p8.admin.noc.metric.active_5m")}
             value={formatNumber(userIntelligence.activeLast5Minutes)}
             sublabel={t("p8.admin.noc.metric.active_5m_hint")}
             icon={<Clock3 className="h-4 w-4" aria-hidden />}
           />
           <NocMetricCard
+            contractId="noc.user.active_today"
             label={t("p8.admin.noc.metric.active_today")}
             value={formatNumber(userIntelligence.activeToday)}
             sublabel={t("p8.admin.noc.metric.active_today_hint")}
             icon={<Users className="h-4 w-4" aria-hidden />}
           />
           <NocMetricCard
+            contractId="noc.user.new_users_today"
             label={t("p8.admin.noc.metric.new_users_today")}
             value={formatNumber(userIntelligence.newUsersToday)}
             sublabel={t("p8.admin.noc.metric.new_users_today_hint")}
@@ -621,6 +649,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
             onClick={canUsers ? () => navigate("/admin/users") : undefined}
           />
           <NocMetricCard
+            contractId="noc.user.blocked_users"
             label={t("p8.admin.noc.metric.blocked_users")}
             value={formatNumber(userIntelligence.blockedUsers)}
             sublabel={t("p8.admin.noc.metric.blocked_users_hint")}
@@ -629,6 +658,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
             onClick={canUsers ? () => navigate("/admin/users?status=banned") : undefined}
           />
           <NocMetricCard
+            contractId="noc.user.pending_verification_email"
             label={t("p8.admin.noc.metric.pending_verification")}
             value={formatNumber(userIntelligence.pendingVerification)}
             sublabel={t("p8.admin.noc.metric.pending_verification_hint")}
@@ -651,6 +681,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
             return (
               <NocMetricCard
                 key={item.key}
+                contractId={item.key === "cpu" ? "noc.health.cpu" : undefined}
                 label={t(`p8.admin.noc.health.${item.key}`)}
                 value={formatHealthValue(item)}
                 sublabel={formatHealthHint(item)}
@@ -753,15 +784,17 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
         <a
           href="/admin/operations"
           className={cn(CARD_SHELL, "flex items-center justify-between px-4 py-3 text-right transition hover:border-primary/50")}
+          {...dashboardContractAttrs("operations.health.total_open")}
         >
-          <span className="text-sm font-semibold text-foreground">Operations Queue Intelligence — Founder</span>
+          <span className="text-sm font-semibold text-foreground">{t("p8.admin.noc.link_operations")}</span>
           <Workflow className="h-5 w-5 text-primary" aria-hidden />
         </a>
         <a
           href="/admin/monitoring"
           className={cn(CARD_SHELL, "flex items-center justify-between px-4 py-3 text-right transition hover:border-primary/50")}
+          {...dashboardContractAttrs("monitoring.overall_status")}
         >
-          <span className="text-sm font-semibold text-foreground">Monitoring + Observability — Founder</span>
+          <span className="text-sm font-semibold text-foreground">{t("p8.admin.noc.link_monitoring")}</span>
           <Activity className="h-5 w-5 text-primary" aria-hidden />
         </a>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">

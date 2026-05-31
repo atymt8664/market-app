@@ -414,7 +414,6 @@ router.get("/admin/dashboard", requireAdminPermission("dashboard.operations", "d
           ...noc,
           founderIdentity: undefined,
           systemHealthGrid: [],
-          queueCenter: { ...noc.queueCenter, items: [] },
         };
 
   return res.json({

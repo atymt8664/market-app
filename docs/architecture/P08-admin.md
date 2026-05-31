@@ -110,7 +110,7 @@
 | ✅ | P8-1C | User center polish |
 | ✅ | P8-1D | Logs & audit UX |
 | ✅ | P8-1E | i18n closure |
-| ⏳ | P8-1F | Dashboard contracts |
+| ✅ | P8-1F | Dashboard contracts |
 | ⏳ | P8-1G | Billing/plans boundary doc |
 | ⏳ | P8-1H | P13 CPU hook |
 | ⏳ | P8-1I | STAGING smoke + P8-1 close |

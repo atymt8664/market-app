@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import { dashboardContractAttrs } from "@/features/admin/dashboard-contracts";
 import { adminLogout } from "@/features/admin/api";
 import {
   ADMIN_STAT_CARD_BTN,
@@ -84,22 +85,34 @@ function StatsSection({
 }
 
 function InteractiveStatCard({
+  contractId,
   label,
   value,
   icon,
   onNavigate,
+  format = "number",
 }: {
+  contractId?: string;
   label: string;
-  value: number;
+  value: number | null;
   icon: ReactNode;
   onNavigate?: () => void;
+  format?: "number" | "percent";
 }) {
+  const displayValue =
+    value == null
+      ? t("p8.admin.common.dash")
+      : format === "percent"
+        ? `${formatAdminNumber(value, getLocale())}%`
+        : formatAdminNumber(value, getLocale());
   const Wrapper = onNavigate ? "button" : "div";
+  const contractProps = contractId ? dashboardContractAttrs(contractId) : {};
   return (
     <Wrapper
       type={onNavigate ? "button" : undefined}
       onClick={onNavigate}
       className={onNavigate ? ADMIN_STAT_CARD_BTN : cn(CARD_SHELL, "p-4 text-right")}
+      {...contractProps}
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="text-sm text-muted-foreground">{label}</span>
@@ -107,9 +120,7 @@ function InteractiveStatCard({
           {icon}
         </span>
       </div>
-      <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
-        {formatAdminNumber(value, getLocale())}
-      </p>
+      <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">{displayValue}</p>
     </Wrapper>
   );
 }
@@ -315,24 +326,30 @@ export default function AdminStatsPage() {
               <StatsSection id="foundation">
                 <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <InteractiveStatCard
+                    contractId="analytics.foundation.messages_today"
                     label={t("p8.admin.stats.messages_today")}
                     value={data.analyticsFoundation.messagesToday}
                     icon={<TrendingUp className="h-4 w-4" aria-hidden />}
                   />
                   <InteractiveStatCard
+                    contractId="analytics.foundation.reports_today"
                     label={t("p8.admin.stats.reports_today")}
                     value={data.analyticsFoundation.reportsToday}
                     icon={<Flag className="h-4 w-4" aria-hidden />}
                     onNavigate={canManage("reports") ? () => navigate(ROUTES.reports) : undefined}
                   />
                   <InteractiveStatCard
+                    contractId="analytics.foundation.report_resolution_rate"
                     label={t("p8.admin.stats.report_resolution_rate")}
-                    value={data.analyticsFoundation.reportResolutionRatePct ?? 0}
+                    value={data.analyticsFoundation.reportResolutionRatePct}
+                    format="percent"
                     icon={<BarChart3 className="h-4 w-4" aria-hidden />}
                   />
                   <InteractiveStatCard
+                    contractId="analytics.foundation.support_resolution_rate"
                     label={t("p8.admin.stats.support_resolution_rate")}
-                    value={data.analyticsFoundation.supportResolutionRatePct ?? 0}
+                    value={data.analyticsFoundation.supportResolutionRatePct}
+                    format="percent"
                     icon={<Headphones className="h-4 w-4" aria-hidden />}
                     onNavigate={canManage("support") ? () => navigate(ROUTES.support) : undefined}
                   />
@@ -343,12 +360,14 @@ export default function AdminStatsPage() {
             <StatsSection id="kpis">
               <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <InteractiveStatCard
+                  contractId="analytics.totals.users"
                   label={t("p8.admin.stats.users_total")}
                   value={data.totals.users}
                   icon={<Users className="h-4 w-4" aria-hidden />}
                   onNavigate={canManage("users") ? () => navigate(ROUTES.users) : undefined}
                 />
                 <InteractiveStatCard
+                  contractId="analytics.totals.ads"
                   label={t("p8.admin.stats.ads_total")}
                   value={data.totals.ads}
                   icon={<Megaphone className="h-4 w-4" aria-hidden />}

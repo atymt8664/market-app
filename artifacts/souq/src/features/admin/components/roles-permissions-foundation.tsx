@@ -1,4 +1,5 @@
 import { Crown } from "lucide-react";
+import { dashboardContractAttrs } from "@/features/admin/dashboard-contracts";
 import { CARD_SHELL } from "@/features/admin/admin-interaction-classes";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,11 @@ const ROLE_KEYS = [
 /** RBAC architecture contract — enforcement in P8F (no DB in P8C). */
 export function RolesPermissionsFoundation() {
   return (
-    <section className={cn(CARD_SHELL, "p-4")} aria-labelledby="admin-roles-foundation-title">
+    <section
+      className={cn(CARD_SHELL, "p-4")}
+      aria-labelledby="admin-roles-foundation-title"
+      {...dashboardContractAttrs("monitoring.roles_staff_summary")}
+    >
       <div className="mb-4 flex flex-wrap items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-500/45 bg-amber-500/10 text-amber-200">
           <Crown className="h-5 w-5" aria-hidden />

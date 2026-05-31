@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { AlertTriangle, Crown, ExternalLink, Users, Workflow } from "lucide-react";
 import { adminLogout } from "@/features/admin/api";
+import { dashboardContractAttrs } from "@/features/admin/dashboard-contracts";
 import { CARD_SHELL, SUB_CARD } from "@/features/admin/admin-interaction-classes";
 import {
   AdminEmptyState,
@@ -28,15 +29,16 @@ function domainLabel(domain: OpsDomain | string) {
   return translated === key ? String(domain) : translated;
 }
 
-function Metric({ label, value, tone }: { label: string; value: number; tone?: "red" | "amber" | "default" }) {
+function Metric({ contractId, label, value, tone }: { contractId?: string; label: string; value: number; tone?: "red" | "amber" | "default" }) {
   const toneClass =
     tone === "red"
       ? "border-red-500/35 bg-red-950/20"
       : tone === "amber"
         ? "border-amber-500/35 bg-amber-950/20"
         : "border-primary/30 bg-zinc-950/60";
+  const contractProps = contractId ? dashboardContractAttrs(contractId) : {};
   return (
-    <div className={cn(SUB_CARD, toneClass, "p-4 text-right")}>
+    <div className={cn(SUB_CARD, toneClass, "p-4 text-right")} {...contractProps}>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
     </div>
@@ -101,13 +103,15 @@ export default function AdminOperationsPage() {
         ) : data ? (
           <>
             <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <Metric label={t("p8.admin.operations.metric_open")} value={data.health.totalOpen} />
+              <Metric contractId="operations.health.total_open" label={t("p8.admin.operations.metric_open")} value={data.health.totalOpen} />
               <Metric
+                contractId="operations.health.total_unassigned"
                 label={t("p8.admin.operations.metric_unassigned")}
                 value={data.health.totalUnassigned}
                 tone="amber"
               />
               <Metric
+                contractId="operations.health.sla_exceeded"
                 label={t("p8.admin.operations.metric_sla_exceeded")}
                 value={data.health.totalSlaExceeded}
                 tone="red"

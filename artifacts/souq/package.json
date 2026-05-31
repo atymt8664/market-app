@@ -8,6 +8,8 @@
     "build": "vite build",
     "build:analyze": "set BUNDLE_ANALYZE=1&& vite build",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
+    "p8-1f:validate": "node --experimental-strip-types scripts/validate-p8-1f-dashboard-contracts.mjs",
+    "p8-1f:prod": "node scripts/validate-p8-1f-prod.mjs",
     "icons:p11": "node scripts/generate-p11-icon-set.mjs",
     "seo:p11:validate": "node scripts/validate-p11-seo-foundation.mjs",
     "social:p11:validate": "node scripts/validate-p11-5-social-meta.mjs",

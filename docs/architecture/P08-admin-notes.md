@@ -17,7 +17,7 @@
 | P8-1C | User center polish | ✅ Closed |
 | P8-1D | Audit & logs maturity | ✅ Closed |
 | P8-1E | i18n closure (P8G) | ⏳ Open |
-| P8-1F | Dashboard contracts (notification / roles UX) | ⏳ Open |
+| P8-1F | Dashboard contracts (notification / roles UX) | ✅ Closed |
 | P8-1G | Billing/plans boundary (**P10**) | ⏳ Open |
 | P8-1H | P13 CPU hook in NOC | ⏳ Open |
 | P8-1I | STAGING verification + P8-1 close | ⏳ Open |
@@ -155,8 +155,11 @@
 
 | Item | State |
 |------|--------|
+| KPI registry + docs | ✅ **Closed** — [P08-dashboard-contracts.md](./P08-dashboard-contracts.md) |
+| UI `data-dashboard-contract` wiring | ✅ Closed |
+| queueCenter non-founder regression fix | ✅ Closed |
 | Notification center backend feed | ❌ **P11 / P15** |
-| Roles panel → live staff summary (optional UX) | ⏳ P8-1F |
+| Roles panel → live staff summary (optional UX) | ⏸ Deferred — static contract; `/admin/staff` for live data |
 
 ### Outside P8 — explicit placeholders
 

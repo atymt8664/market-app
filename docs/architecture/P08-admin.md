@@ -107,7 +107,7 @@
 |------|-----|-------|
 | ✅ | P8-1A | Baseline & doc sync |
 | ✅ | P8-1B | Settings PATCH UI |
-| ⏳ | P8-1C | User center polish |
+| ✅ | P8-1C | User center polish |
 | ⏳ | P8-1D | Logs & audit UX |
 | ⏳ | P8-1E | i18n closure |
 | ⏳ | P8-1F | Dashboard contracts |

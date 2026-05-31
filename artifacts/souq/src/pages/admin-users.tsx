@@ -50,7 +50,21 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
 
-const STATUS_FILTER_KEYS = ["all", "active", "banned"] as const;
+const STATUS_FILTER_KEYS = ["all", "active", "banned", "unverified"] as const;
+
+function parseStatusFromSearch(search: string): string {
+  const param = new URLSearchParams(search).get("status");
+  if (param && (STATUS_FILTER_KEYS as readonly string[]).includes(param)) return param;
+  return "all";
+}
+
+function buildUsersPath(status: string, avatarReview?: string): string {
+  const params = new URLSearchParams();
+  if (status !== "all") params.set("status", status);
+  if (avatarReview === "pending") params.set("avatarReview", "pending");
+  const qs = params.toString();
+  return qs ? `/admin/users?${qs}` : "/admin/users";
+}
 
 function mediaSrc(url: string | null | undefined): string | undefined {
   if (!url?.trim()) return undefined;
@@ -75,6 +89,11 @@ function formatDate(iso: string | null) {
   }
 }
 
+function formatLastSeen(iso: string | null) {
+  if (!iso) return t("p8.admin.users.never_logged");
+  return formatDate(iso);
+}
+
 const inputClass =
   "w-full rounded-2xl border border-primary/30 bg-zinc-900/90 px-4 py-2.5 text-sm text-foreground outline-none ring-1 ring-primary/5 transition placeholder:text-muted-foreground focus:border-primary/55 focus:ring-2 focus:ring-primary/25";
 
@@ -90,11 +109,15 @@ export default function AdminUsersPage() {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState(() => parseStatusFromSearch(searchString));
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [pendingBan, setPendingBan] = useState<{ id: number; name: string } | null>(null);
+
+  useEffect(() => {
+    setStatus(parseStatusFromSearch(searchString));
+  }, [searchString]);
 
   useEffect(() => {
     setPage(1);
@@ -225,7 +248,20 @@ export default function AdminUsersPage() {
             <button
               type="button"
               className="font-semibold text-primary underline-offset-2 hover:underline"
-              onClick={() => navigate("/admin/users")}
+              onClick={() => navigate(buildUsersPath(status === "unverified" ? "unverified" : "all"))}
+            >
+              {t("p8.admin.users.show_all")}
+            </button>
+          </div>
+        ) : null}
+
+        {status === "unverified" ? (
+          <div className="rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 ring-1 ring-amber-500/15">
+            {t("p8.admin.users.unverified_banner")}{" "}
+            <button
+              type="button"
+              className="font-semibold text-primary underline-offset-2 hover:underline"
+              onClick={() => navigate(buildUsersPath("all", avatarReviewFilter))}
             >
               {t("p8.admin.users.show_all")}
             </button>
@@ -257,7 +293,15 @@ export default function AdminUsersPage() {
             </form>
             <div className="flex flex-wrap gap-2">
               {statusOptions.map((item) => (
-                <button key={item.key} type="button" onClick={() => setStatus(item.key)} className={adminPillBtn(status === item.key)}>
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => {
+                    setStatus(item.key);
+                    navigate(buildUsersPath(item.key, avatarReviewFilter));
+                  }}
+                  className={adminPillBtn(status === item.key)}
+                >
                   {item.label}
                 </button>
               ))}
@@ -277,13 +321,14 @@ export default function AdminUsersPage() {
           ) : (
             <AdminScrollableTable
               items={users}
-              minWidth="min-w-[920px]"
+              minWidth="min-w-[1040px]"
               head={
                 <tr>
                   <th className="px-3 py-3 text-right font-medium">{t("p8.admin.users.col_id")}</th>
                   <th className="px-3 py-3 text-right font-medium">{t("p8.admin.users.col_user")}</th>
                   <th className="px-3 py-3 text-right font-medium">{t("p8.admin.users.col_email")}</th>
                   <th className="px-3 py-3 text-right font-medium">{t("p8.admin.users.col_status")}</th>
+                  <th className="px-3 py-3 text-right font-medium">{t("p8.admin.users.col_last_seen")}</th>
                   <th className="px-3 py-3 text-right font-medium">{t("p8.admin.users.col_created")}</th>
                   <th className="px-3 py-3 text-center font-medium">{t("p8.admin.users.col_actions")}</th>
                 </tr>
@@ -303,7 +348,14 @@ export default function AdminUsersPage() {
                           {initials(user.name)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-medium text-foreground">{user.name}</span>
+                      <div className="min-w-0 space-y-0.5">
+                        <span className="font-medium text-foreground">{user.name}</span>
+                        {user.avatarPendingReview ? (
+                          <span className="inline-flex rounded-full border border-amber-500/40 bg-amber-950/30 px-2 py-0.5 text-[10px] font-medium text-amber-100">
+                            {t("p8.admin.users.avatar_pending_badge")}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </td>
                   <td className="max-w-[240px] px-3 py-3 align-middle">
@@ -320,6 +372,9 @@ export default function AdminUsersPage() {
                     >
                       {user.status === "banned" ? t("p8.admin.users.status_banned") : t("p8.admin.users.status_active")}
                     </span>
+                  </td>
+                  <td className="px-3 py-3 align-middle whitespace-nowrap text-[13px] text-muted-foreground">
+                    {formatLastSeen(user.lastSeenAt)}
                   </td>
                   <td className="px-3 py-3 align-middle whitespace-nowrap text-[13px] text-muted-foreground">
                     {formatDate(user.createdAt)}

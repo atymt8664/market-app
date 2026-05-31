@@ -14,7 +14,7 @@
 |---------------|-------|--------|
 | **P8-1A** | Baseline inventory + doc sync + smoke runbook | ✅ **Closed** |
 | **P8-1B** | Settings PATCH UI | ✅ **Closed** |
-| P8-1C | User center polish | ⏳ Open |
+| P8-1C | User center polish | ✅ Closed |
 | P8-1D | Audit & logs maturity | ⏳ Open |
 | P8-1E | i18n closure (P8G) | ⏳ Open |
 | P8-1F | Dashboard contracts (notification / roles UX) | ⏳ Open |
@@ -22,7 +22,7 @@
 | P8-1H | P13 CPU hook in NOC | ⏳ Open |
 | P8-1I | STAGING verification + P8-1 close | ⏳ Open |
 
-**Do not start P8-1B+ until P8-1A is closed** (done). **Do not start P15-1 or P17-4+ until P8-1 is closed.**
+**Do not start P8-1D+ until P8-1C is closed** (done). **Do not start P15-1 or P17-4+ until P8-1 is closed.**
 
 ---
 
@@ -87,12 +87,22 @@
 
 ## Deferred — must not be forgotten
 
-### P8-1C — User center gaps
+### P8-1D — Audit & logs gaps
 
 | Gap | Owner | Notes |
 |-----|-------|-------|
-| `last_seen_at` not shown in users **list** | P8-1C | Available in API + user detail modal only |
 | Staff **display names** in activity logs | P8-1D | Logs show `admin#<actorAdminId>` except Founder label |
+
+---
+
+## Resolved — P8-1C
+
+| Item | Resolution |
+|------|------------|
+| `last_seen_at` not shown in users **list** | ✅ Column in `/admin/users` · `GET /admin/users` returns `lastSeenAt` |
+| NOC `?status=unverified` deep link ignored | ✅ API filter + UI pill/banner · matches `needsActionNow.verification_requests` |
+| NOC user-intelligence metrics not navigable | ✅ `new_users_today`, `blocked_users`, `pending_verification` → `/admin/users` with query |
+| Avatar pending not visible in list | ✅ Badge on user row when `avatarPendingReview` |
 
 ---
 
@@ -179,6 +189,7 @@ See [P08-admin-baseline.md](./P08-admin-baseline.md) § Feature readiness. Billi
 - [x] RBAC enforcement (backend middleware + frontend guards + staff accounts)
 - [x] Verification backend + UI
 - [x] Settings editor UI (**P8-1B**)
+- [x] User center list polish — `lastSeenAt`, NOC deep links (**P8-1C**)
 - [ ] Full `p8.admin.*` on all admin pages including `de` quality (**P8-1E**)
 - [ ] Billing backend (**P10** — explicit defer, not P8-1 blocker for core ops)
 - [ ] Host CPU in NOC (**P13** — **P8-1H**)
@@ -186,4 +197,4 @@ See [P08-admin-baseline.md](./P08-admin-baseline.md) § Feature readiness. Billi
 
 ---
 
-*Last updated: P8-1A — Baseline & doc sync (docs only).*
+*Last updated: P8-1C — User center polish closed.*

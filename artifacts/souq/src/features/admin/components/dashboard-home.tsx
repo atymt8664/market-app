@@ -453,6 +453,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
   const { executiveHeader, userIntelligence, priorityItems, systemHealthGrid } = noc;
   const showSystem = access.can("system") && systemHealthGrid.length > 0;
   const showFounderBlocks = access.isFounder;
+  const canUsers = access.can("users");
   const criticalItems = priorityItems.filter((item) => item.level === "critical");
   const warningItems = priorityItems.filter((item) => item.level === "warning");
   const normalItems = priorityItems.filter((item) => item.level === "normal");
@@ -517,15 +518,35 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
                     label: t("p8.admin.executive.today_new_support"),
                     value: executiveHeader.today.newSupport,
                   },
-                ].map((stat) => (
-                  <div
-                    key={stat.key}
-                    className="rounded-xl border border-primary/25 bg-zinc-900/55 px-3 py-2.5 text-right ring-1 ring-primary/8"
-                  >
-                    <p className="text-[11px] text-muted-foreground">{stat.label}</p>
-                    <p className="mt-0.5 text-xl font-bold tabular-nums text-primary">{formatNumber(stat.value)}</p>
-                  </div>
-                ))}
+                ].map((stat) => {
+                  const clickable = canUsers && stat.key === "users";
+                  const inner = (
+                    <>
+                      <p className="text-[11px] text-muted-foreground">{stat.label}</p>
+                      <p className="mt-0.5 text-xl font-bold tabular-nums text-primary">{formatNumber(stat.value)}</p>
+                    </>
+                  );
+                  return clickable ? (
+                    <button
+                      key={stat.key}
+                      type="button"
+                      onClick={() => navigate("/admin/users")}
+                      className={cn(
+                        BTN_FIX,
+                        "rounded-xl border border-primary/25 bg-zinc-900/55 px-3 py-2.5 text-right ring-1 ring-primary/8 hover:border-primary/45",
+                      )}
+                    >
+                      {inner}
+                    </button>
+                  ) : (
+                    <div
+                      key={stat.key}
+                      className="rounded-xl border border-primary/25 bg-zinc-900/55 px-3 py-2.5 text-right ring-1 ring-primary/8"
+                    >
+                      {inner}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -592,6 +613,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
             value={formatNumber(userIntelligence.newUsersToday)}
             sublabel={t("p8.admin.noc.metric.new_users_today_hint")}
             icon={<UserPlus className="h-4 w-4" aria-hidden />}
+            onClick={canUsers ? () => navigate("/admin/users") : undefined}
           />
           <NocMetricCard
             label={t("p8.admin.noc.metric.blocked_users")}
@@ -599,6 +621,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
             sublabel={t("p8.admin.noc.metric.blocked_users_hint")}
             icon={<Ban className="h-4 w-4" aria-hidden />}
             tone={userIntelligence.blockedUsers > 0 ? "warn" : "default"}
+            onClick={canUsers ? () => navigate("/admin/users?status=banned") : undefined}
           />
           <NocMetricCard
             label={t("p8.admin.noc.metric.pending_verification")}
@@ -606,6 +629,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
             sublabel={t("p8.admin.noc.metric.pending_verification_hint")}
             icon={<UserCheck className="h-4 w-4" aria-hidden />}
             tone={userIntelligence.pendingVerification > 0 ? "warn" : "default"}
+            onClick={canUsers ? () => navigate("/admin/users?status=unverified") : undefined}
           />
         </div>
       </section>

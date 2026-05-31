@@ -478,7 +478,9 @@ export type AdminUser = {
   email: string;
   avatarUrl?: string | null;
   avatarPendingReview?: boolean;
+  emailVerified?: boolean;
   status: "active" | "banned";
+  lastSeenAt: string | null;
   createdAt: string | null;
 };
 

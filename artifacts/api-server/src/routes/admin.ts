@@ -1103,7 +1103,9 @@ router.get("/admin/users", requireAdminPermission("users"), async (req, res) => 
       ? eq(usersTable.isBanned, false)
       : status === "banned"
         ? eq(usersTable.isBanned, true)
-        : undefined,
+        : status === "unverified"
+          ? eq(usersTable.emailVerified, false)
+          : undefined,
     avatarReview === "pending" ? eq(usersTable.avatarPendingReview, true) : undefined,
     q
       ? or(
@@ -1127,6 +1129,8 @@ router.get("/admin/users", requireAdminPermission("users"), async (req, res) => 
       avatarUrl: usersTable.avatarUrl,
       avatarPendingReview: usersTable.avatarPendingReview,
       isBanned: usersTable.isBanned,
+      emailVerified: usersTable.emailVerified,
+      lastSeenAt: usersTable.lastSeenAt,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
@@ -1145,7 +1149,9 @@ router.get("/admin/users", requireAdminPermission("users"), async (req, res) => 
       email: row.email,
       avatarUrl: row.avatarUrl,
       avatarPendingReview: row.avatarPendingReview,
+      emailVerified: row.emailVerified,
       status: row.isBanned ? "banned" : "active",
+      lastSeenAt: row.lastSeenAt ? row.lastSeenAt.toISOString() : null,
       createdAt: row.createdAt ? row.createdAt.toISOString() : null,
     })),
     meta,

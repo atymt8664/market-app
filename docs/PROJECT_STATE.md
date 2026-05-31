@@ -69,4 +69,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P8-1C — User center polish closed (`last_seen_at` list column, NOC user-intelligence navigation, `status=unverified` deep link). Next: **P8-1D**. Parent **P8-1** remains open.
+P8-1C — User center polish **closed on Production** (VPS `souq-api:p8-1c-20260531` + Vercel frontend verified 2026-05-31). Next: **P8-1D**. Parent **P8-1** remains open.

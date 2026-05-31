@@ -39,5 +39,10 @@ export type QueueHealthSnapshot = {
     processed: number;
     failed: number;
   };
+  notificationMetrics?: {
+    enqueued: number;
+    processed: number;
+    failed: number;
+  };
   deadLetterQueue?: string;
 };

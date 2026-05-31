@@ -6,12 +6,14 @@ import { JOB_ENVELOPE_VERSION } from "./constants";
 import {
   EMAIL_JOB_TYPES,
   FOUNDATION_JOB_TYPES,
+  NOTIFICATION_JOB_TYPES,
   type RegisteredJobName,
 } from "./registry";
 import type {
   AuthOtpEmailPayload,
   AuthResetEmailPayload,
 } from "./email-types";
+import type { InAppNotificationJobPayload } from "./notification-types";
 
 function wrapPayload<T>(payload: T, idempotencyKey?: string): JobEnvelope<T> {
   const envRef = detectSupabaseProjectRef() ?? "unknown";
@@ -83,6 +85,17 @@ export async function enqueueAuthResetEmail(
 ): Promise<string | null> {
   return enqueueJob(boss, EMAIL_JOB_TYPES.AUTH_RESET, payload, {
     priority: "critical",
+    ...options,
+  });
+}
+
+export async function enqueueInAppNotification(
+  boss: PgBoss,
+  payload: InAppNotificationJobPayload,
+  options: EnqueueJobOptions = {},
+): Promise<string | null> {
+  return enqueueJob(boss, NOTIFICATION_JOB_TYPES.IN_APP, payload, {
+    priority: "high",
     ...options,
   });
 }

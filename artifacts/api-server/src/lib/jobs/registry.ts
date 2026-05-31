@@ -6,10 +6,15 @@ export const FOUNDATION_JOB_TYPES = {
   SYSTEM_DLQ_PROBE: "system.dlq_probe",
 } as const;
 
-/** Transactional email jobs (P15-3). */
+/** Transactional email jobs (P15-3A). */
 export const EMAIL_JOB_TYPES = {
   AUTH_OTP: "auth.otp",
   AUTH_RESET: "auth.reset",
+} as const;
+
+/** In-app notification jobs (P15-3B). */
+export const NOTIFICATION_JOB_TYPES = {
+  IN_APP: "notify.in_app",
 } as const;
 
 export type FoundationJobType =
@@ -17,12 +22,16 @@ export type FoundationJobType =
 
 export type EmailJobType = (typeof EMAIL_JOB_TYPES)[keyof typeof EMAIL_JOB_TYPES];
 
+export type NotificationJobType =
+  (typeof NOTIFICATION_JOB_TYPES)[keyof typeof NOTIFICATION_JOB_TYPES];
+
 /** All job names registered in the worker. */
 export const REGISTERED_JOB_NAMES = [
   FOUNDATION_JOB_TYPES.SYSTEM_PING,
   FOUNDATION_JOB_TYPES.SYSTEM_DLQ_PROBE,
   EMAIL_JOB_TYPES.AUTH_OTP,
   EMAIL_JOB_TYPES.AUTH_RESET,
+  NOTIFICATION_JOB_TYPES.IN_APP,
 ] as const;
 
 export type RegisteredJobName = (typeof REGISTERED_JOB_NAMES)[number];

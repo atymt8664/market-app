@@ -19,6 +19,7 @@ export {
 export {
   FOUNDATION_JOB_TYPES,
   EMAIL_JOB_TYPES,
+  NOTIFICATION_JOB_TYPES,
   REGISTERED_JOB_NAMES,
   registerJobHandler,
   listRegisteredJobHandlers,
@@ -47,6 +48,7 @@ export {
   enqueueDlqProbe,
   enqueueAuthOtpEmail,
   enqueueAuthResetEmail,
+  enqueueInAppNotification,
 } from "./enqueue";
 export {
   collectQueueHealthSnapshot,
@@ -55,7 +57,9 @@ export {
 export {
   incrementEmailJobMetric,
   readEmailJobMetrics,
-  resetEmailJobMetricsForTests,
+  incrementNotificationJobMetric,
+  readNotificationJobMetrics,
+  resetJobMetricsForTests,
 } from "./job-queue-metrics";
 export {
   bootstrapJobWorker,
@@ -65,9 +69,15 @@ export {
 } from "./worker-bootstrap";
 export { registerFoundationJobHandlers } from "./handlers/foundation";
 export { registerEmailJobHandlers } from "./handlers/email";
+export { registerNotificationJobHandlers } from "./handlers/notification";
 export type {
   AuthOtpEmailPayload,
   AuthResetEmailPayload,
   EmailJobPayload,
 } from "./email-types";
+export type {
+  CreateNotificationInput,
+  PreparedInAppNotification,
+  InAppNotificationJobPayload,
+} from "./notification-types";
 export type { JobEnvelope, EnqueueJobOptions, QueueHealthSnapshot } from "./types";

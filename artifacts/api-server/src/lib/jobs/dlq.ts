@@ -2,6 +2,7 @@ import type { PgBoss } from "pg-boss";
 import {
   EMAIL_JOB_TYPES,
   FOUNDATION_JOB_TYPES,
+  NOTIFICATION_JOB_TYPES,
 } from "./registry";
 import {
   DLQ_PROBE_RETRY_OPTIONS,
@@ -50,6 +51,13 @@ const REGISTERED_QUEUE_SEEDS: QueueSeed[] = [
   },
   {
     name: EMAIL_JOB_TYPES.AUTH_RESET,
+    options: {
+      ...STANDARD_RETRY_OPTIONS,
+      deadLetter: DLQ_QUEUE_NAME,
+    },
+  },
+  {
+    name: NOTIFICATION_JOB_TYPES.IN_APP,
     options: {
       ...STANDARD_RETRY_OPTIONS,
       deadLetter: DLQ_QUEUE_NAME,

@@ -24,7 +24,7 @@ Targets (10–50 year horizon): millions of users, ads, messages, notifications,
 | Component | Today | Gap |
 |-----------|-------|-----|
 | Email (Resend OTP / reset) | STAGING outbox via `auth.otp` / `auth.reset`; PRODUCTION sync | P15-3 remaining hot paths |
-| In-app notifications | Sync `await` INSERT in `lib/create-notification.ts` | Fan-out blocks hot paths |
+| In-app notifications | STAGING outbox via `notify.in_app`; PRODUCTION sync INSERT | P15-3C push unification |
 | Web push | Partial — Redis LIST + `push-worker.ts` OR inline IIFE fallback | Not unified job system; no DLQ |
 | Ad image normalize (Sharp) | Sync CPU in upload path | Blocks API event loop |
 | SLA auto-escalation | `runAutoEscalationAll()` on **admin read** | Should be scheduled cron |
@@ -340,11 +340,24 @@ Extends **P13** and **P8** monitoring boundary (`data-monitoring-tier="live"`).
 | Queue metrics + health snapshot | ✅ |
 | PRODUCTION | ❌ sync path unchanged |
 
+#### P15-3B — In-app notification outbox ✅ (STAGING)
+
+| Item | Status |
+|------|--------|
+| `notify.in_app` job type | ✅ |
+| Notification worker handler | ✅ |
+| STAGING-only gate (`NOTIFICATION_OUTBOX_ENABLED`) | ✅ |
+| `createNotification()` → enqueue on STAGING | ✅ |
+| Preference gate at API (unchanged timing) | ✅ |
+| High priority + standard retry + DLQ | ✅ |
+| `schedulePushDelivery` preserved post-insert | ✅ (not push migration) |
+| Queue metrics + health snapshot | ✅ |
+| PRODUCTION | ❌ sync INSERT unchanged |
+
 **Remaining in P15-3 (not started):**
 
 | Order | Migration |
 |-------|-----------|
-| 2 | `createNotification` → enqueue path |
 | 3 | Unify push from Redis LIST → shared queue |
 | 4 | Image normalize worker |
 | 5 | Extract `runAutoEscalationAll` → cron |

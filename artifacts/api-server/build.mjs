@@ -124,6 +124,12 @@ async function buildAll() {
     entryPoints: [path.resolve(artifactDir, "src/push-worker.ts")],
     outdir: path.resolve(distDir, "worker"),
   });
+
+  await esbuild({
+    ...sharedBuildOptions,
+    entryPoints: [path.resolve(artifactDir, "src/job-worker.ts")],
+    outdir: path.resolve(distDir, "worker"),
+  });
 }
 
 buildAll().catch((err) => {

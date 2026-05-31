@@ -8,8 +8,11 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "start:push-worker": "node --enable-source-maps ./dist/worker/push-worker.mjs",
+    "start:job-worker": "node --enable-source-maps ./dist/worker/job-worker.mjs",
+    "p15-2:validate": "node ./scripts/validate-p15-2-queue-foundation.mjs",
+    "p15-2:staging-smoke": "node --import tsx/esm ./scripts/p15-2-staging-queue-smoke.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node ./src/lib/pagination.test.mjs && node ./src/lib/ad-search-util.test.mjs && node ./src/lib/ad-reaction-counts.test.mjs && node ./src/lib/ads-list-query.test.mjs && node ./src/lib/taxonomy-public-cache.test.mjs && node ./src/lib/trust-safety/trust-safety.test.mjs && node ./src/lib/push/notification-url.test.mjs && node ./src/lib/push/push-queue.test.mjs && node ./src/lib/observability/latency-tracker.test.mjs && node ./src/lib/observability/request-id.test.mjs && node ./src/lib/observability/vitals.test.mjs && node ./src/lib/sentry.test.mjs && node ./src/lib/sentry-env.test.mjs && node ./src/lib/p17/orders-ready-layer.test.mjs && node ./src/lib/p17/orders-status-summary.test.mjs",
+    "test": "node ./src/lib/pagination.test.mjs && node ./src/lib/ad-search-util.test.mjs && node ./src/lib/ad-reaction-counts.test.mjs && node ./src/lib/ads-list-query.test.mjs && node ./src/lib/taxonomy-public-cache.test.mjs && node ./src/lib/trust-safety/trust-safety.test.mjs && node ./src/lib/push/notification-url.test.mjs && node ./src/lib/push/push-queue.test.mjs && node --import tsx/esm ./src/lib/jobs/env-guard.test.mjs && node --import tsx/esm ./src/lib/jobs/retry-policy.test.mjs && node --import tsx/esm ./src/lib/jobs/registry.test.mjs && node ./src/lib/observability/latency-tracker.test.mjs && node ./src/lib/observability/request-id.test.mjs && node ./src/lib/observability/vitals.test.mjs && node ./src/lib/sentry.test.mjs && node ./src/lib/sentry-env.test.mjs && node ./src/lib/p17/orders-ready-layer.test.mjs && node ./src/lib/p17/orders-status-summary.test.mjs",
     "sentry:apply-dsn": "node ./scripts/apply-sentry-dsn.mjs",
     "sentry:local-test": "node ./scripts/_sentry_local_test.mjs",
     "admin:reset-password": "node ./scripts/admin-reset-password.cjs"
@@ -36,6 +39,7 @@
     "openai": "^6.34.0",
     "otplib": "^13.4.0",
     "pg": "^8.20.0",
+    "pg-boss": "^12.18.2",
     "pino": "^9",
     "pino-http": "^10",
     "qrcode": "^1.5.4",
@@ -59,6 +63,7 @@
     "esbuild": "^0.27.3",
     "esbuild-plugin-pino": "^2.3.3",
     "pino-pretty": "^13",
-    "thread-stream": "3.1.0"
+    "thread-stream": "3.1.0",
+    "tsx": "catalog:"
   }
 }

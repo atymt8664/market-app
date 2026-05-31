@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Code** | P15 |
-| **Status** | **Active** — P15-1 ✅ closed (architecture) · **P15-2** next (STAGING implementation) |
+| **Status** | **Active** — P15-1 ✅ closed (architecture) · P15-2 ✅ closed (STAGING foundation) · **P15-3** next |
 | **Authority** | This document + [SCALE-ROADMAP](../../infra/hetzner/phase6/SCALE-ROADMAP.md) |
 | **Constitution** | Rule **A6** — *Sync by default, async by proof* |
 
@@ -31,7 +31,7 @@ Targets (10–50 year horizon): millions of users, ads, messages, notifications,
 | Admin analytics / NOC | ~27 parallel queries per request | No rollup cron |
 | Account deletion storage purge | Sync unbounded loop | GDPR timeout risk |
 | Search FTS | Postgres trigger (correct) | Bulk reindex = future maintenance job |
-| pg-boss / BullMQ / general cron | **Not implemented** | P15-2+ |
+| pg-boss / BullMQ / general cron | pg-boss foundation on STAGING (`lib/jobs/`, `job-worker.ts`) | P15-3 hot-path migration |
 
 **Approved stack unchanged:** Vercel · Hetzner VPS · Supabase Pro · WebSocket · Railway = legacy/fallback only.
 
@@ -306,20 +306,23 @@ Extends **P13** and **P8** monitoring boundary (`data-monitoring-tier="live"`).
 
 ---
 
-### P15-2 — Queue foundation (STAGING only) ⏳ Next
+### P15-2 — Queue foundation (STAGING only) ✅ Closed
 
-| Item | Scope |
-|------|-------|
-| pg-boss schema on STAGING ref only | migration |
-| `artifacts/worker/` or worker entrypoints | skeleton |
-| `enqueueJob()` producer abstraction | api-server |
-| Email outbox worker (auth paths) | first handler |
-| Job type registry | `lib/jobs/types.ts` |
-| Tests | idempotency, retry, STAGING smoke |
+| Item | Scope | Status |
+|------|-------|--------|
+| pg-boss schema on STAGING ref only | `pgboss` schema via pg-boss migrate | ✅ |
+| Queue module | `src/lib/jobs/queue-module.ts` | ✅ |
+| Worker bootstrap | `src/lib/jobs/worker-bootstrap.ts` + `src/job-worker.ts` | ✅ |
+| Job registry | `system.ping`, `system.dlq_probe` foundation handlers | ✅ |
+| Retry policy | Standard: 5× / 30s / exponential (max 3600s) | ✅ |
+| DLQ foundation | `system.dead_letter` queue + probe path | ✅ |
+| Observability | `collectQueueHealthSnapshot`, depth summary | ✅ |
+| STAGING env guard | `JOB_QUEUE_ENABLED=1`; blocks PRODUCTION ref | ✅ |
+| API unchanged | No HTTP route wiring; no sync-path migration | ✅ |
 
-**Exit criteria:** STAGING signup returns before Resend completes; email arrives within 60s; no PRODUCTION touch.
+**Exit criteria met:** STAGING smoke PASS (`system.ping` completes, `system.dlq_probe` fails after retries, graceful shutdown); validate + unit tests PASS; no PRODUCTION touch; no Redis/BullMQ.
 
-**Do not start until P15-1 closed.**
+**Explicitly deferred to P15-3:** email outbox, notifications, OTP, push unification, image normalize, cron extractions.
 
 ---
 

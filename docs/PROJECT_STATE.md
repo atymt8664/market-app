@@ -18,10 +18,10 @@
 Only **one open builder phase** at a time. Sequence:
 
 ```
-✅ P13-1 → ✅ P13-2 → ✅ P13-3 → ✅ P13-4 → ✅ P8-1 (P8-1A ✅ … P8-1I ✅) → ✅ P15-1 (P15-1A ✅) → ⏳ P15-2 → ⏳ P17-4…P17-19
+✅ P13-1 → ✅ P13-2 → ✅ P13-3 → ✅ P13-4 → ✅ P8-1 (P8-1A ✅ … P8-1I ✅) → ✅ P15-1 (P15-1A ✅) → ✅ P15-2 → ⏳ P15-3 → ⏳ P17-4…P17-19
 ```
 
-**Do not start P15-2** until **P15-1** is closed. **P15-1 is closed.** **Do not start P15-3+** until **P15-2** is closed.
+**Do not start P15-3+** until **P15-2** is closed. **P15-2 is closed.**
 
 ---
 
@@ -58,8 +58,8 @@ Only **one open builder phase** at a time. Sequence:
 |-----------|--------|-------|
 | **P15-1A** Architecture docs + ADRs | ✅ **Closed** | Commit `a7b8c67` · Authority: `docs/architecture/P15-background-jobs.md` · Phase 1: pg-boss · Phase 2: BullMQ+Redis on trigger metrics only |
 | **P15-1** (parent — architecture wave) | ✅ **Closed** | Documentation only — no code/migrations/deploy |
-| **P15-2** Queue foundation (STAGING) | ⏳ **Open** | pg-boss + email outbox worker — **do not start until approved** |
-| P15-3 Hot path migration | ⏳ Blocked | After P15-2 |
+| **P15-2** Queue foundation (STAGING) | ✅ **Closed** | pg-boss foundation on STAGING ref only — queue module, worker bootstrap, registry, retry/DLQ/observability; foundation jobs `system.ping` / `system.dlq_probe`; no business-logic migration |
+| P15-3 Hot path migration | ⏳ **Open** | After P15-2 — email, notifications, push unification, etc. |
 | P15-4 Production hardening | ⏳ Blocked | After P15-3 |
 
 ### Downstream
@@ -78,4 +78,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P15-1A — **Closed**: official architecture + decision records in `P15-background-jobs.md`. Parent **P15-1 closed** (docs-only wave). Next builder phase: **P15-2** (STAGING queue foundation — not started).
+P15-2 — **Closed**: pg-boss queue foundation on STAGING (`qkczposlooaldmsjfmun`) — infrastructure only; no API behavior change; no email/notification/OTP migration. Next builder phase: **P15-3** (hot path migration — not started).

@@ -32,7 +32,7 @@ Every file, script, feature, and infra folder belongs to **exactly one** P-domai
 | P12 | AI (descriptions / pricing) | [P12-ai.md](./P12-ai.md) | Active |
 | P13 | Analytics & observability | [P13-analytics-observability.md](./P13-analytics-observability.md) · [P13-3 charter](./P13-3-index-monitoring-cwv.md) | Active — P13-4 closed |
 | P14 | Search & ranking | [P14-search-ranking.md](./P14-search-ranking.md) | Active (FTS) / ranking evolving |
-| P15 | Background jobs & workers | [P15-background-jobs.md](./P15-background-jobs.md) | Active — P15-1 ✅ closed · **P15-2 open** (STAGING queue) |
+| P15 | Background jobs & workers | [P15-background-jobs.md](./P15-background-jobs.md) | Active — P15-1 ✅ · P15-2 ✅ STAGING foundation · **P15-3** next |
 | P16 | Scale architecture | [P16-scale-architecture.md](./P16-scale-architecture.md) | Planned (spike scripts exist) |
 | P17 | Commerce, orders & fulfillment | [P17-commerce-orders.md](./P17-commerce-orders.md) | P17-0..4 recovered on main (spec + mock API + UI); P17-5+ not started |
 
@@ -131,7 +131,7 @@ Ordered by **lowest risk / highest clarity** — **not approved for execution** 
 | 1 | **A)** P0/P1 cleanup **audit** (inventory only, no deletes) | Docs / inventory |
 | 2 | **B)** `api-build-slim*` cleanup **plan** (no deletes) | Docs |
 | 3 | **D)** P8-1 admin maturity wave | ✅ Closed — see [P08-admin-notes](./P08-admin-notes.md) |
-| 4 | **E)** P15 queue workers | P15-1 ✅ docs · **P15-2** STAGING implementation next |
+| 4 | **E)** P15 queue workers | P15-1 ✅ · P15-2 ✅ STAGING foundation · **P15-3** hot-path migration next |
 | 5 | **C)** P16 Redis STAGING spike | STAGING ops — needs approval |
 
 ---

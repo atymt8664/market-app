@@ -19,7 +19,7 @@
 | P8-1E | i18n closure (P8G) | ⏳ Open |
 | P8-1F | Dashboard contracts (notification / roles UX) | ✅ Closed |
 | P8-1G | Billing/plans boundary (**P10**) | ✅ **Closed** — [P08-billing-plans-boundary.md](./P08-billing-plans-boundary.md) |
-| P8-1H | Monitoring boundary + NOC CPU hook | ⏳ **Deploy pending** — [P08-monitoring-boundary.md](./P08-monitoring-boundary.md) |
+| P8-1H | Monitoring boundary + NOC CPU hook | ✅ **Closed** — [P08-monitoring-boundary.md](./P08-monitoring-boundary.md) |
 | P8-1I | STAGING verification + P8-1 close | ⏳ Open |
 
 **Do not start P8-1E+ until P8-1D is closed** (done). **Do not start P15-1 or P17-4+ until P8-1 is closed.**

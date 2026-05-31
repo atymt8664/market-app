@@ -17,9 +17,9 @@
 | P13-2 | Global visual identity `#0A0A0A` | ✅ Closed |
 | P13-3-0 | Charter + CWV SLOs | ✅ Closed |
 | P13-3-A | Index Monitoring (scripts + runbook) | ✅ Closed |
-| P13-3-B | Core Web Vitals (RUM + Lighthouse gates) | ⏳ Open |
-| P13-3 | Index Monitoring + Core Web Vitals (full) | ⏳ Open |
-| P13-4 | Bing Webmaster (and follow-on) | ⏳ Blocked until P13-3 |
+| P13-3 | Index Monitoring + Core Web Vitals (full) | ✅ Closed |
+| P13-4 | AI Discoverability + Knowledge Graph | ✅ Closed |
+| P13-4 charter | [P13-4-ai-discoverability-kg.md](./P13-4-ai-discoverability-kg.md) | |
 
 ---
 
@@ -125,7 +125,7 @@
 
 - Product analytics (funnels) — EU privacy compliant
 - Alerting: API p95, error rate, WS disconnects, queue depth (**P15**)
-- Bing Webmaster (**P13-4**)
+- Bing Webmaster (**P13-4** — closed; see [P13-4-A runbook](./P13-4-A-bing-runbook.md))
 
 ---
 

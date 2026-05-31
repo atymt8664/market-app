@@ -465,6 +465,9 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
   }
 
   const { executiveHeader, userIntelligence, priorityItems, systemHealthGrid } = noc;
+  const queueCenter = Array.isArray(noc.queueCenter) ? noc.queueCenter : [];
+  const needsActionNow = Array.isArray(noc.needsActionNow) ? noc.needsActionNow : [];
+  const recentActivity = Array.isArray(noc.recentActivity) ? noc.recentActivity : [];
   const showSystem = access.can("system") && systemHealthGrid.length > 0;
   const showFounderBlocks = access.isFounder;
   const canUsers = access.can("users");
@@ -606,7 +609,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
           <h2 className="text-lg font-semibold text-foreground">{t("p8.admin.noc.section.needs_action")}</h2>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {noc.needsActionNow.map((item) => (
+          {needsActionNow.map((item) => (
             <NeedsActionCard key={item.key} item={item} onNavigate={navigate} />
           ))}
         </div>
@@ -715,12 +718,12 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
             ) : null}
           </div>
           <div className="flex flex-1 flex-col gap-2">
-            {noc.recentActivity.length === 0 ? (
+            {recentActivity.length === 0 ? (
               <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-primary/25 bg-zinc-900/40 p-6 text-center text-sm text-muted-foreground">
                 {t("p8.admin.noc.activity.empty")}
               </div>
             ) : (
-              noc.recentActivity.slice(0, 8).map((item) => (
+              recentActivity.slice(0, 8).map((item) => (
                 <ActivityFeedItem key={item.id} item={item} onNavigate={navigate} />
               ))
             )}
@@ -733,7 +736,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
             <h2 className="text-lg font-semibold text-foreground">{t("p8.admin.noc.section.queue")}</h2>
           </div>
           <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
-            {noc.queueCenter.map((queue) => (
+            {queueCenter.map((queue) => (
               <button
                 key={queue.key}
                 type="button"

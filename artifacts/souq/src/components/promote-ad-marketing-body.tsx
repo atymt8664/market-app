@@ -21,6 +21,7 @@ import {
   SETTINGS_CARD_SHELL,
   SETTINGS_SECTION_TITLE,
 } from "@/components/settings-shell";
+import { MonetizationPreviewBanner } from "@/components/monetization-preview-banner";
 
 const ROW_CARD =
   "rounded-2xl border border-primary/36 bg-[#0A0A0A]/76 p-3 shadow-[0_0_20px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-3.5";
@@ -117,6 +118,7 @@ export function PromoteAdMarketingBody() {
 
   return (
     <>
+      <MonetizationPreviewBanner className="mb-2" />
       <p className={cn(SETTINGS_CARD_SHELL, "px-3 py-2.5 text-xs leading-relaxed text-primary/88", textStart)}>
         {t("promote.page_intro")}
       </p>

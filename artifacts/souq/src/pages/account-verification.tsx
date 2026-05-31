@@ -17,6 +17,7 @@ import { useLocale } from "@/hooks/use-locale";
 import { t } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { p10PreviewAttrs } from "@/lib/monetization-boundary";
 import {
   SETTINGS_ACTION_PANEL,
   SETTINGS_CARD,
@@ -126,6 +127,7 @@ export default function AccountVerification() {
       animate={{ opacity: 1, y: 0 }}
       className={cn("flex min-h-[100dvh] w-full flex-col", SETTINGS_PAGE_BG)}
       dir={dir}
+      {...p10PreviewAttrs("user.verification_preview")}
     >
       <AccountHeader title={t("verification_preview.page_title")} />
 

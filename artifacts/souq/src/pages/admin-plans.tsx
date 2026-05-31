@@ -8,6 +8,7 @@ import { useRequireAdmin } from "@/features/admin/hooks";
 import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { p10PreviewAttrs } from "@/lib/monetization-boundary";
 
 function PlanBlock({
   titleKey,
@@ -56,7 +57,7 @@ export default function AdminPlansPage() {
 
   return (
     <AdminShell activeKey="plans" onLogout={onLogout}>
-      <div className="space-y-5">
+      <div className="space-y-5" {...p10PreviewAttrs("admin.plans")}>
         <header className="space-y-2 text-start">
           <div className="flex flex-wrap items-start gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/45 bg-primary/12 text-primary shadow-[0_0_20px_-8px_hsl(var(--primary)/0.4)] ring-1 ring-primary/15">

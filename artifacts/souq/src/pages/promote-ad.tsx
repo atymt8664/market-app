@@ -6,6 +6,7 @@ import { t } from "@/i18n";
 import { readPromoteAdPreview } from "@/lib/promote-ad-preview";
 import { cn } from "@/lib/utils";
 import { PromoteAdMarketingBody } from "@/components/promote-ad-marketing-body";
+import { p10PreviewAttrs } from "@/lib/monetization-boundary";
 import { AdCardNoImagePlaceholder } from "@/components/ad-card-no-image-placeholder";
 import {
   SETTINGS_BACK_BUTTON,
@@ -64,7 +65,7 @@ export default function PromoteAdPage() {
   }
 
   return (
-    <div className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)} dir={dir}>
+    <div className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)} dir={dir} {...p10PreviewAttrs("user.promote")}>
       <header className={SETTINGS_HEADER_BAR} dir="rtl">
         <div className={SETTINGS_HEADER_INNER}>
           <h1 className={SETTINGS_PAGE_TITLE}>{t("promote.title")}</h1>

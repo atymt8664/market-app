@@ -35,6 +35,7 @@ import {
   SETTINGS_ROW_BUTTON,
 } from "@/components/settings-shell";
 import { cn } from "@/lib/utils";
+import { p10PreviewAttrs } from "@/lib/monetization-boundary";
 import {
   appendReturnToQuery,
   stashLegalExplicitReturn,
@@ -104,7 +105,7 @@ export default function AccountInfoPage() {
     </div>
   );
   const paymentsBody = (
-    <div className="space-y-3.5" dir={locale === "ar" ? "rtl" : "ltr"}>
+    <div className="space-y-3.5" dir={locale === "ar" ? "rtl" : "ltr"} {...p10PreviewAttrs("user.payments")}>
       <section className={SETTINGS_CARD}>
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/45 bg-primary/10 text-primary shadow-[0_0_16px_-8px_hsl(var(--primary)/0.38)]">

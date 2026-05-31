@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { FileText, Wallet2 } from "lucide-react";
+import { p10PreviewAttrs } from "@/lib/monetization-boundary";
 
 const YEARS = [2024, 2025, 2026, 2027] as const;
 
@@ -56,7 +57,7 @@ export default function AdminBillingPage() {
 
   return (
     <AdminShell activeKey="billing" onLogout={onLogout}>
-      <div className="space-y-5">
+      <div className="space-y-5" {...p10PreviewAttrs("admin.billing")}>
         <header className="space-y-2 text-start">
           <div className="flex flex-wrap items-start gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/45 bg-primary/12 text-primary shadow-[0_0_20px_-8px_hsl(var(--primary)/0.4)] ring-1 ring-primary/15">
@@ -68,6 +69,13 @@ export default function AdminBillingPage() {
             </div>
           </div>
         </header>
+
+        <p
+          role="status"
+          className="rounded-2xl border border-amber-500/35 bg-amber-950/25 px-3 py-2.5 text-start text-[13px] font-medium leading-relaxed text-amber-100/95"
+        >
+          {t("p8.admin.billing.alert")}
+        </p>
 
         <section className={cn(CARD_SHELL, "border-amber-500/35 bg-amber-950/15 p-5 text-start")}>
           <h2 className="text-base font-semibold text-amber-100">{t("p8.admin.billing.disconnected_title")}</h2>
@@ -109,6 +117,10 @@ export default function AdminBillingPage() {
               {t("p8.admin.billing.filter.apply")}
             </Button>
           </div>
+          <p className="mb-4 text-start text-xs leading-relaxed text-muted-foreground">{t("p8.admin.billing.filter.hint")}</p>
+
+          <h2 className="mb-1 text-start text-sm font-semibold text-foreground">{t("p8.admin.billing.channels.section_title")}</h2>
+          <p className="mb-4 text-start text-xs leading-relaxed text-muted-foreground">{t("p8.admin.billing.channels.subtitle")}</p>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {CHANNEL_KEYS.map((k) => (

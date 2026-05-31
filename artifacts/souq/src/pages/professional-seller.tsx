@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { p10PreviewAttrs } from "@/lib/monetization-boundary";
 import { Button } from "@/components/ui/button";
 import {
   SETTINGS_BACK_BUTTON,
@@ -450,7 +451,11 @@ export default function ProfessionalSellerPage() {
   }, [navigate]);
 
   return (
-    <div className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)} dir={dir}>
+    <div
+      className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}
+      dir={dir}
+      {...p10PreviewAttrs(segment === "trust" ? "user.trust_score" : "user.pro_seller")}
+    >
       <header className={SETTINGS_HEADER_BAR} dir="rtl">
         <div className={SETTINGS_HEADER_INNER}>
           <SegmentPageTitle segment={segment} />

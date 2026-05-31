@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { p10PreviewAttrs } from "@/lib/monetization-boundary";
 import { PromoteAdMarketingBody } from "@/components/promote-ad-marketing-body";
 import { AdCardNoImagePlaceholder } from "@/components/ad-card-no-image-placeholder";
 import {
@@ -44,7 +45,7 @@ export default function PromotePreviewPage() {
   }, [navigate, returnTo]);
 
   return (
-    <div className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)} dir={dir}>
+    <div className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)} dir={dir} {...p10PreviewAttrs("user.promote_preview")}>
       <header className={SETTINGS_HEADER_BAR} dir="rtl">
         <div className={SETTINGS_HEADER_INNER}>
           <h1 className={SETTINGS_PAGE_TITLE}>{t("promote.title")}</h1>

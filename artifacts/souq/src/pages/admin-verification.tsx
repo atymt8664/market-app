@@ -53,6 +53,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api-url";
 import { formatAdminDateTime } from "@/features/admin/admin-locale";
 import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
+import { p10PreviewAttrs, p8VerificationOpsAttrs } from "@/lib/monetization-boundary";
 import { getLocale, t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -457,7 +458,7 @@ export default function AdminVerificationPage() {
 
   return (
     <AdminShell activeKey="verification" onLogout={onLogout}>
-      <div className="space-y-5">
+      <div className="space-y-5" {...p10PreviewAttrs("admin.verification_ops")} {...p8VerificationOpsAttrs()}>
         <header className="space-y-2 text-right">
           <div className="flex flex-wrap items-start gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/45 bg-primary/12 text-primary shadow-[0_0_20px_-8px_hsl(var(--primary)/0.4)] ring-1 ring-primary/15">
@@ -475,6 +476,13 @@ export default function AdminVerificationPage() {
             </div>
           </div>
         </header>
+
+        <p
+          role="status"
+          className="rounded-2xl border border-sky-500/30 bg-sky-950/20 px-3 py-2.5 text-right text-[13px] leading-relaxed text-sky-100/90"
+        >
+          {t("p8.admin.verification.boundary_user_submit")}
+        </p>
 
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard label={t("p8.admin.verification.stats_total")} value={stats?.total ?? 0} tone="default" />

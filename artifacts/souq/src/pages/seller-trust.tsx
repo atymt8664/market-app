@@ -14,6 +14,7 @@ import {
 import { useLocale } from "@/hooks/use-locale";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { p10PreviewAttrs } from "@/lib/monetization-boundary";
 import { Button } from "@/components/ui/button";
 import {
   SETTINGS_BACK_BUTTON,
@@ -107,7 +108,7 @@ export default function SellerTrustPage() {
   }, [navigate]);
 
   return (
-    <div className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)} dir={dir}>
+    <div className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)} dir={dir} {...p10PreviewAttrs("user.trust_score")}>
       <header className={SETTINGS_HEADER_BAR} dir="rtl">
         <div className={SETTINGS_HEADER_INNER}>
           <h1 className={SETTINGS_PAGE_TITLE}>{t("seller_trust.page.title")}</h1>

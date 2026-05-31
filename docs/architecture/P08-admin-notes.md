@@ -18,7 +18,7 @@
 | P8-1D | Audit & logs maturity | ✅ Closed |
 | P8-1E | i18n closure (P8G) | ⏳ Open |
 | P8-1F | Dashboard contracts (notification / roles UX) | ✅ Closed |
-| P8-1G | Billing/plans boundary (**P10**) | ⏳ Open |
+| P8-1G | Billing/plans boundary (**P10**) | ✅ **Closed** — [P08-billing-plans-boundary.md](./P08-billing-plans-boundary.md) |
 | P8-1H | P13 CPU hook in NOC | ⏳ Open |
 | P8-1I | STAGING verification + P8-1 close | ⏳ Open |
 

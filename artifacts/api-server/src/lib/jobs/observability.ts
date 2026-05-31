@@ -2,7 +2,8 @@ import type { PgBoss, QueueResult, WipData } from "pg-boss";
 import { STAGING_SUPABASE_REF } from "./constants";
 import { detectSupabaseProjectRef, isJobQueueEnabled } from "./env-guard";
 import { DEFAULT_JOB_QUEUE_SCHEMA } from "./constants";
-import { REGISTERED_JOB_NAMES } from "./registry";
+import { DLQ_QUEUE_NAME, listRegisteredQueueNames } from "./dlq";
+import { readEmailJobMetrics } from "./job-queue-metrics";
 import type { QueueHealthSnapshot } from "./types";
 
 export async function collectQueueHealthSnapshot(
@@ -11,7 +12,7 @@ export async function collectQueueHealthSnapshot(
   const schema =
     process.env["JOB_QUEUE_SCHEMA"]?.trim() || DEFAULT_JOB_QUEUE_SCHEMA;
   const ref = detectSupabaseProjectRef();
-  const queueNames = [...REGISTERED_JOB_NAMES, "system.dead_letter"];
+  const queueNames = listRegisteredQueueNames();
   const stats = await Promise.all(
     queueNames.map(async (name) => {
       try {
@@ -43,6 +44,8 @@ export async function collectQueueHealthSnapshot(
       state: w.state,
       count: w.count,
     })),
+    emailMetrics: readEmailJobMetrics(),
+    deadLetterQueue: DLQ_QUEUE_NAME,
   };
 }
 

@@ -34,4 +34,10 @@ export type QueueHealthSnapshot = {
     state: string;
     count: number;
   }>;
+  emailMetrics?: {
+    enqueued: number;
+    processed: number;
+    failed: number;
+  };
+  deadLetterQueue?: string;
 };

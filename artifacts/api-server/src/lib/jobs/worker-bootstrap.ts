@@ -1,5 +1,6 @@
 import type { PgBoss } from "pg-boss";
 import { registerFoundationJobHandlers } from "./handlers/foundation";
+import { registerEmailJobHandlers } from "./handlers/email";
 import {
   listRegisteredJobHandlers,
   REGISTERED_JOB_NAMES,
@@ -41,12 +42,13 @@ async function detachHandlers(boss: PgBoss): Promise<void> {
 }
 
 /**
- * Bootstrap pg-boss worker process (P15-2 foundation).
- * Does not modify API HTTP routes or existing sync business paths.
+ * Bootstrap pg-boss worker process (P15-2 foundation + P15-3 email).
+ * Does not modify API HTTP routes beyond enqueue producer used by email-outbox.
  */
 export async function bootstrapJobWorker(): Promise<JobWorkerRuntime> {
   assertJobQueueAllowed();
   registerFoundationJobHandlers();
+  registerEmailJobHandlers();
 
   const boss = await startQueueModule();
   const workIds = await attachHandlers(boss);

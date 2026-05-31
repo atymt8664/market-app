@@ -1,11 +1,14 @@
-import type { Job, PgBoss, QueueResult } from "pg-boss";
-import { FOUNDATION_JOB_TYPES } from "./registry";
+import type { PgBoss } from "pg-boss";
+import {
+  EMAIL_JOB_TYPES,
+  FOUNDATION_JOB_TYPES,
+} from "./registry";
 import {
   DLQ_PROBE_RETRY_OPTIONS,
   STANDARD_RETRY_OPTIONS,
 } from "./retry-policy";
 
-/** Central dead-letter queue for foundation jobs (P15-4 admin replay). */
+/** Central dead-letter queue (P15-4 admin replay). */
 export const DLQ_QUEUE_NAME = "system.dead_letter";
 
 type QueueSeed = {
@@ -19,7 +22,7 @@ type QueueSeed = {
   };
 };
 
-const FOUNDATION_QUEUE_SEEDS: QueueSeed[] = [
+const REGISTERED_QUEUE_SEEDS: QueueSeed[] = [
   {
     name: DLQ_QUEUE_NAME,
     options: { retryLimit: 0 },
@@ -38,16 +41,35 @@ const FOUNDATION_QUEUE_SEEDS: QueueSeed[] = [
       deadLetter: DLQ_QUEUE_NAME,
     },
   },
+  {
+    name: EMAIL_JOB_TYPES.AUTH_OTP,
+    options: {
+      ...STANDARD_RETRY_OPTIONS,
+      deadLetter: DLQ_QUEUE_NAME,
+    },
+  },
+  {
+    name: EMAIL_JOB_TYPES.AUTH_RESET,
+    options: {
+      ...STANDARD_RETRY_OPTIONS,
+      deadLetter: DLQ_QUEUE_NAME,
+    },
+  },
 ];
 
-/** Idempotent queue creation for foundation job types. */
-export async function ensureFoundationQueues(boss: PgBoss): Promise<void> {
-  for (const seed of FOUNDATION_QUEUE_SEEDS) {
+/** Idempotent queue creation for all registered job types. */
+export async function ensureRegisteredQueues(boss: PgBoss): Promise<void> {
+  for (const seed of REGISTERED_QUEUE_SEEDS) {
     const existing = await boss.getQueue(seed.name);
     if (!existing) {
       await boss.createQueue(seed.name, seed.options);
     }
   }
+}
+
+/** @deprecated use ensureRegisteredQueues */
+export async function ensureFoundationQueues(boss: PgBoss): Promise<void> {
+  return ensureRegisteredQueues(boss);
 }
 
 /** Failed jobs for a queue (DLQ foundation — uses pg-boss findJobs). */
@@ -63,4 +85,8 @@ export async function listFailedJobs(
 /** Jobs routed to the dead-letter queue. */
 export async function listDeadLetterJobs(boss: PgBoss, limit = 25) {
   return listFailedJobs(boss, DLQ_QUEUE_NAME, limit);
+}
+
+export function listRegisteredQueueNames(): string[] {
+  return REGISTERED_QUEUE_SEEDS.map((s) => s.name);
 }

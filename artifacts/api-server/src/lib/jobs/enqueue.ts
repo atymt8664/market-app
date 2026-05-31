@@ -4,9 +4,14 @@ import { DLQ_PROBE_RETRY_OPTIONS, sendOptionsForPriority } from "./retry-policy"
 import type { EnqueueJobOptions, JobEnvelope } from "./types";
 import { JOB_ENVELOPE_VERSION } from "./constants";
 import {
+  EMAIL_JOB_TYPES,
   FOUNDATION_JOB_TYPES,
   type RegisteredJobName,
 } from "./registry";
+import type {
+  AuthOtpEmailPayload,
+  AuthResetEmailPayload,
+} from "./email-types";
 
 function wrapPayload<T>(payload: T, idempotencyKey?: string): JobEnvelope<T> {
   const envRef = detectSupabaseProjectRef() ?? "unknown";
@@ -57,5 +62,27 @@ export async function enqueueDlqProbe(
   return enqueueJob(boss, FOUNDATION_JOB_TYPES.SYSTEM_DLQ_PROBE, payload, {
     priority: "low",
     idempotencyKey: `dlq-probe:${Date.now()}`,
+  });
+}
+
+export async function enqueueAuthOtpEmail(
+  boss: PgBoss,
+  payload: AuthOtpEmailPayload,
+  options: EnqueueJobOptions = {},
+): Promise<string | null> {
+  return enqueueJob(boss, EMAIL_JOB_TYPES.AUTH_OTP, payload, {
+    priority: "critical",
+    ...options,
+  });
+}
+
+export async function enqueueAuthResetEmail(
+  boss: PgBoss,
+  payload: AuthResetEmailPayload,
+  options: EnqueueJobOptions = {},
+): Promise<string | null> {
+  return enqueueJob(boss, EMAIL_JOB_TYPES.AUTH_RESET, payload, {
+    priority: "critical",
+    ...options,
   });
 }

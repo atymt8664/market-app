@@ -18,6 +18,7 @@ export {
 } from "./retry-policy";
 export {
   FOUNDATION_JOB_TYPES,
+  EMAIL_JOB_TYPES,
   REGISTERED_JOB_NAMES,
   registerJobHandler,
   listRegisteredJobHandlers,
@@ -26,9 +27,11 @@ export {
 } from "./registry";
 export {
   DLQ_QUEUE_NAME,
+  ensureRegisteredQueues,
   ensureFoundationQueues,
   listFailedJobs,
   listDeadLetterJobs,
+  listRegisteredQueueNames,
 } from "./dlq";
 export {
   createBossInstance,
@@ -42,11 +45,18 @@ export {
   enqueueJob,
   enqueueFoundationPing,
   enqueueDlqProbe,
+  enqueueAuthOtpEmail,
+  enqueueAuthResetEmail,
 } from "./enqueue";
 export {
   collectQueueHealthSnapshot,
   summarizeQueueDepth,
 } from "./observability";
+export {
+  incrementEmailJobMetric,
+  readEmailJobMetrics,
+  resetEmailJobMetricsForTests,
+} from "./job-queue-metrics";
 export {
   bootstrapJobWorker,
   bootstrapQueueProducer,
@@ -54,4 +64,10 @@ export {
   type JobWorkerRuntime,
 } from "./worker-bootstrap";
 export { registerFoundationJobHandlers } from "./handlers/foundation";
+export { registerEmailJobHandlers } from "./handlers/email";
+export type {
+  AuthOtpEmailPayload,
+  AuthResetEmailPayload,
+  EmailJobPayload,
+} from "./email-types";
 export type { JobEnvelope, EnqueueJobOptions, QueueHealthSnapshot } from "./types";

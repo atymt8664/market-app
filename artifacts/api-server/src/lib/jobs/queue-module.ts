@@ -1,7 +1,7 @@
 import { PgBoss } from "pg-boss";
 import { DEFAULT_JOB_QUEUE_SCHEMA } from "./constants";
 import { assertJobQueueAllowed } from "./env-guard";
-import { ensureFoundationQueues } from "./dlq";
+import { ensureRegisteredQueues } from "./dlq";
 
 export type JobQueueConfig = {
   connectionString: string;
@@ -38,7 +38,7 @@ export async function startQueueModule(existing?: PgBoss): Promise<PgBoss> {
   startPromise = (async () => {
     const boss = existing ?? createBossInstance();
     await boss.start();
-    await ensureFoundationQueues(boss);
+    await ensureRegisteredQueues(boss);
     bossInstance = boss;
     return boss;
   })();

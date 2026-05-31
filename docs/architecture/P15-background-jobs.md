@@ -23,7 +23,7 @@ Targets (10–50 year horizon): millions of users, ads, messages, notifications,
 
 | Component | Today | Gap |
 |-----------|-------|-----|
-| Email (Resend OTP / reset) | Sync `await` in `lib/email.ts` | No outbox / retry worker |
+| Email (Resend OTP / reset) | STAGING outbox via `auth.otp` / `auth.reset`; PRODUCTION sync | P15-3 remaining hot paths |
 | In-app notifications | Sync `await` INSERT in `lib/create-notification.ts` | Fan-out blocks hot paths |
 | Web push | Partial — Redis LIST + `push-worker.ts` OR inline IIFE fallback | Not unified job system; no DLQ |
 | Ad image normalize (Sharp) | Sync CPU in upload path | Blocks API event loop |
@@ -326,19 +326,32 @@ Extends **P13** and **P8** monitoring boundary (`data-monitoring-tier="live"`).
 
 ---
 
-### P15-3 — Hot path migration (STAGING → approved PROD)
+### P15-3 — Hot path migration (STAGING → approved PROD) ⏳ Open
+
+#### P15-3A — Email outbox ✅ (STAGING)
+
+| Item | Status |
+|------|--------|
+| `auth.otp` / `auth.reset` job types | ✅ |
+| Email worker handlers | ✅ |
+| STAGING-only outbox gate (`EMAIL_OUTBOX_ENABLED`) | ✅ |
+| Auth routes → enqueue on STAGING | ✅ |
+| Critical priority + standard retry + DLQ | ✅ |
+| Queue metrics + health snapshot | ✅ |
+| PRODUCTION | ❌ sync path unchanged |
+
+**Remaining in P15-3 (not started):**
 
 | Order | Migration |
 |-------|-----------|
-| 1 | Email outbox → PRODUCTION (approved) |
 | 2 | `createNotification` → enqueue path |
 | 3 | Unify push from Redis LIST → shared queue |
-| 4 | Image normalize worker (raw upload → async) |
-| 5 | Extract `runAutoEscalationAll` → cron (5–15m) |
+| 4 | Image normalize worker |
+| 5 | Extract `runAutoEscalationAll` → cron |
 | 6 | Analytics daily rollup cron |
 | 7 | Account deletion storage purge job |
 
-**Exit criteria:** P8 admin smoke PASS; queue depth stable under load test; prod-shadow worker deploy verified.
+**Full P15-3 exit criteria:** P8 admin smoke PASS; queue depth stable; prod-shadow worker deploy verified — **not met until all migrations complete.**
 
 ---
 

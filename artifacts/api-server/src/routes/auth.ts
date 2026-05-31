@@ -23,8 +23,8 @@ import {
 } from "@workspace/api-zod";
 import {
   buildResetPasswordUrl,
-  sendPasswordResetEmail,
-  sendVerificationCodeEmail,
+  dispatchPasswordResetEmail,
+  dispatchVerificationCodeEmail,
 } from "../lib/email";
 import { logger } from "../lib/logger";
 import { verifyAdminAccessKeyHeader } from "../lib/admin-access-key";
@@ -234,11 +234,11 @@ function resetExpiry() {
 }
 
 async function deliverVerificationCode(email: string, code: string) {
-  await sendVerificationCodeEmail(email, code);
+  await dispatchVerificationCodeEmail(email, code);
 }
 
 async function deliverPasswordResetLink(email: string, url: string) {
-  await sendPasswordResetEmail(email, url);
+  await dispatchPasswordResetEmail(email, url);
 }
 
 const SignupRequestBody = z

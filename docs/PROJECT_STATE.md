@@ -59,7 +59,7 @@ Only **one open builder phase** at a time. Sequence:
 | **P15-1A** Architecture docs + ADRs | ✅ **Closed** | Commit `a7b8c67` · Authority: `docs/architecture/P15-background-jobs.md` · Phase 1: pg-boss · Phase 2: BullMQ+Redis on trigger metrics only |
 | **P15-1** (parent — architecture wave) | ✅ **Closed** | Documentation only — no code/migrations/deploy |
 | **P15-2** Queue foundation (STAGING) | ✅ **Closed** | Commit `f42bf2a` · pg-boss foundation on STAGING ref only — queue module, worker bootstrap, registry, retry/DLQ/observability; foundation jobs `system.ping` / `system.dlq_probe`; STAGING smoke PASS; no business-logic migration |
-| P15-3 Hot path migration | ⏳ **Open** | After P15-2 — email, notifications, push unification, etc. |
+| P15-3 Hot path migration | ⏳ **Open** | **P15-3A Email outbox** ✅ on STAGING — notifications/push/cron deferred |
 | P15-4 Production hardening | ⏳ Blocked | After P15-3 |
 
 ### Downstream
@@ -78,4 +78,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P15-2 — **Closed** (commit `f42bf2a`): pg-boss queue foundation on STAGING (`qkczposlooaldmsjfmun`) — infrastructure only; no API behavior change; no email/notification/OTP migration. Next builder phase: **P15-3** (hot path migration — not started).
+P15-3A — **Email outbox on STAGING** (in progress closure pending commit). Parent **P15-3 open** — notifications/push/cron migrations remain.

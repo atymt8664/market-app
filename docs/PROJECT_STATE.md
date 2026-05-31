@@ -46,7 +46,7 @@ Only **one open builder phase** at a time. Sequence:
 | **P8-1C** User center polish | ✅ **Closed** | `last_seen_at` in users list · NOC↔users deep links · `status=unverified` filter |
 | **P8-1D** Audit & logs maturity | ✅ **Closed** | Commit `9cc503c` · VPS `souq-api:p8-1d-20260531` · phase8 external PASS · Vercel `admin-logs-DCCeHcWo.js` |
 | **P8-1E** i18n closure | ✅ **Closed** | Commit `9b20675` · Vercel `admin-settings-CHr9B3tj.js` · `i18n:check` ar/en/de PASS |
-| **P8-1F** Dashboard contracts | ✅ **Closed** | Registry + docs + queueCenter fix · `p8-1f:validate` PASS · Vite build PASS |
+| **P8-1F** Dashboard contracts | ✅ **Closed** | Commits `082065b`, `935224b`, `TBD` · VPS `souq-api:p8-1f-20260531` · Vercel `dpl_3BKsJpnSkYF2kr1grhQY7cauWqqC` · `p8-1f:prod` PASS |
 | P8-1G Billing/plans boundary | ⏳ Open | **P10** defer |
 | P8-1H P13 CPU hook | ⏳ Open | |
 | P8-1I STAGING verify + P8-1 close | ⏳ Open | |
@@ -69,4 +69,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P8-1F — Dashboard contracts closed (2026-05-31). Next: **P8-1G**. Parent **P8-1** remains open.
+P8-1F — Dashboard contracts closed on Production (2026-05-31). Next: **P8-1G**. Parent **P8-1** remains open.

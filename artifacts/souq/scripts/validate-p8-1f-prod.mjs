@@ -70,19 +70,19 @@ const html = await body(`${WWW_BASE}/admin-login`);
 const indexJs = html.match(/src="(\/assets\/index-[^"]+\.js)"/);
 if (indexJs) {
   const indexContent = await body(`${WWW_BASE}${indexJs[1]}`);
-  const adminChunk = indexContent.match(/admin-[A-Za-z0-9_-]+\.js/);
-  if (adminChunk) {
-    const adminJs = await body(`${WWW_BASE}/assets/${adminChunk[0]}`);
-    const hasContractIds =
-      adminJs.includes("noc.executive.today.new_users") &&
-      adminJs.includes("noc.user.online_now");
-    if (hasContractIds) {
-      ok(`admin bundle P8-1F contract IDs in /assets/${adminChunk[0]}`);
-    } else {
-      bad(`admin bundle missing P8-1F contract IDs in /assets/${adminChunk[0]}`);
+  const adminChunks = [...indexContent.matchAll(/admin-[A-Za-z0-9_-]+\.js/g)].map((m) => m[0]);
+  let dashboardChunk = null;
+  for (const chunk of adminChunks) {
+    const js = await body(`${WWW_BASE}/assets/${chunk}`);
+    if (js.includes("noc.executive.today.new_users") && js.includes("noc.user.online_now")) {
+      dashboardChunk = chunk;
+      break;
     }
+  }
+  if (dashboardChunk) {
+    ok(`admin dashboard bundle P8-1F contract IDs in /assets/${dashboardChunk}`);
   } else {
-    bad("could not resolve admin lazy chunk from index bundle");
+    bad(`no admin chunk contains P8-1F contract IDs (checked ${adminChunks.length} chunks)`);
   }
 } else {
   bad("could not locate index JS chunk");

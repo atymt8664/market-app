@@ -18,10 +18,10 @@
 Only **one open builder phase** at a time. Sequence:
 
 ```
-✅ P13-1 → ✅ P13-2 → ✅ P13-3 → ✅ P13-4 → ✅ P8-1 (P8-1A ✅ … P8-1I ✅) → ⏳ P15-1 → ⏳ P17-4…P17-19
+✅ P13-1 → ✅ P13-2 → ✅ P13-3 → ✅ P13-4 → ✅ P8-1 (P8-1A ✅ … P8-1I ✅) → ✅ P15-1 (P15-1A ✅) → ⏳ P15-2 → ⏳ P17-4…P17-19
 ```
 
-**Do not start** P15-1 or P17-4+ until **P8-1** is closed. **P8-1 is closed** — P15-1 may proceed when approved.
+**Do not start P15-2** until **P15-1** is closed. **P15-1 is closed.** **Do not start P15-3+** until **P15-2** is closed.
 
 ---
 
@@ -48,15 +48,24 @@ Only **one open builder phase** at a time. Sequence:
 | **P8-1E** i18n closure | ✅ **Closed** | Commit `9b20675` · Vercel `admin-settings-CHr9B3tj.js` · `i18n:check` ar/en/de PASS |
 | **P8-1F** Dashboard contracts | ✅ **Closed** | Commits `082065b`, `935224b`, `09dcada` · VPS `souq-api:p8-1f-20260531` · Vercel `dpl_3BKsJpnSkYF2kr1grhQY7cauWqqC` · `p8-1f:prod` PASS |
 | **P8-1G** Billing/plans boundary | ✅ **Closed** | Commit `9e84a30` · Vercel `dpl_F3PCDapsv6CLG2xfjxN8puEQbaM4` · `p8-1g:validate` PASS |
-| **P8-1H** Monitoring boundary + NOC CPU hook | ✅ **Closed** | Commits `9303bda`, `3a8b05c` · Vercel `fra1::mvmjx-1780200854600-a121d2f32ea0` · VPS `souq-api:p8-1h-20260531` (prev `p8-1f-20260531`) · `p8-1h:validate` + `p8-1h:prod` + post-deploy smoke PASS |
-| **P8-1I** Final admin verify + P8-1 close | ✅ **Closed** | Commits `dcff3e0`, `d0d376c` · VPS prod-shadow `souq-api:p8-1h-20260531` · `p8-1i:prod` + env isolation audit PASS |
+| **P8-1H** Monitoring boundary + NOC CPU hook | ✅ **Closed** | Commits `9303bda`, `3a8b05c` · Vercel `fra1::mvmjx-1780200854600-a121d2f32ea0` · VPS `souq-api:p8-1h-20260531` · `p8-1h:validate` + `p8-1h:prod` + post-deploy smoke PASS |
+| **P8-1I** Final admin verify + P8-1 close | ✅ **Closed** | Commits `dcff3e0`, `d0d376c`, `0208ad7` · VPS prod-shadow `souq-api:p8-1h-20260531` · `p8-1i:prod` + env isolation audit PASS |
 | **P8-1** (parent) | ✅ **Closed** | All sub-milestones P8-1A…P8-1I complete |
+
+### P15 — Background jobs & workers
+
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| **P15-1A** Architecture docs + ADRs | ✅ **Closed** | Authority: `docs/architecture/P15-background-jobs.md` · Phase 1 queue: pg-boss · Phase 2: BullMQ+Redis on trigger metrics only |
+| **P15-1** (parent — architecture wave) | ✅ **Closed** | Documentation only — no code/migrations/deploy |
+| **P15-2** Queue foundation (STAGING) | ⏳ **Open** | pg-boss + email outbox worker — **do not start until approved** |
+| P15-3 Hot path migration | ⏳ Blocked | After P15-2 |
+| P15-4 Production hardening | ⏳ Blocked | After P15-3 |
 
 ### Downstream
 
 | Phase | Status |
 |-------|--------|
-| P15-1 | ⏳ Ready (P8-1 closed) |
 | P17-4 … P17-19 | ⏳ Blocked |
 
 ---
@@ -69,4 +78,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P8-1I — **Closed** (2026-05-31): prod-shadow aligned to `souq-api:p8-1h-20260531`; env isolation verified (nginx→:3002 PRODUCTION); `p8-1i:prod` PASS. Parent **P8-1 closed**. Next: **P15-1** when approved.
+P15-1A — **Closed**: official architecture + decision records in `P15-background-jobs.md`. Parent **P15-1 closed** (docs-only wave). Next builder phase: **P15-2** (STAGING queue foundation — not started).

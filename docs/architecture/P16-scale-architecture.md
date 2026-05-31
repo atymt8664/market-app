@@ -67,7 +67,7 @@
 | **P1** | Env |
 | **P5** | WS scaling |
 | **P9** | Latency targets |
-| **P15** | Queue backend |
+| **P15** | Queue backend (Phase 1: pg-boss; Phase 2: BullMQ when triggered) |
 
 ---
 
@@ -83,8 +83,9 @@
 
 ```
 VPS (single API)
-  → Redis (127.0.0.1)
-  → Queue worker (P15)
+  → pg-boss queue worker (P15 Phase 1)
+  → Redis (127.0.0.1) — sessions, rate limits, WS pub/sub
+  → BullMQ queue (P15 Phase 2 — only when trigger metrics met; see P15-background-jobs.md)
   → Second API replica (nginx upstream)
   → Read replicas (Supabase)
   → Horizontal scale / multi-region (long-term)

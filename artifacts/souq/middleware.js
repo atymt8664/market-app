@@ -1,13 +1,15 @@
 /**
- * P11-5 — Edge middleware: serves OG HTML to social crawlers on /, /ad/:id, /users/:id.
+ * P11-5 / P13-4 — Edge middleware: OG + KG JSON-LD for discovery crawlers on /, /ad/:id, /users/:id.
  */
 import {
   buildAdShareMeta,
   buildHomeShareMeta,
   buildProfileShareMeta,
+  buildHomeStructuredDataJsonLd,
   fetchPublicAd,
   fetchPublicProfile,
   isSocialCrawler,
+  P3_STRUCTURED_DATA_SCRIPT_ID,
   renderOgHtml,
 } from "./scripts/og-share-meta.mjs";
 import { buildAdStructuredDataJsonLd } from "./scripts/ad-structured-data.mjs";
@@ -46,5 +48,8 @@ export default async function middleware(request) {
     });
   }
 
-  return new Response(renderOgHtml(buildHomeShareMeta()), { status: 200, headers: OG_HEADERS });
+  return new Response(
+    renderOgHtml(buildHomeShareMeta(), buildHomeStructuredDataJsonLd(), P3_STRUCTURED_DATA_SCRIPT_ID),
+    { status: 200, headers: OG_HEADERS },
+  );
 }

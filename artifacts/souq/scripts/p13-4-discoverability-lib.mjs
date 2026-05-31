@@ -94,8 +94,11 @@ export function runP13DiscoverabilityLocalChecks({ root, repoRoot }) {
   const rootOgApi = readFileSync(join(monorepoRoot, "api/og.js"), "utf8");
   assert(rootOgApi.includes("buildHomeStructuredDataJsonLd"), "root api/og.js: home JSON-LD wired");
 
-  const middleware = readFileSync(join(monorepoRoot, "middleware.js"), "utf8");
-  assert(middleware.includes("buildHomeStructuredDataJsonLd"), "middleware.js: home JSON-LD for discovery crawlers");
+  const middleware = readFileSync(join(root, "middleware.js"), "utf8");
+  assert(middleware.includes("buildHomeStructuredDataJsonLd"), "middleware.js (souq): home JSON-LD for discovery crawlers");
+
+  const rootMiddleware = readFileSync(join(monorepoRoot, "middleware.js"), "utf8");
+  assert(rootMiddleware.includes("buildHomeStructuredDataJsonLd"), "middleware.js (root): home JSON-LD wired");
 
   const foundationTs = readFileSync(join(root, "src/lib/structured-data-foundation.ts"), "utf8");
   const homeJson = buildHomeStructuredDataJsonLd();

@@ -67,29 +67,35 @@ c = await status(`${WWW_BASE}/admin-login`);
 c === 200 ? ok(`admin-login page (${c})`) : bad(`admin-login page (${c})`);
 
 const html = await body(`${WWW_BASE}/admin-login`);
-if (html.includes("data-dashboard-contract") || html.includes("dashboard-contract")) {
-  ok("admin bundle marker in HTML (inline)");
-} else {
-  const scriptMatch = html.match(/src="(\/assets\/admin[^"]+\.js)"/);
-  if (scriptMatch) {
-    const js = await body(`${WWW_BASE}${scriptMatch[1]}`);
-    if (js.includes("data-dashboard-contract") || js.includes("noc.executive.today.new_users")) {
-      ok(`admin bundle marker in ${scriptMatch[1]}`);
+const indexJs = html.match(/src="(\/assets\/index-[^"]+\.js)"/);
+if (indexJs) {
+  const indexContent = await body(`${WWW_BASE}${indexJs[1]}`);
+  const adminChunk = indexContent.match(/admin-[A-Za-z0-9_-]+\.js/);
+  if (adminChunk) {
+    const adminJs = await body(`${WWW_BASE}/assets/${adminChunk[0]}`);
+    const hasContractIds =
+      adminJs.includes("noc.executive.today.new_users") &&
+      adminJs.includes("noc.user.online_now");
+    if (hasContractIds) {
+      ok(`admin bundle P8-1F contract IDs in /assets/${adminChunk[0]}`);
     } else {
-      bad(`admin bundle missing P8-1F markers in ${scriptMatch[1]} — deploy may be pending`);
+      bad(`admin bundle missing P8-1F contract IDs in /assets/${adminChunk[0]}`);
     }
   } else {
-    const indexJs = html.match(/src="(\/assets\/index-[^"]+\.js)"/);
-    if (indexJs) {
-      const js = await body(`${WWW_BASE}${indexJs[1]}`);
-      if (js.includes("dashboardContractAttrs") || js.includes("data-dashboard-contract")) {
-        ok(`index bundle contains dashboard contracts (${indexJs[1]})`);
-      } else {
-        bad("frontend bundle missing dashboardContractAttrs — Vercel deploy pending?");
-      }
-    } else {
-      bad("could not locate admin JS chunk for P8-1F marker check");
-    }
+    bad("could not resolve admin lazy chunk from index bundle");
+  }
+} else {
+  bad("could not locate index JS chunk");
+}
+
+for (const chunk of ["admin-stats", "admin-monitoring", "admin-operations"]) {
+  const chunkMatch = indexJs?.[1]
+    ? (await body(`${WWW_BASE}${indexJs[1]}`)).match(new RegExp(`${chunk}-[A-Za-z0-9_-]+\\.js`))
+    : null;
+  if (chunkMatch) {
+    ok(`${chunk} chunk present (${chunkMatch[0]})`);
+  } else {
+    bad(`${chunk} chunk not found in index bundle`);
   }
 }
 

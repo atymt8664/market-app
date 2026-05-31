@@ -44,7 +44,7 @@ Only **one open builder phase** at a time. Sequence:
 | **P8-1A** Baseline & doc sync | ✅ **Closed** | Baseline: `docs/architecture/P08-admin-baseline.md` · Smoke: `docs/runbooks/P8-1A-staging-admin-smoke.md` |
 | **P8-1B** Settings PATCH UI | ✅ **Closed** | `/admin/settings` editor wired to `PATCH /api/admin/settings` |
 | **P8-1C** User center polish | ✅ **Closed** | `last_seen_at` in users list · NOC↔users deep links · `status=unverified` filter |
-| **P8-1D** Audit & logs maturity | ✅ **Closed** | Staff display names · filter groups · audit detail fields |
+| **P8-1D** Audit & logs maturity | ✅ **Closed** | Commit `9cc503c` · VPS `souq-api:p8-1d-20260531` · phase8 external PASS · Vercel `admin-logs-DCCeHcWo.js` |
 | P8-1E i18n closure | ⏳ Open | After P8-1D |
 | P8-1F Dashboard contracts | ⏳ Open | |
 | P8-1G Billing/plans boundary | ⏳ Open | **P10** defer |
@@ -69,4 +69,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P8-1D — Audit & logs maturity closed. Next: **P8-1E**. Parent **P8-1** remains open.
+P8-1D — Audit & logs maturity closed (Production verified 2026-05-31). Next: **P8-1E**. Parent **P8-1** remains open.

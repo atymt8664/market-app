@@ -48,7 +48,7 @@ Only **one open builder phase** at a time. Sequence:
 | **P8-1E** i18n closure | ✅ **Closed** | Commit `9b20675` · Vercel `admin-settings-CHr9B3tj.js` · `i18n:check` ar/en/de PASS |
 | **P8-1F** Dashboard contracts | ✅ **Closed** | Commits `082065b`, `935224b`, `09dcada` · VPS `souq-api:p8-1f-20260531` · Vercel `dpl_3BKsJpnSkYF2kr1grhQY7cauWqqC` · `p8-1f:prod` PASS |
 | **P8-1G** Billing/plans boundary | ✅ **Closed** | Commit `9e84a30` · Vercel `dpl_F3PCDapsv6CLG2xfjxN8puEQbaM4` · `p8-1g:validate` PASS |
-| **P8-1H** Monitoring boundary + NOC CPU hook | ✅ **Closed** | Commit `9303bda` · Vercel `fra1::mvmjx-1780200854600-a121d2f32ea0` · bundles `monitoring-boundary-C6NuJMrH.js`, `admin-monitoring-CFLb4_CX.js`, `admin-C7ntBJaP.js` · VPS **deploy** `souq-api:p8-1h-20260531` (operator) · `p8-1h:validate` + `p8-1h:prod` PASS |
+| **P8-1H** Monitoring boundary + NOC CPU hook | ✅ **Closed** | Commits `9303bda`, `3a8b05c` · Vercel `fra1::mvmjx-1780200854600-a121d2f32ea0` · VPS `souq-api:p8-1h-20260531` (prev `p8-1f-20260531`) · `p8-1h:validate` + `p8-1h:prod` + post-deploy smoke PASS |
 | P8-1I STAGING verify + P8-1 close | ⏳ Open | |
 | **P8-1** (parent) | ⏳ **Open** | Closes when P8-1I complete |
 
@@ -69,4 +69,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P8-1H — **Closed** (2026-05-31): Vercel + `p8-1h:prod` PASS; operator must roll VPS API image `souq-api:p8-1h-20260531` for live NOC CPU in dashboard JSON. Next: **P8-1I**. Parent **P8-1** remains open.
+P8-1H — **Closed** (2026-05-31): Vercel + VPS `souq-api:p8-1h-20260531` deployed; `p8-1h:prod` + VPS smoke PASS. Next: **P8-1I**. Parent **P8-1** remains open.

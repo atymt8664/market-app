@@ -1,6 +1,6 @@
 # P8-1H — Monitoring boundary & CPU hook (NOC ↔ API host metrics)
 
-**Status:** ✅ Closed (2026-05-31) — `p8-1h:validate` + `p8-1h:prod` PASS · Vercel deployed · VPS image `souq-api:p8-1h-20260531` (operator deploy for API JSON).
+**Status:** ✅ Closed (2026-05-31) — `p8-1h:validate` + `p8-1h:prod` PASS · Vercel deployed · VPS `souq-api:p8-1h-20260531` live (`CURRENT_TAG` verified).
 
 **Authority:** `artifacts/souq/src/lib/monitoring-boundary.ts` · `artifacts/souq/src/features/admin/dashboard-contracts.ts`
 

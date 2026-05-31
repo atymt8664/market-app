@@ -107,7 +107,17 @@ export type AdminNocNeedsActionItem = {
 
 export type AdminNocActivityActor = {
   id: number | null;
-  roleKey: "founder" | "moderator" | "support" | "verification" | "analyst" | "system" | "user";
+  roleKey:
+    | "founder"
+    | "moderator"
+    | "support"
+    | "verification"
+    | "analyst"
+    | "admin_manager"
+    | "finance_manager"
+    | "system"
+    | "user";
+  displayName?: string | null;
 };
 
 export type AdminNocActivityItem = {
@@ -443,6 +453,9 @@ export type AdminActivityLog = {
   id: number;
   actionType: string;
   actor: string;
+  actorAdminId: number | null;
+  actorDisplayName: string | null;
+  actorRoleKey: string | null;
   targetType: string;
   targetId: number | null;
   createdAt: string | null;

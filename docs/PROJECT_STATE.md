@@ -18,10 +18,10 @@
 Only **one open builder phase** at a time. Sequence:
 
 ```
-✅ P13-1 → ✅ P13-2 → ✅ P13-3 → ✅ P13-4 → ⏳ P8-1 (P8-1A ✅ · P8-1B ✅ · P8-1C ✅) → ⏳ P15-1 → ⏳ P17-4…P17-19
+✅ P13-1 → ✅ P13-2 → ✅ P13-3 → ✅ P13-4 → ⏳ P8-1 (P8-1A ✅ · P8-1B ✅ · P8-1C ✅ · P8-1D ✅) → ⏳ P15-1 → ⏳ P17-4…P17-19
 ```
 
-**Do not start** P15-1 or P17-4+ until **P8-1** is closed. **Do not start P8-1D+** until **P8-1C** is closed.
+**Do not start** P15-1 or P17-4+ until **P8-1** is closed. **Do not start P8-1E+** until **P8-1D** is closed.
 
 ---
 
@@ -44,8 +44,8 @@ Only **one open builder phase** at a time. Sequence:
 | **P8-1A** Baseline & doc sync | ✅ **Closed** | Baseline: `docs/architecture/P08-admin-baseline.md` · Smoke: `docs/runbooks/P8-1A-staging-admin-smoke.md` |
 | **P8-1B** Settings PATCH UI | ✅ **Closed** | `/admin/settings` editor wired to `PATCH /api/admin/settings` |
 | **P8-1C** User center polish | ✅ **Closed** | `last_seen_at` in users list · NOC↔users deep links · `status=unverified` filter |
-| P8-1D Audit & logs maturity | ⏳ Open | After P8-1C |
-| P8-1E i18n closure | ⏳ Open | |
+| **P8-1D** Audit & logs maturity | ✅ **Closed** | Staff display names · filter groups · audit detail fields |
+| P8-1E i18n closure | ⏳ Open | After P8-1D |
 | P8-1F Dashboard contracts | ⏳ Open | |
 | P8-1G Billing/plans boundary | ⏳ Open | **P10** defer |
 | P8-1H P13 CPU hook | ⏳ Open | |
@@ -69,4 +69,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P8-1C — User center polish **closed on Production** (VPS `souq-api:p8-1c-20260531` + Vercel frontend verified 2026-05-31). Next: **P8-1D**. Parent **P8-1** remains open.
+P8-1D — Audit & logs maturity closed. Next: **P8-1E**. Parent **P8-1** remains open.

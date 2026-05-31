@@ -38,7 +38,19 @@ import { Label } from "@/components/ui/label";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
-const ACTION_TYPE_KEYS = ["all", "ad", "report", "support", "user", "category", "city"] as const;
+const ACTION_TYPE_KEYS = [
+  "all",
+  "ad",
+  "report",
+  "support",
+  "user",
+  "category",
+  "city",
+  "verification",
+  "staff",
+  "settings",
+  "monitoring",
+] as const;
 
 const TARGET_TYPE_KEYS = [
   "all",
@@ -48,6 +60,7 @@ const TARGET_TYPE_KEYS = [
   "user",
   "category",
   "city",
+  "verification_request",
   "system",
 ] as const;
 
@@ -67,6 +80,12 @@ const DETAIL_FIELD_I18N: Record<string, string> = {
   toPriority: "p8.admin.categories.sort",
   targetType: "p8.admin.logs.target_type_label",
   targetId: "p8.admin.logs.th_target_id",
+  reason: "p8.admin.logs.field_reason",
+  deepLink: "p8.admin.logs.field_deep_link",
+  roleKey: "p8.admin.logs.field_role",
+  actionKey: "p8.admin.logs.th_action_type",
+  previousState: "p8.admin.logs.field_previous_state",
+  newState: "p8.admin.logs.field_new_state",
 };
 
 const AD_STATUS_KEYS: Record<string, string> = {
@@ -92,6 +111,25 @@ const SUPPORT_STATUS_KEYS: Record<string, string> = {
 };
 
 const MAX_TABLE_SUMMARY = 160;
+
+function formatActorCell(log: AdminActivityLog): string {
+  const name = log.actorDisplayName?.trim() || log.actor?.trim();
+  if (!name) return t("p8.admin.common.dash");
+  if (log.actorRoleKey) {
+    const roleKey = `p8.admin.roles.${log.actorRoleKey}.title`;
+    const roleLabel = t(roleKey);
+    if (roleLabel !== roleKey && log.actorRoleKey !== "founder") {
+      return `${name} · ${roleLabel}`;
+    }
+  }
+  return name;
+}
+
+function formatRoleKeyLabel(roleKey: string): string {
+  const key = `p8.admin.roles.${roleKey}.title`;
+  const label = t(key);
+  return label === key ? roleKey : label;
+}
 
 function actionLabelKey(actionKey: string): string {
   return `p8.admin.logs.action.${actionKey}`;
@@ -219,6 +257,9 @@ function formatPrimitiveForDisplay(key: string, value: unknown, actionKey: strin
   if (/status/i.test(key) || key === "fromStatus" || key === "toStatus") {
     return formatStatusForAction(actionKey, s);
   }
+  if (key === "roleKey") {
+    return formatRoleKeyLabel(s);
+  }
   return s || t("p8.admin.common.dash");
 }
 
@@ -264,6 +305,14 @@ function buildTableSummary(actionKey: string, detailsRaw: string): string {
           id: parsed.reportId.toLocaleString("ar-EG"),
         }),
       );
+    }
+    if (typeof parsed.reason === "string" && parsed.reason.trim()) {
+      const reason = parsed.reason.trim();
+      if (!containsUnreadableGarbage(reason)) {
+        chunks.push(
+          reason.length > 80 ? `${reason.slice(0, 80)}…` : reason,
+        );
+      }
     }
     if (parsed.source && typeof parsed.source === "string") {
       const src = parsed.source as string;
@@ -555,7 +604,7 @@ export default function AdminLogsPage() {
                         {getActionLabel(log.actionType)}
                       </td>
                       <td className="px-3 py-3 align-middle text-foreground">
-                        {log.actor?.trim() ? log.actor : t("p8.admin.common.dash")}
+                        {formatActorCell(log)}
                       </td>
                       <td className="px-3 py-3 align-middle text-foreground">
                         {targetTypeDisplay(log.targetType)}
@@ -629,9 +678,13 @@ export default function AdminLogsPage() {
               </div>
               <div className="rounded-xl border border-primary/20 bg-zinc-900/50 px-3 py-2 ring-1 ring-primary/8">
                 <span className="text-muted-foreground">{t("p8.admin.logs.th_actor")}: </span>
-                <span className="text-foreground">
-                  {detailLog.actor?.trim() ? detailLog.actor : t("p8.admin.common.dash")}
-                </span>
+                <span className="text-foreground">{formatActorCell(detailLog)}</span>
+                {detailLog.actorAdminId != null ? (
+                  <span className="mr-2 text-xs tabular-nums text-muted-foreground">
+                    {" "}
+                    (#{detailLog.actorAdminId})
+                  </span>
+                ) : null}
               </div>
               <div className="rounded-xl border border-primary/20 bg-zinc-900/50 px-3 py-2 ring-1 ring-primary/8">
                 <span className="text-muted-foreground">{t("p8.admin.logs.th_target_type")}: </span>
@@ -729,6 +782,21 @@ export default function AdminLogsPage() {
                       <p className="rounded-xl border border-primary/15 bg-zinc-900/30 px-3 py-2 text-center text-sm text-muted-foreground ring-1 ring-primary/8">
                         {t("p8.admin.logs.no_details")}
                       </p>
+                    ) : null}
+
+                    {typeof parsed?.deepLink === "string" && parsed.deepLink.startsWith("/") ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={BTN_MODAL_GHOST}
+                        onClick={() => {
+                          const href = String(parsed.deepLink);
+                          setDetailLog(null);
+                          navigate(href);
+                        }}
+                      >
+                        {t("p8.admin.logs.open_target")}
+                      </Button>
                     ) : null}
                   </>
                 );

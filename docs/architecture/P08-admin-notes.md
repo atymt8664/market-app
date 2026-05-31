@@ -15,14 +15,14 @@
 | **P8-1A** | Baseline inventory + doc sync + smoke runbook | ✅ **Closed** |
 | **P8-1B** | Settings PATCH UI | ✅ **Closed** |
 | P8-1C | User center polish | ✅ Closed |
-| P8-1D | Audit & logs maturity | ⏳ Open |
+| P8-1D | Audit & logs maturity | ✅ Closed |
 | P8-1E | i18n closure (P8G) | ⏳ Open |
 | P8-1F | Dashboard contracts (notification / roles UX) | ⏳ Open |
 | P8-1G | Billing/plans boundary (**P10**) | ⏳ Open |
 | P8-1H | P13 CPU hook in NOC | ⏳ Open |
 | P8-1I | STAGING verification + P8-1 close | ⏳ Open |
 
-**Do not start P8-1D+ until P8-1C is closed** (done). **Do not start P15-1 or P17-4+ until P8-1 is closed.**
+**Do not start P8-1E+ until P8-1D is closed** (done). **Do not start P15-1 or P17-4+ until P8-1 is closed.**
 
 ---
 
@@ -87,11 +87,20 @@
 
 ## Deferred — must not be forgotten
 
-### P8-1D — Audit & logs gaps
-
 | Gap | Owner | Notes |
 |-----|-------|-------|
-| Staff **display names** in activity logs | P8-1D | Logs show `admin#<actorAdminId>` except Founder label |
+| `admin_activity_logs` runtime CREATE | P1/P8 | Move to formal migration when approved |
+
+---
+
+## Resolved — P8-1D
+
+| Item | Resolution |
+|------|------------|
+| Staff **display names** in activity logs | ✅ `loadAdminLogActorMap` · `actorDisplayName` + `actorRoleKey` in API + UI |
+| Log filters missing verification / staff / settings groups | ✅ UI pills match backend `ADMIN_LOG_ACTION_GROUPS` |
+| NOC activity shows generic `admin#id` | ✅ Staff names + real role keys in NOC feed |
+| Audit detail lacks reason / deep link UX | ✅ Structured fields + «فتح الهدف» deep-link button |
 
 ---
 
@@ -118,7 +127,6 @@
 
 | Gap | Owner | Notes |
 |-----|-------|-------|
-| Log filters missing verification / staff / settings groups in UI | P8-1D | Backend action groups include them |
 | `admin_activity_logs` runtime CREATE | P1/P8 | Move to formal migration when approved |
 
 ### P8-1E — Full admin i18n (P8G)
@@ -190,6 +198,7 @@ See [P08-admin-baseline.md](./P08-admin-baseline.md) § Feature readiness. Billi
 - [x] Verification backend + UI
 - [x] Settings editor UI (**P8-1B**)
 - [x] User center list polish — `lastSeenAt`, NOC deep links (**P8-1C**)
+- [x] Audit & logs maturity — staff names, filters, audit trail UX (**P8-1D**)
 - [ ] Full `p8.admin.*` on all admin pages including `de` quality (**P8-1E**)
 - [ ] Billing backend (**P10** — explicit defer, not P8-1 blocker for core ops)
 - [ ] Host CPU in NOC (**P13** — **P8-1H**)
@@ -197,4 +206,4 @@ See [P08-admin-baseline.md](./P08-admin-baseline.md) § Feature readiness. Billi
 
 ---
 
-*Last updated: P8-1C — User center polish closed.*
+*Last updated: P8-1D — Audit & logs maturity closed.*

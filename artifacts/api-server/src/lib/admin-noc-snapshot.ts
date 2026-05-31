@@ -12,7 +12,16 @@ import { buildObservabilitySnapshot } from "./observability";
 import { checkDatabaseReadiness } from "./observability/readiness";
 import { countUsersWithOpenChatSockets } from "./realtime";
 
-import { FOUNDER_DISPLAY_NAME, FOUNDER_ROLE_KEY, COMPANY_NAME } from "./admin-staff";
+import { loadAdminLogActorMap } from "./admin-log-actors";
+import {
+  FOUNDER_ADMIN_ACTOR_ID,
+  FOUNDER_DISPLAY_NAME,
+  FOUNDER_ROLE_KEY,
+  COMPANY_NAME,
+  type AdminRoleKey,
+  isAdminRoleKey,
+  staffDisplayName,
+} from "./admin-staff";
 import { countOpenVerificationRequests, countPendingVerificationQueue } from "./admin-verification-workflow";
 
 const ABUSE_SPIKE_REPORTS_LAST_HOUR = 8;
@@ -36,7 +45,17 @@ export type AdminNocNeedsActionItem = {
 
 export type AdminNocActivityActor = {
   id: number | null;
-  roleKey: "founder" | "moderator" | "support" | "verification" | "analyst" | "system" | "user";
+  roleKey:
+    | "founder"
+    | "moderator"
+    | "support"
+    | "verification"
+    | "analyst"
+    | "admin_manager"
+    | "finance_manager"
+    | "system"
+    | "user";
+  displayName?: string | null;
 };
 
 export type AdminNocActivityItem = {
@@ -188,12 +207,31 @@ function activityHref(
   }
 }
 
-function resolveAdminActor(actorAdminId: number | null): AdminNocActivityActor {
-  if (actorAdminId === 1) {
-    return { id: 1, roleKey: "founder" };
+function toNocActorRoleKey(roleKey: AdminRoleKey): AdminNocActivityActor["roleKey"] {
+  if (roleKey === "founder") return "founder";
+  if (roleKey === "support") return "support";
+  if (roleKey === "verification") return "verification";
+  if (roleKey === "analyst") return "analyst";
+  if (roleKey === "admin_manager") return "admin_manager";
+  if (roleKey === "finance_manager") return "finance_manager";
+  return "moderator";
+}
+
+function resolveAdminActor(
+  actorAdminId: number | null,
+  actorMap: Map<number, import("./admin-log-actors").AdminLogActorInfo>,
+): AdminNocActivityActor {
+  if (actorAdminId === FOUNDER_ADMIN_ACTOR_ID) {
+    return { id: FOUNDER_ADMIN_ACTOR_ID, roleKey: "founder", displayName: FOUNDER_DISPLAY_NAME };
   }
   if (actorAdminId != null && actorAdminId > 0) {
-    return { id: actorAdminId, roleKey: "moderator" };
+    const info = actorMap.get(actorAdminId);
+    const roleKey = info?.roleKey && isAdminRoleKey(info.roleKey) ? info.roleKey : "moderator";
+    return {
+      id: actorAdminId,
+      roleKey: toNocActorRoleKey(roleKey),
+      displayName: info?.displayName ?? staffDisplayName(actorAdminId),
+    };
   }
   return { id: null, roleKey: "system" };
 }
@@ -237,6 +275,8 @@ async function buildRecentActivity(): Promise<AdminNocActivityItem[]> {
       .orderBy(desc(adminActivityLogsTable.createdAt), desc(adminActivityLogsTable.id))
       .limit(20);
 
+    const actorMap = await loadAdminLogActorMap(adminRows.map((row) => row.actorAdminId));
+
     for (const row of adminRows) {
       if (!row.createdAt) continue;
       items.push({
@@ -244,7 +284,7 @@ async function buildRecentActivity(): Promise<AdminNocActivityItem[]> {
         kind: "admin_action",
         createdAt: row.createdAt.toISOString(),
         href: activityHref(row.targetType, row.targetId),
-        actor: resolveAdminActor(row.actorAdminId),
+        actor: resolveAdminActor(row.actorAdminId, actorMap),
         actionKey: actionKeyFromLog(row.action),
         target: row.targetId
           ? { type: row.targetType, id: row.targetId }

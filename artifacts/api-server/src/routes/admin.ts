@@ -14,6 +14,11 @@ import {
 import { and, asc, count, desc, eq, gte, ilike, inArray, or, sql } from "drizzle-orm";
 import { alias, boolean, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { ensureAdminLogsReady, getAdminActorId, logAdminActivity } from "../lib/admin-activity-log";
+import {
+  ADMIN_LOG_ACTION_GROUPS,
+  formatAdminLogActor,
+  loadAdminLogActorMap,
+} from "../lib/admin-log-actors";
 import { okAdminActionFeedback } from "../lib/admin-action-feedback";
 import { adminDeepLink, writeAdminAudit } from "../lib/admin-audit";
 import { parseModerationReason } from "../lib/admin-moderation-reason";
@@ -1377,56 +1382,7 @@ router.get("/admin/logs", requireAdminPermission("logs"), async (req, res) => {
   const fromDate = from ? new Date(`${from}T00:00:00.000Z`) : null;
   const toDate = to ? new Date(`${to}T23:59:59.999Z`) : null;
 
-  const actionGroups: Record<string, string[]> = {
-    ad: [
-      "ad.approve",
-      "ad.reject",
-      "ad.hide",
-      "ad.unhide",
-      "ad.delete",
-      "ad.claim",
-      "ad.release",
-      "ad.assign",
-      "ad.feature_on",
-      "ad.feature_off",
-    ],
-    report: [
-      "report.resolve",
-      "report.review",
-      "report.ignore",
-      "report.update_status",
-      "report.claim",
-      "report.assign",
-      "report.release",
-      "report.ad_action",
-    ],
-    support: [
-      "support.close",
-      "support.resolve",
-      "support.update",
-      "support.reply",
-      "support.reopen",
-      "support.claim",
-      "support.assign",
-      "support.release",
-    ],
-    user: ["user.block", "user.unblock", "user.avatar_approve", "user.avatar_reject"],
-    category: ["category.create", "category.update", "category.hide", "category.unhide", "category.delete"],
-    city: ["city.create", "city.update", "city.hide", "city.unhide", "city.delete"],
-    settings: ["settings.update", "admin.password.change", "admin.2fa.enable", "admin.2fa.disable"],
-    verification: [
-      "verification.claim",
-      "verification.assign",
-      "verification.release",
-      "verification.escalate",
-      "verification.approve",
-      "verification.reject",
-      "verification.needs_info",
-      "verification.status",
-    ],
-    staff: ["staff.create", "staff.update", "staff.sessions_revoke", "staff.password_change"],
-    monitoring: ["monitoring.alert"],
-  };
+  const actionGroups = ADMIN_LOG_ACTION_GROUPS;
 
   const where = and(
     actionType === "all"
@@ -1447,6 +1403,11 @@ router.get("/admin/logs", requireAdminPermission("logs"), async (req, res) => {
           sql`${adminActivityLogsTable.details}::text ilike ${`%${q}%`}`,
           sql`cast(${adminActivityLogsTable.targetId} as text) ilike ${`%${q}%`}`,
           sql`cast(${adminActivityLogsTable.actorAdminId} as text) ilike ${`%${q}%`}`,
+          sql`EXISTS (
+            SELECT 1 FROM admin_staff s
+            WHERE s.admin_actor_id = ${adminActivityLogsTable.actorAdminId}
+              AND s.display_name ILIKE ${`%${q}%`}
+          )`,
         )
       : undefined,
   );
@@ -1473,27 +1434,27 @@ router.get("/admin/logs", requireAdminPermission("logs"), async (req, res) => {
     .limit(pageSize)
     .offset(offset);
 
+  const actorMap = await loadAdminLogActorMap(rows.map((row) => row.actorAdminId));
+
   const meta = buildAdminPageMeta(page, pageSize, totalItems);
 
   return sendJsonAdminPage(
     res,
-    rows.map((row) => ({
-      id: row.id,
-      actionType: row.action,
-      actor:
-        row.actorAdminId === FOUNDER_ADMIN_ACTOR_ID
-          ? `${FOUNDER_DISPLAY_NAME} (Founder)`
-          : row.actorAdminId !== null
-            ? `admin#${row.actorAdminId}`
-            : "admin#unknown",
-      targetType: row.targetType,
-      targetId: row.targetId,
-      details:
-        row.details && typeof row.details === "object"
-          ? JSON.stringify(row.details)
-          : String(row.details ?? ""),
-      createdAt: row.createdAt ? row.createdAt.toISOString() : null,
-    })),
+    rows.map((row) => {
+      const actorFields = formatAdminLogActor(row.actorAdminId, actorMap);
+      return {
+        id: row.id,
+        actionType: row.action,
+        ...actorFields,
+        targetType: row.targetType,
+        targetId: row.targetId,
+        details:
+          row.details && typeof row.details === "object"
+            ? JSON.stringify(row.details)
+            : String(row.details ?? ""),
+        createdAt: row.createdAt ? row.createdAt.toISOString() : null,
+      };
+    }),
     meta,
   );
   } catch (err) {

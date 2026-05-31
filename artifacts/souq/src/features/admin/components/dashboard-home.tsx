@@ -394,11 +394,13 @@ function ActivityFeedItem({
 }) {
   const actorLabel = actorRoleLabel(item.actor.roleKey);
   const actorLine =
-    item.actor.roleKey === "user" && item.context.userName
-      ? item.context.userName
-      : item.actor.id != null
-        ? `${actorLabel}${item.actor.roleKey === "founder" || item.actor.roleKey === "moderator" ? "" : ` #${item.actor.id}`}`
-        : actorLabel;
+    item.actor.displayName?.trim()
+      ? `${item.actor.displayName.trim()}${item.actor.roleKey !== "founder" ? ` · ${actorLabel}` : ""}`
+      : item.actor.roleKey === "user" && item.context.userName
+        ? item.context.userName
+        : item.actor.id != null
+          ? `${actorLabel}${item.actor.roleKey === "founder" || item.actor.roleKey === "moderator" ? "" : ` #${item.actor.id}`}`
+          : actorLabel;
 
   return (
     <button

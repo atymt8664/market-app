@@ -31,7 +31,9 @@ import { AdminShell } from "@/features/admin/components/admin-shell";
 import { useAdminStats, useRequireAdmin } from "@/features/admin/hooks";
 import { useAdminAccess } from "@/features/admin/access";
 import type { AdminStatsPeriod } from "@/features/admin/types";
-import { t } from "@/i18n";
+import { adminIntlLocale, formatAdminDateTime, formatAdminNumber } from "@/features/admin/admin-locale";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
+import { getLocale, t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 /** مسارات إدارية معروفة — لا روابط وهمية */
@@ -106,7 +108,7 @@ function InteractiveStatCard({
         </span>
       </div>
       <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
-        {value.toLocaleString("ar-EG")}
+        {formatAdminNumber(value, getLocale())}
       </p>
     </Wrapper>
   );
@@ -130,7 +132,7 @@ function SummaryNavCard({
             <p key={line.label} className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-muted-foreground">{line.label}</span>
               <span className="font-semibold tabular-nums text-foreground">
-                {line.value.toLocaleString("ar-EG")}
+                {line.value.toLocaleString(adminIntlLocale(getLocale()))}
               </span>
             </p>
           ))}
@@ -153,7 +155,7 @@ function SummaryNavCard({
           <p key={line.label} className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-muted-foreground">{line.label}</span>
             <span className="font-semibold tabular-nums text-foreground">
-              {line.value.toLocaleString("ar-EG")}
+              {line.value.toLocaleString(adminIntlLocale(getLocale()))}
             </span>
           </p>
         ))}
@@ -188,6 +190,7 @@ function SectionHeaderLink({
 }
 
 export default function AdminStatsPage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [, navigate] = useLocation();
   const meQuery = useRequireAdmin();
   const access = useAdminAccess();
@@ -237,7 +240,7 @@ export default function AdminStatsPage() {
   }, [data, navigate, period]);
 
   const generatedLabel = data?.generatedAt
-    ? new Date(data.generatedAt).toLocaleString("ar-EG", {
+    ? formatAdminDateTime(data.generatedAt, getLocale(), {
         dateStyle: "medium",
         timeStyle: "short",
       })
@@ -247,7 +250,7 @@ export default function AdminStatsPage() {
     <AdminShell activeKey="analytics" onLogout={handleLogout}>
       <div
         className={cn("space-y-5", statsQuery.isFetching && data && "opacity-[0.92] transition-opacity")}
-        dir="rtl"
+       
       >
         <header
           className={cn(
@@ -442,10 +445,10 @@ export default function AdminStatsPage() {
                         <div key={item.city} className={cn(SUB_CARD, "p-3 text-sm")}>
                           <p className="font-medium text-foreground">{item.city}</p>
                           <p className="mt-1 text-muted-foreground">
-                            <span className="tabular-nums">{item.adsCount.toLocaleString("ar-EG")}</span>{" "}
+                            <span className="tabular-nums">{item.adsCount.toLocaleString(adminIntlLocale(getLocale()))}</span>{" "}
                             {t("p8.admin.stats.ad_unit")}{" "}
                             <span className="text-primary/80">·</span>{" "}
-                            <span className="tabular-nums">{item.totalViews.toLocaleString("ar-EG")}</span>{" "}
+                            <span className="tabular-nums">{item.totalViews.toLocaleString(adminIntlLocale(getLocale()))}</span>{" "}
                             {t("p8.admin.stats.views_unit")}
                           </p>
                         </div>
@@ -466,10 +469,10 @@ export default function AdminStatsPage() {
                         <div key={item.id} className={cn(SUB_CARD, "p-3 text-sm")}>
                           <p className="font-medium text-foreground">{item.name}</p>
                           <p className="mt-1 text-muted-foreground">
-                            <span className="tabular-nums">{item.adsCount.toLocaleString("ar-EG")}</span>{" "}
+                            <span className="tabular-nums">{item.adsCount.toLocaleString(adminIntlLocale(getLocale()))}</span>{" "}
                             {t("p8.admin.stats.ad_unit")}{" "}
                             <span className="text-primary/80">·</span>{" "}
-                            <span className="tabular-nums">{item.totalViews.toLocaleString("ar-EG")}</span>{" "}
+                            <span className="tabular-nums">{item.totalViews.toLocaleString(adminIntlLocale(getLocale()))}</span>{" "}
                             {t("p8.admin.stats.views_unit")}
                           </p>
                         </div>
@@ -504,7 +507,7 @@ export default function AdminStatsPage() {
                             <span className="text-primary/80">·</span>
                             <span>{item.city || t("p8.admin.common.dash")}</span>
                             <span className="text-primary/80">·</span>
-                            <span className="tabular-nums">{item.views.toLocaleString("ar-EG")}</span>{" "}
+                            <span className="tabular-nums">{item.views.toLocaleString(adminIntlLocale(getLocale()))}</span>{" "}
                             {t("p8.admin.stats.views_unit")}
                           </p>
                         </button>

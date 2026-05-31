@@ -300,7 +300,7 @@ export default function AdminStaffPage() {
   if (!canStaff) {
     return (
       <AdminShell activeKey="staff" onLogout={handleLogout}>
-        <div className={cn(CARD_SHELL, "p-6 text-right text-amber-100")} dir="rtl">
+        <div className={cn(CARD_SHELL, "p-6 text-right text-amber-100")}>
           <p className="font-medium">{t("p8.admin.staff.forbidden")}</p>
         </div>
       </AdminShell>
@@ -309,7 +309,7 @@ export default function AdminStaffPage() {
 
   return (
     <AdminShell activeKey="staff" onLogout={handleLogout}>
-      <div className="space-y-5" dir="rtl">
+      <div className="space-y-5">
         <header className={cn(CARD_SHELL, "p-5")}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
@@ -475,7 +475,7 @@ export default function AdminStaffPage() {
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className={cn(DIALOG_SURFACE_RTL, "max-w-lg")} dir="rtl">
+        <DialogContent className={cn(DIALOG_SURFACE_RTL, "max-w-lg")}>
           <DialogHeader className={MODAL_HEADER_RTL}>
             <DialogTitle className="text-foreground">{t("p8.admin.staff.add_title")}</DialogTitle>
             <DialogDescription>{t("p8.admin.staff.add_hint")}</DialogDescription>
@@ -588,7 +588,7 @@ export default function AdminStaffPage() {
       </Dialog>
 
       <Dialog open={editTarget != null} onOpenChange={(open) => !open && setEditTarget(null)}>
-        <DialogContent className={cn(DIALOG_SURFACE_RTL, "max-w-lg")} dir="rtl">
+        <DialogContent className={cn(DIALOG_SURFACE_RTL, "max-w-lg")}>
           <DialogHeader className={MODAL_HEADER_RTL}>
             <DialogTitle className="text-foreground">{t("p8.admin.staff.edit_title")}</DialogTitle>
             <DialogDescription>{t("p8.admin.staff.edit_hint")}</DialogDescription>
@@ -665,7 +665,7 @@ export default function AdminStaffPage() {
       </Dialog>
 
       <Dialog open={detailId != null} onOpenChange={(open) => !open && setDetailId(null)}>
-        <DialogContent className={cn(DIALOG_SURFACE_RTL, "max-h-[90vh] max-w-3xl gap-0 overflow-hidden p-0")} dir="rtl">
+        <DialogContent className={cn(DIALOG_SURFACE_RTL, "max-h-[90vh] max-w-3xl gap-0 overflow-hidden p-0")}>
           <div className="border-b border-primary/20 px-6 pb-4 pt-6">
             <DialogHeader className={MODAL_HEADER_RTL}>
               <DialogTitle className="text-foreground">{t("p8.admin.staff.detail_title")}</DialogTitle>
@@ -807,7 +807,7 @@ export default function AdminStaffPage() {
           if (!open) setTempPasswordReveal(null);
         }}
       >
-        <DialogContent className={cn(DIALOG_SURFACE_RTL, "max-w-md border-amber-500/40")} dir="rtl">
+        <DialogContent className={cn(DIALOG_SURFACE_RTL, "max-w-md border-amber-500/40")}>
           <DialogHeader className={MODAL_HEADER_RTL}>
             <DialogTitle className="text-amber-100">{t("p8.admin.staff.temp_pw_title")}</DialogTitle>
             <DialogDescription className="text-amber-200/80">{t("p8.admin.staff.temp_pw_hint")}</DialogDescription>

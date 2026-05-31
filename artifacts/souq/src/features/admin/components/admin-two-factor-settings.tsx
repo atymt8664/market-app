@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { cn } from "@/lib/utils";
 
 const LIME_RING =
@@ -48,6 +49,7 @@ type Props = {
 };
 
 export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Props) {
+  const { dir } = useAdminLocale();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -172,7 +174,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
           "rounded-2xl border border-zinc-800/90 bg-zinc-950/50 p-4 md:p-5",
           LIME_RING,
         )}
-        dir="rtl"
+        dir={dir}
       >
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3 text-right">
@@ -239,7 +241,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
       </section>
 
       <Dialog open={enableOpen} onOpenChange={handleEnableOpen}>
-        <DialogContent dir="rtl" className={cn(DIALOG_SURFACE, "max-w-md border-lime-500/25")}>
+        <DialogContent dir={dir} className={cn(DIALOG_SURFACE, "max-w-md border-lime-500/25")}>
           <DialogHeader className="space-y-2 text-right sm:text-right">
             <DialogTitle className="flex items-center gap-2 text-foreground">
               <QrCode className="h-5 w-5 text-lime-400" aria-hidden />
@@ -390,7 +392,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
       </Dialog>
 
       <Dialog open={backupOpen} onOpenChange={(o) => !o && closeBackup()}>
-        <DialogContent dir="rtl" className={cn(DIALOG_SURFACE, "max-w-lg border-amber-500/30")}>
+        <DialogContent dir={dir} className={cn(DIALOG_SURFACE, "max-w-lg border-amber-500/30")}>
           <DialogHeader className="text-right sm:text-right">
             <DialogTitle className="text-amber-100">{t("p8.admin.two_factor.backup_title")}</DialogTitle>
             <DialogDescription className="text-amber-200/85">{t("p8.admin.two_factor.backup_warn")}</DialogDescription>
@@ -429,7 +431,7 @@ export function AdminTwoFactorSettings({ twoFactorEnabled, onStatusChanged }: Pr
       </Dialog>
 
       <Dialog open={disableOpen} onOpenChange={setDisableOpen}>
-        <DialogContent dir="rtl" className={cn(DIALOG_SURFACE, "max-w-md")}>
+        <DialogContent dir={dir} className={cn(DIALOG_SURFACE, "max-w-md")}>
           <DialogHeader className="text-right sm:text-right">
             <DialogTitle>{t("p8.admin.two_factor.disable_title")}</DialogTitle>
             <DialogDescription>{t("p8.admin.two_factor.disable_hint")}</DialogDescription>

@@ -141,7 +141,7 @@ Defined in `lib/admin-rbac.ts` (backend) and `features/admin/rbac.ts` (frontend)
 | **P8-1B** | Settings PATCH UI on `/admin/settings` | ✅ Closed |
 | P8-1C | User center polish (`last_seen` list, deep links) | ✅ Closed |
 | P8-1D | Audit & logs maturity | ✅ Closed |
-| P8-1E | i18n closure (P8G) | ⏳ Open |
+| P8-1E | i18n closure (P8G) | ✅ Closed |
 | P8-1F | Dashboard contracts (notification / roles UX) | ⏳ Open |
 | P8-1G | Billing/plans boundary doc (**P10**) | ⏳ Open |
 | P8-1H | P13 CPU hook | ⏳ Open |

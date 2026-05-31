@@ -61,6 +61,7 @@ import {
 } from "@/features/admin/admin-interaction-classes";
 import { useToast } from "@/hooks/use-toast";
 import { t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { cn } from "@/lib/utils";
 
 function categoryTreeText(): AdminCategoryTreeText {
@@ -87,6 +88,7 @@ function categoryTreeText(): AdminCategoryTreeText {
 }
 
 export default function AdminCategoriesPage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [, navigate] = useLocation();
   const meQuery = useRequireAdmin();
   const queryClient = useQueryClient();
@@ -287,7 +289,7 @@ export default function AdminCategoriesPage() {
 
   if (meQuery.isLoading) {
     return (
-      <div className="min-h-screen bg-[#070b16] flex items-center justify-center" dir="rtl">
+      <div className="min-h-screen bg-[#070b16] flex items-center justify-center">
         <AdminPageLoading message={t("p8.admin.categories.loading")} />
       </div>
     );
@@ -295,7 +297,7 @@ export default function AdminCategoriesPage() {
 
   return (
     <AdminShell activeKey="categories" onLogout={handleLogout}>
-      <div className="space-y-5" dir="rtl">
+      <div className="space-y-5">
         <header className={cn("px-5 py-5", CARD_SHELL)}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -391,7 +393,7 @@ export default function AdminCategoriesPage() {
                 </div>
               </div>
             </form>
-            <div className="w-full shrink-0 space-y-2 lg:w-auto lg:min-w-[min(100%,17rem)]" dir="rtl">
+            <div className="w-full shrink-0 space-y-2 lg:w-auto lg:min-w-[min(100%,17rem)]">
               <Label className="block text-zinc-400">{t("p8.admin.categories.status")}</Label>
               <div
                 className="flex flex-wrap gap-2"
@@ -448,7 +450,7 @@ export default function AdminCategoriesPage() {
 
       {/* إضافة قسم رئيسي */}
       <Dialog open={addCategoryOpen} onOpenChange={setAddCategoryOpen}>
-        <DialogContent dir="rtl" className={cn(DIALOG_SURFACE, "max-w-lg")}>
+        <DialogContent className={cn(DIALOG_SURFACE, "max-w-lg")}>
           <DialogHeader className="space-y-2 text-right sm:text-right">
             <DialogTitle>{t("p8.admin.categories.add_category")}</DialogTitle>
             <DialogDescription className="text-zinc-400">
@@ -537,7 +539,7 @@ export default function AdminCategoriesPage() {
 
       {/* إضافة قسم فرعي */}
       <Dialog open={addSubOpen} onOpenChange={setAddSubOpen}>
-        <DialogContent dir="rtl" className={cn(DIALOG_SURFACE, "max-w-md")}>
+        <DialogContent className={cn(DIALOG_SURFACE, "max-w-md")}>
           <DialogHeader className="space-y-2 text-right sm:text-right">
             <DialogTitle>{t("p8.admin.categories.add_subcategory")}</DialogTitle>
             <DialogDescription className="text-zinc-400">
@@ -610,7 +612,7 @@ export default function AdminCategoriesPage() {
 
       {/* تعديل قسم رئيسي */}
       <Dialog open={!!editCategory} onOpenChange={(o) => !o && setEditCategory(null)}>
-        <DialogContent dir="rtl" className={cn(DIALOG_SURFACE, "max-w-lg")}>
+        <DialogContent className={cn(DIALOG_SURFACE, "max-w-lg")}>
           <DialogHeader className="space-y-2 text-right sm:text-right">
             <DialogTitle>{t("p8.admin.categories.edit_category_title")}</DialogTitle>
             <DialogDescription className="text-zinc-400">
@@ -703,7 +705,7 @@ export default function AdminCategoriesPage() {
 
       {/* تعديل قسم فرعي */}
       <Dialog open={!!editSub} onOpenChange={(o) => !o && setEditSub(null)}>
-        <DialogContent dir="rtl" className={cn(DIALOG_SURFACE, "max-w-md")}>
+        <DialogContent className={cn(DIALOG_SURFACE, "max-w-md")}>
           <DialogHeader className="space-y-2 text-right sm:text-right">
             <DialogTitle>{t("p8.admin.categories.edit_sub_title")}</DialogTitle>
             <DialogDescription className="text-zinc-400">
@@ -768,7 +770,7 @@ export default function AdminCategoriesPage() {
           if (!open && !updateMutation.isPending) setVisibilityTarget(null);
         }}
       >
-        <AlertDialogContent dir="rtl" className={cn(DIALOG_SURFACE, "max-w-md")}>
+        <AlertDialogContent className={cn(DIALOG_SURFACE, "max-w-md")}>
           <AlertDialogHeader className="space-y-2 text-right sm:text-right">
             <AlertDialogTitle>{t("p8.admin.categories.visibility_confirm_title")}</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
@@ -818,7 +820,7 @@ export default function AdminCategoriesPage() {
           if (!open && !deleteMutation.isPending) setDeleteTarget(null);
         }}
       >
-        <AlertDialogContent dir="rtl" className={cn(DIALOG_SURFACE, "max-w-md border-red-500/20")}>
+        <AlertDialogContent className={cn(DIALOG_SURFACE, "max-w-md border-red-500/20")}>
           <AlertDialogHeader className="space-y-2 text-right sm:text-right">
             <AlertDialogTitle>{t("p8.admin.categories.delete_confirm_title")}</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">

@@ -54,6 +54,7 @@ import type { OpsQueueKey } from "@/features/admin/operations-queue-types";
 import type { AdminSupportTicket } from "@/features/admin/types";
 import { useToast } from "@/hooks/use-toast";
 import { getLocale, t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { apiUrl } from "@/lib/api-url";
 import { AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
 import { cn } from "@/lib/utils";
@@ -144,6 +145,7 @@ const inputClass =
   "w-full rounded-2xl border border-primary/30 bg-zinc-900/90 px-4 py-2.5 text-sm text-foreground outline-none ring-1 ring-primary/5 transition placeholder:text-muted-foreground focus:border-primary/55 focus:ring-2 focus:ring-primary/25";
 
 export default function AdminSupportPage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -349,7 +351,7 @@ export default function AdminSupportPage() {
 
   if (meQuery.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] text-muted-foreground" dir="rtl">
+      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
       </div>
     );
@@ -357,7 +359,7 @@ export default function AdminSupportPage() {
 
   return (
     <AdminShell activeKey="support" onLogout={handleLogout}>
-      <div className="space-y-6" dir="rtl">
+      <div className="space-y-6">
         <header
           className={cn(
             "flex flex-col gap-4 rounded-2xl border border-primary/40 bg-zinc-950/75 px-5 py-5 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 sm:flex-row sm:items-center sm:justify-between",
@@ -544,7 +546,7 @@ export default function AdminSupportPage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="admin-support-detail-title"
-              dir="rtl"
+             
             >
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>

@@ -56,6 +56,7 @@ import type { OpsQueueKey } from "@/features/admin/operations-queue-types";
 import type { AdminAd } from "@/features/admin/types";
 import { useToast } from "@/hooks/use-toast";
 import { getLocale, t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { cn } from "@/lib/utils";
 import { AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
 import {
@@ -103,6 +104,7 @@ function parseAdminAdsSearch(searchString: string) {
 }
 
 export default function AdminAdsPage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [location, navigate] = useLocation();
   const searchString = useSearch();
   const queryClient = useQueryClient();
@@ -361,7 +363,7 @@ export default function AdminAdsPage() {
     return (
       <div
         className="flex min-h-screen items-center justify-center bg-[#0A0A0A] text-muted-foreground"
-        dir="rtl"
+       
       >
         <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
       </div>
@@ -370,7 +372,7 @@ export default function AdminAdsPage() {
 
   return (
     <AdminShell activeKey="ads" onLogout={handleLogout}>
-      <div className="space-y-6" dir="rtl">
+      <div className="space-y-6">
         <header
           className={cn(
             "flex flex-col gap-4 rounded-2xl border border-primary/40 bg-zinc-950/75 px-5 py-5 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 sm:flex-row sm:items-center sm:justify-between",
@@ -530,7 +532,7 @@ export default function AdminAdsPage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="admin-ad-detail-title"
-              dir="rtl"
+             
             >
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
@@ -693,7 +695,7 @@ export default function AdminAdsPage() {
         }}
       >
         <AlertDialogContent
-          dir="rtl"
+         
           className="z-[60] max-w-md rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
         >
           <AlertDialogHeader className="space-y-2 text-right sm:text-right">
@@ -754,7 +756,7 @@ export default function AdminAdsPage() {
         }}
       >
         <AlertDialogContent
-          dir="rtl"
+         
           className="max-w-md rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
         >
           <AlertDialogHeader className="space-y-2 text-right sm:text-right">

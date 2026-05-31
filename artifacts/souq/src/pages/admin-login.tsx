@@ -5,6 +5,7 @@ import { absorbAdminLoginCsrf, submitAdminLoginTotp } from "@/features/admin/api
 import { apiUrl } from "@/lib/api-url";
 import { cn } from "@/lib/utils";
 import { t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import {
   AUTH_ACCENT_OUTLINE_BTN,
   AUTH_BACK_BUTTON,
@@ -19,6 +20,7 @@ import {
 const AdminLoginMotionRoot = lazy(() => import("@/features/admin/components/admin-login-motion-root"));
 
 export default function AdminLogin() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [accessKey, setAccessKey] = useState("");
   const [staffEmail, setStaffEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -134,7 +136,7 @@ export default function AdminLogin() {
   return (
     <Suspense
       fallback={
-        <div className={AUTH_PAGE_BG} dir="rtl">
+        <div className={AUTH_PAGE_BG} dir={dir}>
           <div className="flex min-h-[50vh] items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
           </div>

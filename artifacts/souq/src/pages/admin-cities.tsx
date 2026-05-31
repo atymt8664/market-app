@@ -55,7 +55,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { t } from "@/i18n";
+import { adminIntlLocale, formatAdminDateTime } from "@/features/admin/admin-locale";
+import { getLocale, t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { cn } from "@/lib/utils";
 
 const fieldClass =
@@ -85,7 +87,7 @@ function visibilityFilterLabel(value: (typeof VISIBILITY_FILTER_VALUES)[number])
 function formatDate(iso: string | null) {
   if (!iso) return t("p8.admin.common.dash");
   try {
-    return new Date(iso).toLocaleString("ar-EG", {
+    return formatAdminDateTime(iso, getLocale(), {
       dateStyle: "medium",
       timeStyle: "short",
     });
@@ -95,6 +97,7 @@ function formatDate(iso: string | null) {
 }
 
 export default function AdminCitiesPage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [, navigate] = useLocation();
   const meQuery = useRequireAdmin();
   const queryClient = useQueryClient();
@@ -289,7 +292,7 @@ export default function AdminCitiesPage() {
 
   return (
     <AdminShell activeKey="cities" onLogout={handleLogout}>
-      <div className="space-y-5" dir="rtl">
+      <div className="space-y-5">
         <header
           className={cn(
             "flex flex-col gap-4 rounded-2xl border border-primary/40 bg-zinc-950/75 px-5 py-5 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 sm:flex-row sm:items-center sm:justify-between",
@@ -356,7 +359,7 @@ export default function AdminCitiesPage() {
                 </div>
               </form>
 
-              <div className="space-y-2 lg:col-span-5" dir="rtl">
+              <div className="space-y-2 lg:col-span-5">
                 <Label className="block text-sm text-muted-foreground">{t("p8.admin.cities.col_status")}</Label>
                 <div className="flex flex-wrap gap-2">
                   {VISIBILITY_FILTER_VALUES.map((value) => (
@@ -373,7 +376,7 @@ export default function AdminCitiesPage() {
               </div>
             </div>
 
-            <div className="space-y-2" dir="rtl">
+            <div className="space-y-2">
               <Label className="block text-sm text-muted-foreground">{t("p8.admin.cities.col_country")}</Label>
               <div className="flex max-h-[min(40vh,14rem)] flex-wrap gap-2 overflow-y-auto overscroll-contain rounded-2xl border border-primary/25 bg-zinc-950/50 p-2 ring-1 ring-primary/10 sm:max-h-none sm:overflow-visible">
                 <button
@@ -405,7 +408,7 @@ export default function AdminCitiesPage() {
           </div>
 
           <div className="rounded-xl border border-primary/20 bg-zinc-900/40 px-3 py-2 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{cities.length.toLocaleString("ar-EG")}</span>{" "}
+            <span className="font-medium text-foreground">{cities.length.toLocaleString(adminIntlLocale(getLocale()))}</span>{" "}
             {t("p8.admin.cities.col_name")}
             {citiesQuery.isFetching ? (
               <span className="mr-2 inline-flex items-center gap-1 text-primary">
@@ -453,7 +456,7 @@ export default function AdminCitiesPage() {
                             <span className="text-xs text-muted-foreground/80">({city.countryCode})</span>
                           </td>
                           <td className="px-4 py-3 tabular-nums text-foreground">
-                            {city.adsCount.toLocaleString("ar-EG")}
+                            {city.adsCount.toLocaleString(adminIntlLocale(getLocale()))}
                           </td>
                           <td className="px-4 py-3">
                             <span
@@ -530,7 +533,7 @@ export default function AdminCitiesPage() {
                         <p className="text-xs text-muted-foreground">
                           {t("p8.admin.cities.col_ads")}:{" "}
                           <span className="tabular-nums font-medium text-foreground">
-                            {city.adsCount.toLocaleString("ar-EG")}
+                            {city.adsCount.toLocaleString(adminIntlLocale(getLocale()))}
                           </span>
                         </p>
                         <p className="text-[11px] text-muted-foreground/90">
@@ -596,7 +599,7 @@ export default function AdminCitiesPage() {
         }}
       >
         <DialogContent
-          dir="rtl"
+         
           className="max-w-lg rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
           onPointerDownOutside={(e) => {
             if (createMutation.isPending) e.preventDefault();
@@ -697,7 +700,7 @@ export default function AdminCitiesPage() {
         }}
       >
         <DialogContent
-          dir="rtl"
+         
           className="max-w-lg rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
           onPointerDownOutside={(e) => {
             if (updateMutation.isPending) e.preventDefault();
@@ -809,7 +812,7 @@ export default function AdminCitiesPage() {
         }}
       >
         <AlertDialogContent
-          dir="rtl"
+         
           className="max-w-md rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
         >
           <AlertDialogHeader className="space-y-2 text-right sm:text-right">

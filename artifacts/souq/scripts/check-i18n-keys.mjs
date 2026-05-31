@@ -16,7 +16,9 @@ function walk(dir, files = []) {
 }
 
 const ar = JSON.parse(fs.readFileSync(path.join(localesDir, "ar.json"), "utf8"));
-const keys = new Set(Object.keys(ar));
+const en = JSON.parse(fs.readFileSync(path.join(localesDir, "en.json"), "utf8"));
+const de = JSON.parse(fs.readFileSync(path.join(localesDir, "de.json"), "utf8"));
+
 const re = /\bt\(\s*["']([^"']+)["']/g;
 const used = new Set();
 for (const file of walk(src)) {
@@ -25,8 +27,25 @@ for (const file of walk(src)) {
   re.lastIndex = 0;
   while ((m = re.exec(c))) used.add(m[1]);
 }
-const missing = [...used].filter((k) => !keys.has(k)).sort();
-console.log("t() unique keys:", used.size);
-console.log("missing from ar.json:", missing.length);
-if (missing.length) console.log(missing.join("\n"));
-process.exit(missing.length ? 1 : 0);
+
+const keys = [...used].sort();
+const missingAr = keys.filter((k) => !ar[k]);
+const missingEn = keys.filter((k) => !en[k]);
+const missingDe = keys.filter((k) => !de[k]);
+
+console.log("t() unique keys:", keys.length);
+console.log("missing ar:", missingAr.length);
+console.log("missing en:", missingEn.length);
+console.log("missing de:", missingDe.length);
+
+if (missingAr.length) {
+  console.log("missing ar sample:", missingAr.slice(0, 10).join(", "));
+}
+if (missingEn.length) {
+  console.log("missing en sample:", missingEn.slice(0, 10).join(", "));
+}
+if (missingDe.length) {
+  console.log("missing de sample:", missingDe.slice(0, 10).join(", "));
+}
+
+process.exit(missingAr.length || missingEn.length || missingDe.length ? 1 : 0);

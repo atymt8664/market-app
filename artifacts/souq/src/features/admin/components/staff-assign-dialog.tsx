@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { cn } from "@/lib/utils";
 
 type StaffAssignDialogProps = {
@@ -38,6 +39,7 @@ export function StaffAssignDialog({
   busy = false,
   onConfirm,
 }: StaffAssignDialogProps) {
+  const { dir } = useAdminLocale();
   const staffQuery = useAdminStaffList({ page: 1, pageSize: 100 }, open);
   const [staffActorId, setStaffActorId] = useState("");
 
@@ -57,7 +59,7 @@ export function StaffAssignDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(DIALOG_SURFACE, "max-w-md")} dir="rtl">
+      <DialogContent className={cn(DIALOG_SURFACE, "max-w-md")} dir={dir}>
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <UserCog className="h-5 w-5 text-primary" aria-hidden />

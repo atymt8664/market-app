@@ -10,7 +10,9 @@ import {
 import { AdminShell } from "@/features/admin/components/admin-shell";
 import { useAdminAccess, useAdminFounderOperations, useRequireAdmin } from "@/features/admin/hooks";
 import type { OpsDomain } from "@/features/admin/operations-queue-types";
-import { t } from "@/i18n";
+import { formatAdminDateTime } from "@/features/admin/admin-locale";
+import { getLocale, t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { cn } from "@/lib/utils";
 
 const DOMAIN_LINKS: Record<OpsDomain, string> = {
@@ -42,6 +44,7 @@ function Metric({ label, value, tone }: { label: string; value: number; tone?: "
 }
 
 export default function AdminOperationsPage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [, navigate] = useLocation();
   const meQuery = useRequireAdmin();
   const access = useAdminAccess();
@@ -52,7 +55,7 @@ export default function AdminOperationsPage() {
       navigate(access.homePath);
     }
     return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-[#0A0A0A]" dir="rtl">
+      <div className="flex min-h-[50vh] items-center justify-center bg-[#0A0A0A]">
         <AdminPageLoading message={t("p8.admin.operations.loading")} />
       </div>
     );
@@ -69,7 +72,7 @@ export default function AdminOperationsPage() {
 
   return (
     <AdminShell activeKey="operations" onLogout={onLogout}>
-      <div className="space-y-5" dir="rtl">
+      <div className="space-y-5">
         <header className="flex flex-wrap items-start gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-500/45 bg-amber-500/10 text-amber-300">
             <Crown className="h-6 w-6" aria-hidden />
@@ -80,7 +83,7 @@ export default function AdminOperationsPage() {
             {data ? (
               <p className="mt-1 text-xs text-muted-foreground tabular-nums">
                 {t("p8.admin.operations.last_updated")}{" "}
-                {new Date(data.generatedAt).toLocaleString("ar-EG")}
+                {formatAdminDateTime(data.generatedAt, getLocale())}
               </p>
             ) : null}
           </div>

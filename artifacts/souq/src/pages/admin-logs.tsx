@@ -35,7 +35,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { t } from "@/i18n";
+import { getLocale, t } from "@/i18n";
+import { adminIntlLocale, formatAdminDateTime, formatAdminNumber } from "@/features/admin/admin-locale";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { cn } from "@/lib/utils";
 
 const ACTION_TYPE_KEYS = [
@@ -243,7 +245,7 @@ function detailFieldLabel(key: string): string {
 function formatPrimitiveForDisplay(key: string, value: unknown, actionKey: string): string {
   if (value === null || value === undefined) return t("p8.admin.common.dash");
   if (typeof value === "boolean") return value ? t("common.yes") : t("common.no");
-  if (typeof value === "number") return value.toLocaleString("ar-EG");
+  if (typeof value === "number") return formatAdminNumber(value, getLocale());
   if (typeof value !== "string") {
     try {
       const js = JSON.stringify(value, null, 2);
@@ -302,7 +304,7 @@ function buildTableSummary(actionKey: string, detailsRaw: string): string {
     if (typeof parsed.reportId === "number") {
       chunks.push(
         t("p8.admin.activity.actions.report_created", {
-          id: parsed.reportId.toLocaleString("ar-EG"),
+          id: formatAdminNumber(parsed.reportId, getLocale()),
         }),
       );
     }
@@ -391,7 +393,7 @@ function targetTypeDisplay(key: string): string {
 function formatLogDate(iso: string | null): string {
   if (!iso) return t("p8.admin.common.dash");
   try {
-    return new Date(iso).toLocaleString("ar-EG", {
+    return formatAdminDateTime(iso, getLocale(), {
       dateStyle: "medium",
       timeStyle: "short",
     });
@@ -401,6 +403,7 @@ function formatLogDate(iso: string | null): string {
 }
 
 export default function AdminLogsPage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [, navigate] = useLocation();
   const meQuery = useRequireAdmin();
   const [actionType, setActionType] = useState("all");
@@ -442,7 +445,7 @@ export default function AdminLogsPage() {
 
   if (meQuery.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] px-4" dir="rtl">
+      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] px-4">
         <AdminPageLoading message={t("p8.admin.common.loading")} className="w-full max-w-md border-none bg-transparent ring-0" />
       </div>
     );
@@ -452,7 +455,7 @@ export default function AdminLogsPage() {
     <AdminShell activeKey="logs" onLogout={handleLogout}>
       <div
         className={cn("space-y-5", logsQuery.isFetching && logs.length > 0 && "opacity-[0.92] transition-opacity")}
-        dir="rtl"
+       
       >
         <header
           className={cn(
@@ -657,7 +660,7 @@ export default function AdminLogsPage() {
 
       <Dialog open={detailLog !== null} onOpenChange={(open) => !open && setDetailLog(null)}>
         <DialogContent
-          dir="rtl"
+         
           className="max-h-[min(90vh,720px)] max-w-2xl overflow-y-auto rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
         >
           <DialogHeader className="space-y-2 text-right sm:text-right">

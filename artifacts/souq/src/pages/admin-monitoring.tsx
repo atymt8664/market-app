@@ -19,7 +19,9 @@ import {
 import { AdminShell } from "@/features/admin/components/admin-shell";
 import { useAdminAccess, useAdminMonitoring, useRequireAdmin } from "@/features/admin/hooks";
 import type { ComponentHealth, MonitoringAlert, MonitoringSeverity } from "@/features/admin/monitoring-types";
-import { t } from "@/i18n";
+import { formatAdminDateTime, formatAdminNumber } from "@/features/admin/admin-locale";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
+import { getLocale, t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 function healthLabel(name: string) {
@@ -54,7 +56,7 @@ function severityLabel(severity: MonitoringSeverity): string {
 
 function formatNumber(value: number | null | undefined): string {
   if (value == null) return t("p8.admin.common.dash");
-  return value.toLocaleString("ar-EG");
+  return formatAdminNumber(value, getLocale());
 }
 
 function MetricCard({
@@ -132,6 +134,7 @@ function AlertCard({ alert }: { alert: MonitoringAlert }) {
 }
 
 export default function AdminMonitoringPage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [, navigate] = useLocation();
   const meQuery = useRequireAdmin();
   const access = useAdminAccess();
@@ -142,7 +145,7 @@ export default function AdminMonitoringPage() {
       navigate(access.homePath);
     }
     return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-[#0A0A0A]" dir="rtl">
+      <div className="flex min-h-[50vh] items-center justify-center bg-[#0A0A0A]">
         <AdminPageLoading message={t("p8.admin.monitoring.loading")} />
       </div>
     );
@@ -161,7 +164,7 @@ export default function AdminMonitoringPage() {
 
   return (
     <AdminShell activeKey="monitoring" onLogout={onLogout}>
-      <div className="space-y-5" dir="rtl">
+      <div className="space-y-5">
         <header className="flex flex-wrap items-start gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-500/45 bg-amber-500/10 text-amber-300">
             <Crown className="h-6 w-6" aria-hidden />
@@ -172,7 +175,7 @@ export default function AdminMonitoringPage() {
             {data ? (
               <p className="mt-1 text-xs text-muted-foreground tabular-nums">
                 {t("p8.admin.monitoring.snapshot_label")} {data.snapshotId.slice(0, 8)}… ·{" "}
-                {new Date(data.generatedAt).toLocaleString("ar-EG")}
+                {formatAdminDateTime(data.generatedAt, getLocale())}
               </p>
             ) : null}
           </div>

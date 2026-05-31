@@ -38,7 +38,7 @@ import { useAdminUserDetails, useRequireAdmin } from "@/features/admin/hooks";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api-url";
 import { AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
-import { t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { SETTINGS_SECTION_TITLE } from "@/components/settings-shell";
 import {
   AlertDialog,
@@ -78,7 +78,7 @@ function initials(name: string | null | undefined) {
 function formatDate(iso: string | null) {
   if (!iso) return t("p8.admin.common.dash");
   try {
-    return new Date(iso).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" });
+    return formatAdminDateTime(iso, getLocale(), { dateStyle: "medium", timeStyle: "short" });
   } catch {
     return iso;
   }
@@ -95,6 +95,7 @@ function EmptyBlock({
 }
 
 export default function AdminUserDetailsPage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [, navigate] = useLocation();
   const [, params] = useRoute("/admin/users/:id");
   const userId = Number(params?.id || 0);
@@ -175,7 +176,7 @@ export default function AdminUserDetailsPage() {
 
   if (meQuery.isLoading || detailsQuery.isLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#0A0A0A]" dir="rtl">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#0A0A0A]">
         <AdminPageLoading message={t("p8.admin.user_details.loading")} />
       </div>
     );
@@ -208,7 +209,7 @@ export default function AdminUserDetailsPage() {
 
   return (
     <AdminShell activeKey="users" onLogout={handleLogout}>
-      <div className="space-y-6" dir="rtl">
+      <div className="space-y-6">
         {/* Top bar: back + actions */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <button
@@ -387,7 +388,7 @@ export default function AdminUserDetailsPage() {
               <div className="text-right">
                 <p className="text-xs font-medium text-muted-foreground">{t("p8.admin.user_details.stats_ads")}</p>
                 <p className="mt-2 text-3xl font-bold tabular-nums text-primary">
-                  {details.stats.adsCount.toLocaleString("ar-EG")}
+                  {details.stats.adsCount.toLocaleString(adminIntlLocale(getLocale()))}
                 </p>
               </div>
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-primary/12 text-primary shadow-[0_0_18px_-8px_hsl(var(--primary)/0.4)]">
@@ -401,7 +402,7 @@ export default function AdminUserDetailsPage() {
               <div className="text-right">
                 <p className="text-xs font-medium text-muted-foreground">{t("p8.admin.user_details.stats_reports")}</p>
                 <p className="mt-2 text-3xl font-bold tabular-nums text-amber-200">
-                  {details.stats.reportsCount.toLocaleString("ar-EG")}
+                  {details.stats.reportsCount.toLocaleString(adminIntlLocale(getLocale()))}
                 </p>
               </div>
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-500/35 bg-amber-500/10 text-amber-200 shadow-[0_0_18px_-8px_rgba(245,158,11,0.25)]">
@@ -415,7 +416,7 @@ export default function AdminUserDetailsPage() {
               <div className="text-right">
                 <p className="text-xs font-medium text-muted-foreground">{t("p8.admin.user_details.stats_support")}</p>
                 <p className="mt-2 text-3xl font-bold tabular-nums text-sky-200">
-                  {details.stats.supportTicketsCount.toLocaleString("ar-EG")}
+                  {details.stats.supportTicketsCount.toLocaleString(adminIntlLocale(getLocale()))}
                 </p>
               </div>
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-500/35 bg-sky-500/10 text-sky-200 shadow-[0_0_18px_-8px_rgba(56,189,248,0.22)]">
@@ -495,7 +496,7 @@ export default function AdminUserDetailsPage() {
                           <span className="font-medium text-foreground/90">{ad.status}</span>
                         </span>
                         <span>{t("p8.admin.user_details.label_city")} {ad.city || t("p8.admin.common.dash")}</span>
-                        <span className="tabular-nums">{t("p8.admin.user_details.label_views")} {ad.views.toLocaleString("ar-EG")}</span>
+                        <span className="tabular-nums">{t("p8.admin.user_details.label_views")} {ad.views.toLocaleString(adminIntlLocale(getLocale()))}</span>
                         {ad.createdAt ? (
                           <span className="tabular-nums">{formatDate(ad.createdAt)}</span>
                         ) : null}
@@ -604,7 +605,7 @@ export default function AdminUserDetailsPage() {
 
       <AlertDialog open={pendingBan !== null} onOpenChange={(o) => !o && setPendingBan(null)}>
         <AlertDialogContent
-          dir="rtl"
+         
           className="z-[100] max-w-md rounded-2xl border border-primary/40 bg-zinc-950 shadow-[0_0_32px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15 sm:rounded-2xl"
         >
           <AlertDialogHeader className="text-right sm:text-right">

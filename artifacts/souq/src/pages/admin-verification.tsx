@@ -51,7 +51,9 @@ import {
 import type { VerificationRequest, VerificationRequestDetail } from "@/features/admin/types";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api-url";
-import { t } from "@/i18n";
+import { formatAdminDateTime } from "@/features/admin/admin-locale";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
+import { getLocale, t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -73,7 +75,7 @@ function initials(name: string | null | undefined) {
 function formatDate(iso: string | null) {
   if (!iso) return t("p8.admin.common.dash");
   try {
-    return new Date(iso).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" });
+    return formatAdminDateTime(iso, getLocale(), { dateStyle: "medium", timeStyle: "short" });
   } catch {
     return iso;
   }
@@ -322,6 +324,7 @@ function RequestDetailPanel({
 }
 
 export default function AdminVerificationPage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const meQuery = useRequireAdmin();
@@ -441,7 +444,7 @@ export default function AdminVerificationPage() {
 
   if (meQuery.isLoading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-[#0A0A0A]" dir="rtl">
+      <div className="flex min-h-[50vh] items-center justify-center bg-[#0A0A0A]">
         <AdminPageLoading message={t("p8.admin.verification.loading")} />
       </div>
     );
@@ -454,7 +457,7 @@ export default function AdminVerificationPage() {
 
   return (
     <AdminShell activeKey="verification" onLogout={onLogout}>
-      <div className="space-y-5" dir="rtl">
+      <div className="space-y-5">
         <header className="space-y-2 text-right">
           <div className="flex flex-wrap items-start gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/45 bg-primary/12 text-primary shadow-[0_0_20px_-8px_hsl(var(--primary)/0.4)] ring-1 ring-primary/15">

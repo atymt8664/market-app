@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MODERATION_REASON_PRESET_KEYS } from "@/features/admin/staff-workflow-types";
 import { BTN_FIX, DIALOG_SURFACE } from "@/features/admin/admin-interaction-classes";
 import { t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -31,6 +32,7 @@ export function ModerationReasonDialog({
   onConfirm,
   onOpenChange,
 }: ModerationReasonDialogProps) {
+  const { dir } = useAdminLocale();
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
 
@@ -47,7 +49,7 @@ export function ModerationReasonDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className={cn(DIALOG_SURFACE, "max-w-md")} dir="rtl">
+      <AlertDialogContent className={cn(DIALOG_SURFACE, "max-w-md")} dir={dir}>
         <AlertDialogHeader className="text-right">
           <AlertDialogTitle>{title}</AlertDialogTitle>
           {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}

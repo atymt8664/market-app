@@ -15,10 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { cn } from "@/lib/utils";
 import { BTN_MODAL_PRIMARY, CARD_SHELL, INPUT_FIELD } from "@/features/admin/admin-interaction-classes";
 
 export default function AdminForcePasswordChangePage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   useRequireAdmin();
   const access = useAdminAccess();
   const [, navigate] = useLocation();
@@ -45,7 +47,7 @@ export default function AdminForcePasswordChangePage() {
   };
 
   return (
-    <div className={cn(AUTH_PAGE_BG, "flex min-h-screen items-center justify-center p-4")} dir="rtl">
+    <div className={cn(AUTH_PAGE_BG, "flex min-h-screen items-center justify-center p-4")} dir={dir}>
       <div className={cn(CARD_SHELL, "w-full max-w-md p-6")}>
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/40 bg-primary/10 text-primary">

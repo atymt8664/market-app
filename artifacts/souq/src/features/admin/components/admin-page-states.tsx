@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AlertCircle, Inbox, Loader2 } from "lucide-react";
 import { BTN_FIX, BTN_SEARCH, CARD_SHELL, PANEL_INSET } from "@/features/admin/admin-interaction-classes";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -10,13 +11,14 @@ type AdminPageLoadingProps = {
 };
 
 export function AdminPageLoading({ message, className }: AdminPageLoadingProps) {
+  const { dir } = useAdminLocale();
   return (
     <div
       className={cn(
         "flex items-center justify-center gap-2 rounded-2xl border border-primary/25 bg-zinc-900/40 py-12 text-muted-foreground ring-1 ring-primary/10",
         className,
       )}
-      dir="rtl"
+      dir={dir}
     >
       <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden />
       <span>{message ?? t("p8.admin.common.loading")}</span>
@@ -30,8 +32,9 @@ type AdminTableSkeletonProps = {
 };
 
 export function AdminTableSkeleton({ rows = 6, className }: AdminTableSkeletonProps) {
+  const { dir } = useAdminLocale();
   return (
-    <div className={cn(CARD_SHELL, "overflow-hidden p-0", className)} dir="rtl">
+    <div className={cn(CARD_SHELL, "overflow-hidden p-0", className)} dir={dir}>
       <div className="border-b border-primary/20 bg-zinc-900/50 px-4 py-3">
         <div className="h-4 w-1/3 animate-pulse rounded-lg bg-primary/15" />
       </div>
@@ -67,8 +70,9 @@ export function AdminEmptyState({
   icon,
   className,
 }: AdminEmptyStateProps) {
+  const { dir } = useAdminLocale();
   return (
-    <div className={cn(PANEL_INSET, "space-y-3 py-12 text-center", className)} dir="rtl">
+    <div className={cn(PANEL_INSET, "space-y-3 py-12 text-center", className)} dir={dir}>
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-[0_0_20px_-10px_hsl(var(--primary)/0.35)]">
         {icon ?? <Inbox className="h-6 w-6" aria-hidden />}
       </div>
@@ -95,13 +99,14 @@ export function AdminErrorState({
   retryLabel,
   className,
 }: AdminErrorStateProps) {
+  const { dir } = useAdminLocale();
   return (
     <div
       className={cn(
         "rounded-2xl border border-red-500/35 bg-red-950/25 px-4 py-10 text-center ring-1 ring-red-500/20",
         className,
       )}
-      dir="rtl"
+      dir={dir}
     >
       <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-red-500/40 bg-red-950/40 text-red-200">
         <AlertCircle className="h-5 w-5" aria-hidden />

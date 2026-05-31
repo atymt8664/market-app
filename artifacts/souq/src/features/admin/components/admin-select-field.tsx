@@ -1,3 +1,4 @@
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import {
   Select,
   SelectContent,
@@ -36,13 +37,14 @@ export function AdminSelectField({
   disabled,
   triggerClassName,
 }: AdminSelectFieldProps) {
+  const { dir } = useAdminLocale();
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger id={id} className={cn(ADMIN_SELECT_TRIGGER, triggerClassName)} dir="rtl">
+      <SelectTrigger id={id} className={cn(ADMIN_SELECT_TRIGGER, triggerClassName)} dir={dir}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent
-        dir="rtl"
+        dir={dir}
         className={ADMIN_SELECT_CONTENT}
         position="popper"
         sideOffset={6}

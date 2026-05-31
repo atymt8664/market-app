@@ -25,6 +25,7 @@ import { useAdminAccess } from "@/features/admin/access";
 import { useAdminNavBadges } from "@/features/admin/use-admin-nav-badges";
 import type { AdminNavKey } from "@/features/admin/rbac";
 import { canAccessNav } from "@/features/admin/rbac";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +60,7 @@ type AdminShellProps = {
 };
 
 export function AdminShell({ activeKey, onLogout, children }: AdminShellProps) {
+  const { dir } = useAdminLocale();
   const access = useAdminAccess();
   const badgesQuery = useAdminNavBadges(!access.isLoading);
   const badges = badgesQuery.data;
@@ -81,7 +83,7 @@ export function AdminShell({ activeKey, onLogout, children }: AdminShellProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-foreground" dir="rtl">
+    <div className="min-h-screen bg-[#0A0A0A] text-foreground" dir={dir}>
       <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col lg:flex-row">
         <aside
           className={cn(

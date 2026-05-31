@@ -93,6 +93,18 @@
 
 ---
 
+## Resolved — P8-1E
+
+| Item | Resolution |
+|------|------------|
+| Missing en/de keys for newer `p8.admin.*` pages | ✅ 230+ keys synced · `i18n:check` ar/en/de parity |
+| `de` copied from `en` (675 keys) | ✅ Proper German translations in dedupe patch |
+| Hardcoded `dir="rtl"` + `ar-EG` formatting | ✅ `useAdminLocale` · locale-aware dates/numbers |
+| No language selector in admin | ✅ `/admin/settings` → `AdminLanguageSettings` (ar/en/de) |
+| Legacy `admin_billing.*` / `admin_plans.*` | ✅ Migrated to `p8.admin.billing.*` / `p8.admin.plans.*` |
+
+---
+
 ## Resolved — P8-1D
 
 | Item | Resolution |

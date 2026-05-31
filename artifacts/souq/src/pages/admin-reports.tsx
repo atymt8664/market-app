@@ -39,6 +39,7 @@ import type { AdminPaginatedResult } from "@/features/admin/api";
 import type { AdminReport } from "@/features/admin/types";
 import { useToast } from "@/hooks/use-toast";
 import { getLocale, t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { apiUrl } from "@/lib/api-url";
 import { AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
 import { cn } from "@/lib/utils";
@@ -191,6 +192,7 @@ function ReporterCell({ report }: { report: AdminReport }) {
 }
 
 export default function AdminReportsPage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const meQuery = useRequireAdmin();
@@ -412,7 +414,7 @@ export default function AdminReportsPage() {
 
   if (meQuery.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] text-muted-foreground" dir="rtl">
+      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
       </div>
     );
@@ -420,7 +422,7 @@ export default function AdminReportsPage() {
 
   return (
     <AdminShell activeKey="reports" onLogout={handleLogout}>
-      <div className="space-y-6" dir="rtl">
+      <div className="space-y-6">
         <header
           className={cn(
             "flex flex-col gap-4 rounded-2xl border border-primary/40 bg-zinc-950/75 px-5 py-5 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 sm:flex-row sm:items-center sm:justify-between",
@@ -602,7 +604,7 @@ export default function AdminReportsPage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="admin-report-detail-title"
-              dir="rtl"
+             
             >
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>

@@ -26,6 +26,7 @@ import {
   AdminErrorState,
   AdminPageLoading,
 } from "@/features/admin/components/admin-page-states";
+import { AdminLanguageSettings } from "@/features/admin/components/admin-language-settings";
 import { AdminShell } from "@/features/admin/components/admin-shell";
 import { AdminTwoFactorSettings } from "@/features/admin/components/admin-two-factor-settings";
 import { useRequireAdmin } from "@/features/admin/hooks";
@@ -42,6 +43,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { t } from "@/i18n";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { cn } from "@/lib/utils";
 
 function validateStrongPassword(password: string): boolean {
@@ -200,6 +202,7 @@ function PasswordField({
 }
 
 export default function AdminSettingsPage() {
+  const { dir, formatNumber, formatDateTime } = useAdminLocale();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -346,7 +349,7 @@ export default function AdminSettingsPage() {
 
   if (meQuery.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A]" dir="rtl">
+      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A]">
         <AdminPageLoading message={t("p8.admin.settings.loading")} />
       </div>
     );
@@ -356,7 +359,7 @@ export default function AdminSettingsPage() {
 
   return (
     <AdminShell activeKey="settings" onLogout={handleLogout}>
-      <div className="space-y-5" dir="rtl">
+      <div className="space-y-5">
         <header className={cn("flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-start sm:justify-between", CARD_SHELL)}>
           <div className="space-y-1 text-right">
             <div className="flex flex-wrap items-center gap-2">
@@ -530,7 +533,7 @@ export default function AdminSettingsPage() {
                 <p className="text-sm text-muted-foreground">
                   {t("p8.admin.settings.last_updated")}:{" "}
                   <span className="tabular-nums text-foreground">
-                    {new Date(settings.updatedAt).toLocaleString("ar-EG", {
+                    {formatDateTime(settings.updatedAt, {
                       dateStyle: "medium",
                       timeStyle: "short",
                     })}
@@ -579,6 +582,8 @@ export default function AdminSettingsPage() {
           ) : null}
         </section>
 
+        <AdminLanguageSettings />
+
         {settings ? (
           <AdminTwoFactorSettings
             twoFactorEnabled={settings.admin2faEnabled === true}
@@ -623,7 +628,7 @@ export default function AdminSettingsPage() {
       </div>
 
       <Dialog open={pwOpen} onOpenChange={handlePwOpenChange}>
-        <DialogContent dir="rtl" className={cn(DIALOG_SURFACE, "max-w-md")}>
+        <DialogContent className={cn(DIALOG_SURFACE, "max-w-md")}>
           <DialogHeader className="space-y-2 text-right sm:text-right">
             <DialogTitle>{t("p8.admin.settings.modal_title")}</DialogTitle>
             <DialogDescription className="text-sm leading-relaxed text-muted-foreground">

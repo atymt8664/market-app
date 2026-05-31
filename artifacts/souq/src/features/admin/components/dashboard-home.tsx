@@ -31,7 +31,9 @@ import {
 } from "@/features/admin/admin-interaction-classes";
 import { NotificationCenterFoundation } from "@/features/admin/components/notification-center-foundation";
 import { RolesPermissionsFoundation } from "@/features/admin/components/roles-permissions-foundation";
-import { t } from "@/i18n";
+import { adminIntlLocale } from "@/features/admin/admin-locale";
+import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
+import { getLocale, t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { AUTH_ACCENT_OUTLINE_BTN, AUTH_HEADER_TITLE } from "@/lib/auth-page-styles";
 import { useAdminActiveAppUsersCount } from "../hooks";
@@ -54,7 +56,7 @@ type DashboardHomeProps = {
 
 function formatTime(iso: string): string {
   try {
-    return new Intl.DateTimeFormat("ar-EG", {
+    return new Intl.DateTimeFormat(adminIntlLocale(getLocale()), {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
@@ -65,7 +67,7 @@ function formatTime(iso: string): string {
 }
 
 function formatNumber(value: number): string {
-  return value.toLocaleString("ar-EG");
+  return value.toLocaleString(adminIntlLocale(getLocale()));
 }
 
 function NocMetricCard({
@@ -432,6 +434,7 @@ function ActivityFeedItem({
 }
 
 export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps) {
+  const { dir } = useAdminLocale();
   const [, navigate] = useLocation();
   const access = useAdminAccess();
   const activeUsersQuery = useAdminActiveAppUsersCount(access.can("system"));
@@ -445,7 +448,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
 
   if (!noc || !live || !noc.executiveHeader || !noc.userIntelligence) {
     return (
-      <div className="rounded-2xl border border-amber-500/35 bg-amber-950/20 p-6 text-right text-amber-100" dir="rtl">
+      <div className="rounded-2xl border border-amber-500/35 bg-amber-950/20 p-6 text-right text-amber-100" dir={dir}>
         <p className="font-medium">{t("p8.admin.noc.load_error_title")}</p>
         <p className="mt-2 text-sm text-amber-100/80">{t("p8.admin.noc.load_error_hint")}</p>
       </div>
@@ -461,7 +464,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
   const normalItems = priorityItems.filter((item) => item.level === "normal");
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div className="space-y-5" dir={dir}>
       <header className="rounded-2xl border border-primary/40 bg-zinc-950/75 px-5 py-5 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12">
         <div className="mb-5 rounded-2xl border border-primary/35 bg-gradient-to-bl from-primary/[0.08] via-zinc-950/90 to-zinc-950/95 px-4 py-4 ring-1 ring-primary/12">
           <div className="flex flex-wrap items-start justify-between gap-4">

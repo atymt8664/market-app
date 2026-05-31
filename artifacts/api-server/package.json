@@ -17,6 +17,7 @@
     "p15-3b:staging-smoke": "node --import tsx/esm ./scripts/p15-3b-staging-notification-smoke.mjs",
     "p15-3c:validate": "node ./scripts/validate-p15-3c-push-outbox.mjs",
     "p15-3c:staging-smoke": "node --import tsx/esm ./scripts/p15-3c-staging-push-smoke.mjs",
+    "p15-3d:validate": "node ./scripts/validate-p15-3d-media-analysis.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node ./src/lib/pagination.test.mjs && node ./src/lib/ad-search-util.test.mjs && node ./src/lib/ad-reaction-counts.test.mjs && node ./src/lib/ads-list-query.test.mjs && node ./src/lib/taxonomy-public-cache.test.mjs && node ./src/lib/trust-safety/trust-safety.test.mjs && node ./src/lib/push/notification-url.test.mjs && node ./src/lib/push/push-queue.test.mjs && node --import tsx/esm ./src/lib/jobs/env-guard.test.mjs && node --import tsx/esm ./src/lib/jobs/retry-policy.test.mjs && node --import tsx/esm ./src/lib/jobs/registry.test.mjs && node --import tsx/esm ./src/lib/email-outbox.test.mjs && node --import tsx/esm ./src/lib/notification-outbox.test.mjs && node --import tsx/esm ./src/lib/push-outbox.test.mjs && node ./src/lib/observability/latency-tracker.test.mjs && node ./src/lib/observability/request-id.test.mjs && node ./src/lib/observability/vitals.test.mjs && node ./src/lib/sentry.test.mjs && node ./src/lib/sentry-env.test.mjs && node ./src/lib/p17/orders-ready-layer.test.mjs && node ./src/lib/p17/orders-status-summary.test.mjs",
     "sentry:apply-dsn": "node ./scripts/apply-sentry-dsn.mjs",

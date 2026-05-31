@@ -366,14 +366,26 @@ Extends **P13** and **P8** monitoring boundary (`data-monitoring-tier="live"`).
 | Legacy Redis LIST + `push-worker.ts` preserved | ✅ |
 | PRODUCTION | ❌ `schedulePushDelivery` unchanged |
 
+#### P15-3D — Media / image jobs analysis ✅ (no migration)
+
+| Item | Status |
+|------|--------|
+| Full upload/storage/delete flow inventory | ✅ |
+| CPU vs IO classification | ✅ |
+| Sync vs async recommendation | ✅ **Keep uploads sync** |
+| `media.normalize_ad` worker wiring | ❌ **Deferred** — requires two-phase upload contract |
+| `media.purge` (account deletion) | ❌ **Deferred** → P15-3G |
+| Thumbnail pipeline | N/A — not implemented |
+| API contract / UX / production behavior | ✅ **Unchanged** |
+| Authority | [P15-3D-media-jobs-analysis.md](./P15-3D-media-jobs-analysis.md) |
+
 **Remaining in P15-3 (not started):**
 
 | Order | Migration |
 |-------|-----------|
-| 4 | Image normalize worker |
 | 5 | Extract `runAutoEscalationAll` → cron |
 | 6 | Analytics daily rollup cron |
-| 7 | Account deletion storage purge job |
+| 7 | Account deletion storage purge job (P15-3G) |
 
 **Full P15-3 exit criteria:** P8 admin smoke PASS; queue depth stable; prod-shadow worker deploy verified — **not met until all migrations complete.**
 

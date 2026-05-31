@@ -20,7 +20,7 @@
 | P8-1F | Dashboard contracts (notification / roles UX) | ✅ Closed |
 | P8-1G | Billing/plans boundary (**P10**) | ✅ **Closed** — [P08-billing-plans-boundary.md](./P08-billing-plans-boundary.md) |
 | P8-1H | Monitoring boundary + NOC CPU hook | ✅ **Closed** — [P08-monitoring-boundary.md](./P08-monitoring-boundary.md) |
-| P8-1I | STAGING verification + P8-1 close | ⏳ Open |
+| P8-1I | STAGING verification + P8-1 close | ✅ **Closed** |
 
 **Do not start P8-1E+ until P8-1D is closed** (done). **Do not start P15-1 or P17-4+ until P8-1 is closed.**
 
@@ -217,7 +217,7 @@ See [P08-admin-baseline.md](./P08-admin-baseline.md) § Feature readiness. Billi
 - [ ] Full `p8.admin.*` on all admin pages including `de` quality (**P8-1E**)
 - [ ] Billing backend (**P10** — explicit defer, not P8-1 blocker for core ops)
 - [x] Host CPU in NOC (**P8-1H** — load average from API host)
-- [ ] STAGING smoke sign-off (**P8-1I**)
+- [x] STAGING smoke sign-off (**P8-1I**)
 
 ---
 

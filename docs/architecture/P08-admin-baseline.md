@@ -143,9 +143,9 @@ Defined in `lib/admin-rbac.ts` (backend) and `features/admin/rbac.ts` (frontend)
 | P8-1D | Audit & logs maturity | ✅ Closed |
 | P8-1E | i18n closure (P8G) | ✅ Closed |
 | P8-1F | Dashboard contracts (notification / roles UX) | ✅ Closed |
-| P8-1G | Billing/plans boundary doc (**P10**) | ⏳ Open |
+| P8-1G | Billing/plans boundary doc (**P10**) | ✅ Closed |
 | P8-1H | Monitoring boundary + NOC CPU hook | ✅ Closed |
-| P8-1I | STAGING verification & P8-1 close | ⏳ Open |
+| P8-1I | STAGING verification & P8-1 close | ✅ Closed |
 
 ---
 

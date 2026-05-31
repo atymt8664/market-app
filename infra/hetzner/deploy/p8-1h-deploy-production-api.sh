@@ -41,4 +41,11 @@ sudo bash "${BASE}/scripts/deploy-api.sh" --image "$TAG" --skip-pull
 echo ">> verify-deploy"
 sudo bash "${BASE}/scripts/verify-deploy.sh"
 
+echo ">> deploy prod-shadow (public nginx upstream :3002)"
+sudo SOUQ_PROD_IMAGE="${TAG}" bash "${BASE}/scripts/phase8-release-deploy-prod-shadow.sh"
+
+echo ">> env isolation audit"
+sudo bash "${BASE}/scripts/p8-1i-vps-env-isolation-audit.sh" 2>/dev/null \
+  || sudo bash "${BASE}/infra/hetzner/deploy/p8-1i-vps-env-isolation-audit.sh"
+
 echo "P8_1H_DEPLOY_DONE tag=${TAG}"

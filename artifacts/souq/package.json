@@ -16,6 +16,7 @@
     "verification:prod": "node scripts/validate-verification-prod.mjs",
     "p8-1h:validate": "node --experimental-strip-types scripts/validate-p8-1h-monitoring-boundary.mjs",
     "p8-1h:prod": "node scripts/validate-p8-1h-prod.mjs",
+    "p8-1i:prod": "node scripts/validate-p8-1i-prod.mjs",
     "icons:p11": "node scripts/generate-p11-icon-set.mjs",
     "seo:p11:validate": "node scripts/validate-p11-seo-foundation.mjs",
     "social:p11:validate": "node scripts/validate-p11-5-social-meta.mjs",

@@ -18,10 +18,10 @@
 Only **one open builder phase** at a time. Sequence:
 
 ```
-✅ P13-1 → ✅ P13-2 → ✅ P13-3 → ✅ P13-4 → ⏳ P8-1 (P8-1A ✅ · P8-1B ✅ · P8-1C ✅ · P8-1D ✅ · P8-1E ✅) → ⏳ P15-1 → ⏳ P17-4…P17-19
+✅ P13-1 → ✅ P13-2 → ✅ P13-3 → ✅ P13-4 → ✅ P8-1 (P8-1A ✅ … P8-1I ✅) → ⏳ P15-1 → ⏳ P17-4…P17-19
 ```
 
-**Do not start** P15-1 or P17-4+ until **P8-1** is closed. **Do not start P8-1F+** until **P8-1E** is closed.
+**Do not start** P15-1 or P17-4+ until **P8-1** is closed. **P8-1 is closed** — P15-1 may proceed when approved.
 
 ---
 
@@ -49,14 +49,14 @@ Only **one open builder phase** at a time. Sequence:
 | **P8-1F** Dashboard contracts | ✅ **Closed** | Commits `082065b`, `935224b`, `09dcada` · VPS `souq-api:p8-1f-20260531` · Vercel `dpl_3BKsJpnSkYF2kr1grhQY7cauWqqC` · `p8-1f:prod` PASS |
 | **P8-1G** Billing/plans boundary | ✅ **Closed** | Commit `9e84a30` · Vercel `dpl_F3PCDapsv6CLG2xfjxN8puEQbaM4` · `p8-1g:validate` PASS |
 | **P8-1H** Monitoring boundary + NOC CPU hook | ✅ **Closed** | Commits `9303bda`, `3a8b05c` · Vercel `fra1::mvmjx-1780200854600-a121d2f32ea0` · VPS `souq-api:p8-1h-20260531` (prev `p8-1f-20260531`) · `p8-1h:validate` + `p8-1h:prod` + post-deploy smoke PASS |
-| P8-1I STAGING verify + P8-1 close | ⏳ Open | |
-| **P8-1** (parent) | ⏳ **Open** | Closes when P8-1I complete |
+| **P8-1I** Final admin verify + P8-1 close | ✅ **Closed** | Commit TBD · VPS prod-shadow `souq-api:p8-1h-20260531` · `p8-1i:prod` + env isolation audit PASS |
+| **P8-1** (parent) | ✅ **Closed** | All sub-milestones P8-1A…P8-1I complete |
 
 ### Downstream
 
 | Phase | Status |
 |-------|--------|
-| P15-1 | ⏳ Blocked (after P8-1) |
+| P15-1 | ⏳ Ready (P8-1 closed) |
 | P17-4 … P17-19 | ⏳ Blocked |
 
 ---
@@ -69,4 +69,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P8-1H — **Closed** (2026-05-31): Vercel + VPS `souq-api:p8-1h-20260531` deployed; `p8-1h:prod` + VPS smoke PASS. Next: **P8-1I**. Parent **P8-1** remains open.
+P8-1I — **Closed** (2026-05-31): prod-shadow aligned to `souq-api:p8-1h-20260531`; env isolation verified (nginx→:3002 PRODUCTION); `p8-1i:prod` PASS. Parent **P8-1 closed**. Next: **P15-1** when approved.

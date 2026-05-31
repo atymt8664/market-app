@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Code** | P8 |
-| **Status** | Active — **P8-1 open** (P8-1A ✅ · P8-1B ✅ closed) |
+| **Status** | ✅ **P8-1 closed** (P8-1A ✅ … P8-1I ✅) |
 | **Protection level** | High for auth integration — coordinate with **P2** |
 | **Baseline (code-verified)** | [P08-admin-baseline.md](./P08-admin-baseline.md) |
 | **Ops notes & deferrals** | [P08-admin-notes.md](./P08-admin-notes.md) |
@@ -113,7 +113,7 @@
 | ✅ | P8-1F | Dashboard contracts |
 | ✅ | P8-1G | Billing/plans boundary — [P08-billing-plans-boundary.md](./P08-billing-plans-boundary.md) |
 | ✅ | P8-1H | Monitoring boundary + NOC CPU hook — [P08-monitoring-boundary.md](./P08-monitoring-boundary.md) |
-| ⏳ | P8-1I | STAGING smoke + P8-1 close |
+| ✅ | P8-1I | Final admin verify + P8-1 close |
 
 Long-term: impersonation with audit (not scheduled).
 

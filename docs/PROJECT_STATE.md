@@ -60,8 +60,9 @@ Only **one open builder phase** at a time. Sequence:
 | **P15-1** (parent — architecture wave) | ✅ **Closed** | Documentation only — no code/migrations/deploy |
 | **P15-2** Queue foundation (STAGING) | ✅ **Closed** | Commit `f42bf2a` · pg-boss foundation on STAGING ref only — queue module, worker bootstrap, registry, retry/DLQ/observability; foundation jobs `system.ping` / `system.dlq_probe`; STAGING smoke PASS; no business-logic migration |
 | **P15-3C** Push delivery outbox | ✅ **Closed** | Commit `0c31789` · STAGING `PUSH_OUTBOX_ENABLED` |
-| **P15-3D** Media / image jobs analysis | ✅ **Closed** | Analysis-only — **no upload-path migration**; defer `media.normalize_ad` until two-phase contract; `media.purge` → P15-3G |
-| P15-3 Hot path migration | ⏳ **Open** | P15-3A–3D ✅ · cron/media purge deferred |
+| **P15-3D** Media / image jobs analysis | ✅ **Closed** | Analysis-only — defer worker wiring |
+| **P15-3E** Cron / operations jobs | ✅ **Closed** | STAGING `ops.sla_escalate` cron; admin-read anti-pattern fixed |
+| P15-3 Hot path migration | ⏳ **Open** | P15-3A–3E ✅ · analytics/purge deferred |
 | P15-4 Production hardening | ⏳ Blocked | After P15-3 |
 
 ### Downstream
@@ -80,4 +81,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P15-3C — **Closed** (commit `0c31789`): push delivery outbox on STAGING (`push.deliver`). Parent **P15-3 open** — image normalize/cron remain.
+P15-3E — **Closed**: ops cron on STAGING (`ops.sla_escalate`). Parent **P15-3 open** — analytics rollup (P15-3F) / storage purge (P15-3G) remain.

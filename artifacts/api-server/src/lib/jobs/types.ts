@@ -49,5 +49,12 @@ export type QueueHealthSnapshot = {
     processed: number;
     failed: number;
   };
+  opsMetrics?: {
+    enqueued: number;
+    processed: number;
+    failed: number;
+    lastSlaEscalationAt: string | null;
+    lastSlaEscalationResult: Record<string, number> | null;
+  };
   deadLetterQueue?: string;
 };

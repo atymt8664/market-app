@@ -379,12 +379,26 @@ Extends **P13** and **P8** monitoring boundary (`data-monitoring-tier="live"`).
 | API contract / UX / production behavior | ✅ **Unchanged** |
 | Authority | [P15-3D-media-jobs-analysis.md](./P15-3D-media-jobs-analysis.md) |
 
+#### P15-3E — Cron / operations jobs ✅ (STAGING)
+
+| Item | Status |
+|------|--------|
+| Ops inventory + root cause (admin-read escalation) | ✅ |
+| `ops.sla_escalate` job type + handler | ✅ |
+| pg-boss scheduler foundation (`scheduler.ts`) | ✅ |
+| Cron registration (`*/10 * * * *` default) | ✅ |
+| STAGING gate (`OPS_CRON_ENABLED`) | ✅ |
+| Remove inline escalation on admin read (STAGING) | ✅ |
+| Standard retry + DLQ | ✅ |
+| Queue metrics + ops health snapshot | ✅ |
+| PRODUCTION | ❌ sync `runAutoEscalationAll` on admin read unchanged |
+| Authority | [P15-3E-ops-cron-migration.md](./P15-3E-ops-cron-migration.md) |
+
 **Remaining in P15-3 (not started):**
 
 | Order | Migration |
 |-------|-----------|
-| 5 | Extract `runAutoEscalationAll` → cron |
-| 6 | Analytics daily rollup cron |
+| 6 | Analytics daily rollup cron (P15-3F) |
 | 7 | Account deletion storage purge job (P15-3G) |
 
 **Full P15-3 exit criteria:** P8 admin smoke PASS; queue depth stable; prod-shadow worker deploy verified — **not met until all migrations complete.**

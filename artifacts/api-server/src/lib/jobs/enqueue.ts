@@ -8,6 +8,7 @@ import {
   FOUNDATION_JOB_TYPES,
   NOTIFICATION_JOB_TYPES,
   PUSH_JOB_TYPES,
+  OPS_JOB_TYPES,
   type RegisteredJobName,
 } from "./registry";
 import type {
@@ -16,6 +17,14 @@ import type {
 } from "./email-types";
 import type { InAppNotificationJobPayload } from "./notification-types";
 import type { PushDeliverJobPayload } from "./push-types";
+import type { OpsSlaEscalatePayload } from "./ops-types";
+
+export function buildJobEnvelope<T>(
+  payload: T,
+  idempotencyKey?: string,
+): JobEnvelope<T> {
+  return wrapPayload(payload, idempotencyKey);
+}
 
 function wrapPayload<T>(payload: T, idempotencyKey?: string): JobEnvelope<T> {
   const envRef = detectSupabaseProjectRef() ?? "unknown";
@@ -109,6 +118,17 @@ export async function enqueuePushDeliver(
 ): Promise<string | null> {
   return enqueueJob(boss, PUSH_JOB_TYPES.DELIVER, payload, {
     priority: "high",
+    ...options,
+  });
+}
+
+export async function enqueueOpsSlaEscalate(
+  boss: PgBoss,
+  payload: OpsSlaEscalatePayload,
+  options: EnqueueJobOptions = {},
+): Promise<string | null> {
+  return enqueueJob(boss, OPS_JOB_TYPES.SLA_ESCALATE, payload, {
+    priority: "normal",
     ...options,
   });
 }

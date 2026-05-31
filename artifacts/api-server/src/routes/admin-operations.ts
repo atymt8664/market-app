@@ -5,9 +5,9 @@ import {
   getDomainQueueCounts,
   getOpsQueueSummary,
   getStaffLoadSnapshot,
-  runAutoEscalationAll,
   suggestAssignStaff,
 } from "../lib/admin-operations-queue";
+import { ensureSlaEscalationBeforeAdminRead } from "../lib/ops-cron";
 import { isOpsQueueKey, type OpsDomain } from "../lib/admin-operations-sla";
 import { requireAdmin, requireAdminAccessGrant } from "../middlewares/require-admin";
 import { requireAdminPermission } from "../middlewares/require-admin-permission";
@@ -38,7 +38,7 @@ router.get("/admin/operations/summary", requireAdminPermission("dashboard.operat
   try {
     const staff = await loadOpsContext(req, res);
     if (!staff) return;
-    await runAutoEscalationAll();
+    await ensureSlaEscalationBeforeAdminRead();
     const summary = await getOpsQueueSummary(staff);
     return res.json(summary);
   } catch (err) {
@@ -91,7 +91,7 @@ router.get("/admin/operations/queues/:domain", async (req, res, next) => {
     }
     const queueRaw = String(req.query.queue || "all");
     const queue = isOpsQueueKey(queueRaw) ? queueRaw : "all";
-    await runAutoEscalationAll();
+    await ensureSlaEscalationBeforeAdminRead();
     const counts = await getDomainQueueCounts(staff, domain);
     return res.json({ domain, queue, counts });
   } catch (err) {
@@ -106,7 +106,7 @@ router.get("/admin/operations/founder", requireAdminPermission("system"), async 
     if (!staff.isFounder) {
       return res.status(403).json({ error: "Forbidden", code: "RBAC_DENIED" });
     }
-    await runAutoEscalationAll();
+    await ensureSlaEscalationBeforeAdminRead();
     const [summary, staffLoad] = await Promise.all([
       getOpsQueueSummary(staff),
       getStaffLoadSnapshot(staff),

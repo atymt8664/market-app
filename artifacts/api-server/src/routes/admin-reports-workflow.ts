@@ -14,7 +14,8 @@ import {
   ensureStaffWorkflowSchema,
   releaseReport,
 } from "../lib/admin-staff-workflow";
-import { assertStaffCanClaim, getDomainQueueCounts, mapSlaFields, runAutoEscalationAll } from "../lib/admin-operations-queue";
+import { assertStaffCanClaim, getDomainQueueCounts, mapSlaFields } from "../lib/admin-operations-queue";
+import { ensureSlaEscalationBeforeAdminRead } from "../lib/ops-cron";
 import { isOpsQueueKey } from "../lib/admin-operations-sla";
 import { loadAdminStaffContext } from "../lib/admin-rbac";
 import { FounderProtectedError } from "../lib/admin-staff";
@@ -113,7 +114,7 @@ async function mapReportRow(
 
 router.get("/admin/reports/stats", requireAdminPermission("reports"), async (req, res) => {
   const staff = req.adminStaff ?? (await loadAdminStaffContext(req));
-  await runAutoEscalationAll();
+  await ensureSlaEscalationBeforeAdminRead();
   const counts = await getDomainQueueCounts(staff, "reports");
   return res.json(counts);
 });

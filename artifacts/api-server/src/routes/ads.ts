@@ -23,8 +23,8 @@ import {
   buildQueueSql,
   getDomainQueueCounts,
   mapSlaFields,
-  runAutoEscalationAll,
 } from "../lib/admin-operations-queue";
+import { ensureSlaEscalationBeforeAdminRead } from "../lib/ops-cron";
 import { isOpsQueueKey } from "../lib/admin-operations-sla";
 import { loadAdminStaffContext } from "../lib/admin-rbac";
 import {
@@ -188,7 +188,7 @@ router.get("/ads/featured", async (req, res) => {
 });
 router.get("/admin/ads/stats", requireAdminAccessGrant, requireAdmin, requireAdminPermission("ads"), async (req, res) => {
   const staff = req.adminStaff ?? (await loadAdminStaffContext(req));
-  await runAutoEscalationAll();
+  await ensureSlaEscalationBeforeAdminRead();
   const counts = await getDomainQueueCounts(staff, "ads");
   return res.json(counts);
 });
@@ -196,7 +196,7 @@ router.get("/admin/ads/stats", requireAdminAccessGrant, requireAdmin, requireAdm
 router.get("/admin/ads", requireAdminAccessGrant, requireAdmin, requireAdminPermission("ads"), async (req, res) => {
   await ensureStaffWorkflowSchema();
   const staff = req.adminStaff ?? (await loadAdminStaffContext(req));
-  await runAutoEscalationAll();
+  await ensureSlaEscalationBeforeAdminRead();
 
   const queueRaw = String(req.query.queue || "").trim();
   const queue = isOpsQueueKey(queueRaw) ? queueRaw : null;

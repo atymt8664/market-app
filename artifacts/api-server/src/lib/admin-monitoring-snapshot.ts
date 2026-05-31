@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 import {
   getOpsQueueSummary,
   getStaffLoadSnapshot,
-  runAutoEscalationAll,
   type StaffLoadSnapshot,
 } from "./admin-operations-queue";
+import { ensureSlaEscalationBeforeAdminRead } from "./ops-cron";
 import { buildInfrastructureHealthSnapshot } from "./admin-infrastructure-health";
 import type { AdminStaffContext } from "./admin-rbac";
 import { logAdminActivity } from "./admin-activity-log";
@@ -183,7 +183,7 @@ export async function buildAdminMonitoringSnapshot(
   const generatedAt = new Date().toISOString();
   const actorAdminId = staff.actorAdminId;
 
-  await runAutoEscalationAll();
+  await ensureSlaEscalationBeforeAdminRead();
 
   const [
     readiness,

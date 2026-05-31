@@ -20,6 +20,15 @@ const pushCounters: Record<JobMetricKind, number> = {
   failed: 0,
 };
 
+const opsCounters: Record<JobMetricKind, number> = {
+  enqueued: 0,
+  processed: 0,
+  failed: 0,
+};
+
+let lastOpsSlaEscalationResult: Record<string, number> | null = null;
+let lastOpsSlaEscalationAt: string | null = null;
+
 export function incrementEmailJobMetric(kind: JobMetricKind, delta = 1): void {
   emailCounters[kind] += delta;
 }
@@ -49,6 +58,31 @@ export function readPushJobMetrics(): Readonly<Record<JobMetricKind, number>> {
   return { ...pushCounters };
 }
 
+export function incrementOpsJobMetric(kind: JobMetricKind, delta = 1): void {
+  opsCounters[kind] += delta;
+}
+
+export function readOpsJobMetrics(): Readonly<Record<JobMetricKind, number>> {
+  return { ...opsCounters };
+}
+
+export function recordOpsSlaEscalationResult(
+  result: Record<string, number>,
+): void {
+  lastOpsSlaEscalationResult = { ...result };
+  lastOpsSlaEscalationAt = new Date().toISOString();
+}
+
+export function readLastOpsSlaEscalation(): {
+  at: string | null;
+  result: Record<string, number> | null;
+} {
+  return {
+    at: lastOpsSlaEscalationAt,
+    result: lastOpsSlaEscalationResult ? { ...lastOpsSlaEscalationResult } : null,
+  };
+}
+
 export function resetJobMetricsForTests(): void {
   emailCounters.enqueued = 0;
   emailCounters.processed = 0;
@@ -59,6 +93,11 @@ export function resetJobMetricsForTests(): void {
   pushCounters.enqueued = 0;
   pushCounters.processed = 0;
   pushCounters.failed = 0;
+  opsCounters.enqueued = 0;
+  opsCounters.processed = 0;
+  opsCounters.failed = 0;
+  lastOpsSlaEscalationResult = null;
+  lastOpsSlaEscalationAt = null;
 }
 
 /** @deprecated use resetJobMetricsForTests */

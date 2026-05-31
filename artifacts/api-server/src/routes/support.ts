@@ -24,7 +24,8 @@ import {
   ensureStaffWorkflowSchema,
   releaseSupportTicket,
 } from "../lib/admin-staff-workflow";
-import { buildQueueSql, getDomainQueueCounts, mapSlaFields, runAutoEscalationAll, assertStaffCanClaim } from "../lib/admin-operations-queue";
+import { buildQueueSql, getDomainQueueCounts, mapSlaFields, assertStaffCanClaim } from "../lib/admin-operations-queue";
+import { ensureSlaEscalationBeforeAdminRead } from "../lib/ops-cron";
 import { isOpsQueueKey } from "../lib/admin-operations-sla";
 import { loadAdminStaffContext } from "../lib/admin-rbac";
 import { createNotification } from "../lib/create-notification";
@@ -322,7 +323,7 @@ router.get("/support/tickets/:id/messages", requireAuth, async (req, res) => {
 
 router.get("/admin/support/stats", requireAdminAccessGrant, requireAdmin, requireAdminPermission("support"), async (req, res) => {
   const staff = req.adminStaff ?? (await loadAdminStaffContext(req));
-  await runAutoEscalationAll();
+  await ensureSlaEscalationBeforeAdminRead();
   const counts = await getDomainQueueCounts(staff, "support");
   return res.json(counts);
 });
@@ -331,7 +332,7 @@ router.get("/admin/support/tickets", requireAdminAccessGrant, requireAdmin, requ
   try {
     await ensureStaffWorkflowSchema();
     const staff = req.adminStaff ?? (await loadAdminStaffContext(req));
-    await runAutoEscalationAll();
+    await ensureSlaEscalationBeforeAdminRead();
 
     const queueRaw = String(req.query.queue || "").trim();
     const queue = isOpsQueueKey(queueRaw) ? queueRaw : null;

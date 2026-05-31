@@ -4,11 +4,12 @@ import type { OrderListItem } from "./orders-api.types";
 export type OrdersHubData = {
   orders: OrderListItem[];
   isLoading: boolean;
+  isMock: boolean;
 };
 
 /**
  * Hub list data — wired to orders API hooks.
- * Returns empty list on loading/error; no mock IDs or fake rows in UI.
+ * Returns empty list on loading/error; surfaces mock flag for P17-4A gating.
  */
 export function useOrdersHubData(variant: "buyer" | "seller"): OrdersHubData {
   const buyerQuery = useBuyerOrdersList({ enabled: variant === "buyer" });
@@ -18,5 +19,6 @@ export function useOrdersHubData(variant: "buyer" | "seller"): OrdersHubData {
   return {
     orders: query.data?.items ?? [],
     isLoading: query.isLoading,
+    isMock: query.data?.mock ?? false,
   };
 }

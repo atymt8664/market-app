@@ -37,15 +37,19 @@ assert(adDetailJs, "ad-detail lazy chunk present");
 assert(adDetailJs.includes("p17-ad-detail-buy-now"), "ad-detail: Buy Now test id");
 assert(adDetailJs.includes("p17-ad-detail-add-to-cart"), "ad-detail: Add to cart test id");
 assert(
-  adDetailJs.includes("p17.commerce.coming_soon.roadmap_title") ||
-    adDetailJs.includes("roadmap_step_cart"),
-  "ad-detail: commerce roadmap in sheet",
-);
-assert(
   adDetailJs.includes("p17.commerce.ad_detail.buy_now") || adDetailJs.includes("اشتر"),
   "ad-detail: Buy Now label / i18n key",
 );
-assert(adDetailJs.includes("CommerceComingSoonSheet") || adDetailJs.includes("p17-coming-soon-sheet"), "ad-detail: coming-soon sheet wired");
+const p17BuyNowLive =
+  adDetailJs.includes("checkoutPathForAd") ||
+  adDetailJs.includes("/checkout/") ||
+  adDetailJs.includes("VITE_P17_BUY_NOW_ENABLED");
+const comingSoonFallback =
+  adDetailJs.includes("CommerceComingSoonSheet") || adDetailJs.includes("p17-coming-soon-sheet");
+assert(
+  p17BuyNowLive || comingSoonFallback,
+  "ad-detail: P17-5 checkout wiring OR coming-soon fallback",
+);
 
 // Profile P17 tiles still present
 const profileJs = await fetchLazyChunk(indexJs, (p) => /^assets\/profile-[A-Za-z0-9_-]+\.js$/.test(p));

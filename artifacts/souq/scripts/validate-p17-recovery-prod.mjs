@@ -56,7 +56,12 @@ assert(ordersJs?.includes("p17.commerce.page.buyer_title"), "orders-page bundle:
 assert(ordersJs?.includes("p17.commerce.page.seller_title"), "orders-page bundle: seller hub title key");
 
 if (adDetailJs) {
-  assert(adDetailJs.includes("p17-ad-detail-buy-now"), "ad-detail: Buy Now placeholder present");
+  assert(adDetailJs.includes("p17-ad-detail-buy-now"), "ad-detail: Buy Now CTA present");
+  const liveBuyNow =
+    adDetailJs.includes("checkoutPathForAd") || adDetailJs.includes("/checkout/");
+  const deferred =
+    adDetailJs.includes("CommerceComingSoonSheet") || adDetailJs.includes("p17-coming-soon-sheet");
+  assert(liveBuyNow || deferred, "ad-detail: checkout path OR coming-soon fallback");
 }
 
 if (errors.length) {

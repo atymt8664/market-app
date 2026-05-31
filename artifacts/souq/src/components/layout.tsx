@@ -50,6 +50,9 @@ export function Layout({ children }: LayoutProps) {
     location.startsWith("/professional-seller") ||
     location.startsWith("/seller-trust");
   const isDevMockRoute = location.startsWith("/dev/");
+  /** P17-5 — checkout / order confirmation: full-height flow without BottomNav overlap */
+  const isP17CheckoutFlowRoute =
+    location.startsWith("/checkout/") || location === "/orders/created";
   const isImmersiveShell =
     isMessageThreadRoute || isNotificationsRoute || isImmersiveSettingsLegalAccountRoute(location);
   const hideBottomNav =
@@ -60,7 +63,8 @@ export function Layout({ children }: LayoutProps) {
     location.startsWith("/admin-login") ||
     isDevMockRoute ||
     isImmersiveShell ||
-    isImmersiveMarketingRoute;
+    isImmersiveMarketingRoute ||
+    isP17CheckoutFlowRoute;
 
   return (
     <div className="w-full min-h-[100svh] bg-[#0A0A0A]">
@@ -72,7 +76,7 @@ export function Layout({ children }: LayoutProps) {
       <div
         className={cn(
           "relative mx-auto w-full max-w-screen-2xl min-h-[100svh] overflow-x-hidden bg-[#0A0A0A]",
-          isImmersiveShell || isImmersiveMarketingRoute || isDevMockRoute
+          isImmersiveShell || isImmersiveMarketingRoute || isDevMockRoute || isP17CheckoutFlowRoute
             ? "pb-0"
             : BOTTOM_NAV_CONTENT_PADDING_CLASS,
         )}

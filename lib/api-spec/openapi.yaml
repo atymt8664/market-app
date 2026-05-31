@@ -11,6 +11,7 @@ tags:
   - name: health
   - name: categories
   - name: ads
+  - name: orders
   - name: ai
   - name: auth
   - name: conversations
@@ -79,6 +80,150 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /orders:
+    get:
+      operationId: listBuyerOrders
+      tags: [orders]
+      summary: List buyer orders (P17-4)
+      responses:
+        "200":
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrdersListResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create order (P17-4 STAGING)
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetailResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /orders/seller:
+    get:
+      operationId: listSellerOrders
+      tags: [orders]
+      summary: List seller orders (P17-4)
+      responses:
+        "200":
+          description: Seller orders list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrdersListResponse"
+
+  /orders/{orderNumber}:
+    get:
+      operationId: getOrderDetail
+      tags: [orders]
+      summary: Order detail by order number (P17-4-NAV)
+      parameters:
+        - name: orderNumber
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^SOUQ-\d{4}-\d{6}$'
+      responses:
+        "200":
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetailResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /orders/{orderNumber}/accept:
+    post:
+      operationId: acceptOrder
+      tags: [orders]
+      summary: Seller accept order (P17-4)
+      parameters:
+        - name: orderNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetailResponse"
+
+  /orders/{orderNumber}/reject:
+    post:
+      operationId: rejectOrder
+      tags: [orders]
+      summary: Seller reject order (P17-4)
+      parameters:
+        - name: orderNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetailResponse"
+
+  /orders/{orderNumber}/cancel:
+    post:
+      operationId: cancelOrder
+      tags: [orders]
+      summary: Cancel order (P17-4)
+      parameters:
+        - name: orderNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetailResponse"
 
   /categories:
     get:
@@ -1486,6 +1631,78 @@ components:
       required: [error]
       properties:
         error: { type: string }
+        code: { type: string }
+
+    CreateOrderBody:
+      type: object
+      required: [adId, fulfillmentMode]
+      properties:
+        adId: { type: integer }
+        fulfillmentMode: { type: string, enum: [shipping, pickup] }
+        currency: { type: string, minLength: 3, maxLength: 3, default: EUR }
+        shippingAmount: { type: string }
+        shippingMethodLabel: { type: string }
+        idempotencyKey: { type: string }
+        buyerAddress:
+          type: object
+          properties:
+            label: { type: string }
+            city: { type: string }
+            countryCode: { type: string }
+            postalCode: { type: string }
+            line1: { type: string }
+            line2: { type: string }
+            recipientName: { type: string }
+            phone: { type: string }
+
+    OrderListItem:
+      type: object
+      required: [id, orderNumber, status, statusLabelAr, title, totalAmount, currency, updatedAt, updatedAtRelativeAr]
+      properties:
+        id: { type: string, description: "Equals orderNumber (P17-4-NAV)" }
+        orderNumber: { type: string }
+        status: { type: string }
+        statusLabelAr: { type: string }
+        title: { type: string }
+        totalAmount: { type: string }
+        currency: { type: string }
+        updatedAt: { type: string, format: date-time }
+        updatedAtRelativeAr: { type: string }
+
+    OrderDetail:
+      allOf:
+        - $ref: "#/components/schemas/OrderListItem"
+        - type: object
+          required: [fulfillmentMode, buyerUserId, sellerUserId, adId, subtotalAmount, shippingAmount, createdAt, issueFlag]
+          properties:
+            fulfillmentMode: { type: string, enum: [shipping, pickup] }
+            buyerUserId: { type: integer }
+            sellerUserId: { type: integer }
+            adId: { type: integer }
+            subtotalAmount: { type: string }
+            shippingAmount: { type: string }
+            createdAt: { type: string, format: date-time }
+            issueFlag: { type: boolean }
+            version: { type: integer }
+
+    OrdersListResponse:
+      type: object
+      required: [items, total, mock]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderListItem"
+        total: { type: integer }
+        mock: { type: boolean }
+
+    OrderDetailResponse:
+      type: object
+      required: [order, mock]
+      properties:
+        order:
+          $ref: "#/components/schemas/OrderDetail"
+        mock: { type: boolean }
 
     AdsStats:
       type: object

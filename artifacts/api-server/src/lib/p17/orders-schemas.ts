@@ -18,6 +18,7 @@ export const OrderStatusSchema = z.enum(ORDER_STATUSES);
 
 export const OrderListItemSchema = z
   .object({
+    /** Public identifier — equals orderNumber per P17-4-NAV. */
     id: z.string().min(1),
     orderNumber: z.string().min(1),
     status: OrderStatusSchema,
@@ -30,6 +31,24 @@ export const OrderListItemSchema = z
   })
   .strict();
 
+export const OrderShipmentSchema = z
+  .object({
+    carrierLabel: z.string().min(1),
+    trackingNumber: z.string().min(1),
+    shippedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+
+export const OrderBuyerAddressSchema = z
+  .object({
+    city: z.string().min(1),
+    countryCode: z.string().min(2),
+    postalCode: z.string().nullable(),
+    line1: z.string().min(1),
+    recipientName: z.string().nullable(),
+  })
+  .strict();
+
 export const OrderDetailSchema = OrderListItemSchema.extend({
   fulfillmentMode: z.enum(["shipping", "pickup"]),
   buyerUserId: z.number().int().positive(),
@@ -39,7 +58,17 @@ export const OrderDetailSchema = OrderListItemSchema.extend({
   shippingAmount: z.string(),
   createdAt: z.string().datetime(),
   issueFlag: z.boolean(),
+  version: z.number().int().positive().optional(),
+  shipment: OrderShipmentSchema.nullable().optional(),
+  buyerAddress: OrderBuyerAddressSchema.nullable().optional(),
 }).strict();
+
+export const MarkShippedBodySchema = z
+  .object({
+    carrierLabel: z.string().trim().min(1).max(120),
+    trackingNumber: z.string().trim().min(2).max(64),
+  })
+  .strict();
 
 export const OrderTimelineEntrySchema = z
   .object({
@@ -69,7 +98,7 @@ export const OrdersStatsSchema = z
     shipping: z.number().int().min(0),
     completed: z.number().int().min(0),
     issues: z.number().int().min(0),
-    mock: z.literal(true),
+    mock: z.boolean(),
   })
   .strict();
 
@@ -77,14 +106,14 @@ export const OrdersListResponseSchema = z
   .object({
     items: z.array(OrderListItemSchema),
     total: z.number().int().min(0),
-    mock: z.literal(true),
+    mock: z.boolean(),
   })
   .strict();
 
 export const OrderDetailResponseSchema = z
   .object({
     order: OrderDetailSchema,
-    mock: z.literal(true),
+    mock: z.boolean(),
   })
   .strict();
 
@@ -92,7 +121,7 @@ export const OrderTimelineResponseSchema = z
   .object({
     orderId: z.string().min(1),
     items: z.array(OrderTimelineEntrySchema),
-    mock: z.literal(true),
+    mock: z.boolean(),
   })
   .strict();
 
@@ -100,14 +129,36 @@ export const OrderIssuesResponseSchema = z
   .object({
     orderId: z.string().min(1),
     items: z.array(OrderIssueSchema),
-    mock: z.literal(true),
+    mock: z.boolean(),
   })
   .strict();
 
-export const OrderIdParamSchema = z.object({
-  id: z.string().trim().min(1).max(64),
+/** Accepts SOUQ-YYYY-NNNNNN (canonical) or legacy numeric id during migration. */
+export const OrderReferenceParamSchema = z.object({
+  id: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .refine((v) => /^SOUQ-\d{4}-\d{6}$/.test(v) || /^\d+$/.test(v), {
+      message: "invalid order reference",
+    }),
 });
+
+/** @deprecated Use OrderReferenceParamSchema */
+export const OrderIdParamSchema = OrderReferenceParamSchema;
 
 export type OrderListItem = z.infer<typeof OrderListItemSchema>;
 export type OrderDetail = z.infer<typeof OrderDetailSchema>;
 export type OrdersStats = z.infer<typeof OrdersStatsSchema>;
+export type OrderTimelineEntry = z.infer<typeof OrderTimelineEntrySchema>;
+export type OrderIssue = z.infer<typeof OrderIssueSchema>;
+
+export const CreateOrderResponseSchema = z
+  .object({
+    order: OrderDetailSchema,
+    mock: z.boolean(),
+  })
+  .strict();
+
+export const OrderActionResponseSchema = OrderDetailResponseSchema;

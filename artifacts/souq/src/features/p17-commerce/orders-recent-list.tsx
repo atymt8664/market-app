@@ -27,7 +27,7 @@ export function OrdersRecentList({
             <div className="flex items-start justify-between gap-2">
               <p className="text-xs font-bold text-primary">{order.orderNumber}</p>
               <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                {t("p17.commerce.coming_soon.badge")}
+                {order.statusLabelAr}
               </span>
             </div>
             <p className="mt-1 text-sm font-medium text-foreground">{order.title}</p>

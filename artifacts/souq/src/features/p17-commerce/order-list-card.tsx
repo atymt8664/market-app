@@ -11,31 +11,35 @@ type OrderListCardProps = {
   order: OrderListItem;
   variant: OrderHubVariant;
   className?: string;
+  /** When true, card is not navigable (mock API or detail gate). */
+  interactionDisabled?: boolean;
 };
 
-export function OrderListCard({ order, variant, className }: OrderListCardProps) {
+export function OrderListCard({
+  order,
+  variant,
+  className,
+  interactionDisabled = false,
+}: OrderListCardProps) {
   const navigateToDetail = useNavigateToOrderDetail();
   const testId =
     variant === "buyer" ? "p17-orders-list-card-buyer" : "p17-orders-list-card-seller";
 
-  const handleOpen = () => navigateToDetail(variant, order.id);
+  const handleOpen = () => {
+    if (interactionDisabled) return;
+    navigateToDetail(variant, order.orderNumber);
+  };
 
-  return (
-    <button
-      type="button"
-      dir="rtl"
-      data-testid={testId}
-      data-order-id={order.id}
-      aria-label={t("p17.commerce.page.order_card_open", { orderNumber: order.orderNumber })}
-      className={cn(ORDERS_LIST_CARD, ORDERS_LIST_CARD_INTERACTIVE, className)}
-      onClick={handleOpen}
-      onKeyDown={(e: KeyboardEvent) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          handleOpen();
-        }
-      }}
-    >
+  const cardClass = cn(
+    ORDERS_LIST_CARD,
+    interactionDisabled
+      ? "cursor-default opacity-80"
+      : ORDERS_LIST_CARD_INTERACTIVE,
+    className,
+  );
+
+  const inner = (
+    <>
       <div className="flex items-start gap-3">
         <div
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A] text-primary md:h-14 md:w-14"
@@ -61,8 +65,45 @@ export function OrderListCard({ order, variant, className }: OrderListCardProps)
           </div>
         </div>
 
-        <ChevronLeft className="mt-1 h-4 w-4 shrink-0 text-primary/45" aria-hidden strokeWidth={2.25} />
+        {!interactionDisabled ? (
+          <ChevronLeft className="mt-1 h-4 w-4 shrink-0 text-primary/45" aria-hidden strokeWidth={2.25} />
+        ) : null}
       </div>
+    </>
+  );
+
+  if (interactionDisabled) {
+    return (
+      <div
+        dir="rtl"
+        data-testid={testId}
+        data-order-id={order.id}
+        data-interaction-disabled="true"
+        className={cardClass}
+        aria-label={t("p17.commerce.page.mock_card_unavailable", { orderNumber: order.orderNumber })}
+      >
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      dir="rtl"
+      data-testid={testId}
+      data-order-id={order.id}
+      aria-label={t("p17.commerce.page.order_card_open", { orderNumber: order.orderNumber })}
+      className={cardClass}
+      onClick={handleOpen}
+      onKeyDown={(e: KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleOpen();
+        }
+      }}
+    >
+      {inner}
     </button>
   );
 }
@@ -71,9 +112,15 @@ type OrdersHubListProps = {
   variant: OrderHubVariant;
   orders: OrderListItem[];
   empty: ReactNode;
+  interactionDisabled?: boolean;
 };
 
-export function OrdersHubList({ variant, orders, empty }: OrdersHubListProps) {
+export function OrdersHubList({
+  variant,
+  orders,
+  empty,
+  interactionDisabled = false,
+}: OrdersHubListProps) {
   if (orders.length === 0) {
     return <>{empty}</>;
   }
@@ -85,7 +132,11 @@ export function OrdersHubList({ variant, orders, empty }: OrdersHubListProps) {
     <ul className="flex flex-col gap-2 md:gap-2.5" data-testid={listTestId} dir="rtl">
       {orders.map((order) => (
         <li key={order.id}>
-          <OrderListCard order={order} variant={variant} />
+          <OrderListCard
+            order={order}
+            variant={variant}
+            interactionDisabled={interactionDisabled}
+          />
         </li>
       ))}
     </ul>

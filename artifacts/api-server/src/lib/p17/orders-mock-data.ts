@@ -5,21 +5,26 @@ import { z } from "zod";
 type OrderIssue = z.infer<typeof OrderIssueSchema>;
 type OrderTimelineEntry = z.infer<typeof OrderTimelineEntrySchema>;
 
-/** P17-4B — static mock catalog; swap provider for DB in P17-4+. */
-export const P17_MOCK_BUYER_ORDER_ID = "mock-buyer-001";
-export const P17_MOCK_SELLER_ORDER_IDS = [
-  "mock-seller-001",
-  "mock-seller-002",
-  "mock-seller-003",
+/** P17-4A — canonical public ids; id === orderNumber (P17-4-NAV / P17-4-api). */
+export const P17_MOCK_BUYER_ORDER_NUMBER = "SOUQ-2026-001001";
+export const P17_MOCK_SELLER_ORDER_NUMBERS = [
+  "SOUQ-2026-001101",
+  "SOUQ-2026-001102",
+  "SOUQ-2026-001103",
 ] as const;
 
 const hoursAgo = (hours: number) =>
   new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
+function mockListItem(
+  orderNumber: string,
+  row: Omit<OrderListItem, "id" | "orderNumber">,
+): OrderListItem {
+  return { id: orderNumber, orderNumber, ...row };
+}
+
 export const P17_MOCK_BUYER_ORDERS: OrderListItem[] = [
-  {
-    id: P17_MOCK_BUYER_ORDER_ID,
-    orderNumber: "SOUQ-2026-001001",
+  mockListItem(P17_MOCK_BUYER_ORDER_NUMBER, {
     status: "pending_confirmation",
     statusLabelAr: "بانتظار التأكيد",
     title: "iPhone 14 Pro — معاينة",
@@ -27,13 +32,11 @@ export const P17_MOCK_BUYER_ORDERS: OrderListItem[] = [
     currency: "EUR",
     updatedAt: hoursAgo(2),
     updatedAtRelativeAr: "منذ ساعتين",
-  },
+  }),
 ];
 
 export const P17_MOCK_SELLER_ORDERS: OrderListItem[] = [
-  {
-    id: P17_MOCK_SELLER_ORDER_IDS[0],
-    orderNumber: "SOUQ-2026-001101",
+  mockListItem(P17_MOCK_SELLER_ORDER_NUMBERS[0], {
     status: "pending_confirmation",
     statusLabelAr: "طلب جديد",
     title: "ساعة Apple Watch — معاينة",
@@ -41,10 +44,8 @@ export const P17_MOCK_SELLER_ORDERS: OrderListItem[] = [
     currency: "EUR",
     updatedAt: hoursAgo(1),
     updatedAtRelativeAr: "منذ ساعة",
-  },
-  {
-    id: P17_MOCK_SELLER_ORDER_IDS[1],
-    orderNumber: "SOUQ-2026-001102",
+  }),
+  mockListItem(P17_MOCK_SELLER_ORDER_NUMBERS[1], {
     status: "preparing",
     statusLabelAr: "بانتظار التجهيز",
     title: "حقيبة جلد — معاينة",
@@ -52,10 +53,8 @@ export const P17_MOCK_SELLER_ORDERS: OrderListItem[] = [
     currency: "EUR",
     updatedAt: hoursAgo(5),
     updatedAtRelativeAr: "منذ 5 ساعات",
-  },
-  {
-    id: P17_MOCK_SELLER_ORDER_IDS[2],
-    orderNumber: "SOUQ-2026-001103",
+  }),
+  mockListItem(P17_MOCK_SELLER_ORDER_NUMBERS[2], {
     status: "shipped",
     statusLabelAr: "تم الشحن",
     title: "سماعات Bluetooth — معاينة",
@@ -63,7 +62,7 @@ export const P17_MOCK_SELLER_ORDERS: OrderListItem[] = [
     currency: "EUR",
     updatedAt: hoursAgo(24),
     updatedAtRelativeAr: "منذ يوم",
-  },
+  }),
 ];
 
 export const P17_MOCK_ORDERS_STATS: OrdersStats = {
@@ -77,7 +76,7 @@ export const P17_MOCK_ORDERS_STATS: OrdersStats = {
 };
 
 const ORDER_DETAILS: Record<string, OrderDetail> = {
-  [P17_MOCK_BUYER_ORDER_ID]: {
+  [P17_MOCK_BUYER_ORDER_NUMBER]: {
     ...P17_MOCK_BUYER_ORDERS[0],
     fulfillmentMode: "shipping",
     buyerUserId: 1001,
@@ -88,7 +87,7 @@ const ORDER_DETAILS: Record<string, OrderDetail> = {
     createdAt: hoursAgo(3),
     issueFlag: false,
   },
-  [P17_MOCK_SELLER_ORDER_IDS[0]]: {
+  [P17_MOCK_SELLER_ORDER_NUMBERS[0]]: {
     ...P17_MOCK_SELLER_ORDERS[0],
     fulfillmentMode: "shipping",
     buyerUserId: 1002,
@@ -99,7 +98,7 @@ const ORDER_DETAILS: Record<string, OrderDetail> = {
     createdAt: hoursAgo(2),
     issueFlag: false,
   },
-  [P17_MOCK_SELLER_ORDER_IDS[1]]: {
+  [P17_MOCK_SELLER_ORDER_NUMBERS[1]]: {
     ...P17_MOCK_SELLER_ORDERS[1],
     fulfillmentMode: "pickup",
     buyerUserId: 1003,
@@ -110,7 +109,7 @@ const ORDER_DETAILS: Record<string, OrderDetail> = {
     createdAt: hoursAgo(6),
     issueFlag: false,
   },
-  [P17_MOCK_SELLER_ORDER_IDS[2]]: {
+  [P17_MOCK_SELLER_ORDER_NUMBERS[2]]: {
     ...P17_MOCK_SELLER_ORDERS[2],
     fulfillmentMode: "shipping",
     buyerUserId: 1004,
@@ -124,7 +123,7 @@ const ORDER_DETAILS: Record<string, OrderDetail> = {
 };
 
 const ORDER_TIMELINES: Record<string, OrderTimelineEntry[]> = {
-  [P17_MOCK_BUYER_ORDER_ID]: [
+  [P17_MOCK_BUYER_ORDER_NUMBER]: [
     {
       id: "tl-001",
       eventCode: "order_submitted",
@@ -154,18 +153,19 @@ export function getMockOrdersStats(): OrdersStats {
   return P17_MOCK_ORDERS_STATS;
 }
 
-export function getMockOrderById(orderId: string): OrderDetail | null {
-  return ORDER_DETAILS[orderId] ?? null;
+export function getMockOrderById(orderRef: string): OrderDetail | null {
+  const key = orderRef.trim();
+  return ORDER_DETAILS[key] ?? null;
 }
 
-export function getMockOrderTimeline(orderId: string): OrderTimelineEntry[] {
-  return ORDER_TIMELINES[orderId] ?? [];
+export function getMockOrderTimeline(orderRef: string): OrderTimelineEntry[] {
+  return ORDER_TIMELINES[orderRef.trim()] ?? [];
 }
 
-export function getMockOrderIssues(orderId: string): OrderIssue[] {
-  return ORDER_ISSUES[orderId] ?? [];
+export function getMockOrderIssues(orderRef: string): OrderIssue[] {
+  return ORDER_ISSUES[orderRef.trim()] ?? [];
 }
 
-export function isKnownMockOrderId(orderId: string): boolean {
-  return orderId in ORDER_DETAILS;
+export function isKnownMockOrderId(orderRef: string): boolean {
+  return orderRef.trim() in ORDER_DETAILS;
 }

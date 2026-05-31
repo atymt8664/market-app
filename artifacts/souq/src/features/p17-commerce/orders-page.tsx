@@ -9,16 +9,18 @@ import {
   CheckCircle2,
   Package,
   Sparkles,
-  Truck,
-  ClipboardList,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { CommerceMockDataBanner } from "./commerce-mock-data-banner";
 import { OrdersHubList } from "./order-list-card";
 import { useOrdersHubData } from "./use-orders-hub-data";
+import { useOrdersStats } from "./use-orders-api";
+import type { OrderListItem } from "./orders-api.types";
+import { isP17BuyerFlowActive, isP17SellerOrdersEnabled } from "./p17-commerce-flags";
 import {
   CREATE_AD_BACK_BTN,
   CREATE_AD_HEADER_BAR,
@@ -52,7 +54,6 @@ const BUYER_TABS = [
   { value: "new", labelKey: "p17.commerce.page.tab_new" },
   { value: "active", labelKey: "p17.commerce.page.tab_active" },
   { value: "completed", labelKey: "p17.commerce.page.tab_completed" },
-  { value: "issues", labelKey: "p17.commerce.page.tab_issues" },
 ] as const;
 
 type BuyerOrderTab = (typeof BUYER_TABS)[number]["value"];
@@ -61,32 +62,36 @@ const BUYER_TAB_EMPTY_KEYS: Record<Exclude<BuyerOrderTab, "all">, string> = {
   new: "p17.commerce.page.empty_tab_new",
   active: "p17.commerce.page.empty_tab_active",
   completed: "p17.commerce.page.empty_tab_completed",
-  issues: "p17.commerce.page.empty_tab_issues",
 };
 
-const BUYER_STAT_CARDS = [
-  { key: "p17.commerce.page.stat_card_new", count: 0, icon: Sparkles },
-  { key: "p17.commerce.page.stat_card_active", count: 0, icon: Activity },
-  { key: "p17.commerce.page.stat_card_completed", count: 0, icon: CheckCircle2 },
-  { key: "p17.commerce.page.stat_card_issues", count: 0, icon: AlertCircle },
-] as const;
+function filterBuyerOrdersByTab(orders: OrderListItem[], tab: BuyerOrderTab): OrderListItem[] {
+  if (tab === "all") return orders;
+  if (tab === "new") return orders.filter((o) => o.status === "pending_confirmation");
+  if (tab === "active") return orders.filter((o) => o.status === "confirmed");
+  return orders.filter((o) => o.status === "cancelled" || o.status === "completed");
+}
 
 const SELLER_TABS = [
   { value: "all", labelKey: "p17.commerce.page.tab_all" },
   { value: "new", labelKey: "p17.commerce.page.seller_tab_new" },
-  { value: "preparing", labelKey: "p17.commerce.page.seller_tab_preparing" },
-  { value: "shipping", labelKey: "p17.commerce.page.seller_tab_shipping" },
-  { value: "completed", labelKey: "p17.commerce.page.seller_tab_completed" },
+  { value: "active", labelKey: "p17.commerce.page.seller_tab_active" },
+  { value: "done", labelKey: "p17.commerce.page.seller_tab_done" },
 ] as const;
 
 type SellerOrderTab = (typeof SELLER_TABS)[number]["value"];
 
 const SELLER_TAB_EMPTY_KEYS: Record<Exclude<SellerOrderTab, "all">, string> = {
   new: "p17.commerce.page.seller_empty_tab_new",
-  preparing: "p17.commerce.page.seller_empty_tab_preparing",
-  shipping: "p17.commerce.page.seller_empty_tab_shipping",
-  completed: "p17.commerce.page.seller_empty_tab_completed",
+  active: "p17.commerce.page.seller_empty_tab_active",
+  done: "p17.commerce.page.seller_empty_tab_done",
 };
+
+function filterSellerOrdersByTab(orders: OrderListItem[], tab: SellerOrderTab): OrderListItem[] {
+  if (tab === "all") return orders;
+  if (tab === "new") return orders.filter((o) => o.status === "pending_confirmation");
+  if (tab === "active") return orders.filter((o) => o.status === "confirmed");
+  return orders.filter((o) => o.status === "cancelled" || o.status === "completed");
+}
 
 const BUYER_UPCOMING_FEATURES = [
   "p17.commerce.page.buyer_feature_tracking",
@@ -96,20 +101,6 @@ const BUYER_UPCOMING_FEATURES = [
   "p17.commerce.page.buyer_feature_protection",
 ] as const;
 
-const SELLER_STAT_CARDS = [
-  { key: "p17.commerce.page.stat_card_new", count: 0, icon: Sparkles },
-  { key: "p17.commerce.page.stat_card_preparing", count: 0, icon: ClipboardList },
-  { key: "p17.commerce.page.stat_card_shipping", count: 0, icon: Truck },
-  { key: "p17.commerce.page.stat_card_completed", count: 0, icon: CheckCircle2 },
-] as const;
-
-const SELLER_UPCOMING_FEATURES = [
-  "p17.commerce.page.seller_tool_confirm_orders",
-  "p17.commerce.page.seller_tool_prepare_order",
-  "p17.commerce.page.seller_tool_tracking_input",
-  "p17.commerce.page.seller_tool_shipping_update",
-  "p17.commerce.page.seller_tool_close_after_delivery",
-] as const;
 
 type OrdersPageProps = {
   variant: OrdersPageVariant;
@@ -126,7 +117,18 @@ function BuyerOrdersPage() {
   const [, navigate] = useLocation();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<BuyerOrderTab>("all");
-  const { orders } = useOrdersHubData("buyer");
+  const { orders, isMock } = useOrdersHubData("buyer");
+  const statsQuery = useOrdersStats({ enabled: !isMock });
+  const filteredOrders = filterBuyerOrdersByTab(orders, activeTab);
+  const buyerFlowActive = isP17BuyerFlowActive();
+  const showBuyerUpcomingPreview = !buyerFlowActive;
+  const showBuyerPhaseFootnote = buyerFlowActive && !isMock && orders.length > 0;
+
+  const buyerStatCards = [
+    { key: "p17.commerce.page.stat_card_new", count: statsQuery.data?.new ?? 0, icon: Sparkles },
+    { key: "p17.commerce.page.stat_card_active", count: statsQuery.data?.confirming ?? 0, icon: Activity },
+    { key: "p17.commerce.page.stat_card_completed", count: statsQuery.data?.completed ?? 0, icon: CheckCircle2 },
+  ] as const;
 
   useEffect(() => {
     const timer = window.setTimeout(() => setLoading(false), PAGE_LOAD_MS);
@@ -158,7 +160,7 @@ function BuyerOrdersPage() {
                 className="w-full"
               >
                 <TabsList
-                  className={cn(ORDERS_TAB_LIST, "grid grid-cols-5")}
+                  className={cn(ORDERS_TAB_LIST, "grid grid-cols-4")}
                   data-testid="p17-orders-tabs"
                 >
                   {BUYER_TABS.map((tab) => (
@@ -177,23 +179,42 @@ function BuyerOrdersPage() {
                 className="flex flex-col gap-2.5 md:gap-3"
                 {...TAB_PANEL_MOTION}
               >
-                <section>
-                  <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.page.buyer_hub_status_section")}</p>
-                  <OrdersStatusGridCards cards={BUYER_STAT_CARDS} />
-                </section>
+                {!isMock && statsQuery.data ? (
+                  <section>
+                    <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.page.buyer_hub_status_section")}</p>
+                    <OrdersStatusGridCards cards={buyerStatCards} />
+                  </section>
+                ) : null}
+
+                {isMock ? (
+                  <section>
+                    <CommerceMockDataBanner />
+                  </section>
+                ) : null}
 
                 <section>
                   <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.preview.recent_orders")}</p>
                   <OrdersHubList
                     variant="buyer"
-                    orders={orders}
+                    orders={filteredOrders}
+                    interactionDisabled={isMock}
                     empty={<BuyerTabEmptyCard tab={activeTab} onBrowse={() => navigate("/")} />}
                   />
                 </section>
 
-                <section>
-                  <BuyerUpcomingFeaturesCard />
-                </section>
+                {showBuyerUpcomingPreview ? (
+                  <section>
+                    <BuyerUpcomingFeaturesCard />
+                  </section>
+                ) : null}
+                {showBuyerPhaseFootnote ? (
+                  <p
+                    className="px-0.5 text-center text-[10px] leading-relaxed text-zinc-500"
+                    data-testid="p17-orders-buyer-phase-footnote"
+                  >
+                    {t("p17.commerce.page.buyer_phase_footnote")}
+                  </p>
+                ) : null}
               </motion.div>
             </AnimatePresence>
 
@@ -315,12 +336,51 @@ function SellerOrdersPage() {
   const [, navigate] = useLocation();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<SellerOrderTab>("all");
-  const { orders } = useOrdersHubData("seller");
+  const { orders, isMock } = useOrdersHubData("seller");
+  const sellerFlowEnabled = isP17SellerOrdersEnabled();
+  const filteredOrders = filterSellerOrdersByTab(orders, activeTab);
+  const sellerStatCards = [
+    {
+      key: "p17.commerce.page.stat_card_new",
+      count: orders.filter((o) => o.status === "pending_confirmation").length,
+      icon: Sparkles,
+    },
+    {
+      key: "p17.commerce.page.stat_card_active",
+      count: orders.filter((o) => o.status === "confirmed").length,
+      icon: Activity,
+    },
+    {
+      key: "p17.commerce.page.stat_card_completed",
+      count: orders.filter((o) => o.status === "cancelled" || o.status === "completed").length,
+      icon: CheckCircle2,
+    },
+  ] as const;
 
   useEffect(() => {
     const timer = window.setTimeout(() => setLoading(false), PAGE_LOAD_MS);
     return () => window.clearTimeout(timer);
   }, []);
+
+  if (!sellerFlowEnabled) {
+    return (
+      <div
+        className={cn("flex min-h-0 w-full flex-col bg-[#0A0A0A]", ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL)}
+        dir="rtl"
+        data-testid="p17-orders-page-seller"
+      >
+        <CreateAdPatternHeader
+          title={t("p17.commerce.page.seller_title")}
+          onBack={() => navigate("/profile")}
+          testId="p17-seller-orders-page-header"
+        />
+        <main className={CREATE_AD_MAIN_COLUMN}>
+          <SellerOrdersPhaseDeferredCard />
+          <div aria-hidden className={ORDERS_SCROLL_END_SPACER} data-testid="p17-seller-orders-scroll-spacer" />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -347,7 +407,7 @@ function SellerOrdersPage() {
                 className="w-full"
               >
                 <TabsList
-                  className={cn(ORDERS_TAB_LIST, "grid grid-cols-5")}
+                  className={cn(ORDERS_TAB_LIST, "grid grid-cols-4")}
                   data-testid="p17-seller-orders-tabs"
                 >
                   {SELLER_TABS.map((tab) => (
@@ -368,20 +428,23 @@ function SellerOrdersPage() {
               >
                 <section>
                   <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.page.seller_hub_status_section")}</p>
-                  <OrdersStatusGridCards cards={SELLER_STAT_CARDS} />
+                  <OrdersStatusGridCards cards={sellerStatCards} />
                 </section>
+
+                {isMock ? (
+                  <section>
+                    <CommerceMockDataBanner testId="p17-seller-orders-mock-banner" />
+                  </section>
+                ) : null}
 
                 <section>
                   <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.page.seller_recent_orders")}</p>
                   <OrdersHubList
                     variant="seller"
-                    orders={orders}
+                    orders={filteredOrders}
+                    interactionDisabled={isMock}
                     empty={<SellerTabEmptyCard tab={activeTab} />}
                   />
-                </section>
-
-                <section>
-                  <SellerUpcomingFeaturesCard />
                 </section>
               </motion.div>
             </AnimatePresence>
@@ -426,18 +489,14 @@ function SellerTabEmptyCard({ tab }: { tab: SellerOrderTab }) {
   );
 }
 
-function SellerUpcomingFeaturesCard() {
+function SellerOrdersPhaseDeferredCard() {
   return (
-    <div className={cn(ORDERS_CARD_COMPACT, "py-3")} data-testid="p17-orders-system-preview-seller">
-      <p className={cn(ORDERS_CARD_TITLE, "mb-1.5")}>{t("p17.commerce.page.seller_upcoming_features_title")}</p>
-      <ul className="space-y-1">
-        {SELLER_UPCOMING_FEATURES.map((key) => (
-          <li key={key} className="flex items-center gap-2 text-[11px] text-zinc-200 md:text-xs">
-            <Check className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.5} />
-            <span>{t(key)}</span>
-          </li>
-        ))}
-      </ul>
+    <div className={cn(ORDERS_CARD_COMPACT, "py-4 text-center")} data-testid="p17-seller-orders-phase-deferred">
+      <Package className="mx-auto mb-2 h-7 w-7 text-primary" strokeWidth={2} />
+      <p className={cn(ORDERS_CARD_TITLE, "mb-1.5")}>{t("p17.commerce.page.seller_phase_deferred_title")}</p>
+      <p className="mx-auto max-w-[20rem] text-[11px] leading-relaxed text-zinc-500">
+        {t("p17.commerce.page.seller_phase_deferred_body")}
+      </p>
     </div>
   );
 }

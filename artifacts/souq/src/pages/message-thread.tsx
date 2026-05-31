@@ -88,6 +88,12 @@ import {
   readSeenFlag,
   setSeenFlag,
 } from "@/lib/chat-tips-seen";
+import { OrderChatContextBanner } from "@/features/p17-commerce/order-chat-context-banner";
+import {
+  getBuyerOrderDetailPath,
+  getSellerOrderDetailPath,
+} from "@/features/p17-commerce/order-detail-paths";
+import { isCanonicalOrderNumber } from "@/features/p17-commerce/order-detail-display";
 
 /**
  * فقاعات — بدون isolate/overflow-hidden التي مع backdrop-blur على الأسلاف تسبب على WebKit اختفاء النص (stacking/compositing).
@@ -488,6 +494,16 @@ export default function MessageThread() {
   const params = useParams();
   const [, navigate] = useLocation();
   const search = useSearch();
+  const orderReturnNumber = useMemo(() => {
+    const p = new URLSearchParams(search);
+    if (p.get("from") !== "order") return null;
+    const num = p.get("orderNumber")?.trim() ?? "";
+    return isCanonicalOrderNumber(num) ? num : null;
+  }, [search]);
+  const orderReturnRole = useMemo(() => {
+    const p = new URLSearchParams(search);
+    return p.get("orderRole") === "seller" ? "seller" : "buyer";
+  }, [search]);
   const { locale } = useLocale();
   const rawConvParam = params.id;
   const conversationId =
@@ -1387,6 +1403,13 @@ export default function MessageThread() {
                 type="button"
                 onClick={() => {
                   if (selectMode) exitSelectMode();
+                  else if (orderReturnNumber) {
+                    navigate(
+                      orderReturnRole === "seller"
+                        ? getSellerOrderDetailPath(orderReturnNumber)
+                        : getBuyerOrderDetailPath(orderReturnNumber),
+                    );
+                  }
                   else navigate("/messages");
                 }}
                 className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/60 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 hover:bg-black/90 active:opacity-90"
@@ -1499,6 +1522,8 @@ export default function MessageThread() {
           </div>
         </div>
       </header>
+
+      {orderReturnNumber ? <OrderChatContextBanner orderNumber={orderReturnNumber} /> : null}
 
       {conversationOk && !selectionTipSeen ? (
         <aside

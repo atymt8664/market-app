@@ -1,12 +1,24 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { ArrowRight, Check, Package } from "lucide-react";
+import { ArrowRight, Loader2, Package } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { CommerceMockDataBanner } from "./commerce-mock-data-banner";
 import { getOrdersListPath } from "./order-detail-paths";
-import { shouldMaskOrderNumber } from "./order-detail-display";
+import { isCanonicalOrderNumber, shouldMaskOrderNumber } from "./order-detail-display";
 import { OrderDetailTimelineReady } from "./order-detail-timeline-ready";
+import { useOrderDetail, useOrderTimeline } from "./use-orders-api";
+import { useCancelBuyerOrder } from "./use-orders-mutations";
+import { useOpenOrderChat } from "./use-order-chat";
+import type { OrderDetail } from "./orders-api.types";
+import { P17_BUY_NOW_BTN } from "./ad-detail-commerce-styles";
+import { isP17SellerOrdersEnabled, isP17ShippingEnabled } from "./p17-commerce-flags";
+import { SellerActionsCard } from "./seller-order-actions";
+import { SellerShippingActions } from "./seller-shipping-actions";
+import { BuyerShippingStatusCard } from "./buyer-shipping-status-card";
+import { useToast } from "@/hooks/use-toast";
+import { OrdersApiClientError } from "./orders-api-errors";
 import {
   CREATE_AD_BACK_BTN,
   CREATE_AD_HEADER_BAR,
@@ -23,21 +35,6 @@ import {
 
 export type OrderDetailVariant = "buyer" | "seller";
 
-const PAGE_LOAD_MS = 280;
-
-const BUYER_ACTION_KEYS = [
-  "p17.commerce.detail.buyer_action_track",
-  "p17.commerce.detail.buyer_action_contact_seller",
-  "p17.commerce.detail.buyer_action_report_issue",
-] as const;
-
-const SELLER_TOOL_KEYS = [
-  "p17.commerce.detail.seller_tool_confirm",
-  "p17.commerce.detail.seller_tool_prepare",
-  "p17.commerce.detail.seller_tool_tracking",
-  "p17.commerce.detail.seller_tool_close",
-] as const;
-
 type OrderDetailPageProps = {
   variant: OrderDetailVariant;
   orderId?: string;
@@ -49,7 +46,6 @@ function isValidOrderId(orderId: string | undefined): orderId is string {
 
 export function OrderDetailPage({ variant, orderId }: OrderDetailPageProps) {
   const [, navigate] = useLocation();
-  const [loading, setLoading] = useState(true);
   const listPath = getOrdersListPath(variant);
   const pageTestId =
     variant === "buyer" ? "p17-order-detail-page-buyer" : "p17-order-detail-page-seller";
@@ -58,12 +54,45 @@ export function OrderDetailPage({ variant, orderId }: OrderDetailPageProps) {
   const headerTitleKey =
     variant === "buyer" ? "p17.commerce.detail.buyer_title" : "p17.commerce.detail.seller_title";
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), PAGE_LOAD_MS);
-    return () => window.clearTimeout(timer);
-  }, [orderId]);
+  const trimmedId = orderId?.trim() ?? "";
+  const isPreviewRoute = isValidOrderId(orderId) && shouldMaskOrderNumber(orderId);
 
-  if (!isValidOrderId(orderId)) {
+  useEffect(() => {
+    if (isPreviewRoute) {
+      navigate(listPath);
+    }
+  }, [isPreviewRoute, listPath, navigate]);
+
+  const detailQuery = useOrderDetail(variant, trimmedId, {
+    enabled: isValidOrderId(orderId) && !isPreviewRoute && isCanonicalOrderNumber(trimmedId),
+  });
+
+  const isMockResponse = detailQuery.data?.mock === true;
+  const order = detailQuery.data?.order;
+
+  const timelineQuery = useOrderTimeline(trimmedId, {
+    enabled:
+      Boolean(order) &&
+      !isMockResponse &&
+      isCanonicalOrderNumber(trimmedId) &&
+      !detailQuery.isLoading,
+  });
+
+  if (!isValidOrderId(orderId) || isPreviewRoute) {
+    if (isPreviewRoute) {
+      return null;
+    }
+    return (
+      <OrderDetailNotFound
+        onBack={() => navigate(listPath)}
+        pageTestId={pageTestId}
+        headerTestId={headerTestId}
+        headerTitleKey={headerTitleKey}
+      />
+    );
+  }
+
+  if (detailQuery.isError || (!detailQuery.isLoading && !order)) {
     return (
       <OrderDetailNotFound
         onBack={() => navigate(listPath)}
@@ -87,25 +116,59 @@ export function OrderDetailPage({ variant, orderId }: OrderDetailPageProps) {
       />
 
       <main className={CREATE_AD_MAIN_COLUMN}>
-        {loading ? (
+        {detailQuery.isLoading ? (
           <OrderDetailSkeleton />
         ) : (
           <>
+            {isMockResponse ? (
+              <section>
+                <CommerceMockDataBanner testId="p17-order-detail-mock-banner" />
+              </section>
+            ) : null}
+
             <section>
               <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.detail.summary_section")}</p>
-              <OrderSummaryReadyCard orderId={orderId} />
+              {order ? (
+                <OrderSummaryCard order={order} isMock={isMockResponse} variant={variant} />
+              ) : null}
             </section>
 
-            <section>
-              <OrderDetailTimelineReady hasData={false} />
-            </section>
+            {variant === "buyer" && order && !isMockResponse && isP17ShippingEnabled() && order.fulfillmentMode === "shipping" ? (
+              <section>
+                <BuyerShippingStatusCard order={order} />
+              </section>
+            ) : null}
+
+            {variant === "buyer" &&
+            order &&
+            !isMockResponse &&
+            isP17ShippingEnabled() &&
+            order.fulfillmentMode === "shipping" ? null : (
+              <section>
+                <OrderDetailTimelineReady
+                  entries={isMockResponse ? [] : timelineQuery.data?.items}
+                  isLoading={!isMockResponse && timelineQuery.isLoading}
+                />
+              </section>
+            )}
 
             <section>
-              {variant === "buyer" ? (
-                <BuyerActionsReadyCard />
-              ) : (
-                <SellerToolsReadyCard />
-              )}
+              {variant === "buyer" && order ? (
+                <BuyerActionsCard order={order} isMock={isMockResponse} />
+              ) : null}
+              {variant === "seller" && order ? (
+                isP17SellerOrdersEnabled() ? (
+                  order.status === "pending_confirmation" || isMockResponse ? (
+                    <SellerActionsCard order={order} isMock={isMockResponse} />
+                  ) : isP17ShippingEnabled() && order.fulfillmentMode === "shipping" ? (
+                    <SellerShippingActions order={order} />
+                  ) : (
+                    <SellerActionsCard order={order} isMock={isMockResponse} />
+                  )
+                ) : (
+                  <SellerOrderDetailDeferred />
+                )
+              ) : null}
             </section>
 
             <div aria-hidden className={ORDERS_SCROLL_END_SPACER} data-testid="p17-order-detail-scroll-spacer" />
@@ -139,10 +202,16 @@ function OrderDetailHeader({
   );
 }
 
-function OrderSummaryReadyCard({ orderId }: { orderId: string }) {
-  const comingSoon = t("p17.commerce.detail.coming_soon");
-  const showOrderNumber = !shouldMaskOrderNumber(orderId);
-  const orderNumberDisplay = showOrderNumber ? orderId.trim() : comingSoon;
+function OrderSummaryCard({
+  order,
+  isMock,
+  variant,
+}: {
+  order: OrderDetail;
+  isMock: boolean;
+  variant: OrderDetailVariant;
+}) {
+  const orderNumberDisplay = order.orderNumber;
 
   return (
     <div className={cn(ORDERS_CARD_COMPACT, "py-3")} data-testid="p17-order-detail-summary">
@@ -154,25 +223,38 @@ function OrderSummaryReadyCard({ orderId }: { orderId: string }) {
           <Package className="h-6 w-6 md:h-7 md:w-7" strokeWidth={2} />
         </div>
         <div className="min-w-0 flex-1 text-right">
-          <SummaryRow label={t("p17.commerce.detail.product_name")} value={comingSoon} />
+          <SummaryRow label={t("p17.commerce.detail.product_name")} value={order.title} />
           <SummaryRow
             label={t("p17.commerce.detail.order_number")}
             value={orderNumberDisplay}
-            mono={showOrderNumber}
+            mono
           />
-          <SummaryRow label={t("p17.commerce.detail.price")} value={comingSoon} highlight />
+          <SummaryRow
+            label={t("p17.commerce.detail.price")}
+            value={`${order.totalAmount} ${order.currency}`}
+            highlight
+          />
+          {variant === "seller" && !isMock ? (
+            <SummaryRow
+              label={t("p17.commerce.detail.buyer_label")}
+              value={t("p17.commerce.detail.buyer_ref", { id: String(order.buyerUserId) })}
+            />
+          ) : null}
           <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
             <span className="text-[11px] text-zinc-500">{t("p17.commerce.detail.status")}</span>
             <span
               className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary"
               data-testid="p17-order-detail-status"
             >
-              {t("p17.commerce.detail.not_available")}
+              {order.statusLabelAr}
             </span>
           </div>
           <p className="mt-1.5 text-[11px] text-zinc-500">
-            {t("p17.commerce.detail.last_updated")}: {comingSoon}
+            {t("p17.commerce.detail.last_updated")}: {order.updatedAtRelativeAr}
           </p>
+          {isMock ? (
+            <p className="mt-2 text-[10px] text-amber-200/80">{t("p17.commerce.preview.mock_notice")}</p>
+          ) : null}
         </div>
       </div>
     </div>
@@ -206,42 +288,82 @@ function SummaryRow({
   );
 }
 
-function BuyerActionsReadyCard() {
+function BuyerActionsCard({ order, isMock }: { order: OrderDetail; isMock: boolean }) {
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const orderChat = useOpenOrderChat();
+  const cancelOrder = useCancelBuyerOrder();
+  const canCancel = !isMock && order.status === "pending_confirmation";
+
+  const handleCancel = async () => {
+    try {
+      await cancelOrder.mutateAsync(order.orderNumber);
+      toast({ title: t("p17.commerce.detail.cancel_success") });
+    } catch (err) {
+      if (err instanceof OrdersApiClientError && err.status === 409) {
+        toast({
+          title: t("p17.commerce.detail.cancel_not_allowed"),
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: t("p17.commerce.detail.cancel_failed"),
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className={cn(ORDERS_CARD_COMPACT, "py-3")} data-testid="p17-order-detail-buyer-actions">
-      <p className={cn(ORDERS_CARD_TITLE, "mb-1.5")}>{t("p17.commerce.detail.buyer_actions_title")}</p>
-      <ul className="space-y-1">
-        {BUYER_ACTION_KEYS.map((key) => (
-          <li key={key} className="flex items-center gap-2 text-[11px] text-zinc-200 md:text-xs">
-            <Check className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.5} />
-            <span>{t(key)}</span>
-          </li>
-        ))}
-      </ul>
+      <p className={cn(ORDERS_CARD_TITLE, "mb-2")}>{t("p17.commerce.detail.buyer_actions_title")}</p>
+      <div className="flex flex-col gap-2">
+        {!isMock ? (
+          <button
+            type="button"
+            className={cn(P17_BUY_NOW_BTN, "h-11 w-full text-sm")}
+            disabled={orderChat.isPending}
+            data-testid="p17-order-detail-chat-seller"
+            onClick={() => orderChat.open(order.adId, order.orderNumber)}
+          >
+            {t("p17.commerce.detail.buyer_action_contact_seller")}
+          </button>
+        ) : null}
+        {canCancel ? (
+          <button
+            type="button"
+            className={cn(ORDERS_GHOST_BTN, "h-10 w-full text-xs")}
+            disabled={cancelOrder.isPending}
+            data-testid="p17-order-detail-cancel"
+            onClick={() => void handleCancel()}
+          >
+            {cancelOrder.isPending ? (
+              <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+            ) : (
+              t("p17.commerce.detail.cancel_order")
+            )}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={cn(ORDERS_GHOST_BTN, "h-10 w-full text-xs")}
+          data-testid="p17-order-detail-view-ad"
+          onClick={() => navigate(`/ad/${order.adId}`)}
+        >
+          {t("p17.commerce.detail.view_ad")}
+        </button>
+      </div>
     </div>
   );
 }
 
-function SellerToolsReadyCard() {
+function SellerOrderDetailDeferred() {
   return (
-    <div className={cn(ORDERS_CARD_COMPACT, "py-3")} data-testid="p17-order-detail-seller-tools">
-      <p className={cn(ORDERS_CARD_TITLE, "mb-2")}>{t("p17.commerce.detail.seller_tools_title")}</p>
-      <div className="flex flex-col gap-2">
-        {SELLER_TOOL_KEYS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            disabled
-            aria-disabled="true"
-            className={cn(
-              ORDERS_GHOST_BTN,
-              "w-full cursor-default px-3 py-2 text-[11px] opacity-70 md:text-xs",
-            )}
-          >
-            {t(key)}
-          </button>
-        ))}
-      </div>
+    <div className={cn(ORDERS_CARD_COMPACT, "py-3 text-center")} data-testid="p17-order-detail-seller-phase-deferred">
+      <p className={cn(ORDERS_CARD_TITLE, "mb-1.5")}>{t("p17.commerce.detail.seller_phase_deferred_title")}</p>
+      <p className="mx-auto max-w-[20rem] text-[11px] leading-relaxed text-zinc-500">
+        {t("p17.commerce.detail.seller_phase_deferred_body")}
+      </p>
     </div>
   );
 }

@@ -18,11 +18,13 @@ const stats = OrdersStatsSchema.parse({
 });
 assert.equal(stats.mock, true);
 
+const canonicalOrderNumber = "SOUQ-2026-001001";
+
 const buyerList = OrdersListResponseSchema.parse({
   items: [
     {
-      id: "mock-buyer-001",
-      orderNumber: "SOUQ-2026-001001",
+      id: canonicalOrderNumber,
+      orderNumber: canonicalOrderNumber,
       status: "pending_confirmation",
       statusLabelAr: "بانتظار التأكيد",
       title: "iPhone 14 Pro — معاينة",
@@ -35,7 +37,8 @@ const buyerList = OrdersListResponseSchema.parse({
   total: 1,
   mock: true,
 });
-assert.equal(buyerList.items[0]?.orderNumber, "SOUQ-2026-001001");
+assert.equal(buyerList.items[0]?.id, buyerList.items[0]?.orderNumber);
+assert.equal(buyerList.items[0]?.orderNumber, canonicalOrderNumber);
 
 const detail = OrderDetailResponseSchema.parse({
   order: {
@@ -51,10 +54,10 @@ const detail = OrderDetailResponseSchema.parse({
   },
   mock: true,
 });
-assert.equal(detail.order.statusLabelAr, "بانتظار التأكيد");
+assert.equal(detail.order.id, detail.order.orderNumber);
 
 const timeline = OrderTimelineResponseSchema.parse({
-  orderId: "mock-buyer-001",
+  orderId: canonicalOrderNumber,
   items: [
     {
       id: "tl-001",
@@ -65,13 +68,15 @@ const timeline = OrderTimelineResponseSchema.parse({
   ],
   mock: true,
 });
+assert.equal(timeline.orderId, canonicalOrderNumber);
 assert.ok(timeline.items.length >= 1);
 
 const issues = OrderIssuesResponseSchema.parse({
-  orderId: "mock-buyer-001",
+  orderId: canonicalOrderNumber,
   items: [],
   mock: true,
 });
+assert.equal(issues.orderId, canonicalOrderNumber);
 assert.equal(issues.items.length, 0);
 
 console.log("orders-ready-layer.test.mjs: PASS");

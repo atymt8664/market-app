@@ -18,10 +18,10 @@
 Only **one open builder phase** at a time. Sequence:
 
 ```
-✅ P13-1 → ✅ P13-2 → ✅ P13-3 → ✅ P13-4 → ✅ P8-1 (P8-1A ✅ … P8-1I ✅) → ✅ P15-1 (P15-1A ✅) → ✅ P15-2 → ⏳ P15-3 → ⏳ P17-4…P17-19
+✅ P13-1 → … → ✅ P17-6 → ✅ P17-7-0 → ⏳ P17-7 (impl ready) → P17-8 … P17-19
 ```
 
-**Do not start P15-3+** until **P15-2** is closed. **P15-2 is closed.**
+**P17-5 closed** (STAGING DB + API closure verify PASS; buyer flow E2E signed off). **P17-4** API layer remains STAGING-gated. **Do not enable PROD** until P17-19 and explicit approval.
 
 ---
 
@@ -67,11 +67,25 @@ Only **one open builder phase** at a time. Sequence:
 | **P15-3** Hot path migration | ✅ **Closed** | P15-3A–3G complete |
 | P15-4 Production hardening | ✅ **Closed** | pg-boss monitoring fix, DLQ replay foundation, worker ops runbook |
 
-### Downstream
+### P17 — Commerce, orders & fulfillment
 
-| Phase | Status |
-|-------|--------|
-| P17-4 … P17-19 | ⏳ Blocked |
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| P17-0 Charter | ✅ Closed | [P17-commerce-orders.md](./architecture/P17-commerce-orders.md) |
+| P17-1 UX spec + mocks | ✅ Closed | [P17-1-ux-spec.md](./architecture/P17-1-ux-spec.md) |
+| P17-1B Coming Soon exposure | ✅ Closed | Ad Detail placeholders |
+| P17-2 Order domain spec | ✅ Closed | [P17-2-order-domain-spec.md](./architecture/P17-2-order-domain-spec.md) |
+| P17-3 STAGING schema | ✅ Closed | `020_p17_orders_schema.sql` |
+| **P17-4-NAV** Navigation contract | ✅ Closed | [P17-4-navigation-contract.md](./architecture/P17-4-navigation-contract.md) |
+| **P17-4** Orders API layer | ✅ Closed (code) | [P17-4-api.md](./architecture/P17-4-api.md) — STAGING gated · `P17_ORDERS_API_ENABLED=1` |
+| **P17-4A** Orders contract + STAGING smoke | ✅ **Closed** | `p17-4:validate` PASS · `p17-4a:staging-smoke` in-process + HTTP PASS (STAGING ref) · `id === orderNumber` · SOUQ-YYYY-NNNNNN · mock IDs removed · `/orders/test` removed from prod UX · minimal read-only detail wiring |
+| **P17-5-0** Buyer flow spec lock | ✅ **Closed** | [P17-5-ui.md](./architecture/P17-5-ui.md) — documentation only |
+| **P17-5** Buyer order flow | ✅ **Closed** | [P17-5-ui.md](./architecture/P17-5-ui.md) · STAGING verified · **no commit/deploy** until Mohamed approval |
+| **P17-6-0** Seller flow spec lock | ✅ **Closed** | [P17-6-ui.md](./architecture/P17-6-ui.md) · `p17-6-0-seller-security-verify` PASS |
+| **P17-6** Seller order flow UI | ✅ **Closed** | P17-6-1 · `VITE_P17_SELLER_ORDERS_ENABLED` · STAGING verified |
+| **P17-7-0** Shipping workflow spec lock | ✅ **Closed** | [P17-7-shipping-workflow.md](./architecture/P17-7-shipping-workflow.md) |
+| **P17-7** Shipping workflow | ✅ **Closed** (code) | STAGING `p17-7:staging-flow` PASS · PROD deploy: [P17-5-7-production-deploy.md](./runbooks/P17-5-7-production-deploy.md) |
+| **P17-8** Tracking timeline | ⏳ **Next** | After P17-5/6/7 PROD verification |
 
 ---
 
@@ -83,4 +97,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P15-4 — **Closed**: production hardening for STAGING worker operations (monitoring, DLQ replay, runbook). **P15 wave complete.** P17 remains blocked.
+P17-5/6/7 — **Production deployment verification** in progress ([runbook](./runbooks/P17-5-7-production-deploy.md)). P17-8 blocked until PROD smoke PASS.

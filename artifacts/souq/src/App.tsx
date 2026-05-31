@@ -81,6 +81,8 @@ const Signup = lazy(() => import("@/pages/signup"));
 const GuestWelcome = lazy(() => import("@/pages/guest-welcome"));
 const OrdersPage = lazy(() => import("@/pages/orders"));
 const SellerOrdersPage = lazy(() => import("@/pages/seller-orders"));
+const CheckoutPage = lazyWithRetry(() => import("@/pages/checkout"));
+const OrderCreatedPage = lazy(() => import("@/pages/order-created"));
 const OrderDetailPage = lazy(() => import("@/pages/order-detail"));
 const SellerOrderDetailPage = lazy(() => import("@/pages/seller-order-detail"));
 
@@ -156,6 +158,8 @@ function Router() {
           <Route path="/professional-seller">{() => <Redirect to="/professional-seller/personal" />}</Route>
           <Route path="/seller-trust" component={SellerTrustPage} />
           <Route path="/profile" component={Profile} />
+          <Route path="/checkout/:adId" component={CheckoutPage} />
+          <Route path="/orders/created" component={OrderCreatedPage} />
           <Route path="/orders/:id" component={OrderDetailPage} />
           <Route path="/orders" component={OrdersPage} />
           <Route path="/seller-orders/:id" component={SellerOrderDetailPage} />

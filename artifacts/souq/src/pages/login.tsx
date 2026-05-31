@@ -34,6 +34,7 @@ import {
   AUTH_INPUT,
   AUTH_PAGE_BG,
 } from "@/lib/auth-page-styles";
+import { resolveCommercePostLoginRedirect } from "@/features/p17-commerce/p17-commerce-redirect";
 
 const schema = z.object({
   email: z.string().email("auth.validation.invalid_email"),
@@ -47,20 +48,7 @@ type Values = z.infer<typeof schema>;
 
 /** إرجاع مسار داخلي فقط، وتفادي loop نحو /login وروابط نسبية تُبقي المستخدم على شاشة الدخول */
 function resolvePostLoginRedirect(search: string): string {
-  const params = new URLSearchParams(search);
-  const raw = params.get("redirect");
-  if (raw == null || raw.trim() === "") return "/";
-  let path = raw.trim();
-  try {
-    path = decodeURIComponent(path);
-  } catch {
-    return "/";
-  }
-  if (path.startsWith("//")) return "/";
-  if (!path.startsWith("/")) return "/";
-  if (path === "/login" || path.startsWith("/login?")) return "/";
-  if (path === "/create-ad") return "/new";
-  return path;
+  return resolveCommercePostLoginRedirect(search);
 }
 
 function isOnLoginPath(path: string): boolean {

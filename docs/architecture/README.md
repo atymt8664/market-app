@@ -32,9 +32,9 @@ Every file, script, feature, and infra folder belongs to **exactly one** P-domai
 | P12 | AI (descriptions / pricing) | [P12-ai.md](./P12-ai.md) | Active |
 | P13 | Analytics & observability | [P13-analytics-observability.md](./P13-analytics-observability.md) · [P13-3 charter](./P13-3-index-monitoring-cwv.md) | Active — P13-4 closed |
 | P14 | Search & ranking | [P14-search-ranking.md](./P14-search-ranking.md) | Active (FTS) / ranking evolving |
-| P15 | Background jobs & workers | [P15-background-jobs.md](./P15-background-jobs.md) | Active — P15-1 ✅ · P15-2 ✅ STAGING foundation · **P15-3** next |
+| P15 | Background jobs & workers | [P15-background-jobs.md](./P15-background-jobs.md) | Active — **P15 wave complete** (P15-1…P15-4 ✅) |
 | P16 | Scale architecture | [P16-scale-architecture.md](./P16-scale-architecture.md) | Planned (spike scripts exist) |
-| P17 | Commerce, orders & fulfillment | [P17-commerce-orders.md](./P17-commerce-orders.md) | P17-0..4 recovered on main (spec + mock API + UI); P17-5+ not started |
+| P17 | Commerce, orders & fulfillment | [P17-commerce-orders.md](./P17-commerce-orders.md) · [P17-4-NAV contract](./P17-4-navigation-contract.md) | P17-0..3 ✅ · **P17-4-NAV open** · P17-4 blocked until NAV closed |
 
 ---
 

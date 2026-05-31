@@ -52,10 +52,6 @@ import { ProfileStatsDetailSheet } from "@/components/profile-stats-detail-sheet
 import { ProfileStatsListsPanel } from "@/components/profile-stats-lists-panel";
 import { OrdersAccountCardGrid } from "@/features/p17-commerce/orders-account-card-grid";
 import {
-  getBuyerOrderDetailPath,
-  getSellerOrderDetailPath,
-} from "@/features/p17-commerce/order-detail-paths";
-import {
   ProfileAvatarPreviewDialog,
   ProfileAvatarCameraBadge,
 } from "@/components/profile-avatar-preview-dialog";
@@ -464,8 +460,6 @@ export default function Profile() {
           <OrdersAccountCardGrid
             onBuyerNavigate={() => navigate("/orders")}
             onSellerNavigate={() => navigate("/seller-orders")}
-            onBuyerDetailNavigate={() => navigate(getBuyerOrderDetailPath("test"))}
-            onSellerDetailNavigate={() => navigate(getSellerOrderDetailPath("test"))}
           />
         </section>
 

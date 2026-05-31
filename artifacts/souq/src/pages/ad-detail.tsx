@@ -924,6 +924,7 @@ export default function AdDetail() {
 
               <div className={cn(sellerInnerShell, "flex flex-col gap-2.5")}>
                 <AdDetailCommerceActions
+                  adId={ad.id}
                   secondaryButtonClassName={sellerActionH}
                   hidden={Boolean(user?.id && ad.userId && user.id === ad.userId)}
                 />

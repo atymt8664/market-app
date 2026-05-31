@@ -186,7 +186,7 @@ any (pre-shipped) ──dispute──▶ disputed  (P7)
 | **P17-3** | STAGING schema & internal model | Drizzle + `020_p17_orders_schema.sql` on **STAGING** only | STAGING DB |
 | **P17-4** | Order API | CRUD + state transitions + OpenAPI regen | STAGING API |
 | **P17-5** | Production UI ( gated ) | My orders, seller fulfillment, ad detail Buy Now | STAGING → approved PROD |
-| **P17-6** | Production rollout | Feature flag, monitoring, rollback plan | PROD (Mohamed approval) |
+| **P17-6** | Seller order flow UI | `/seller-orders` accept/reject | STAGING → gated PROD |
 | **P17-7+** | Hardening & scale | P15 jobs, P16 read patterns, dispute automation | Per P15/P16 gates |
 | **P10 bridge** | Platform payment (optional, later) | Payment after confirm or escrow — **separate PR track** | P10 owns gateway |
 
@@ -203,9 +203,12 @@ any (pre-shipped) ──dispute──▶ disputed  (P7)
 | [P17-1-i18n-draft.md](./P17-1-i18n-draft.md) | P17-1 | i18n draft keys |
 | [P17-2-order-domain-spec.md](./P17-2-order-domain-spec.md) | P17-2 | **Order domain spec — no DB/API** |
 | `lib/db/migrations/020_p17_orders_schema.sql` + `lib/db/src/schema/p17-orders.ts` | P17-3 | **STAGING schema applied** — 7 tables, relations, internal types; RLS deferred |
-| P17-4-api.md | P17-4 | *Not created* |
-| P17-5-ui.md | P17-5 | *Not created* |
-| P17-6-rollout.md | P17-6 | *Not created* |
+| [P17-4-navigation-contract.md](./P17-4-navigation-contract.md) | **P17-4-NAV** | **Closed** |
+| [P17-4-api.md](./P17-4-api.md) | P17-4 | **Orders API — STAGING gated** |
+| [P17-5-ui.md](./P17-5-ui.md) | P17-5 / P17-5-0 | **Closed** — buyer flow |
+| [P17-6-ui.md](./P17-6-ui.md) | P17-6 / P17-6-0 | **Closed** — seller flow |
+| [P17-7-shipping-workflow.md](./P17-7-shipping-workflow.md) | P17-7 / P17-7-0 | **Spec lock** — shipping workflow binding; implementation gated |
+| P17-19-rollout.md | P17-19 | *PROD activation runbook — not created* |
 
 Child specs must link back here for boundaries and must not duplicate P10 payment scope.
 

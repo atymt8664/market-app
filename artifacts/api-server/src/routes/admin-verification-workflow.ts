@@ -61,8 +61,10 @@ router.get("/admin/verification/stats", requireVerificationArea, async (req, res
 
 router.get("/admin/verification/requests", requireVerificationArea, async (req, res) => {
   try {
-    const queue = typeof req.query.queue === "string" ? req.query.queue : null;
-    const status = typeof req.query.status === "string" ? req.query.status : null;
+    const queueRaw = typeof req.query.queue === "string" ? req.query.queue.trim() : "";
+    const queue = queueRaw && queueRaw !== "all" ? queueRaw : null;
+    const statusRaw = typeof req.query.status === "string" ? req.query.status.trim().toLowerCase() : "";
+    const status = statusRaw && statusRaw !== "all" ? statusRaw : null;
     const { page, pageSize, offset } = parseAdminPageQuery(
       req.query as Record<string, unknown>,
       PAGINATION.ADMIN_VERIFICATION,

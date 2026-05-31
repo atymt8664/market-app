@@ -11,8 +11,8 @@ export function getAdminVerificationRequests(
   signal?: AbortSignal,
 ) {
   const search = new URLSearchParams();
-  if (params?.queue) search.set("queue", params.queue);
-  if (params?.status) search.set("status", params.status);
+  if (params?.queue && params.queue !== "all") search.set("queue", params.queue);
+  if (params?.status && params.status !== "all") search.set("status", params.status);
   appendPageParams(search, params?.page, params?.pageSize);
   const qs = search.toString();
   return apiGetAdminPage<import("../types").VerificationRequest>(

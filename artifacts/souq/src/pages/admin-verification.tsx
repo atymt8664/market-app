@@ -61,6 +61,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { OperationsQueueTabBar } from "@/features/admin/components/operations-queue-tab-bar";
 import type { OpsQueueKey } from "@/features/admin/operations-queue-types";
 
+const VERIFICATION_STATUS_FILTER_KEYS = ["all", "pending", "approved", "rejected"] as const;
+type VerificationStatusFilterKey = (typeof VERIFICATION_STATUS_FILTER_KEYS)[number];
+
+function isVerificationStatusFilterKey(value: string): value is VerificationStatusFilterKey {
+  return (VERIFICATION_STATUS_FILTER_KEYS as readonly string[]).includes(value);
+}
+
 function mediaSrc(url: string | null | undefined): string | undefined {
   if (!url?.trim()) return undefined;
   const u = url.trim();
@@ -334,9 +341,14 @@ export default function AdminVerificationPage() {
 
   const params = new URLSearchParams(window.location.search);
   const initialQueue = (params.get("queue") || "all") as OpsQueueKey;
+  const statusRaw = (params.get("status") || "all").trim().toLowerCase();
+  const initialStatus: VerificationStatusFilterKey = isVerificationStatusFilterKey(statusRaw)
+    ? statusRaw
+    : "all";
   const initialRequestId = Number(params.get("requestId") || 0);
 
   const [queue, setQueue] = useState(initialQueue);
+  const [status, setStatus] = useState<VerificationStatusFilterKey>(initialStatus);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [selectedId, setSelectedId] = useState<number | null>(
@@ -351,13 +363,28 @@ export default function AdminVerificationPage() {
   const [notesDraft, setNotesDraft] = useState("");
   const [assignOpen, setAssignOpen] = useState(false);
 
-  const statsQuery = useAdminVerificationStats(!meQuery.isLoading);
-  const requestsQuery = useAdminVerificationRequests({ queue, page, pageSize }, !meQuery.isLoading);
-  const detailQuery = useAdminVerificationDetail(selectedId, !meQuery.isLoading);
+  const adminReady = meQuery.isSuccess;
+  const statsQuery = useAdminVerificationStats(adminReady);
+  const requestsQuery = useAdminVerificationRequests({ queue, status, page, pageSize }, adminReady);
+  const detailQuery = useAdminVerificationDetail(selectedId, adminReady);
+
+  const statusFilters = useMemo(
+    () =>
+      VERIFICATION_STATUS_FILTER_KEYS.map((key) => ({
+        key,
+        label: t(`p8.admin.verification.filter_${key}` as "p8.admin.verification.filter_all"),
+      })),
+    [],
+  );
 
   useEffect(() => {
     setPage(1);
-  }, [queue]);
+  }, [queue, status]);
+
+  useEffect(() => {
+    if (!adminReady) return;
+    void queryClient.invalidateQueries({ queryKey: ["admin", "verification", "requests"] });
+  }, [adminReady, queryClient]);
 
   const refresh = useCallback(async () => {
     await Promise.all([
@@ -424,12 +451,14 @@ export default function AdminVerificationPage() {
     const next = new URLSearchParams(window.location.search);
     if (queue && queue !== "all") next.set("queue", queue);
     else next.delete("queue");
+    if (status !== "all") next.set("status", status);
+    else next.delete("status");
     if (selectedId) next.set("requestId", String(selectedId));
     else next.delete("requestId");
     const qs = next.toString();
     const path = `/admin/verification${qs ? `?${qs}` : ""}`;
     window.history.replaceState(null, "", path);
-  }, [queue, selectedId]);
+  }, [queue, status, selectedId]);
 
   const stats = statsQuery.data;
   const requests = requestsQuery.data?.items ?? [];
@@ -493,6 +522,20 @@ export default function AdminVerificationPage() {
         </section>
 
         <OperationsQueueTabBar queue={queue as OpsQueueKey} counts={stats ?? undefined} onChange={setQueue} />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">{t("p8.admin.verification.label_status")}</span>
+          {statusFilters.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setStatus(item.key)}
+              className={adminPillBtn(status === item.key)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
 
         {requestsQuery.isError ? (
           <AdminErrorState

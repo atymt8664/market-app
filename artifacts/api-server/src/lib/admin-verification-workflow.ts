@@ -385,6 +385,18 @@ function buildVisibilityFilter(ctx: AdminStaffContext, actorId: number | null) {
   return sql`TRUE`;
 }
 
+/** pending tab = all non-terminal workflow statuses */
+function buildVerificationStatusFilter(status: string | null) {
+  if (!status) return sql`TRUE`;
+  if (status === "pending") {
+    return sql`vr.status IN ('pending', 'needs_info', 'under_review')`;
+  }
+  if (isVerificationStatus(status)) {
+    return sql`vr.status = ${status}`;
+  }
+  return sql`TRUE`;
+}
+
 function buildQueueFilter(queue: string | null, actorId: number | null) {
   if (!queue || queue === "all") return sql`TRUE`;
   const key = queue as import("./admin-operations-sla").OpsQueueKey;
@@ -475,6 +487,18 @@ export async function getVerificationStats(ctx: AdminStaffContext): Promise<Veri
   };
 }
 
+function normalizeVerificationListFilters(params: {
+  queue?: string | null;
+  status?: string | null;
+}): { queue: string | null; status: string | null } {
+  const queueRaw = typeof params.queue === "string" ? params.queue.trim() : "";
+  const statusRaw = typeof params.status === "string" ? params.status.trim().toLowerCase() : "";
+  return {
+    queue: queueRaw && queueRaw !== "all" ? queueRaw : null,
+    status: statusRaw && statusRaw !== "all" ? statusRaw : null,
+  };
+}
+
 export async function listVerificationRequests(params: {
   ctx: AdminStaffContext;
   queue?: string | null;
@@ -488,11 +512,9 @@ export async function listVerificationRequests(params: {
   await ensureVerificationSchema();
   const actorId = params.ctx.actorAdminId;
   const visibility = buildVisibilityFilter(params.ctx, actorId);
-  const queueFilter = buildQueueFilter(params.queue ?? null, actorId);
-  const statusFilter =
-    params.status && isVerificationStatus(params.status)
-      ? sql`vr.status = ${params.status}`
-      : sql`TRUE`;
+  const { queue, status } = normalizeVerificationListFilters(params);
+  const queueFilter = buildQueueFilter(queue, actorId);
+  const statusFilter = buildVerificationStatusFilter(status);
   const limit = Math.min(Math.max(params.limit ?? 200, 1), 500);
   const offset = Math.max(params.offset ?? 0, 0);
 

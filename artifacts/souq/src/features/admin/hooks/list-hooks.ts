@@ -122,15 +122,21 @@ export function useAdminVerificationStats(enabled = true) {
 }
 
 export function useAdminVerificationRequests(
-  params: { queue: string; page: number; pageSize: number },
+  params: { queue: string; status: string; page: number; pageSize: number },
   enabled = true,
 ) {
   return useQuery({
-    queryKey: ["admin", "verification", "requests", params.queue, params.page, params.pageSize],
-    queryFn: ({ signal }) => getAdminVerificationRequests({ queue: params.queue, page: params.page, pageSize: params.pageSize }, signal),
+    queryKey: ["admin", "verification", "requests", params.queue, params.status, params.page, params.pageSize],
+    queryFn: ({ signal }) =>
+      getAdminVerificationRequests(
+        { queue: params.queue, status: params.status, page: params.page, pageSize: params.pageSize },
+        signal,
+      ),
     enabled,
     placeholderData: keepPreviousData,
     staleTime: 10_000,
+    retry: 2,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
 }

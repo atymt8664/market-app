@@ -42,7 +42,10 @@ const { text: indexJs } = await fetchText(indexSrc);
 
 const profileJs = await fetchLazyChunk(indexJs, (p) => /^assets\/profile-[A-Za-z0-9_-]+\.js$/.test(p));
 const ordersJs = await fetchLazyChunk(indexJs, (p) => p.includes("orders-page-"));
-const adDetailJs = await fetchLazyChunk(indexJs, (p) => /^assets\/ad-detail-[A-Za-z0-9_-]+\.js$/.test(p));
+const adDetailJs = await fetchLazyChunk(
+  indexJs,
+  (p) => /^assets\/ad-detail-[A-Za-z0-9_-]+\.js$/.test(p) && !p.includes("location-card"),
+);
 
 assert(profileJs?.includes("p17-orders-account-grid"), "profile bundle: p17-orders-account-grid test id");
 assert(profileJs?.includes("p17-preview-buyer-orders"), "profile bundle: buyer orders tile test id");
@@ -55,13 +58,16 @@ assert(
 assert(ordersJs?.includes("p17.commerce.page.buyer_title"), "orders-page bundle: buyer hub title key");
 assert(ordersJs?.includes("p17.commerce.page.seller_title"), "orders-page bundle: seller hub title key");
 
-if (adDetailJs) {
-  assert(adDetailJs.includes("p17-ad-detail-buy-now"), "ad-detail: Buy Now CTA present");
+const commerceJs = adDetailJs ?? indexJs;
+if (commerceJs.includes("p17-ad-detail-buy-now")) {
+  assert(true, "ad-detail: Buy Now CTA present");
   const liveBuyNow =
-    adDetailJs.includes("checkoutPathForAd") || adDetailJs.includes("/checkout/");
+    commerceJs.includes("checkoutPathForAd") || commerceJs.includes("/checkout/");
   const deferred =
-    adDetailJs.includes("CommerceComingSoonSheet") || adDetailJs.includes("p17-coming-soon-sheet");
+    commerceJs.includes("CommerceComingSoonSheet") || commerceJs.includes("p17-coming-soon-sheet");
   assert(liveBuyNow || deferred, "ad-detail: checkout path OR coming-soon fallback");
+} else {
+  assert(false, "ad-detail: Buy Now CTA present");
 }
 
 if (errors.length) {

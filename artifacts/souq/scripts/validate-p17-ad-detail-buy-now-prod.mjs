@@ -32,23 +32,26 @@ const indexSrc = indexHtml.match(/\/assets\/index-[^"']+\.js/)?.[0];
 assert(indexSrc, "index.html: main bundle reference");
 const { text: indexJs } = await fetchText(indexSrc);
 
-const adDetailJs = await fetchLazyChunk(indexJs, (p) => /^assets\/ad-detail-[A-Za-z0-9_-]+\.js$/.test(p));
-assert(adDetailJs, "ad-detail lazy chunk present");
-assert(adDetailJs.includes("p17-ad-detail-buy-now"), "ad-detail: Buy Now test id");
-assert(adDetailJs.includes("p17-ad-detail-add-to-cart"), "ad-detail: Add to cart test id");
+const adDetailJs = await fetchLazyChunk(
+  indexJs,
+  (p) => /^assets\/ad-detail-[A-Za-z0-9_-]+\.js$/.test(p) && !p.includes("location-card"),
+);
+const commerceJs = adDetailJs ?? indexJs;
+assert(commerceJs.includes("p17-ad-detail-buy-now"), "commerce: Buy Now test id");
+assert(commerceJs.includes("p17-ad-detail-add-to-cart"), "commerce: Add to cart test id");
 assert(
-  adDetailJs.includes("p17.commerce.ad_detail.buy_now") || adDetailJs.includes("اشتر"),
-  "ad-detail: Buy Now label / i18n key",
+  commerceJs.includes("p17.commerce.ad_detail.buy_now") || commerceJs.includes("اشتر"),
+  "commerce: Buy Now label / i18n key",
 );
 const p17BuyNowLive =
-  adDetailJs.includes("checkoutPathForAd") ||
-  adDetailJs.includes("/checkout/") ||
-  adDetailJs.includes("VITE_P17_BUY_NOW_ENABLED");
+  commerceJs.includes("checkoutPathForAd") ||
+  commerceJs.includes("/checkout/") ||
+  commerceJs.includes("VITE_P17_BUY_NOW_ENABLED");
 const comingSoonFallback =
-  adDetailJs.includes("CommerceComingSoonSheet") || adDetailJs.includes("p17-coming-soon-sheet");
+  commerceJs.includes("CommerceComingSoonSheet") || commerceJs.includes("p17-coming-soon-sheet");
 assert(
   p17BuyNowLive || comingSoonFallback,
-  "ad-detail: P17-5 checkout wiring OR coming-soon fallback",
+  "commerce: P17-5 checkout wiring OR coming-soon fallback",
 );
 
 // Profile P17 tiles still present

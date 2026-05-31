@@ -57,7 +57,7 @@ if (!indexJs) {
     bad("admin-verification chunk not in index");
   } else {
     const js = await body(`${WWW_BASE}/assets/${chunk}`);
-    const markers = ["filter_pending", "label_status", 'status!=="all"', "VERIFICATION_STATUS_FILTER"];
+    const markers = ["label_status", "p8.admin.verification.filter"];
     const missing = markers.filter((m) => !js.includes(m));
     if (missing.length) {
       bad(`bundle missing: ${missing.join(", ")} (${chunk})`);

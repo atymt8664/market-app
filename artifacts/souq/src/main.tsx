@@ -1,13 +1,14 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
-import { ensureLocalesForActive, hasSavedLocale, seedFirstLaunchLocales } from "@/i18n";
+import { bootstrapReturningUserLocale, hasSavedLocale, seedFirstLaunchLocales } from "@/i18n";
 import { getApiBaseUrl } from "@/lib/api-url";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { queryClient } from "@/lib/query-client";
 import { installAccountDisabledFetchInterceptor } from "@/lib/account-disabled-interceptor";
 import { scheduleDeferredFonts } from "@/lib/deferred-fonts";
 import { registerProductionServiceWorker } from "@/lib/register-production-service-worker";
+import { initWebVitalsReporting } from "@/lib/web-vitals-reporting";
 
 const apiBase = getApiBaseUrl();
 setBaseUrl(apiBase || null);
@@ -19,6 +20,7 @@ if (import.meta.env.PROD) {
 }
 
 scheduleDeferredFonts();
+initWebVitalsReporting();
 
 function mountApp(): void {
   createRoot(document.getElementById("root")!).render(<App />);
@@ -29,5 +31,6 @@ if (!hasSavedLocale()) {
   seedFirstLaunchLocales();
   mountApp();
 } else {
-  void ensureLocalesForActive().then(mountApp);
+  bootstrapReturningUserLocale();
+  mountApp();
 }

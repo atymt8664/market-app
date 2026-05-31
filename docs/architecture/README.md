@@ -30,7 +30,7 @@ Every file, script, feature, and infra folder belongs to **exactly one** P-domai
 | P10 | Monetization & billing | [P10-monetization.md](./P10-monetization.md) | Partial |
 | P11 | PWA / TWA / Google Play | [P11-pwa-twa.md](./P11-pwa-twa.md) | Active |
 | P12 | AI (descriptions / pricing) | [P12-ai.md](./P12-ai.md) | Active |
-| P13 | Analytics & observability | [P13-analytics-observability.md](./P13-analytics-observability.md) | Active (partial) |
+| P13 | Analytics & observability | [P13-analytics-observability.md](./P13-analytics-observability.md) · [P13-3 charter](./P13-3-index-monitoring-cwv.md) | Active — P13-3 in progress |
 | P14 | Search & ranking | [P14-search-ranking.md](./P14-search-ranking.md) | Active (FTS) / ranking evolving |
 | P15 | Background jobs & workers | [P15-background-jobs.md](./P15-background-jobs.md) | Planned |
 | P16 | Scale architecture | [P16-scale-architecture.md](./P16-scale-architecture.md) | Planned (spike scripts exist) |
@@ -140,6 +140,8 @@ Ordered by **lowest risk / highest clarity** — **not approved for execution** 
 
 | Path | P |
 |------|---|
+| `docs/PROJECT_STATE.md` | All — phase tracker |
+| `docs/PROJECT_CONSTITUTION.md` | All — charter entry |
 | `docs/local-staging-isolation.md` | P1 |
 | `infra/hetzner/deploy/DEPLOY.md` | P0 |
 

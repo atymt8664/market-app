@@ -1,6 +1,7 @@
 import { OBSERVABILITY } from "./config";
 import { LatencyTracker, type LatencySummary } from "./latency-tracker";
 import { recordWsConnectWindow, recordWsDisconnectWindow } from "./ws-window";
+import { buildWebVitalsSnapshot } from "./vitals";
 
 type CounterMap = Record<string, number>;
 
@@ -140,6 +141,7 @@ export type ObservabilitySnapshot = {
     messagesTotal: number;
     usersWithOpenSockets: number;
   };
+  webVitals: import("./vitals").WebVitalsSnapshot;
   counters: CounterMap;
 };
 
@@ -214,6 +216,7 @@ export function buildObservabilitySnapshot(): ObservabilitySnapshot {
       messagesTotal: wsMessagesTotal,
       usersWithOpenSockets: wsUsersGauge,
     },
+    webVitals: buildWebVitalsSnapshot(),
     counters: { ...endpointCounters },
   };
 }

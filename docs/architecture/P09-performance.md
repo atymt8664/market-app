@@ -84,7 +84,7 @@
 
 ## Future roadmap
 
-- Core Web Vitals SLOs in **P13**
+- Core Web Vitals SLOs + gates → **P13-3** ([charter](./P13-3-index-monitoring-cwv.md)); P9 implements fixes when P13 CWV gates fail
 - Edge caching strategy for API list responses (with **P16**)
 
 ---

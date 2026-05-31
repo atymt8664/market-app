@@ -4,6 +4,7 @@ export type LatencySummary = {
   maxMs: number | null;
   avgMs: number | null;
   p50Ms: number | null;
+  p75Ms: number | null;
   p95Ms: number | null;
   p99Ms: number | null;
 };
@@ -33,6 +34,7 @@ export class LatencyTracker {
         maxMs: null,
         avgMs: null,
         p50Ms: null,
+        p75Ms: null,
         p95Ms: null,
         p99Ms: null,
       };
@@ -45,6 +47,7 @@ export class LatencyTracker {
       maxMs: sorted[n - 1] ?? null,
       avgMs: Math.round((sum / n) * 100) / 100,
       p50Ms: percentile(sorted, 0.5),
+      p75Ms: percentile(sorted, 0.75),
       p95Ms: percentile(sorted, 0.95),
       p99Ms: percentile(sorted, 0.99),
     };

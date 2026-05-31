@@ -3,6 +3,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { lazyWithRetry } from "@/lib/lazy-with-retry";
+import Home from "@/pages/home";
+import AdDetail from "@/pages/ad-detail";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAfterFirstPaint } from "@/lib/after-first-paint";
@@ -24,12 +26,9 @@ import { SeoRouteSync } from "@/components/seo-route-sync";
 import { resolveSeoForPath } from "@/lib/seo-foundation";
 import { applyPublicPageMeta } from "@/lib/public-page-meta";
 
-const Home = lazy(() => import("@/pages/home"));
-
 const Categories = lazy(() => import("@/pages/categories"));
 const Category = lazy(() => import("@/pages/category"));
 const Search = lazy(() => import("@/pages/search"));
-const AdDetail = lazy(() => import("@/pages/ad-detail"));
 const CreateAd = lazyWithRetry(() => import("@/pages/create-ad"));
 const Profile = lazy(() => import("@/pages/profile"));
 const Favorites = lazy(() => import("@/pages/favorites"));

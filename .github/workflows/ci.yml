@@ -47,3 +47,9 @@ jobs:
 
       - name: i18n key check
         run: pnpm --filter @workspace/souq run i18n:check
+
+      - name: P13 index monitoring (local)
+        run: pnpm --filter @workspace/souq run index:p13:validate
+
+      - name: P13 CWV readiness (local)
+        run: pnpm --filter @workspace/souq run cwv:p13:readiness

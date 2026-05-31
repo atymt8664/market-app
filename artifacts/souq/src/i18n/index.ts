@@ -113,6 +113,7 @@ export async function ensureLocalesForActive(): Promise<void> {
     loads.push(loadLocale("ar"));
   }
   await Promise.all(loads);
+  listeners.forEach((listener) => listener());
 }
 
 export function getLocale(): Locale {
@@ -135,6 +136,13 @@ export async function setLocale(locale: Locale): Promise<void> {
 
 export function hasSavedLocale(): boolean {
   return readSavedLocale() !== null;
+}
+
+/** Start locale loads without blocking first React paint (P13-3-B / CWV). */
+export function bootstrapReturningUserLocale(): void {
+  activeLocale = resolveInitialLocale();
+  applyDocumentLocale(activeLocale);
+  void ensureLocalesForActive();
 }
 
 export function subscribeToLocale(listener: () => void): () => void {

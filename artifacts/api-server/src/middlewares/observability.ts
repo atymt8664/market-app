@@ -4,7 +4,12 @@ import { OBSERVABILITY } from "../lib/observability/config";
 import { recordHttpRequest } from "../lib/observability/metrics";
 import { resolveRequestId } from "../lib/observability/request-id";
 
-const SKIP_METRICS_PREFIXES = ["/api/healthz", "/api/livez", "/api/readyz"];
+const SKIP_METRICS_PREFIXES = [
+  "/api/healthz",
+  "/api/livez",
+  "/api/readyz",
+  "/api/observability/vitals",
+];
 
 function normalizePath(url: string | undefined): string {
   if (!url) return "/";

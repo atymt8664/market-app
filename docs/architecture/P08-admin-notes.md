@@ -13,7 +13,7 @@
 | Sub-milestone | Scope | Status |
 |---------------|-------|--------|
 | **P8-1A** | Baseline inventory + doc sync + smoke runbook | ✅ **Closed** |
-| P8-1B | Settings PATCH UI | ⏳ Open |
+| **P8-1B** | Settings PATCH UI | ✅ **Closed** |
 | P8-1C | User center polish | ⏳ Open |
 | P8-1D | Audit & logs maturity | ⏳ Open |
 | P8-1E | i18n closure (P8G) | ⏳ Open |
@@ -94,13 +94,17 @@
 | `last_seen_at` not shown in users **list** | P8-1C | Available in API + user detail modal only |
 | Staff **display names** in activity logs | P8-1D | Logs show `admin#<actorAdminId>` except Founder label |
 
-### P8-1B — Settings
+---
 
-| Gap | Owner | Notes |
-|-----|-------|-------|
-| `PATCH /admin/settings` has no admin UI | P8-1B | API exists; settings page is read-only for app toggles |
+## Resolved — P8-1B
 
-### P8-1D — Logs & audit UX
+| Item | Resolution |
+|------|------------|
+| `PATCH /admin/settings` had no admin UI | ✅ Editable form on `/admin/settings` — all backend fields, CSRF, audit toast |
+
+---
+
+## Deferred — must not be forgotten
 
 | Gap | Owner | Notes |
 |-----|-------|-------|
@@ -174,8 +178,8 @@ See [P08-admin-baseline.md](./P08-admin-baseline.md) § Feature readiness. Billi
 - [x] Notification + RBAC architecture documented in UI + baseline
 - [x] RBAC enforcement (backend middleware + frontend guards + staff accounts)
 - [x] Verification backend + UI
+- [x] Settings editor UI (**P8-1B**)
 - [ ] Full `p8.admin.*` on all admin pages including `de` quality (**P8-1E**)
-- [ ] Settings editor UI (**P8-1B**)
 - [ ] Billing backend (**P10** — explicit defer, not P8-1 blocker for core ops)
 - [ ] Host CPU in NOC (**P13** — **P8-1H**)
 - [ ] STAGING smoke sign-off (**P8-1I**)

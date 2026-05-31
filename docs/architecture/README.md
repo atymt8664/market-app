@@ -25,7 +25,7 @@ Every file, script, feature, and infra folder belongs to **exactly one** P-domai
 | P5 | Messaging & realtime chat | [P05-messaging.md](./P05-messaging.md) | Active |
 | P6 | Profile & settings | [P06-profile-settings.md](./P06-profile-settings.md) | Active |
 | P7 | Trust & safety | [P07-trust-safety.md](./P07-trust-safety.md) | Active |
-| P8 | Admin panel | [P08-admin.md](./P08-admin.md) · [baseline](./P08-admin-baseline.md) · [notes](./P08-admin-notes.md) | Active — P8-1 open (P8-1A ✅) |
+| P8 | Admin panel | [P08-admin.md](./P08-admin.md) · [baseline](./P08-admin-baseline.md) · [notes](./P08-admin-notes.md) | Active — P8-1 open (P8-1A ✅ · P8-1B ✅) |
 | P9 | Performance & speed | [P09-performance.md](./P09-performance.md) | Active |
 | P10 | Monetization & billing | [P10-monetization.md](./P10-monetization.md) | Partial |
 | P11 | PWA / TWA / Google Play | [P11-pwa-twa.md](./P11-pwa-twa.md) | Active |

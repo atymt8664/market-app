@@ -66,7 +66,7 @@ Run with **one account per role** if available on STAGING.
 | 3.10 | Logs | Open `/admin/logs` | Recent actions from 3.3–3.9 visible | ☐ |
 | 3.11 | Analytics | Change period | Charts refresh | ☐ |
 | 3.12 | Staff | List staff (Founder) | Meta departments load | ☐ |
-| 3.13 | Settings | View settings | Read-only cards; 2FA section loads | ☐ |
+| 3.13 | Settings | Edit app name + save | Toast success; `/admin/logs` shows `settings.update` | ☐ |
 
 ---
 

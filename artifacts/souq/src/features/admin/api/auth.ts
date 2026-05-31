@@ -1,3 +1,5 @@
+import { parseAdminActionResponse } from "../admin-action-toast";
+import type { AdminActionFeedback } from "../admin-action-feedback-types";
 import { apiUrl } from "@/lib/api-url";
 import { t } from "@/i18n";
 import { apiGet, clearAdminCsrfToken, getAdminMutationHeaders, rememberAdminCsrfToken, throwAdminMutationError } from "./client";
@@ -22,6 +24,58 @@ export type AdminAppSettings = {
 
 export function getAdminSettings(signal?: AbortSignal) {
   return apiGet<AdminAppSettings>("/api/admin/settings", signal);
+}
+
+export type AdminSettingsUpdatePayload = {
+  appName: string;
+  appVersion: string;
+  supportEmail: string;
+  requireAdApproval: boolean;
+  reportsEnabled: boolean;
+  supportEnabled: boolean;
+  termsPath: string;
+  privacyPath: string;
+};
+
+export async function updateAdminSettings(
+  payload: AdminSettingsUpdatePayload,
+): Promise<{ settings: AdminAppSettings; feedback: Partial<AdminActionFeedback> }> {
+  const res = await fetch(apiUrl("/api/admin/settings"), {
+    method: "PATCH",
+    credentials: "include",
+    cache: "no-store",
+    headers: getAdminMutationHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const text = await res.text();
+  let parsed: AdminAppSettings & Record<string, unknown> = {} as AdminAppSettings & Record<string, unknown>;
+  try {
+    parsed = text ? (JSON.parse(text) as AdminAppSettings & Record<string, unknown>) : parsed;
+  } catch {
+    parsed = {} as AdminAppSettings & Record<string, unknown>;
+  }
+  if (!res.ok) {
+    await throwAdminMutationError(res, "p8.admin.api_errors.settings_update", text);
+  }
+  const settings: AdminAppSettings = {
+    appName: String(parsed.appName ?? payload.appName),
+    appVersion: String(parsed.appVersion ?? payload.appVersion),
+    supportEmail: String(parsed.supportEmail ?? payload.supportEmail),
+    requireAdApproval: Boolean(parsed.requireAdApproval),
+    reportsEnabled: Boolean(parsed.reportsEnabled),
+    supportEnabled: Boolean(parsed.supportEnabled),
+    termsPath: String(parsed.termsPath ?? payload.termsPath),
+    privacyPath: String(parsed.privacyPath ?? payload.privacyPath),
+    updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : null,
+    updatedByAdminId:
+      typeof parsed.updatedByAdminId === "number" ? parsed.updatedByAdminId : null,
+    admin2faEnabled:
+      typeof parsed.admin2faEnabled === "boolean" ? parsed.admin2faEnabled : undefined,
+  };
+  return {
+    settings,
+    feedback: parseAdminActionResponse(parsed),
+  };
 }
 
 type ChangeAdminPasswordResponseBody = {

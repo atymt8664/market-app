@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Code** | P8 |
-| **Status** | Active — **P8-1 open** (P8-1A ✅ closed) |
+| **Status** | Active — **P8-1 open** (P8-1A ✅ · P8-1B ✅ closed) |
 | **Protection level** | High for auth integration — coordinate with **P2** |
 | **Baseline (code-verified)** | [P08-admin-baseline.md](./P08-admin-baseline.md) |
 | **Ops notes & deferrals** | [P08-admin-notes.md](./P08-admin-notes.md) |
@@ -106,7 +106,7 @@
 | Step | ID | Focus |
 |------|-----|-------|
 | ✅ | P8-1A | Baseline & doc sync |
-| ⏳ | P8-1B | Settings PATCH UI |
+| ✅ | P8-1B | Settings PATCH UI |
 | ⏳ | P8-1C | User center polish |
 | ⏳ | P8-1D | Logs & audit UX |
 | ⏳ | P8-1E | i18n closure |

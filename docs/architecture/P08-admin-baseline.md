@@ -31,7 +31,7 @@
 | `/admin/billing` | `pages/admin-billing.tsx` | ⛔ UI placeholder only |
 | `/admin/verification` | `pages/admin-verification.tsx` | ✅ |
 | `/admin/plans` | `pages/admin-plans.tsx` | ⛔ UI placeholder only |
-| `/admin/settings` | `pages/admin-settings.tsx` | ⚠️ Read-only general settings; password + 2FA wired |
+| `/admin/settings` | `pages/admin-settings.tsx` | ✅ GET + PATCH |
 
 **Shell / nav:** `features/admin/components/admin-shell.tsx` — 16 nav items; `operations` + `monitoring` hidden unless Founder.
 
@@ -113,7 +113,7 @@ Defined in `lib/admin-rbac.ts` (backend) and `features/admin/rbac.ts` (frontend)
 | Staff | ✅ Full | CRUD, revoke sessions, activity, initial password change |
 | Operations | ✅ Full | Queue summary, staff load (Founder / admin_manager) |
 | Monitoring | ✅ Full | Founder-only snapshot |
-| Settings | ⚠️ Partial | GET + founder password change + 2FA; **no UI for PATCH settings** |
+| Settings | ✅ Full | GET + PATCH UI; founder password change + 2FA |
 | Billing / Plans | ⛔ Placeholder | Explicit disconnected UI — **P10** |
 | Notification center (NOC) | ⛔ Contract UI | No admin feed — **P11 / P15** |
 | NOC CPU row | ⏳ Placeholder | `p8.admin.noc.cpu.waiting_host_metrics` — **P13** |
@@ -137,8 +137,8 @@ Defined in `lib/admin-rbac.ts` (backend) and `features/admin/rbac.ts` (frontend)
 
 | ID | Scope | Status |
 |----|-------|--------|
-| **P8-1A** | Baseline & doc sync (this file + notes + smoke runbook) | ✅ Closed when PROJECT_STATE updated |
-| P8-1B | Settings PATCH UI | ⏳ Open |
+| **P8-1A** | Baseline & doc sync (this file + notes + smoke runbook) | ✅ Closed |
+| **P8-1B** | Settings PATCH UI on `/admin/settings` | ✅ Closed |
 | P8-1C | User center polish (`last_seen` list, deep links) | ⏳ Open |
 | P8-1D | Audit & logs maturity | ⏳ Open |
 | P8-1E | i18n closure (P8G) | ⏳ Open |

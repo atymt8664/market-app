@@ -45,7 +45,7 @@ Only **one open builder phase** at a time. Sequence:
 | **P8-1B** Settings PATCH UI | ✅ **Closed** | `/admin/settings` editor wired to `PATCH /api/admin/settings` |
 | **P8-1C** User center polish | ✅ **Closed** | `last_seen_at` in users list · NOC↔users deep links · `status=unverified` filter |
 | **P8-1D** Audit & logs maturity | ✅ **Closed** | Commit `9cc503c` · VPS `souq-api:p8-1d-20260531` · phase8 external PASS · Vercel `admin-logs-DCCeHcWo.js` |
-| **P8-1E** i18n closure | ✅ **Closed** | Admin locale switcher · ar/en/de parity · RTL/LTR · `p8.admin.billing/plans` |
+| **P8-1E** i18n closure | ✅ **Closed** | Commit `9b20675` · Vercel `admin-settings-CHr9B3tj.js` · `i18n:check` ar/en/de PASS |
 | P8-1F Dashboard contracts | ⏳ Open | |
 | P8-1G Billing/plans boundary | ⏳ Open | **P10** defer |
 | P8-1H P13 CPU hook | ⏳ Open | |
@@ -69,4 +69,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P8-1E — i18n closure closed. Next: **P8-1F**. Parent **P8-1** remains open.
+P8-1E — i18n closure closed (Production verified 2026-05-31). Next: **P8-1F**. Parent **P8-1** remains open.

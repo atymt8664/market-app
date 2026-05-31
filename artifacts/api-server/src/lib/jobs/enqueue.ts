@@ -7,6 +7,7 @@ import {
   EMAIL_JOB_TYPES,
   FOUNDATION_JOB_TYPES,
   NOTIFICATION_JOB_TYPES,
+  PUSH_JOB_TYPES,
   type RegisteredJobName,
 } from "./registry";
 import type {
@@ -14,6 +15,7 @@ import type {
   AuthResetEmailPayload,
 } from "./email-types";
 import type { InAppNotificationJobPayload } from "./notification-types";
+import type { PushDeliverJobPayload } from "./push-types";
 
 function wrapPayload<T>(payload: T, idempotencyKey?: string): JobEnvelope<T> {
   const envRef = detectSupabaseProjectRef() ?? "unknown";
@@ -95,6 +97,17 @@ export async function enqueueInAppNotification(
   options: EnqueueJobOptions = {},
 ): Promise<string | null> {
   return enqueueJob(boss, NOTIFICATION_JOB_TYPES.IN_APP, payload, {
+    priority: "high",
+    ...options,
+  });
+}
+
+export async function enqueuePushDeliver(
+  boss: PgBoss,
+  payload: PushDeliverJobPayload,
+  options: EnqueueJobOptions = {},
+): Promise<string | null> {
+  return enqueueJob(boss, PUSH_JOB_TYPES.DELIVER, payload, {
     priority: "high",
     ...options,
   });

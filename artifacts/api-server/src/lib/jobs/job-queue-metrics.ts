@@ -14,6 +14,12 @@ const notificationCounters: Record<JobMetricKind, number> = {
   failed: 0,
 };
 
+const pushCounters: Record<JobMetricKind, number> = {
+  enqueued: 0,
+  processed: 0,
+  failed: 0,
+};
+
 export function incrementEmailJobMetric(kind: JobMetricKind, delta = 1): void {
   emailCounters[kind] += delta;
 }
@@ -35,6 +41,14 @@ export function readNotificationJobMetrics(): Readonly<
   return { ...notificationCounters };
 }
 
+export function incrementPushJobMetric(kind: JobMetricKind, delta = 1): void {
+  pushCounters[kind] += delta;
+}
+
+export function readPushJobMetrics(): Readonly<Record<JobMetricKind, number>> {
+  return { ...pushCounters };
+}
+
 export function resetJobMetricsForTests(): void {
   emailCounters.enqueued = 0;
   emailCounters.processed = 0;
@@ -42,6 +56,9 @@ export function resetJobMetricsForTests(): void {
   notificationCounters.enqueued = 0;
   notificationCounters.processed = 0;
   notificationCounters.failed = 0;
+  pushCounters.enqueued = 0;
+  pushCounters.processed = 0;
+  pushCounters.failed = 0;
 }
 
 /** @deprecated use resetJobMetricsForTests */

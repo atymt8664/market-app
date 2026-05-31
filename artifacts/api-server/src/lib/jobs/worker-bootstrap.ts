@@ -2,6 +2,7 @@ import type { PgBoss } from "pg-boss";
 import { registerFoundationJobHandlers } from "./handlers/foundation";
 import { registerEmailJobHandlers } from "./handlers/email";
 import { registerNotificationJobHandlers } from "./handlers/notification";
+import { registerPushJobHandlers } from "./handlers/push";
 import {
   listRegisteredJobHandlers,
   REGISTERED_JOB_NAMES,
@@ -43,13 +44,14 @@ async function detachHandlers(boss: PgBoss): Promise<void> {
 }
 
 /**
- * Bootstrap pg-boss worker (P15-2 foundation + P15-3A email + P15-3B notifications).
+ * Bootstrap pg-boss worker (P15-2 foundation + P15-3A/B/C).
  */
 export async function bootstrapJobWorker(): Promise<JobWorkerRuntime> {
   assertJobQueueAllowed();
   registerFoundationJobHandlers();
   registerEmailJobHandlers();
   registerNotificationJobHandlers();
+  registerPushJobHandlers();
 
   const boss = await startQueueModule();
   const workIds = await attachHandlers(boss);

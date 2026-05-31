@@ -3,7 +3,7 @@ import { STAGING_SUPABASE_REF } from "./constants";
 import { detectSupabaseProjectRef, isJobQueueEnabled } from "./env-guard";
 import { DEFAULT_JOB_QUEUE_SCHEMA } from "./constants";
 import { DLQ_QUEUE_NAME, listRegisteredQueueNames } from "./dlq";
-import { readEmailJobMetrics, readNotificationJobMetrics } from "./job-queue-metrics";
+import { readEmailJobMetrics, readNotificationJobMetrics, readPushJobMetrics } from "./job-queue-metrics";
 import type { QueueHealthSnapshot } from "./types";
 
 export async function collectQueueHealthSnapshot(
@@ -46,6 +46,7 @@ export async function collectQueueHealthSnapshot(
     })),
     emailMetrics: readEmailJobMetrics(),
     notificationMetrics: readNotificationJobMetrics(),
+    pushMetrics: readPushJobMetrics(),
     deadLetterQueue: DLQ_QUEUE_NAME,
   };
 }

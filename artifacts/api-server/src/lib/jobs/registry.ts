@@ -17,6 +17,11 @@ export const NOTIFICATION_JOB_TYPES = {
   IN_APP: "notify.in_app",
 } as const;
 
+/** Web push delivery jobs (P15-3C — pg-boss layer; legacy Redis LIST unchanged). */
+export const PUSH_JOB_TYPES = {
+  DELIVER: "push.deliver",
+} as const;
+
 export type FoundationJobType =
   (typeof FOUNDATION_JOB_TYPES)[keyof typeof FOUNDATION_JOB_TYPES];
 
@@ -25,6 +30,8 @@ export type EmailJobType = (typeof EMAIL_JOB_TYPES)[keyof typeof EMAIL_JOB_TYPES
 export type NotificationJobType =
   (typeof NOTIFICATION_JOB_TYPES)[keyof typeof NOTIFICATION_JOB_TYPES];
 
+export type PushJobType = (typeof PUSH_JOB_TYPES)[keyof typeof PUSH_JOB_TYPES];
+
 /** All job names registered in the worker. */
 export const REGISTERED_JOB_NAMES = [
   FOUNDATION_JOB_TYPES.SYSTEM_PING,
@@ -32,6 +39,7 @@ export const REGISTERED_JOB_NAMES = [
   EMAIL_JOB_TYPES.AUTH_OTP,
   EMAIL_JOB_TYPES.AUTH_RESET,
   NOTIFICATION_JOB_TYPES.IN_APP,
+  PUSH_JOB_TYPES.DELIVER,
 ] as const;
 
 export type RegisteredJobName = (typeof REGISTERED_JOB_NAMES)[number];

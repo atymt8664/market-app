@@ -25,7 +25,7 @@ Targets (10–50 year horizon): millions of users, ads, messages, notifications,
 |-----------|-------|-----|
 | Email (Resend OTP / reset) | STAGING outbox via `auth.otp` / `auth.reset`; PRODUCTION sync | P15-3 remaining hot paths |
 | In-app notifications | STAGING outbox via `notify.in_app`; PRODUCTION sync INSERT | P15-3C push unification |
-| Web push | Partial — Redis LIST + `push-worker.ts` OR inline IIFE fallback | Not unified job system; no DLQ |
+| Web push | STAGING: pg-boss `push.deliver` → executePushDelivery; PRODUCTION: legacy schedulePushDelivery | Redis LIST decommission (future) |
 | Ad image normalize (Sharp) | Sync CPU in upload path | Blocks API event loop |
 | SLA auto-escalation | `runAutoEscalationAll()` on **admin read** | Should be scheduled cron |
 | Admin analytics / NOC | ~27 parallel queries per request | No rollup cron |
@@ -354,11 +354,22 @@ Extends **P13** and **P8** monitoring boundary (`data-monitoring-tier="live"`).
 | Queue metrics + health snapshot | ✅ |
 | PRODUCTION | ❌ sync INSERT unchanged |
 
+#### P15-3C — Push delivery outbox ✅ (STAGING)
+
+| Item | Status |
+|------|--------|
+| `push.deliver` job type | ✅ |
+| Push worker handler → `executePushDelivery` | ✅ |
+| STAGING-only gate (`PUSH_OUTBOX_ENABLED`) | ✅ |
+| `notification-persist` → enqueue push job | ✅ |
+| High priority + standard retry + DLQ | ✅ |
+| Legacy Redis LIST + `push-worker.ts` preserved | ✅ |
+| PRODUCTION | ❌ `schedulePushDelivery` unchanged |
+
 **Remaining in P15-3 (not started):**
 
 | Order | Migration |
 |-------|-----------|
-| 3 | Unify push from Redis LIST → shared queue |
 | 4 | Image normalize worker |
 | 5 | Extract `runAutoEscalationAll` → cron |
 | 6 | Analytics daily rollup cron |

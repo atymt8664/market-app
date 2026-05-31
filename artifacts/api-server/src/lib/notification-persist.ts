@@ -1,9 +1,9 @@
 import { db, notificationsTable } from "@workspace/db";
-import { schedulePushDelivery } from "./push/schedule-push-delivery";
+import { routePushDeliveryAfterNotification } from "./push-outbox";
 import type { PreparedInAppNotification } from "./jobs/notification-types";
 
 /**
- * Inserts in-app notification row and schedules existing push fan-out (unchanged).
+ * Inserts in-app notification row and routes push fan-out (P15-3C outbox or legacy).
  * Used by sync path and notification worker (P15-3B).
  */
 export async function executeInsertInAppNotification(
@@ -27,7 +27,7 @@ export async function executeInsertInAppNotification(
     throw new Error("notification insert returned no id");
   }
 
-  schedulePushDelivery({
+  await routePushDeliveryAfterNotification({
     userId: input.userId,
     notificationId,
     type: input.type,

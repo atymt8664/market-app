@@ -8,6 +8,7 @@ const {
   EMAIL_JOB_TYPES,
   FOUNDATION_JOB_TYPES,
   NOTIFICATION_JOB_TYPES,
+  PUSH_JOB_TYPES,
   REGISTERED_JOB_NAMES,
   clearJobHandlerRegistryForTests,
   listRegisteredJobHandlers,
@@ -17,19 +18,17 @@ const {
 const { registerFoundationJobHandlers } = await import("./handlers/foundation");
 const { registerEmailJobHandlers } = await import("./handlers/email");
 const { registerNotificationJobHandlers } = await import("./handlers/notification");
+const { registerPushJobHandlers } = await import("./handlers/push");
 
 clearJobHandlerRegistryForTests();
 assert.equal(registeredJobHandlerCount(), 0);
-assert.equal(REGISTERED_JOB_NAMES.length, 5);
+assert.equal(REGISTERED_JOB_NAMES.length, 6);
 
 registerFoundationJobHandlers();
-assert.equal(registeredJobHandlerCount(), 2);
-
 registerEmailJobHandlers();
-assert.equal(registeredJobHandlerCount(), 4);
-
 registerNotificationJobHandlers();
-assert.equal(registeredJobHandlerCount(), 5);
+registerPushJobHandlers();
+assert.equal(registeredJobHandlerCount(), 6);
 assert.deepEqual(
   listRegisteredJobHandlers().map((h) => h.name).sort(),
   [...REGISTERED_JOB_NAMES].sort(),
@@ -38,7 +37,7 @@ assert.deepEqual(
 assert.throws(
   () =>
     registerJobHandler({
-      name: NOTIFICATION_JOB_TYPES.IN_APP,
+      name: PUSH_JOB_TYPES.DELIVER,
       handler: async () => {},
     }),
   /Duplicate job handler/,

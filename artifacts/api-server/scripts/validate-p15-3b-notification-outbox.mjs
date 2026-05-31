@@ -62,9 +62,14 @@ worker.includes("registerNotificationJobHandlers")
   : bad("notification handler missing in worker");
 
 const persist = read("src/lib/notification-persist.ts");
-persist.includes("schedulePushDelivery")
-  ? ok("push schedule preserved after insert (not migrated)")
-  : bad("schedulePushDelivery missing from persist");
+persist.includes("routePushDeliveryAfterNotification")
+  ? ok("notification-persist routes push delivery")
+  : bad("notification-persist push routing missing");
+
+const schedule = read("src/lib/push/schedule-push-delivery.ts");
+schedule.includes("schedulePushDelivery")
+  ? ok("legacy schedulePushDelivery preserved for PRODUCTION")
+  : bad("schedulePushDelivery missing");
 
 ["bullmq", "amqplib", "sqs-consumer"].forEach((dep) => {
   read("package.json").includes(`"${dep}"`)

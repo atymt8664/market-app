@@ -25,12 +25,12 @@ Every file, script, feature, and infra folder belongs to **exactly one** P-domai
 | P5 | Messaging & realtime chat | [P05-messaging.md](./P05-messaging.md) | Active |
 | P6 | Profile & settings | [P06-profile-settings.md](./P06-profile-settings.md) | Active |
 | P7 | Trust & safety | [P07-trust-safety.md](./P07-trust-safety.md) | Active |
-| P8 | Admin panel | [P08-admin.md](./P08-admin.md) | Active |
+| P8 | Admin panel | [P08-admin.md](./P08-admin.md) · [baseline](./P08-admin-baseline.md) · [notes](./P08-admin-notes.md) | Active — P8-1 open (P8-1A ✅) |
 | P9 | Performance & speed | [P09-performance.md](./P09-performance.md) | Active |
 | P10 | Monetization & billing | [P10-monetization.md](./P10-monetization.md) | Partial |
 | P11 | PWA / TWA / Google Play | [P11-pwa-twa.md](./P11-pwa-twa.md) | Active |
 | P12 | AI (descriptions / pricing) | [P12-ai.md](./P12-ai.md) | Active |
-| P13 | Analytics & observability | [P13-analytics-observability.md](./P13-analytics-observability.md) · [P13-3 charter](./P13-3-index-monitoring-cwv.md) | Active — P13-3 in progress |
+| P13 | Analytics & observability | [P13-analytics-observability.md](./P13-analytics-observability.md) · [P13-3 charter](./P13-3-index-monitoring-cwv.md) | Active — P13-4 closed |
 | P14 | Search & ranking | [P14-search-ranking.md](./P14-search-ranking.md) | Active (FTS) / ranking evolving |
 | P15 | Background jobs & workers | [P15-background-jobs.md](./P15-background-jobs.md) | Planned |
 | P16 | Scale architecture | [P16-scale-architecture.md](./P16-scale-architecture.md) | Planned (spike scripts exist) |
@@ -130,7 +130,7 @@ Ordered by **lowest risk / highest clarity** — **not approved for execution** 
 |------|------|------|
 | 1 | **A)** P0/P1 cleanup **audit** (inventory only, no deletes) | Docs / inventory |
 | 2 | **B)** `api-build-slim*` cleanup **plan** (no deletes) | Docs |
-| 3 | **D)** P8 Admin i18n **plan** (`p8.admin.*`) | Docs then code |
+| 3 | **D)** P8-1 admin maturity wave (P8-1A ✅ … P8-1I) | See [P08-admin-notes](./P08-admin-notes.md) |
 | 4 | **E)** P15 Queue workers **plan** | Docs then code |
 | 5 | **C)** P16 Redis STAGING spike | STAGING ops — needs approval |
 
@@ -142,6 +142,8 @@ Ordered by **lowest risk / highest clarity** — **not approved for execution** 
 |------|---|
 | `docs/PROJECT_STATE.md` | All — phase tracker |
 | `docs/PROJECT_CONSTITUTION.md` | All — charter entry |
+| `docs/architecture/P08-admin-baseline.md` | P8 — code-verified admin inventory |
+| `docs/runbooks/P8-1A-staging-admin-smoke.md` | P8 — STAGING admin smoke |
 | `docs/local-staging-isolation.md` | P1 |
 | `infra/hetzner/deploy/DEPLOY.md` | P0 |
 

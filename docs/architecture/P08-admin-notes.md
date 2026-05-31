@@ -2,89 +2,137 @@
 
 **Purpose:** Track admin maturity work, deferred items, and cross-P ownership — so nothing is lost between phases.
 
-**Authority:** Complements [P08-admin.md](./P08-admin.md). Live priorities: [PROJECT_STATE.md](../PROJECT_STATE.md).
+**Authority:** Complements [P08-admin.md](./P08-admin.md). **Code-verified inventory:** [P08-admin-baseline.md](./P08-admin-baseline.md). Live priorities: [PROJECT_STATE.md](../PROJECT_STATE.md).
+
+**STAGING smoke:** [P8-1A staging admin smoke](../runbooks/P8-1A-staging-admin-smoke.md)
 
 ---
 
-## Completed in-repo (P8B / P8C)
+## P8-1 execution tracker
+
+| Sub-milestone | Scope | Status |
+|---------------|-------|--------|
+| **P8-1A** | Baseline inventory + doc sync + smoke runbook | ✅ **Closed** |
+| P8-1B | Settings PATCH UI | ⏳ Open |
+| P8-1C | User center polish | ⏳ Open |
+| P8-1D | Audit & logs maturity | ⏳ Open |
+| P8-1E | i18n closure (P8G) | ⏳ Open |
+| P8-1F | Dashboard contracts (notification / roles UX) | ⏳ Open |
+| P8-1G | Billing/plans boundary (**P10**) | ⏳ Open |
+| P8-1H | P13 CPU hook in NOC | ⏳ Open |
+| P8-1I | STAGING verification + P8-1 close | ⏳ Open |
+
+**Do not start P8-1B+ until P8-1A is closed** (done). **Do not start P15-1 or P17-4+ until P8-1 is closed.**
+
+---
+
+## Completed in-repo (verified P8-1A)
+
+### Operations Center (P8B / P8C)
 
 | Item | State |
 |------|--------|
-| NOC dashboard (`noc` block on `/api/admin/dashboard`) | ✅ Local/STAGING |
+| NOC dashboard (`noc` on `GET /api/admin/dashboard`) | ✅ |
 | Section order: needs action → users → system health → activity → queues | ✅ |
-| Structured activity feed (actor, actionKey, reason, deep link) | ✅ |
+| Structured activity feed (actionKey, reason, deepLink in audit details) | ✅ |
 | Notification center **architecture UI** (no backend feed) | ✅ Contract only |
-| Roles & permissions **architecture UI** | ✅ Contract only |
-| Shell + NOC i18n under `p8.admin.*` | ✅ ar/en/de |
-| CPU host metrics | ⏳ Placeholder key → P13 |
+| Roles & permissions **architecture UI** on NOC | ✅ Contract only (enforcement elsewhere — see RBAC below) |
+| Shell + NOC i18n under `p8.admin.*` | ✅ ar/en/de keys exist (`de` has placeholder gaps — **P8-1E**) |
+| CPU host metrics row | ⏳ Placeholder → **P13** |
+
+### Workflows (post–P8C — now in baseline)
+
+| Item | State |
+|------|--------|
+| Ads admin workflow (status, featured, delete, claim/assign/release, SLA) | ✅ |
+| Reports admin workflow (status, ad-action, claim/assign/release, SLA) | ✅ |
+| Support admin (tickets, messages, reply, claim/assign/release) | ✅ |
+| Verification center UI + backend queue | ✅ |
+| Staff CRUD + staff email login + force password change | ✅ |
+| Operations center (`/admin/operations`) | ✅ |
+| Monitoring snapshot (`/admin/monitoring`, Founder-only) | ✅ |
+| Analytics page (`/admin/analytics`) | ✅ |
+| Categories / cities admin | ✅ (cities: no DELETE API — hide only) |
+| Activity logs (`GET /admin/logs`) | ✅ |
+| Founder 2FA settings UI + API | ✅ |
+
+### RBAC & staff (implemented — was previously documented as “future P8F”)
+
+| Item | State |
+|------|--------|
+| `admin_staff` table + runtime schema ensure | ✅ |
+| Role keys: founder, moderator, support, verification, analyst, finance_manager, admin_manager | ✅ |
+| `requireAdminPermission` on admin routes | ✅ |
+| `/admin/me` returns roleKey, permissions, displayName | ✅ |
+| Frontend nav + route guards by permission | ✅ |
+| Founder bypass | ✅ |
+| Separate normalized `admin_roles` / `admin_permissions` DB tables | ❌ Not used — permissions are code-defined in `admin-rbac.ts` |
+
+**Dashboard `RolesPermissionsFoundation`:** informational contract on NOC; **live RBAC** is middleware + `/admin/staff` + nav guards.
+
+---
+
+## Resolved items (removed from deferred — do not re-open without new regression)
+
+| Former gap | Resolution (code) |
+|------------|-------------------|
+| `?avatarReview=pending` not filtered on users page | ✅ API filter + UI in `admin-users.tsx` |
+| Support reply `adminId` used `session.userId` | ✅ Uses `getAdminActorId(req)` in `support.ts` |
+| Duplicate `/reports/admin/*` routes | ✅ Removed; unified on `/admin/reports*` |
+| Ad reject reason not in audit | ✅ `writeAdminAudit` stores `reason` in details |
+| Verification “scaffold only / no backend” | ✅ `admin-verification-workflow.ts` + full UI |
+| “RBAC not enforced” | ✅ Backend + frontend guards; staff accounts live |
 
 ---
 
 ## Deferred — must not be forgotten
 
-### P8D — User center gaps
+### P8-1C — User center gaps
 
 | Gap | Owner | Notes |
 |-----|-------|-------|
-| `last_seen_at` not shown in admin users UI | P8 | DB field exists; wire read-only in users list/detail |
-| `?avatarReview=pending` query not filtered in users page | P8 | Queue deep link from NOC; add API filter + UI |
-| Staff display names | P8F | Today: `actorAdminId` → Founder/Moderator role keys only |
+| `last_seen_at` not shown in users **list** | P8-1C | Available in API + user detail modal only |
+| Staff **display names** in activity logs | P8-1D | Logs show `admin#<actorAdminId>` except Founder label |
 
-### P8E — Support & moderation attribution
+### P8-1B — Settings
 
 | Gap | Owner | Notes |
 |-----|-------|-------|
-| Support reply `adminId` uses `session.userId` (often null) | P8 | Use `adminActorId` |
-| Duplicate report routes (`/admin/reports` vs `/reports/admin`) | P8 + P7 | Unify on `/admin/reports*`; audit on all status changes |
-| Ad reject **reason** not stored in `admin_activity_logs.details` | P8 | Activity shows status transition only until reject reason field added |
+| `PATCH /admin/settings` has no admin UI | P8-1B | API exists; settings page is read-only for app toggles |
 
-### P8F — RBAC (Roles & Permissions)
+### P8-1D — Logs & audit UX
 
-| Deliverable | Notes |
-|-------------|-------|
-| Tables: `admin_staff`, `admin_roles`, `admin_permissions`, `admin_role_permissions` | Design in P8C UI; **no DB in P8C** per charter |
-| Middleware: permission check per route | Founder bypass always |
-| Session: `adminRoleKey`, staff display name | Replace hardcoded `primary-admin` / `actorAdminId: 1` |
-| UI: hide nav/actions by permission | Scales 1 → 50 staff without layout rewrite |
+| Gap | Owner | Notes |
+|-----|-------|-------|
+| Log filters missing verification / staff / settings groups in UI | P8-1D | Backend action groups include them |
+| `admin_activity_logs` runtime CREATE | P1/P8 | Move to formal migration when approved |
 
-**Role matrix (target):**
-
-| Role | Scope |
-|------|--------|
-| Founder / Super Admin | Full — delete, ban, staff, settings, monitoring |
-| Moderator | Ads, reports, avatar review |
-| Support Agent | Support tickets only |
-| Verification Staff | Verification queue only |
-| Analyst | Read-only stats/analytics |
-
-### P8G — Full admin i18n migration
+### P8-1E — Full admin i18n (P8G)
 
 | Area | Current keys | Target |
 |------|--------------|--------|
-| NOC + shell | `p8.admin.*` | ✅ Done (P8C) |
-| Billing, verification, plans pages | `admin_billing.*`, hardcoded Arabic | Migrate → `p8.admin.billing.*`, etc. |
-| Ads, reports, support, users, settings, logs | Hardcoded Arabic | `p8.admin.*` per page |
+| NOC + shell | `p8.admin.*` | ✅ |
+| Most workflow pages (ads, reports, support, users, settings, …) | `p8.admin.*` | ✅ |
+| `de` locale fragment | Placeholder strings for many keys | Complete translations |
+| Billing, plans | `admin_billing.*`, `admin_plans.*` | Migrate → `p8.admin.billing.*`, `p8.admin.plans.*` |
 | CI | `i18n:check` | Must pass on every admin PR |
 
-### P8H — Verification center
+### P8-1F — Dashboard contracts
 
 | Item | State |
 |------|--------|
-| `/admin/verification` UI | Scaffold only |
-| Backend queue | ❌ None — NOC shows count **0**, `dataAvailable: false` |
-| Needs-action row | Visible with P8H label |
+| Notification center backend feed | ❌ **P11 / P15** |
+| Roles panel → live staff summary (optional UX) | ⏳ P8-1F |
 
-### Notification center backend (P11 + P15)
+### Outside P8 — explicit placeholders
 
-| Channel | Source (future) |
-|---------|-----------------|
-| Ad approved/rejected/review | `notifications` table + push queue |
-| Reports | P7 notifications on status change |
-| Support | Existing user notifications; admin inbox separate table |
-| System | P13 alerts |
-| Staff | P15 fan-out / Redis pub-sub at scale |
-
-**P8C deliverable:** UI contract in `notification-center-foundation.tsx` — **no fake counts**.
+| Page / feature | UI | Backend | Owner |
+|----------------|-----|---------|-------|
+| `/admin/billing` | Disconnected placeholder | None | **P10** |
+| `/admin/plans` | Static i18n prices | None | **P10** |
+| Notification center feed | Architecture cards on NOC | None | **P11 / P15** |
+| NOC CPU metrics | Placeholder key | None | **P13** |
+| `GET /admin/active-app-users-count` | NOC live users | In-memory WS map | **P16** at scale |
 
 ---
 
@@ -92,48 +140,46 @@
 
 | Topic | Phase | Why |
 |-------|-------|-----|
-| Host CPU / VPS metrics | **P13** | NOC CPU row — `p8.admin.noc.cpu.waiting_host_metrics` |
-| Observability dashboard in admin | **P13** | Wire `/api/observability/metrics` panels beyond NOC summary |
-| Admin notification fan-out | **P15** | Queues for staff alerts at 1M+ notifications/day |
-| Online presence aggregate | **P16** | Replace in-memory `userSockets` for multi-replica |
-| Monetization / billing admin | **P10** | `/admin/billing` placeholder — no revenue API |
-| Trust & safety moderation rules | **P7** | Report/ad action policies, audit completeness |
+| Host CPU / VPS metrics | **P13** | NOC CPU row |
+| Observability panels in admin | **P13** | Beyond NOC summary |
+| Admin notification fan-out | **P15** | Staff alerts at scale |
+| Online presence aggregate | **P16** | Multi-replica WebSocket |
+| Monetization / billing admin | **P10** | Revenue APIs |
+| Trust & safety policies | **P7** | Moderation policy source |
 
 ---
 
 ## Placeholder pages (explicit — not silent debt)
 
-| Page | UI | Backend | Next phase |
-|------|-----|---------|------------|
-| `/admin/billing` | Placeholder €0 | None | **P10** |
-| `/admin/verification` | Scaffold | None | **P8H** |
-| `/admin/plans` | Static i18n prices | None | **P10** |
-| Notification center | Architecture cards | None | **P11/P15** |
-| Roles panel | Architecture cards | None | **P8F** |
+See [P08-admin-baseline.md](./P08-admin-baseline.md) § Feature readiness. Billing and plans **must** show disconnected state until **P10**.
 
 ---
 
 ## Audit & route hygiene
 
-| Issue | Risk | Fix phase |
-|-------|------|-----------|
-| `/reports/admin/:id/status` without `logAdminActivity` | Medium | **P8E** |
-| Single admin identity (`adminActorId: 1`) | Low now; blocks 5+ staff | **P8F** |
-| `admin_activity_logs` runtime CREATE | Ops | Move to migration when approved (**P1/P8**) |
+| Issue | Risk | Status / phase |
+|-------|------|----------------|
+| Legacy `/reports/admin/*` without audit | Medium | ✅ Removed |
+| Founder session `adminActorId: 1` | Low | By design for founder password login |
+| Staff multi-user | — | ✅ Staff rows + `admin_actor_id` |
+| City DELETE in logs action group but no DELETE route | Low | Hide-only policy; document or add route in future P8 if needed |
 
 ---
 
-## Success criteria (P8 maturity complete)
+## Success criteria (P8-1 maturity complete)
 
 - [x] Operations Center layout (company-first order)
-- [x] Real-data NOC metrics (no fake counters)
-- [x] Professional activity structure (who/what/when/why)
-- [x] Notification + RBAC architecture documented in UI + this file
-- [ ] Full `p8.admin.*` on all admin pages (**P8G**)
-- [ ] RBAC enforcement (**P8F**)
-- [ ] Verification + billing backends (**P8H**, **P10**)
-- [ ] Host CPU in NOC (**P13**)
+- [x] Real-data NOC metrics (no fake counters on workflow badges)
+- [x] Professional activity structure (who/what/when/why + reason on reject)
+- [x] Notification + RBAC architecture documented in UI + baseline
+- [x] RBAC enforcement (backend middleware + frontend guards + staff accounts)
+- [x] Verification backend + UI
+- [ ] Full `p8.admin.*` on all admin pages including `de` quality (**P8-1E**)
+- [ ] Settings editor UI (**P8-1B**)
+- [ ] Billing backend (**P10** — explicit defer, not P8-1 blocker for core ops)
+- [ ] Host CPU in NOC (**P13** — **P8-1H**)
+- [ ] STAGING smoke sign-off (**P8-1I**)
 
 ---
 
-*Last updated: P8C — Admin Operations Center Refinement (local/STAGING only).*
+*Last updated: P8-1A — Baseline & doc sync (docs only).*

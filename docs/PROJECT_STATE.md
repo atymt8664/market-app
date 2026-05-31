@@ -18,10 +18,10 @@
 Only **one open builder phase** at a time. Sequence:
 
 ```
-✅ P13-1 → ✅ P13-2 → ✅ P13-3 → ✅ P13-4 → ⏳ P8-1 → ⏳ P15-1 → ⏳ P17-4…P17-19
+✅ P13-1 → ✅ P13-2 → ✅ P13-3 → ✅ P13-4 → ⏳ P8-1 (P8-1A ✅) → ⏳ P15-1 → ⏳ P17-4…P17-19
 ```
 
-**Do not start** P15-1 or P17-4+ until **P8-1** is closed.
+**Do not start** P15-1 or P17-4+ until **P8-1** is closed. **Do not start P8-1B+** until **P8-1A** is closed.
 
 ---
 
@@ -37,11 +37,25 @@ Only **one open builder phase** at a time. Sequence:
 | **P13-4** AI Discoverability + KG | ✅ Closed | Commits `056c0a4`, `b5eb690` · Vercel `4876522809` |
 | P13-4-A Bing Webmaster | ✅ Closed (automated) | `bing:p13:prod` PASS · manual BWT per runbook |
 
+### P8 — Admin panel (P8-1 wave)
+
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| **P8-1A** Baseline & doc sync | ✅ **Closed** | Baseline: `docs/architecture/P08-admin-baseline.md` · Smoke: `docs/runbooks/P8-1A-staging-admin-smoke.md` |
+| P8-1B Settings PATCH UI | ⏳ Open | After P8-1A |
+| P8-1C User center polish | ⏳ Open | |
+| P8-1D Audit & logs maturity | ⏳ Open | |
+| P8-1E i18n closure | ⏳ Open | |
+| P8-1F Dashboard contracts | ⏳ Open | |
+| P8-1G Billing/plans boundary | ⏳ Open | **P10** defer |
+| P8-1H P13 CPU hook | ⏳ Open | |
+| P8-1I STAGING verify + P8-1 close | ⏳ Open | |
+| **P8-1** (parent) | ⏳ **Open** | Closes when P8-1I complete |
+
 ### Downstream
 
 | Phase | Status |
 |-------|--------|
-| **P8-1** | ⏳ **Open — unblocked** |
 | P15-1 | ⏳ Blocked (after P8-1) |
 | P17-4 … P17-19 | ⏳ Blocked |
 
@@ -55,4 +69,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P13-4 — AI discoverability + Knowledge Graph production verification closed. Next: P8-1.
+P8-1A — Admin baseline & doc sync closed. Next: **P8-1B** (Settings PATCH UI). Parent **P8-1** remains open.

@@ -3,24 +3,28 @@
 | Field | Value |
 |-------|-------|
 | **Code** | P8 |
-| **Status** | Active (High protection) — **#2 execution priority** (admin maturity, `p8.admin.*` i18n) |
-| **Protection level** | High for auth integration — coordinate with **P2**
+| **Status** | Active — **P8-1 open** (P8-1A ✅ closed) |
+| **Protection level** | High for auth integration — coordinate with **P2** |
+| **Baseline (code-verified)** | [P08-admin-baseline.md](./P08-admin-baseline.md) |
+| **Ops notes & deferrals** | [P08-admin-notes.md](./P08-admin-notes.md) |
+| **STAGING smoke** | [P8-1A staging admin smoke](../runbooks/P8-1A-staging-admin-smoke.md) |
 
 ---
 
 ## الهدف / Goal
 
-**Internal operations**: moderation, user management, categories/cities config, support tickets, stats, billing/plans UI, activity logs, and admin 2FA settings UI.
+**Internal operations**: moderation, user management, categories/cities config, support tickets, verification queue, stats, staff/RBAC, activity logs, and admin 2FA settings UI. Billing/plans pages exist as **explicit placeholders** until **P10**.
 
 ---
 
 ## المسؤوليات / Responsibilities
 
-- Admin REST API (`routes/admin.ts`, `support.ts`, `admin-presence.ts`)
-- Admin activity logging
-- Admin settings / app_settings
+- Admin REST APIs (see baseline for full module list)
+- Admin activity logging (`admin_activity_logs`)
+- Admin settings / `app_settings` (founder password hash, 2FA flags)
 - All `/admin/*` frontend pages and `features/admin/`
-- Admin 2FA settings UI (logic in **P2**)
+- Admin 2FA settings UI (crypto/session in **P2** coordination)
+- Staff accounts and RBAC (`admin_staff`, role permissions in code)
 
 ---
 
@@ -28,11 +32,18 @@
 
 | Layer | Paths |
 |-------|-------|
-| API | `routes/admin.ts`, `support.ts`, `admin-presence.ts`, `lib/admin-*.ts`, `ensure-app-settings-table.ts`, `ensure-category-admin-columns.ts`, `ensure-city-admin-columns.ts` |
-| Middleware | `middlewares/require-admin.ts` |
-| Schema | `admin-activity-logs.ts`, `app-settings.ts`, admin columns on `cities`, `categories` |
+| API routes | `routes/admin.ts`, `routes/admin-*.ts`, `routes/ads.ts` (admin handlers), `routes/support.ts` (admin handlers), `routes/auth.ts` (admin login/me/logout) |
+| Middleware | `middlewares/require-admin.ts`, `require-admin-permission.ts`, `admin-ip-gate.ts`, `require-admin-founder.ts` |
+| Lib | `lib/admin-*.ts`, `ensure-app-settings-table.ts`, `ensure-category-admin-columns.ts`, `ensure-city-admin-columns.ts` |
+| Schema | `admin-activity-logs`, `app-settings`, `admin_staff` (runtime ensure), admin columns on `cities`, `categories`, verification tables (runtime ensure) |
 | Frontend | `pages/admin*.tsx`, `features/admin/**` |
-| i18n (target) | `p8.admin.*` — **required migration** (much UI still hardcoded Arabic) |
+| i18n | `p8.admin.*` in `p8m3-admin-{ar,en,de}.fragment.json` — migration **in progress** (**P8-1E**) |
+
+---
+
+## Frontend routes (summary)
+
+20 pages + `/admin/stats` → `/admin/analytics`. Full table: [P08-admin-baseline.md](./P08-admin-baseline.md).
 
 ---
 
@@ -41,21 +52,24 @@
 - Admin workflows, tables, filters
 - Dashboards (metrics display with **P13**)
 - i18n migration to `p8.admin.*`
+- P8-1 sub-milestones in order (see P08-admin-notes)
 
 ---
 
 ## ما الممنوع تعديله / Forbidden changes
 
 - Core session/CSRF/TOTP implementation (**P2**) without Auth owner
-- Production deploy (**P0**) without approval
+- Production deploy (**P0**) without approval from Mohamed
 - Infra/nginx (**P0**)
+- Mixing STAGING / PRODUCTION Supabase refs
 
 ---
 
 ## Boundaries
 
 - **Internal-only** routes — never exposed as public marketplace features
-- Uses **P4** APIs for ad moderation actions
+- Ad moderation handlers live on admin sections of **P4** `ads.ts` routes
+- **P10** owns billing/plans revenue APIs; P8 owns placeholder UI until then
 
 ---
 
@@ -65,8 +79,11 @@
 |------------|--------|
 | **P2** | Admin login, 2FA, session |
 | **P7** | IP allowlist, security |
-| **P4**, **P5** | Entity moderation |
-| **P13** | Metrics |
+| **P4**, **P5** | Entity moderation, messaging context |
+| **P13** | Host metrics, observability panels |
+| **P10** | Billing/plans backend (deferred) |
+| **P11 / P15** | Admin notification feed (deferred) |
+| **P16** | Scaled presence aggregate |
 
 ---
 
@@ -80,30 +97,43 @@
 
 - Admin stats queries — move heavy aggregates to read replica / **P15** rollups
 - Audit log growth — archival job (**P15**)
+- `active-app-users-count` — in-memory WebSocket today (**P16**)
 
 ---
 
-## Future roadmap
+## P8-1 roadmap (current wave)
 
-- **P8 i18n plan:** move all admin strings to `p8.admin.*` (en/de/ar)
-- RBAC roles beyond single admin model
-- Impersonation with audit (long-term)
+| Step | ID | Focus |
+|------|-----|-------|
+| ✅ | P8-1A | Baseline & doc sync |
+| ⏳ | P8-1B | Settings PATCH UI |
+| ⏳ | P8-1C | User center polish |
+| ⏳ | P8-1D | Logs & audit UX |
+| ⏳ | P8-1E | i18n closure |
+| ⏳ | P8-1F | Dashboard contracts |
+| ⏳ | P8-1G | Billing/plans boundary doc |
+| ⏳ | P8-1H | P13 CPU hook |
+| ⏳ | P8-1I | STAGING smoke + P8-1 close |
+
+Long-term: impersonation with audit (not scheduled).
 
 ---
 
 ## Testing requirements
 
-- STAGING admin login + 2FA + CRUD smoke (test admin only)
+- STAGING admin smoke: [P8-1A runbook](../runbooks/P8-1A-staging-admin-smoke.md)
 - No PRODUCTION admin testing without approval
-- `i18n:check` after i18n migration
+- `i18n:check` after i18n changes (**P8-1E**)
 
 ---
 
 ## Security notes
 
-- `require-admin` + IP gate + access key + TOTP
+- `require-admin` + IP gate + access key + TOTP (founder)
+- Staff email/password accounts with forced rotation
 - `admin_security_revision` session invalidation
-- Admin actions logged to `admin-activity-logs`
+- RBAC per route; CSRF on mutations
+- Admin actions logged to `admin_activity_logs` via `writeAdminAudit` / `logAdminActivity`
 
 ---
 
@@ -111,10 +141,10 @@
 
 | Legacy | Note |
 |--------|------|
-| `ADMIN_PLAN.md` (repo root) | Historical checklist — superseded by this doc |
+| `ADMIN_PLAN.md` (repo root) | **Superseded** — historical stub only |
 
 ---
 
 ## i18n namespace
 
-**Target:** `p8.admin.*` — mandatory for new strings; replace hardcoded Arabic in admin pages incrementally.
+**Target:** `p8.admin.*` — mandatory for new strings. Billing/plans still use legacy `admin_billing.*` / `admin_plans.*` until **P8-1E**.

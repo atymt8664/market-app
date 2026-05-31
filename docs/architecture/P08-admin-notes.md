@@ -19,7 +19,7 @@
 | P8-1E | i18n closure (P8G) | ⏳ Open |
 | P8-1F | Dashboard contracts (notification / roles UX) | ✅ Closed |
 | P8-1G | Billing/plans boundary (**P10**) | ✅ **Closed** — [P08-billing-plans-boundary.md](./P08-billing-plans-boundary.md) |
-| P8-1H | P13 CPU hook in NOC | ⏳ Open |
+| P8-1H | Monitoring boundary + NOC CPU hook | ⏳ **Deploy pending** — [P08-monitoring-boundary.md](./P08-monitoring-boundary.md) |
 | P8-1I | STAGING verification + P8-1 close | ⏳ Open |
 
 **Do not start P8-1E+ until P8-1D is closed** (done). **Do not start P15-1 or P17-4+ until P8-1 is closed.**
@@ -38,7 +38,7 @@
 | Notification center **architecture UI** (no backend feed) | ✅ Contract only |
 | Roles & permissions **architecture UI** on NOC | ✅ Contract only (enforcement elsewhere — see RBAC below) |
 | Shell + NOC i18n under `p8.admin.*` | ✅ ar/en/de keys exist (`de` has placeholder gaps — **P8-1E**) |
-| CPU host metrics row | ⏳ Placeholder → **P13** |
+| CPU host metrics row | ✅ Live load 1m (`snapshotServerMetrics`) |
 
 ### Workflows (post–P8C — now in baseline)
 
@@ -168,7 +168,7 @@
 | `/admin/billing` | Disconnected placeholder | None | **P10** |
 | `/admin/plans` | Static i18n prices | None | **P10** |
 | Notification center feed | Architecture cards on NOC | None | **P11 / P15** |
-| NOC CPU metrics | Placeholder key | None | **P13** |
+| NOC CPU metrics | `node:os.loadavg` | API host | **P8-1H** |
 | `GET /admin/active-app-users-count` | NOC live users | In-memory WS map | **P16** at scale |
 
 ---
@@ -177,7 +177,7 @@
 
 | Topic | Phase | Why |
 |-------|-------|-----|
-| Host CPU / VPS metrics | **P13** | NOC CPU row |
+| Host CPU / VPS metrics | **P8-1H live** (load avg) · **P13 future** (node_exporter) | NOC + Monitoring |
 | Observability panels in admin | **P13** | Beyond NOC summary |
 | Admin notification fan-out | **P15** | Staff alerts at scale |
 | Online presence aggregate | **P16** | Multi-replica WebSocket |
@@ -216,7 +216,7 @@ See [P08-admin-baseline.md](./P08-admin-baseline.md) § Feature readiness. Billi
 - [x] Audit & logs maturity — staff names, filters, audit trail UX (**P8-1D**)
 - [ ] Full `p8.admin.*` on all admin pages including `de` quality (**P8-1E**)
 - [ ] Billing backend (**P10** — explicit defer, not P8-1 blocker for core ops)
-- [ ] Host CPU in NOC (**P13** — **P8-1H**)
+- [x] Host CPU in NOC (**P8-1H** — load average from API host)
 - [ ] STAGING smoke sign-off (**P8-1I**)
 
 ---

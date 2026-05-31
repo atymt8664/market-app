@@ -181,7 +181,14 @@ const HEALTH_ICONS: Record<AdminNocSystemHealthKey, LucideIcon> = {
 };
 
 function formatHealthValue(item: AdminNocSystemHealthItem): ReactNode {
-  if (item.key === "cpu") return t("p8.admin.noc.cpu.waiting_host_metrics");
+  if (item.key === "cpu") {
+    if (item.value == null || item.status === "muted") {
+      return t("p8.admin.noc.cpu.unavailable");
+    }
+    return t("p8.admin.noc.metric.cpu_load_value", {
+      load: Number(item.value).toFixed(2),
+    });
+  }
   if (item.key === "api") {
     const readyz = String(item.hintParams?.readyz ?? "ready");
     return (
@@ -220,7 +227,13 @@ function formatHealthHint(item: AdminNocSystemHealthItem): string {
         total: formatNumber(Number(p.total ?? 0)),
       });
     case "cpu":
-      return t("p8.admin.noc.metric.cpu_hint");
+      if (item.value == null || item.status === "muted") {
+        return t("p8.admin.noc.metric.cpu_hint_unavailable");
+      }
+      return t("p8.admin.noc.metric.cpu_hint_live", {
+        cores: formatNumber(Number(p.cores ?? 0)),
+        load5: Number(p.load5 ?? 0).toFixed(2),
+      });
     case "database":
       return t("p8.admin.noc.health.hint.database", { ms: formatNumber(Number(item.value ?? 0)) });
     case "redis":

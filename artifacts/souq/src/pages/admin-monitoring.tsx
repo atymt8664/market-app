@@ -18,7 +18,9 @@ import {
   AdminPageLoading,
 } from "@/features/admin/components/admin-page-states";
 import { AdminShell } from "@/features/admin/components/admin-shell";
+import { MonitoringBoundaryLegend } from "@/features/admin/components/monitoring-boundary-legend";
 import { useAdminAccess, useAdminMonitoring, useRequireAdmin } from "@/features/admin/hooks";
+import { monitoringTierAttrs } from "@/lib/monitoring-boundary";
 import type { ComponentHealth, MonitoringAlert, MonitoringSeverity } from "@/features/admin/monitoring-types";
 import { formatAdminDateTime, formatAdminNumber } from "@/features/admin/admin-locale";
 import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
@@ -289,11 +291,12 @@ export default function AdminMonitoringPage() {
               ) : null}
             </section>
 
-            <section className={CARD_SHELL}>
+            <section className={CARD_SHELL} {...monitoringTierAttrs("live")}>
               <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
                 <Server className="h-5 w-5 text-primary" aria-hidden />
                 {t("p8.admin.monitoring.server_metrics")}
               </h2>
+              <p className="mb-3 text-xs text-muted-foreground">{t("p8.admin.monitoring.server_metrics_source")}</p>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 <MetricCard
                   contractId="monitoring.server.cpu"
@@ -471,6 +474,8 @@ export default function AdminMonitoringPage() {
                 <MetricCard label={t("p8.admin.monitoring.metric_queue_depth")} value={formatNumber(data.queueMetrics.queueWorkerDepth)} />
               </div>
             </section>
+
+            <MonitoringBoundaryLegend />
           </>
         ) : null}
       </div>

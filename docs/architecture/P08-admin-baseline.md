@@ -116,7 +116,7 @@ Defined in `lib/admin-rbac.ts` (backend) and `features/admin/rbac.ts` (frontend)
 | Settings | ✅ Full | GET + PATCH UI; founder password change + 2FA |
 | Billing / Plans | ⛔ Placeholder | Explicit disconnected UI — **P10** |
 | Notification center (NOC) | ⛔ Contract UI | No admin feed — **P11 / P15** |
-| NOC CPU row | ⏳ Placeholder | `p8.admin.noc.cpu.waiting_host_metrics` — **P13** |
+| NOC CPU row | ✅ Live load 1m | **P8-1H** — `snapshotServerMetrics` (deploy pending for prod) |
 | i18n | ⚠️ Partial | Most pages use `p8.admin.*`; `de` fragment has placeholders; billing/plans use `admin_billing.*` / `admin_plans.*` |
 
 ---
@@ -144,7 +144,7 @@ Defined in `lib/admin-rbac.ts` (backend) and `features/admin/rbac.ts` (frontend)
 | P8-1E | i18n closure (P8G) | ✅ Closed |
 | P8-1F | Dashboard contracts (notification / roles UX) | ✅ Closed |
 | P8-1G | Billing/plans boundary doc (**P10**) | ⏳ Open |
-| P8-1H | P13 CPU hook | ⏳ Open |
+| P8-1H | Monitoring boundary + NOC CPU hook | ⏳ Deploy pending |
 | P8-1I | STAGING verification & P8-1 close | ⏳ Open |
 
 ---

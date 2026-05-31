@@ -112,7 +112,7 @@
 | ✅ | P8-1E | i18n closure |
 | ✅ | P8-1F | Dashboard contracts |
 | ✅ | P8-1G | Billing/plans boundary — [P08-billing-plans-boundary.md](./P08-billing-plans-boundary.md) |
-| ⏳ | P8-1H | P13 CPU hook |
+| ⏳ | P8-1H | Monitoring boundary + NOC CPU hook — [P08-monitoring-boundary.md](./P08-monitoring-boundary.md) (deploy pending) |
 | ⏳ | P8-1I | STAGING smoke + P8-1 close |
 
 Long-term: impersonation with audit (not scheduled).

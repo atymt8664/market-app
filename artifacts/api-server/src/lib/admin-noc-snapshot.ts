@@ -8,8 +8,10 @@ import {
 } from "@workspace/db";
 import { count, desc, eq, gte } from "drizzle-orm";
 import { buildInfrastructureHealthSnapshot } from "./admin-infrastructure-health";
+import { buildNocCpuFromServerMetrics, type NocCpuSnapshot } from "./noc-cpu-metrics";
 import { buildObservabilitySnapshot } from "./observability";
 import { checkDatabaseReadiness } from "./observability/readiness";
+import { snapshotServerMetrics } from "./observability/server-metrics";
 import { countUsersWithOpenChatSockets } from "./realtime";
 
 import { loadAdminLogActorMap } from "./admin-log-actors";
@@ -176,10 +178,7 @@ export type AdminNocSnapshot = {
       heapUsedMb: number;
       heapTotalMb: number;
     };
-    cpu: {
-      available: false;
-      placeholderKey: "p8.admin.noc.cpu.waiting_host_metrics";
-    };
+    cpu: NocCpuSnapshot;
   };
   queueCenter: AdminNocQueueItem[];
   recentActivity: AdminNocActivityItem[];
@@ -447,6 +446,7 @@ export async function buildAdminNocSnapshot(params: {
     readiness,
     metricsSnapshot,
     infrastructure,
+    serverMetrics,
     verificationOpenCount,
     verificationPendingQueueCount,
   ] = await Promise.all([
@@ -483,9 +483,12 @@ export async function buildAdminNocSnapshot(params: {
     checkDatabaseReadiness(),
     Promise.resolve(buildObservabilitySnapshot()),
     buildInfrastructureHealthSnapshot(),
+    snapshotServerMetrics(),
     countOpenVerificationRequests().catch(() => 0),
     countPendingVerificationQueue().catch(() => 0),
   ]);
+
+  const nocCpu = buildNocCpuFromServerMetrics(serverMetrics);
 
   const onlineUsersNow = countUsersWithOpenChatSockets();
   const pendingAds = params.pendingAds;
@@ -713,8 +716,9 @@ export async function buildAdminNocSnapshot(params: {
     },
     {
       key: "cpu",
-      status: "muted",
-      value: null,
+      status: nocCpu.status,
+      value: nocCpu.value,
+      hintParams: nocCpu.hintParams,
     },
     {
       key: "database",
@@ -828,10 +832,7 @@ export async function buildAdminNocSnapshot(params: {
         heapUsedMb: metricsSnapshot.process.memoryHeapUsedMb,
         heapTotalMb: metricsSnapshot.process.memoryHeapTotalMb,
       },
-      cpu: {
-        available: false,
-        placeholderKey: "p8.admin.noc.cpu.waiting_host_metrics",
-      },
+      cpu: nocCpu.cpu,
     },
     queueCenter,
     recentActivity,

@@ -1,5 +1,6 @@
 import { Bell } from "lucide-react";
 import { dashboardContractAttrs } from "@/features/admin/dashboard-contracts";
+import { monitoringTierAttrs } from "@/lib/monitoring-boundary";
 import { CARD_SHELL } from "@/features/admin/admin-interaction-classes";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ export function NotificationCenterFoundation() {
       className={cn(CARD_SHELL, "p-4")}
       aria-labelledby="admin-notifications-foundation-title"
       {...dashboardContractAttrs("monitoring.notification_feed")}
+      {...monitoringTierAttrs("placeholder")}
     >
       <div className="mb-4 flex flex-wrap items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/45 bg-primary/12 text-primary">

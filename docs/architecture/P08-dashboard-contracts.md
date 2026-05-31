@@ -93,7 +93,7 @@ Built in `artifacts/api-server/src/lib/admin-noc-snapshot.ts` from PostgreSQL + 
 | `api` | DB readiness /readyz | — |
 | `websocket` | In-process WS metrics | — |
 | `ram` | Process RSS/heap | — |
-| `cpu` | — | **P13 / P8-1H** — `noc.health.cpu` |
+| `cpu` | `snapshotServerMetrics` → load 1m | **P8-1H** — `noc.health.cpu` (live) |
 | `database`, `redis`, `storage`, `push_worker`, `queue_worker`, `p95_latency` | Infrastructure health snapshot | redis/storage unconfigured → status `unconfigured` |
 
 ### Queue center
@@ -186,7 +186,7 @@ Contract: `nav.badge.ads_pending` (see registry for siblings).
 
 1. **Open reports** on NOC uses broader status set than analytics “new reports” count.
 2. **Online users** is single-instance WebSocket map until **P16**.
-3. **NOC CPU** placeholder; host CPU available on Monitoring page.
+3. **NOC CPU** shows live 1m load average (same source as Monitoring); not node_exporter.
 4. **Unverified email** ≠ **verification workflow queue** — separate contract IDs.
 
 ---

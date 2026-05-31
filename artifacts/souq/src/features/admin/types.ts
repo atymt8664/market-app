@@ -236,10 +236,18 @@ export type AdminNocSnapshot = {
       heapUsedMb: number;
       heapTotalMb: number;
     };
-    cpu: {
-      available: false;
-      placeholderKey: string;
-    };
+    cpu:
+      | {
+          available: true;
+          cores: number;
+          loadAvg1m: number;
+          loadAvg5m: number | null;
+          source: "node:os.loadavg";
+        }
+      | {
+          available: false;
+          reason: "loadavg_unavailable";
+        };
   };
   queueCenter: AdminNocQueueItem[];
   recentActivity: AdminNocActivityItem[];

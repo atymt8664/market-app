@@ -18,10 +18,10 @@
 Only **one open builder phase** at a time. Sequence:
 
 ```
-✅ P13-1 → ✅ P13-2 → ⏳ P13-3 → ⏳ P13-4 → ⏳ P8-1 → ⏳ P15-1 → ⏳ P17-4…P17-19
+✅ P13-1 → ✅ P13-2 → ✅ P13-3 → ⏳ P13-4 → ⏳ P8-1 → ⏳ P15-1 → ⏳ P17-4…P17-19
 ```
 
-**Do not start** P13-4, P8-1, P15-1, or P17-4+ until **P13-3** is closed.
+**Do not start** P8-1, P15-1, or P17-4+ until **P13-4** is closed.
 
 ---
 
@@ -58,15 +58,15 @@ Only **one open builder phase** at a time. Sequence:
 | P13-2 Global visual identity `#0A0A0A` | ✅ Closed | User-facing baseline unified |
 | **P13-3-0** Charter + SLOs | ✅ Closed | [P13-3 charter](./architecture/P13-3-index-monitoring-cwv.md) |
 | **P13-3-A** Index Monitoring | ✅ Closed | `index:p13:validate` / `index:p13:prod` + [GSC runbook](./architecture/P13-3-A-gsc-runbook.md) |
-| **P13-3-B** Core Web Vitals | ✅ Implemented — deploy pending | RUM + lab scripts; preview PASS / prod lab pending deploy |
-| **P13-3** (full) | ⏳ Open | Closes after Vercel+VPS deploy + `cwv:p13:prod` PASS |
-| P13-4 | ⏳ Blocked | After P13-3 |
+| **P13-3-B** Core Web Vitals | ✅ Closed | RUM + lab gates; prod verified 2026-05-31 |
+| **P13-3** (full) | ✅ Closed | Commit `44b0e21` · VPS `souq-api:p13-3-cwv-20260531` · Vercel deploy `4876403415` |
+| P13-4 | ⏳ Open | Unblocked — next builder phase |
 
 ### Downstream (blocked)
 
 | Phase | Status |
 |-------|--------|
-| P8-1 | ⏳ Blocked |
+| P8-1 | ⏳ Blocked (after P13-4) |
 | P15-1 | ⏳ Blocked |
 | P17-4 … P17-19 | ⏳ Blocked |
 
@@ -82,4 +82,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P13-3-A — Index monitoring scripts, CI gate, GSC runbook.
+P13-3 — Index monitoring + CWV RUM/lab production verification closed. Next: P13-4.

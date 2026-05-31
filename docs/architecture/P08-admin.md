@@ -37,7 +37,7 @@
 | Lib | `lib/admin-*.ts`, `ensure-app-settings-table.ts`, `ensure-category-admin-columns.ts`, `ensure-city-admin-columns.ts` |
 | Schema | `admin-activity-logs`, `app-settings`, `admin_staff` (runtime ensure), admin columns on `cities`, `categories`, verification tables (runtime ensure) |
 | Frontend | `pages/admin*.tsx`, `features/admin/**` |
-| i18n | `p8.admin.*` in `p8m3-admin-{ar,en,de}.fragment.json` — migration **in progress** (**P8-1E**) |
+| i18n | `p8.admin.*` — **P8-1E closed** (ar/en/de parity + admin language switcher) |
 
 ---
 
@@ -109,7 +109,7 @@
 | ✅ | P8-1B | Settings PATCH UI |
 | ✅ | P8-1C | User center polish |
 | ✅ | P8-1D | Logs & audit UX |
-| ⏳ | P8-1E | i18n closure |
+| ✅ | P8-1E | i18n closure |
 | ⏳ | P8-1F | Dashboard contracts |
 | ⏳ | P8-1G | Billing/plans boundary doc |
 | ⏳ | P8-1H | P13 CPU hook |
@@ -147,4 +147,4 @@ Long-term: impersonation with audit (not scheduled).
 
 ## i18n namespace
 
-**Target:** `p8.admin.*` — mandatory for new strings. Billing/plans still use legacy `admin_billing.*` / `admin_plans.*` until **P8-1E**.
+**Target:** `p8.admin.*` — mandatory for new strings. Billing/plans migrated to `p8.admin.billing.*` / `p8.admin.plans.*` (**P8-1E** closed).

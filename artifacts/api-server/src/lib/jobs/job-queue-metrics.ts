@@ -29,6 +29,18 @@ const opsCounters: Record<JobMetricKind, number> = {
 let lastOpsSlaEscalationResult: Record<string, number> | null = null;
 let lastOpsSlaEscalationAt: string | null = null;
 
+const analyticsCounters: Record<JobMetricKind, number> = {
+  enqueued: 0,
+  processed: 0,
+  failed: 0,
+};
+
+let lastAnalyticsDailyRollup: {
+  periodsWritten: number;
+  snapshotDate: string;
+} | null = null;
+let lastAnalyticsDailyRollupAt: string | null = null;
+
 export function incrementEmailJobMetric(kind: JobMetricKind, delta = 1): void {
   emailCounters[kind] += delta;
 }
@@ -83,6 +95,32 @@ export function readLastOpsSlaEscalation(): {
   };
 }
 
+export function incrementAnalyticsJobMetric(kind: JobMetricKind, delta = 1): void {
+  analyticsCounters[kind] += delta;
+}
+
+export function readAnalyticsJobMetrics(): Readonly<Record<JobMetricKind, number>> {
+  return { ...analyticsCounters };
+}
+
+export function recordAnalyticsDailyRollupResult(result: {
+  periodsWritten: number;
+  snapshotDate: string;
+}): void {
+  lastAnalyticsDailyRollup = { ...result };
+  lastAnalyticsDailyRollupAt = new Date().toISOString();
+}
+
+export function readLastAnalyticsDailyRollup(): {
+  at: string | null;
+  result: { periodsWritten: number; snapshotDate: string } | null;
+} {
+  return {
+    at: lastAnalyticsDailyRollupAt,
+    result: lastAnalyticsDailyRollup ? { ...lastAnalyticsDailyRollup } : null,
+  };
+}
+
 export function resetJobMetricsForTests(): void {
   emailCounters.enqueued = 0;
   emailCounters.processed = 0;
@@ -96,8 +134,13 @@ export function resetJobMetricsForTests(): void {
   opsCounters.enqueued = 0;
   opsCounters.processed = 0;
   opsCounters.failed = 0;
+  analyticsCounters.enqueued = 0;
+  analyticsCounters.processed = 0;
+  analyticsCounters.failed = 0;
   lastOpsSlaEscalationResult = null;
   lastOpsSlaEscalationAt = null;
+  lastAnalyticsDailyRollup = null;
+  lastAnalyticsDailyRollupAt = null;
 }
 
 /** @deprecated use resetJobMetricsForTests */

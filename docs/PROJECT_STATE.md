@@ -62,7 +62,8 @@ Only **one open builder phase** at a time. Sequence:
 | **P15-3C** Push delivery outbox | ✅ **Closed** | Commit `0c31789` · STAGING `PUSH_OUTBOX_ENABLED` |
 | **P15-3D** Media / image jobs analysis | ✅ **Closed** | Analysis-only — defer worker wiring |
 | **P15-3E** Cron / operations jobs | ✅ **Closed** | STAGING `ops.sla_escalate` cron; admin-read anti-pattern fixed |
-| P15-3 Hot path migration | ⏳ **Open** | P15-3A–3E ✅ · analytics/purge deferred |
+| **P15-3F** Analytics rollups | ✅ **Closed** | STAGING `analytics.daily` + rollup store |
+| P15-3 Hot path migration | ⏳ **Open** | P15-3A–3F ✅ · storage purge → P15-3G |
 | P15-4 Production hardening | ⏳ Blocked | After P15-3 |
 
 ### Downstream
@@ -81,4 +82,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P15-3E — **Closed**: ops cron on STAGING (`ops.sla_escalate`). Parent **P15-3 open** — analytics rollup (P15-3F) / storage purge (P15-3G) remain.
+P15-3F — **Closed**: analytics daily rollup on STAGING (`analytics.daily`). Parent **P15-3 open** — storage purge (P15-3G) remains.

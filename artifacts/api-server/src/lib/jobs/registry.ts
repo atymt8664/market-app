@@ -27,6 +27,11 @@ export const OPS_JOB_TYPES = {
   SLA_ESCALATE: "ops.sla_escalate",
 } as const;
 
+/** Analytics rollup jobs (P15-3F). */
+export const ANALYTICS_JOB_TYPES = {
+  DAILY: "analytics.daily",
+} as const;
+
 export type FoundationJobType =
   (typeof FOUNDATION_JOB_TYPES)[keyof typeof FOUNDATION_JOB_TYPES];
 
@@ -39,6 +44,9 @@ export type PushJobType = (typeof PUSH_JOB_TYPES)[keyof typeof PUSH_JOB_TYPES];
 
 export type OpsJobType = (typeof OPS_JOB_TYPES)[keyof typeof OPS_JOB_TYPES];
 
+export type AnalyticsJobType =
+  (typeof ANALYTICS_JOB_TYPES)[keyof typeof ANALYTICS_JOB_TYPES];
+
 /** All job names registered in the worker. */
 export const REGISTERED_JOB_NAMES = [
   FOUNDATION_JOB_TYPES.SYSTEM_PING,
@@ -48,6 +56,7 @@ export const REGISTERED_JOB_NAMES = [
   NOTIFICATION_JOB_TYPES.IN_APP,
   PUSH_JOB_TYPES.DELIVER,
   OPS_JOB_TYPES.SLA_ESCALATE,
+  ANALYTICS_JOB_TYPES.DAILY,
 ] as const;
 
 export type RegisteredJobName = (typeof REGISTERED_JOB_NAMES)[number];

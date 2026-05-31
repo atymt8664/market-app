@@ -56,5 +56,12 @@ export type QueueHealthSnapshot = {
     lastSlaEscalationAt: string | null;
     lastSlaEscalationResult: Record<string, number> | null;
   };
+  analyticsMetrics?: {
+    enqueued: number;
+    processed: number;
+    failed: number;
+    lastDailyRollupAt: string | null;
+    lastDailyRollup: { periodsWritten: number; snapshotDate: string } | null;
+  };
   deadLetterQueue?: string;
 };

@@ -9,6 +9,7 @@ const {
   FOUNDATION_JOB_TYPES,
   NOTIFICATION_JOB_TYPES,
   OPS_JOB_TYPES,
+  ANALYTICS_JOB_TYPES,
   PUSH_JOB_TYPES,
   REGISTERED_JOB_NAMES,
   clearJobHandlerRegistryForTests,
@@ -21,17 +22,19 @@ const { registerEmailJobHandlers } = await import("./handlers/email");
 const { registerNotificationJobHandlers } = await import("./handlers/notification");
 const { registerPushJobHandlers } = await import("./handlers/push");
 const { registerOpsJobHandlers } = await import("./handlers/operations");
+const { registerAnalyticsJobHandlers } = await import("./handlers/analytics");
 
 clearJobHandlerRegistryForTests();
 assert.equal(registeredJobHandlerCount(), 0);
-assert.equal(REGISTERED_JOB_NAMES.length, 7);
+assert.equal(REGISTERED_JOB_NAMES.length, 8);
 
 registerFoundationJobHandlers();
 registerEmailJobHandlers();
 registerNotificationJobHandlers();
 registerPushJobHandlers();
 registerOpsJobHandlers();
-assert.equal(registeredJobHandlerCount(), 7);
+registerAnalyticsJobHandlers();
+assert.equal(registeredJobHandlerCount(), 8);
 assert.deepEqual(
   listRegisteredJobHandlers().map((h) => h.name).sort(),
   [...REGISTERED_JOB_NAMES].sort(),
@@ -40,7 +43,7 @@ assert.deepEqual(
 assert.throws(
   () =>
     registerJobHandler({
-      name: OPS_JOB_TYPES.SLA_ESCALATE,
+      name: ANALYTICS_JOB_TYPES.DAILY,
       handler: async () => {},
     }),
   /Duplicate job handler/,

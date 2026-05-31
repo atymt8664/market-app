@@ -394,11 +394,25 @@ Extends **P13** and **P8** monitoring boundary (`data-monitoring-tier="live"`).
 | PRODUCTION | ❌ sync `runAutoEscalationAll` on admin read unchanged |
 | Authority | [P15-3E-ops-cron-migration.md](./P15-3E-ops-cron-migration.md) |
 
+#### P15-3F — Analytics rollups ✅ (STAGING)
+
+| Item | Status |
+|------|--------|
+| Full analytics inventory | ✅ |
+| Extract `computeAdminAnalyticsPayload` | ✅ |
+| `admin_analytics_daily_rollups` store | ✅ |
+| `analytics.daily` job + handler | ✅ |
+| Daily cron (`0 2 * * *` UTC default) | ✅ |
+| STAGING gate (`ANALYTICS_ROLLUP_ENABLED`) | ✅ |
+| `/admin/stats` + `/admin/analytics` rollup read | ✅ |
+| Standard retry + DLQ | ✅ |
+| PRODUCTION | ❌ live compute unchanged |
+| Authority | [P15-3F-analytics-rollup-migration.md](./P15-3F-analytics-rollup-migration.md) |
+
 **Remaining in P15-3 (not started):**
 
 | Order | Migration |
 |-------|-----------|
-| 6 | Analytics daily rollup cron (P15-3F) |
 | 7 | Account deletion storage purge job (P15-3G) |
 
 **Full P15-3 exit criteria:** P8 admin smoke PASS; queue depth stable; prod-shadow worker deploy verified — **not met until all migrations complete.**

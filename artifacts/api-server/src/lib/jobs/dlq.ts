@@ -4,6 +4,7 @@ import {
   FOUNDATION_JOB_TYPES,
   NOTIFICATION_JOB_TYPES,
   OPS_JOB_TYPES,
+  ANALYTICS_JOB_TYPES,
   PUSH_JOB_TYPES,
 } from "./registry";
 import {
@@ -74,6 +75,13 @@ const REGISTERED_QUEUE_SEEDS: QueueSeed[] = [
   },
   {
     name: OPS_JOB_TYPES.SLA_ESCALATE,
+    options: {
+      ...STANDARD_RETRY_OPTIONS,
+      deadLetter: DLQ_QUEUE_NAME,
+    },
+  },
+  {
+    name: ANALYTICS_JOB_TYPES.DAILY,
     options: {
       ...STANDARD_RETRY_OPTIONS,
       deadLetter: DLQ_QUEUE_NAME,

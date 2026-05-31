@@ -7,8 +7,10 @@ import {
   buildAdShareMeta,
   buildHomeShareMeta,
   buildProfileShareMeta,
+  buildHomeStructuredDataJsonLd,
   fetchPublicAd,
   fetchPublicProfile,
+  P3_STRUCTURED_DATA_SCRIPT_ID,
   renderOgHtml,
 } from "../og-share-meta.mjs";
 import { buildAdStructuredDataJsonLd } from "../ad-structured-data.mjs";
@@ -40,8 +42,14 @@ export default async function handler(request) {
       return new Response(renderOgHtml(meta), { status: profile ? 200 : 404, headers });
     }
 
-    return new Response(renderOgHtml(buildHomeShareMeta()), { status: 200, headers });
+    return new Response(
+      renderOgHtml(buildHomeShareMeta(), buildHomeStructuredDataJsonLd(), P3_STRUCTURED_DATA_SCRIPT_ID),
+      { status: 200, headers },
+    );
   } catch {
-    return new Response(renderOgHtml(buildHomeShareMeta()), { status: 500, headers });
+    return new Response(
+      renderOgHtml(buildHomeShareMeta(), buildHomeStructuredDataJsonLd(), P3_STRUCTURED_DATA_SCRIPT_ID),
+      { status: 500, headers },
+    );
   }
 }

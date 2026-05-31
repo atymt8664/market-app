@@ -5,9 +5,11 @@ import {
   buildAdShareMeta,
   buildHomeShareMeta,
   buildProfileShareMeta,
+  buildHomeStructuredDataJsonLd,
   fetchPublicAd,
   fetchPublicProfile,
   isSocialCrawler,
+  P3_STRUCTURED_DATA_SCRIPT_ID,
   renderOgHtml,
 } from "./og-share-meta.mjs";
 import { buildAdStructuredDataJsonLd } from "./ad-structured-data.mjs";
@@ -46,5 +48,8 @@ export default async function middleware(request) {
     });
   }
 
-  return new Response(renderOgHtml(buildHomeShareMeta()), { status: 200, headers: OG_HEADERS });
+  return new Response(
+    renderOgHtml(buildHomeShareMeta(), buildHomeStructuredDataJsonLd(), P3_STRUCTURED_DATA_SCRIPT_ID),
+    { status: 200, headers: OG_HEADERS },
+  );
 }

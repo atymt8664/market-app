@@ -4,5 +4,50 @@ Disallow: /admin
 Disallow: /admin-login
 Disallow: /api/
 
+# P13-4 — AI discoverability (public listings only; admin and auth paths blocked)
+# Machine-readable summary: https://www.souq-arab.com/llms.txt
+
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /api/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /api/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /api/
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /api/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /api/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /api/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /api/
+
 Sitemap: https://www.souq-arab.com/sitemap.xml
 Sitemap: https://www.souq-arab.com/sitemap-ads.xml

@@ -53,3 +53,6 @@ jobs:
 
       - name: P13 CWV readiness (local)
         run: pnpm --filter @workspace/souq run cwv:p13:readiness
+
+      - name: P13-4 discoverability readiness (local)
+        run: pnpm --filter @workspace/souq run discoverability:p13:validate

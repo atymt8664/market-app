@@ -56,11 +56,9 @@ Only **one open builder phase** at a time. Sequence:
 |-----------|--------|-------|
 | P13-1 Google Search Console readiness | ✅ Closed | `gsc:p13:validate`, `gsc:p13:prod` |
 | P13-2 Global visual identity `#0A0A0A` | ✅ Closed | User-facing baseline unified |
-| **P13-3-0** Charter + SLOs | ✅ Closed | [P13-3 charter](./architecture/P13-3-index-monitoring-cwv.md) |
-| **P13-3-A** Index Monitoring | ✅ Closed | `index:p13:validate` / `index:p13:prod` + [GSC runbook](./architecture/P13-3-A-gsc-runbook.md) |
-| **P13-3-B** Core Web Vitals | ✅ Closed | RUM + lab gates; prod verified 2026-05-31 |
-| **P13-3** (full) | ✅ Closed | Commit `44b0e21` · VPS `souq-api:p13-3-cwv-20260531` · Vercel deploy `4876403415` |
-| P13-4 | ⏳ Open | Unblocked — next builder phase |
+| P13-3 (Index Monitoring + CWV) | ✅ Closed | Commit `44b0e21` |
+| **P13-4** AI Discoverability + KG | ⏳ Open | Deploy + `discoverability:p13:prod` pending |
+| P13-4-A Bing Webmaster | ⏳ Open | `bing:p13:prod` + manual BWT per runbook |
 
 ### Downstream (blocked)
 
@@ -82,4 +80,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P13-3 — Index monitoring + CWV RUM/lab production verification closed. Next: P13-4.
+P13-4 — AI discoverability implementation in progress.

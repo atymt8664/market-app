@@ -68,7 +68,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly).*"
+          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly|Googlebot|Google-InspectionTool|Googlebot-Image|Storebot-Google|DuplexWeb-Google|Bingbot|BingPreview|msnbot|GPTBot|ChatGPT-User|ClaudeBot|anthropic-ai|PerplexityBot|Applebot-Extended|cohere-ai|Bytespider).*"
         }
       ],
       "destination": "/api/og?route=home"
@@ -79,7 +79,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly|Googlebot|Google-InspectionTool|Googlebot-Image|Storebot-Google|DuplexWeb-Google).*"
+          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly|Googlebot|Google-InspectionTool|Googlebot-Image|Storebot-Google|DuplexWeb-Google|Bingbot|BingPreview|msnbot|GPTBot|ChatGPT-User|ClaudeBot|anthropic-ai|PerplexityBot|Applebot-Extended|cohere-ai|Bytespider).*"
         }
       ],
       "destination": "/api/og?route=ad&id=:id"
@@ -90,13 +90,13 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly).*"
+          "value": ".*(facebookexternalhit|Facebot|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly|Googlebot|Google-InspectionTool|Googlebot-Image|Storebot-Google|DuplexWeb-Google|Bingbot|BingPreview|msnbot|GPTBot|ChatGPT-User|ClaudeBot|anthropic-ai|PerplexityBot|Applebot-Extended|cohere-ai|Bytespider).*"
         }
       ],
       "destination": "/api/og?route=profile&id=:id"
     },
     {
-      "source": "/((?!assets/|fonts/|icons/|brand/|sw.js|manifest.webmanifest|favicon.svg|robots.txt|sitemap.xml).*)",
+      "source": "/((?!assets/|fonts/|icons/|brand/|sw.js|manifest.webmanifest|favicon.svg|robots.txt|sitemap.xml|llms.txt).*)",
       "destination": "/index.html"
     }
   ]

@@ -7,6 +7,12 @@ import {
   buildAdStructuredDataJsonLd,
   P4_AD_STRUCTURED_DATA_SCRIPT_ID,
 } from "./ad-structured-data.mjs";
+import {
+  buildHomeStructuredDataJsonLd,
+  P3_STRUCTURED_DATA_SCRIPT_ID,
+} from "./home-structured-data.mjs";
+
+export { P3_STRUCTURED_DATA_SCRIPT_ID, buildHomeStructuredDataJsonLd };
 
 export const P11_ORIGIN = "https://www.souq-arab.com";
 export const P11_API_ORIGIN = "https://api.souq-arab.com/api";
@@ -22,7 +28,7 @@ const SUPABASE_OBJECT_PUBLIC =
   /^(https:\/\/[^/]+\.supabase\.co\/storage\/v1)\/object\/public\/(.+)$/;
 
 const SOCIAL_BOT_UA =
-  /facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly|Google-Structured-Data-Testing-Tool/i;
+  /facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|TikTokSpider|Snapchat|vkShare|PinterestBot|Embedly|Google-Structured-Data-Testing-Tool|Googlebot|Google-InspectionTool|Googlebot-Image|Storebot-Google|DuplexWeb-Google|Bingbot|BingPreview|msnbot|GPTBot|ChatGPT-User|ClaudeBot|anthropic-ai|PerplexityBot|Applebot-Extended|cohere-ai|Bytespider/i;
 
 export function isSocialCrawler(userAgent) {
   return SOCIAL_BOT_UA.test(userAgent || "");
@@ -154,7 +160,7 @@ export function buildProfileShareMeta(profile) {
   };
 }
 
-export function renderOgHtml(meta, jsonLd) {
+export function renderOgHtml(meta, jsonLd, scriptId = P4_AD_STRUCTURED_DATA_SCRIPT_ID) {
   const title = escapeHtml(meta.title);
   const description = escapeHtml(meta.description);
   const url = escapeHtml(meta.url);
@@ -168,7 +174,7 @@ export function renderOgHtml(meta, jsonLd) {
   const imageType = escapeHtml(meta.imageType || "image/jpeg");
   const ldBlock =
     jsonLd && typeof jsonLd === "string"
-      ? `<script type="application/ld+json" id="${P4_AD_STRUCTURED_DATA_SCRIPT_ID}">${jsonLd}</script>`
+      ? `<script type="application/ld+json" id="${scriptId}">${jsonLd}</script>`
       : "";
 
   return `<!DOCTYPE html>

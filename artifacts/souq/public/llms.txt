@@ -1,0 +1,41 @@
+# Souq Arab EU / سوق العرب EU
+
+> Arabic-first classified marketplace for buying, selling, and services in the European Union.
+
+## Canonical site
+
+- https://www.souq-arab.com/
+
+## Languages
+
+- Arabic (primary), English, German
+
+## Public indexable pages
+
+- Home: /
+- Categories: /categories
+- Search: /search
+- Terms: /terms
+- Privacy: /privacy
+- Account deletion info: /delete-account
+- Public ads: /ad/{id}
+- Public seller profiles: /users/{id}
+
+## Sitemaps
+
+- https://www.souq-arab.com/sitemap.xml
+- https://www.souq-arab.com/sitemap-ads.xml
+
+## Structured data (schema.org JSON-LD)
+
+- Homepage: Organization, WebSite, WebApplication
+- Ad detail (approved public listings): Product, Offer
+
+## Not for indexing
+
+- /admin, /admin-login, /messages, /settings, /login, /signup, /new, /guest-welcome
+
+## Legal
+
+- Terms: https://www.souq-arab.com/terms
+- Privacy: https://www.souq-arab.com/privacy

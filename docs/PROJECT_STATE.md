@@ -47,7 +47,7 @@ Only **one open builder phase** at a time. Sequence:
 | **P8-1D** Audit & logs maturity | ✅ **Closed** | Commit `9cc503c` · VPS `souq-api:p8-1d-20260531` · phase8 external PASS · Vercel `admin-logs-DCCeHcWo.js` |
 | **P8-1E** i18n closure | ✅ **Closed** | Commit `9b20675` · Vercel `admin-settings-CHr9B3tj.js` · `i18n:check` ar/en/de PASS |
 | **P8-1F** Dashboard contracts | ✅ **Closed** | Commits `082065b`, `935224b`, `09dcada` · VPS `souq-api:p8-1f-20260531` · Vercel `dpl_3BKsJpnSkYF2kr1grhQY7cauWqqC` · `p8-1f:prod` PASS |
-| P8-1G Billing/plans boundary | ✅ **Closed** | Boundary doc + UI markers + validate scripts |
+| **P8-1G** Billing/plans boundary | ✅ **Closed** | Commit `9e84a30` · Vercel `dpl_F3PCDapsv6CLG2xfjxN8puEQbaM4` · `p8-1g:validate` PASS |
 | P8-1H P13 CPU hook | ⏳ Open | |
 | P8-1I STAGING verify + P8-1 close | ⏳ Open | |
 | **P8-1** (parent) | ⏳ **Open** | Closes when P8-1I complete |

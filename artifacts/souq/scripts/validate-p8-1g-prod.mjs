@@ -23,6 +23,13 @@ async function body(url) {
   }
 }
 
+const SURFACE_IDS = [
+  "admin.billing",
+  "admin.plans",
+  "user.promote",
+  "user.pro_seller",
+];
+
 console.log(`=== P8-1G Production verify (${WWW_BASE}) ===`);
 
 const html = await body(`${WWW_BASE}/admin-login`);
@@ -32,25 +39,39 @@ if (!indexJs) {
 } else {
   const indexContent = await body(`${WWW_BASE}${indexJs[1]}`);
   const chunks = [...new Set([...indexContent.matchAll(/[a-z0-9_-]+-[A-Za-z0-9_-]+\.js/g)].map((m) => m[0]))];
-  const targets = ["admin-billing", "admin-plans", "promote-ad", "professional-seller"];
-  for (const prefix of targets) {
-    const chunk = chunks.find((c) => c.startsWith(`${prefix}-`));
-    if (!chunk) {
-      bad(`${prefix} chunk not found in index bundle`);
-      continue;
-    }
+
+  let boundaryChunk = null;
+  for (const chunk of chunks) {
     const js = await body(`${WWW_BASE}/assets/${chunk}`);
-    if (js.includes("data-p10-preview")) {
-      ok(`${prefix} chunk contains data-p10-preview marker`);
-    } else {
-      bad(`${prefix} chunk missing data-p10-preview (deploy may predate P8-1G)`);
+    if (js.includes("data-p10-preview") && js.includes("data-p8-verification-ops")) {
+      boundaryChunk = chunk;
+      break;
     }
   }
-}
+  if (boundaryChunk) {
+    ok(`monetization-boundary chunk present (/assets/${boundaryChunk})`);
+  } else {
+    bad("monetization-boundary chunk missing data-p10-preview helper");
+  }
 
-const docCheck = await body(`${WWW_BASE}/`);
-if (docCheck.includes("data-p10-preview")) {
-  ok("www bundle references p10 preview markers");
+  for (const surface of SURFACE_IDS) {
+    let found = false;
+    for (const chunk of chunks) {
+      const js = await body(`${WWW_BASE}/assets/${chunk}`);
+      if (js.includes(`"${surface}"`)) {
+        found = true;
+        break;
+      }
+    }
+    if (found) ok(`surface id "${surface}" in production bundle`);
+    else bad(`surface id "${surface}" not found in bundle`);
+  }
+
+  for (const prefix of ["admin-billing", "admin-plans", "promote-ad", "professional-seller"]) {
+    const chunk = chunks.find((c) => c.startsWith(`${prefix}-`));
+    if (chunk) ok(`${prefix} chunk present (${chunk})`);
+    else bad(`${prefix} chunk not found`);
+  }
 }
 
 if (errors.length) {

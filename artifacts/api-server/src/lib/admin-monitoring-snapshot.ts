@@ -22,6 +22,12 @@ import { countUsersWithOpenChatSockets } from "./realtime";
 import { getSentryStatus } from "./sentry";
 import { PUSH_DELIVERY_QUEUE_KEY } from "./push/push-queue";
 import { readPushQueueMetrics } from "./push/push-queue-metrics";
+import {
+  PG_BOSS_DLQ_DEPTH_CRITICAL,
+  PG_BOSS_DLQ_DEPTH_WARNING,
+  PG_BOSS_QUEUE_DEPTH_CRITICAL,
+  PG_BOSS_QUEUE_DEPTH_WARNING,
+} from "./jobs/job-queue-probe";
 
 export type MonitoringSeverity = "ok" | "warning" | "critical";
 
@@ -85,7 +91,13 @@ export type AdminMonitoringSnapshot = {
   };
   queueMetrics: {
     push: Awaited<ReturnType<typeof readPushQueueMetrics>>;
-    queueWorkerDepth: number | null;
+    pgBoss: {
+      configured: boolean;
+      queueDepth: number | null;
+      activeCount: number | null;
+      dlqDepth: number | null;
+      schemaVersion: number | null;
+    };
   };
   founder: {
     bottlenecks: StaffLoadSnapshot["bottlenecks"];
@@ -274,8 +286,10 @@ export async function buildAdminMonitoringSnapshot(
       latencyMs: null,
       detail:
         queueWorkerStatus === "ok"
-          ? `عمق الطابور: ${infrastructure.queueWorker.queueDepth ?? 0}`
-          : "عامل الطوابير غير متاح أو متدهور",
+          ? `pg-boss depth: ${infrastructure.queueWorker.queueDepth ?? 0}, DLQ: ${infrastructure.queueWorker.dlqDepth ?? 0}`
+          : infrastructure.queueWorker.configured
+            ? "pg-boss queue degraded or unavailable"
+            : "pg-boss job queue غير مُفعّل (JOB_QUEUE_ENABLED)",
     },
     pushWorkers: {
       status: pushWorkerStatus,
@@ -355,6 +369,43 @@ export async function buildAdminMonitoringSnapshot(
       description: "مسار الإشعارات Push غير متاح.",
       nextStep: "تحقق من push-worker process و Redis queue.",
     });
+  }
+
+  if (infrastructure.queueWorker.configured) {
+    const pgDepth = infrastructure.queueWorker.queueDepth ?? 0;
+    const dlqDepth = infrastructure.queueWorker.dlqDepth ?? 0;
+    if (
+      pgDepth >= PG_BOSS_QUEUE_DEPTH_CRITICAL ||
+      dlqDepth >= PG_BOSS_DLQ_DEPTH_CRITICAL
+    ) {
+      alertDrafts.push({
+        severity: "critical",
+        component: "pg_boss_queue",
+        title: "ضغط حرج على pg-boss",
+        description: `عمق الطابور: ${pgDepth}, DLQ: ${dlqDepth}.`,
+        nextStep: "تحقق من job-worker process، راجع DLQ، وأعد تشغيل Worker إذا لزم.",
+      });
+    } else if (
+      pgDepth >= PG_BOSS_QUEUE_DEPTH_WARNING ||
+      dlqDepth >= PG_BOSS_DLQ_DEPTH_WARNING
+    ) {
+      alertDrafts.push({
+        severity: "warning",
+        component: "pg_boss_queue",
+        title: "تراكم pg-boss queue",
+        description: `عمق الطابور: ${pgDepth}, DLQ: ${dlqDepth}.`,
+        nextStep: "راقب job-worker وعمق الطوابير في /admin/monitoring.",
+      });
+    }
+    if (systemHealth.queueWorkers.status === "critical") {
+      alertDrafts.push({
+        severity: "critical",
+        component: "job_worker",
+        title: "فشل pg-boss job queue",
+        description: "تعذر قراءة حالة pg-boss أو الطابور متدهور.",
+        nextStep: "تحقق من job-worker process و DATABASE_URL و JOB_QUEUE_ENABLED.",
+      });
+    }
   }
 
   if (systemHealth.storage.status === "critical") {
@@ -472,7 +523,13 @@ export async function buildAdminMonitoringSnapshot(
     },
     queueMetrics: {
       push: pushMetrics,
-      queueWorkerDepth: infrastructure.queueWorker.queueDepth,
+      pgBoss: {
+        configured: infrastructure.queueWorker.configured,
+        queueDepth: infrastructure.queueWorker.queueDepth,
+        activeCount: infrastructure.queueWorker.activeCount,
+        dlqDepth: infrastructure.queueWorker.dlqDepth,
+        schemaVersion: infrastructure.queueWorker.schemaVersion,
+      },
     },
     founder: {
       bottlenecks: staffLoad.bottlenecks,

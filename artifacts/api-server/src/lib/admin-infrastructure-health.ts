@@ -1,5 +1,7 @@
 import { PUSH_DELIVERY_QUEUE_KEY, getPushRedisClient, isPushQueueAvailable } from "./push/push-queue";
 import { isPushConfigured } from "./push/vapid-config";
+import { isJobQueueEnabled } from "./jobs/env-guard";
+import { probePgBossJobQueue } from "./jobs/job-queue-probe";
 
 export type InfrastructureComponentStatus = "ok" | "degraded" | "fail" | "unconfigured";
 
@@ -21,6 +23,10 @@ export type InfrastructureHealthSnapshot = {
   queueWorker: {
     status: InfrastructureComponentStatus;
     queueDepth: number | null;
+    activeCount: number | null;
+    dlqDepth: number | null;
+    schemaVersion: number | null;
+    configured: boolean;
   };
 };
 
@@ -88,7 +94,11 @@ async function probeRedis(): Promise<{
 }
 
 export async function buildInfrastructureHealthSnapshot(): Promise<InfrastructureHealthSnapshot> {
-  const [redis, storage] = await Promise.all([probeRedis(), probeStorage()]);
+  const [redis, storage, pgBoss] = await Promise.all([
+    probeRedis(),
+    probeStorage(),
+    probePgBossJobQueue(),
+  ]);
 
   const pushConfigured = isPushConfigured() && isPushQueueAvailable();
   let pushWorkerStatus: InfrastructureComponentStatus = "unconfigured";
@@ -99,9 +109,8 @@ export async function buildInfrastructureHealthSnapshot(): Promise<Infrastructur
   }
 
   let queueWorkerStatus: InfrastructureComponentStatus = "unconfigured";
-  if (isPushQueueAvailable()) {
-    if (redis.status === "ok") queueWorkerStatus = "ok";
-    else queueWorkerStatus = redis.status === "unconfigured" ? "unconfigured" : "fail";
+  if (isJobQueueEnabled()) {
+    queueWorkerStatus = pgBoss.status;
   }
 
   return {
@@ -121,7 +130,11 @@ export async function buildInfrastructureHealthSnapshot(): Promise<Infrastructur
     },
     queueWorker: {
       status: queueWorkerStatus,
-      queueDepth: redis.queueDepth,
+      queueDepth: pgBoss.queueDepth,
+      activeCount: pgBoss.activeCount,
+      dlqDepth: pgBoss.dlqDepth,
+      schemaVersion: pgBoss.schemaVersion,
+      configured: pgBoss.configured,
     },
   };
 }

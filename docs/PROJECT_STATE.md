@@ -65,7 +65,7 @@ Only **one open builder phase** at a time. Sequence:
 | **P15-3F** Analytics rollups | ✅ **Closed** | STAGING `analytics.daily` + rollup store |
 | **P15-3G** Account deletion storage purge | ✅ **Closed** | STAGING `media.purge` outbox; verification docs in path collection |
 | **P15-3** Hot path migration | ✅ **Closed** | P15-3A–3G complete |
-| P15-4 Production hardening | ⏳ **Open** | Next wave — worker prod-shadow, DLQ replay, alerts |
+| P15-4 Production hardening | ✅ **Closed** | pg-boss monitoring fix, DLQ replay foundation, worker ops runbook |
 
 ### Downstream
 
@@ -83,4 +83,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P15-3G — **Closed**: account deletion storage purge on STAGING (`media.purge`). Parent **P15-3 closed** — all hot-path migrations (3A–3G) complete. **P15-4** is next (not started).
+P15-4 — **Closed**: production hardening for STAGING worker operations (monitoring, DLQ replay, runbook). **P15 wave complete.** P17 remains blocked.

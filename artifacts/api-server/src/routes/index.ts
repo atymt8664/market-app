@@ -20,6 +20,7 @@ import adminReportsWorkflowRouter from "./admin-reports-workflow";
 import adminVerificationWorkflowRouter from "./admin-verification-workflow";
 import adminOperationsRouter from "./admin-operations";
 import adminMonitoringRouter from "./admin-monitoring";
+import adminJobsRouter from "./admin-jobs";
 import adminStaffRouter from "./admin-staff";
 import ordersRouter from "./orders";
 
@@ -41,6 +42,7 @@ router.use(adminReportsWorkflowRouter);
 router.use(adminVerificationWorkflowRouter);
 router.use(adminOperationsRouter);
 router.use(adminMonitoringRouter);
+router.use(adminJobsRouter);
 router.use(adminStaffRouter);
 router.use(admin2faRouter);
 router.use(supportRouter);

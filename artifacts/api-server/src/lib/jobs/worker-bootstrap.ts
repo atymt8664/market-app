@@ -27,6 +27,16 @@ export type JobWorkerRuntime = {
 
 let shuttingDown = false;
 
+function registerProcessGuards(): void {
+  process.on("unhandledRejection", (reason) => {
+    logger.error({ err: reason, kind: "worker_unhandled_rejection" }, "P15 job worker unhandled rejection");
+  });
+  process.on("uncaughtException", (err) => {
+    logger.error({ err, kind: "worker_uncaught_exception" }, "P15 job worker uncaught exception");
+    process.exit(1);
+  });
+}
+
 async function attachHandlers(boss: PgBoss): Promise<string[]> {
   const workIds: string[] = [];
   for (const { name, handler } of listRegisteredJobHandlers()) {
@@ -51,6 +61,7 @@ async function detachHandlers(boss: PgBoss): Promise<void> {
  * Bootstrap pg-boss worker (P15-2 foundation + P15-3A/B/C/E/F/G).
  */
 export async function bootstrapJobWorker(): Promise<JobWorkerRuntime> {
+  registerProcessGuards();
   assertJobQueueAllowed();
   registerFoundationJobHandlers();
   registerEmailJobHandlers();
@@ -84,6 +95,8 @@ export async function bootstrapJobWorker(): Promise<JobWorkerRuntime> {
       handlerCount: listRegisteredJobHandlers().length,
       workIds,
       schemaVersion: await boss.schemaVersion(),
+      pid: process.pid,
+      uptimeSeconds: Math.floor(process.uptime()),
     },
     "P15 job worker ready",
   );

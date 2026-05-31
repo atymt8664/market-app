@@ -1,0 +1,30 @@
+# STAGING job-worker — pg-boss unified worker (P15-4 reference)
+# NOT for PRODUCTION cutover. Deploy only on STAGING VPS with STAGING env file.
+# API remains separate; this process runs: node dist/worker/job-worker.mjs
+
+name: souq-arab-job-worker-staging
+
+services:
+  job-worker-staging:
+    image: ${SOUQ_STAGING_IMAGE:-souq-api:staging}
+    restart: unless-stopped
+    command: ["node", "--enable-source-maps", "./dist/worker/job-worker.mjs"]
+    env_file:
+      - /opt/souq-arab/config/api.env.staging
+    environment:
+      JOB_QUEUE_ENABLED: "1"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node --import tsx/esm ./scripts/p15-4-worker-health-probe.mjs || exit 1",
+        ]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M

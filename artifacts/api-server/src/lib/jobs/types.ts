@@ -5,6 +5,8 @@ import { JOB_ENVELOPE_VERSION } from "./constants";
 export type JobEnvelope<TPayload = unknown> = {
   v: typeof JOB_ENVELOPE_VERSION;
   envRef: string;
+  /** Source queue name — required for P15-4 DLQ replay. */
+  jobName?: string;
   idempotencyKey?: string;
   payload: TPayload;
 };

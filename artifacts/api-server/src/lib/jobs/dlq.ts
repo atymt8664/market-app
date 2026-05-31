@@ -122,9 +122,15 @@ export async function listFailedJobs(
   return jobs.filter((j: { state: string }) => j.state === "failed").slice(0, limit);
 }
 
-/** Jobs routed to the dead-letter queue. */
+/** Jobs in the dead-letter queue (pending replay). */
 export async function listDeadLetterJobs(boss: PgBoss, limit = 25) {
-  return listFailedJobs(boss, DLQ_QUEUE_NAME, limit);
+  const jobs = await boss.findJobs(DLQ_QUEUE_NAME, { queued: true });
+  return jobs
+    .filter(
+      (j: { state: string }) =>
+        j.state === "created" || j.state === "retry" || j.state === "failed",
+    )
+    .slice(0, limit);
 }
 
 export function listRegisteredQueueNames(): string[] {

@@ -26,15 +26,21 @@ import type { MediaPurgePayload } from "./media-types";
 export function buildJobEnvelope<T>(
   payload: T,
   idempotencyKey?: string,
+  jobName?: RegisteredJobName,
 ): JobEnvelope<T> {
-  return wrapPayload(payload, idempotencyKey);
+  return wrapPayload(payload, idempotencyKey, jobName);
 }
 
-function wrapPayload<T>(payload: T, idempotencyKey?: string): JobEnvelope<T> {
+function wrapPayload<T>(
+  payload: T,
+  idempotencyKey?: string,
+  jobName?: RegisteredJobName,
+): JobEnvelope<T> {
   const envRef = detectSupabaseProjectRef() ?? "unknown";
   return {
     v: JOB_ENVELOPE_VERSION,
     envRef,
+    ...(jobName ? { jobName } : {}),
     ...(idempotencyKey ? { idempotencyKey } : {}),
     payload,
   };
@@ -49,7 +55,7 @@ export async function enqueueJob<TPayload>(
   payload: TPayload,
   options: EnqueueJobOptions = {},
 ): Promise<string | null> {
-  const envelope = wrapPayload(payload, options.idempotencyKey);
+  const envelope = wrapPayload(payload, options.idempotencyKey, jobName);
   const priority = options.priority ?? "normal";
   const sendOpts = {
     ...(jobName === FOUNDATION_JOB_TYPES.SYSTEM_DLQ_PROBE

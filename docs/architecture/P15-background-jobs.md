@@ -431,15 +431,23 @@ Extends **P13** and **P8** monitoring boundary (`data-monitoring-tier="live"`).
 
 ---
 
-### P15-4 — Production hardening & observability
+### P15-4 — Production hardening & observability ✅ Closed
 
-| Item | Scope |
-|------|-------|
-| Worker docker-compose on VPS (prod-shadow path) | P0 deploy |
-| Admin monitoring: job health panel | P8 live tier |
-| DLQ replay runbook | ops |
-| Alert thresholds | P13 |
-| Close P15 implementation wave | PROJECT_STATE |
+| Item | Status |
+|------|--------|
+| Worker inventory + lifecycle audit | ✅ |
+| Fix pg-boss monitoring (was Redis proxy) | ✅ |
+| Fix DLQ listing (`queued` not `failed-only`) | ✅ |
+| DLQ replay foundation + envelope `jobName` | ✅ |
+| Admin STAGING ops routes (`/admin/jobs/*`) | ✅ |
+| Worker process guards (SIGTERM, unhandledRejection) | ✅ |
+| pg-boss alert thresholds in monitoring | ✅ |
+| STAGING job-worker docker-compose reference | ✅ |
+| Worker operations runbook | ✅ |
+| PRODUCTION cutover | ❌ Not in scope |
+| Authority | [P15-4-production-hardening.md](./P15-4-production-hardening.md) |
+
+**P15 implementation wave:** ✅ **Closed** (P15-1 → P15-4).
 
 ---
 

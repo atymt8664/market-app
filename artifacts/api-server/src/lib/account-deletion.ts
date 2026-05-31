@@ -16,6 +16,7 @@ import {
   removeUploadsObjectsByPaths,
   tryParseUploadsObjectPathFromPublicUrl,
 } from "./supabaseStorage";
+import { ensureVerificationSchema } from "./admin-verification-workflow";
 import { logger } from "./logger";
 
 function collectPathsFromAdImagesJson(images: unknown): string[] {
@@ -71,6 +72,24 @@ export async function collectUploadsPathsForUserAccount(userId: number): Promise
     }
   }
 
+  try {
+    await ensureVerificationSchema();
+    const verificationDocs = await db.execute<{ url: string }>(sql`
+      SELECT vrd.url
+      FROM verification_request_documents vrd
+      INNER JOIN verification_requests vr ON vr.id = vrd.request_id
+      WHERE vr.user_id = ${userId}
+    `);
+    for (const row of verificationDocs.rows) {
+      if (row.url) {
+        const p = tryParseUploadsObjectPathFromPublicUrl(row.url);
+        if (p) paths.push(p);
+      }
+    }
+  } catch (err) {
+    logger.warn({ err, userId }, "account deletion: skip verification document paths");
+  }
+
   return [...new Set(paths)];
 }
 
@@ -120,9 +139,13 @@ export async function deleteUserAccountInTransaction(userId: number): Promise<bo
   });
 }
 
+export async function executeAccountStoragePurge(paths: string[]): Promise<void> {
+  await removeUploadsObjectsByPaths(paths);
+}
+
 export async function runBestEffortStorageCleanupForUser(userId: number, paths: string[]): Promise<void> {
   try {
-    await removeUploadsObjectsByPaths(paths);
+    await executeAccountStoragePurge(paths);
   } catch (err) {
     logger.warn(
       { err, userId, pathCount: paths.length },

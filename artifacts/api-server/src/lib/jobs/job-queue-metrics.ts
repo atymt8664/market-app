@@ -41,6 +41,15 @@ let lastAnalyticsDailyRollup: {
 } | null = null;
 let lastAnalyticsDailyRollupAt: string | null = null;
 
+const mediaCounters: Record<JobMetricKind, number> = {
+  enqueued: 0,
+  processed: 0,
+  failed: 0,
+};
+
+let lastMediaPurgeResult: { userId: number; pathsRemoved: number } | null = null;
+let lastMediaPurgeAt: string | null = null;
+
 export function incrementEmailJobMetric(kind: JobMetricKind, delta = 1): void {
   emailCounters[kind] += delta;
 }
@@ -121,6 +130,32 @@ export function readLastAnalyticsDailyRollup(): {
   };
 }
 
+export function incrementMediaJobMetric(kind: JobMetricKind, delta = 1): void {
+  mediaCounters[kind] += delta;
+}
+
+export function readMediaJobMetrics(): Readonly<Record<JobMetricKind, number>> {
+  return { ...mediaCounters };
+}
+
+export function recordMediaPurgeResult(result: {
+  userId: number;
+  pathsRemoved: number;
+}): void {
+  lastMediaPurgeResult = { ...result };
+  lastMediaPurgeAt = new Date().toISOString();
+}
+
+export function readLastMediaPurge(): {
+  at: string | null;
+  result: { userId: number; pathsRemoved: number } | null;
+} {
+  return {
+    at: lastMediaPurgeAt,
+    result: lastMediaPurgeResult ? { ...lastMediaPurgeResult } : null,
+  };
+}
+
 export function resetJobMetricsForTests(): void {
   emailCounters.enqueued = 0;
   emailCounters.processed = 0;
@@ -141,6 +176,11 @@ export function resetJobMetricsForTests(): void {
   lastOpsSlaEscalationAt = null;
   lastAnalyticsDailyRollup = null;
   lastAnalyticsDailyRollupAt = null;
+  mediaCounters.enqueued = 0;
+  mediaCounters.processed = 0;
+  mediaCounters.failed = 0;
+  lastMediaPurgeResult = null;
+  lastMediaPurgeAt = null;
 }
 
 /** @deprecated use resetJobMetricsForTests */

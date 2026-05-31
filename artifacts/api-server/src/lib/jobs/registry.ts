@@ -32,6 +32,11 @@ export const ANALYTICS_JOB_TYPES = {
   DAILY: "analytics.daily",
 } as const;
 
+/** Account deletion storage purge (P15-3G). */
+export const MEDIA_JOB_TYPES = {
+  PURGE: "media.purge",
+} as const;
+
 export type FoundationJobType =
   (typeof FOUNDATION_JOB_TYPES)[keyof typeof FOUNDATION_JOB_TYPES];
 
@@ -47,6 +52,8 @@ export type OpsJobType = (typeof OPS_JOB_TYPES)[keyof typeof OPS_JOB_TYPES];
 export type AnalyticsJobType =
   (typeof ANALYTICS_JOB_TYPES)[keyof typeof ANALYTICS_JOB_TYPES];
 
+export type MediaJobType = (typeof MEDIA_JOB_TYPES)[keyof typeof MEDIA_JOB_TYPES];
+
 /** All job names registered in the worker. */
 export const REGISTERED_JOB_NAMES = [
   FOUNDATION_JOB_TYPES.SYSTEM_PING,
@@ -57,6 +64,7 @@ export const REGISTERED_JOB_NAMES = [
   PUSH_JOB_TYPES.DELIVER,
   OPS_JOB_TYPES.SLA_ESCALATE,
   ANALYTICS_JOB_TYPES.DAILY,
+  MEDIA_JOB_TYPES.PURGE,
 ] as const;
 
 export type RegisteredJobName = (typeof REGISTERED_JOB_NAMES)[number];

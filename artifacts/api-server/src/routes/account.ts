@@ -9,8 +9,8 @@ import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import {
   collectUploadsPathsForUserAccount,
   deleteUserAccountInTransaction,
-  runBestEffortStorageCleanupForUser,
 } from "../lib/account-deletion";
+import { routeAccountDeletionStoragePurge } from "../lib/purge-outbox";
 import { getSessionClearCookieOptions, SESSION_COOKIE_NAME } from "../lib/session-cookie";
 import { logger } from "../lib/logger";
 
@@ -258,7 +258,7 @@ router.post(
       return;
     }
 
-    await runBestEffortStorageCleanupForUser(userId, storagePaths);
+    await routeAccountDeletionStoragePurge(userId, storagePaths);
 
     req.session.destroy((destroyErr) => {
       if (destroyErr) {

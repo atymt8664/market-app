@@ -49,9 +49,15 @@ for (const f of requiredSync) {
 }
 
 const registry = read("src/lib/jobs/registry.ts");
-registry.includes("media.normalize") || registry.includes("MEDIA_JOB")
-  ? bad("media jobs must NOT be registered in P15-3D (analysis-only)")
-  : ok("no media job types in registry (correct for P15-3D)");
+if (registry.includes("media.normalize")) {
+  bad("media.normalize must NOT be registered (upload sync preserved)");
+} else if (registry.includes("MEDIA_JOB_TYPES") && registry.includes("media.purge")) {
+  ok("media.purge registered; media.normalize deferred (P15-3G closed upload path unchanged)");
+} else if (registry.includes("media.normalize") || registry.includes("MEDIA_JOB")) {
+  bad("unexpected media job types in registry");
+} else {
+  ok("no premature media job types in registry");
+}
 
 const persist = read("src/lib/notification-persist.ts");
 persist.includes("routePushDeliveryAfterNotification")

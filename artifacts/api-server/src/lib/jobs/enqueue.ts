@@ -10,6 +10,7 @@ import {
   PUSH_JOB_TYPES,
   OPS_JOB_TYPES,
   ANALYTICS_JOB_TYPES,
+  MEDIA_JOB_TYPES,
   type RegisteredJobName,
 } from "./registry";
 import type {
@@ -20,6 +21,7 @@ import type { InAppNotificationJobPayload } from "./notification-types";
 import type { PushDeliverJobPayload } from "./push-types";
 import type { OpsSlaEscalatePayload } from "./ops-types";
 import type { AnalyticsDailyPayload } from "./analytics-types";
+import type { MediaPurgePayload } from "./media-types";
 
 export function buildJobEnvelope<T>(
   payload: T,
@@ -142,6 +144,17 @@ export async function enqueueAnalyticsDaily(
 ): Promise<string | null> {
   return enqueueJob(boss, ANALYTICS_JOB_TYPES.DAILY, payload, {
     priority: "low",
+    ...options,
+  });
+}
+
+export async function enqueueMediaPurge(
+  boss: PgBoss,
+  payload: MediaPurgePayload,
+  options: EnqueueJobOptions = {},
+): Promise<string | null> {
+  return enqueueJob(boss, MEDIA_JOB_TYPES.PURGE, payload, {
+    priority: "normal",
     ...options,
   });
 }

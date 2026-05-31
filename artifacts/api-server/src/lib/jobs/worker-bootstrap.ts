@@ -5,6 +5,7 @@ import { registerNotificationJobHandlers } from "./handlers/notification";
 import { registerPushJobHandlers } from "./handlers/push";
 import { registerOpsJobHandlers } from "./handlers/operations";
 import { registerAnalyticsJobHandlers } from "./handlers/analytics";
+import { registerMediaJobHandlers } from "./handlers/media";
 import {
   listRegisteredJobHandlers,
   REGISTERED_JOB_NAMES,
@@ -47,7 +48,7 @@ async function detachHandlers(boss: PgBoss): Promise<void> {
 }
 
 /**
- * Bootstrap pg-boss worker (P15-2 foundation + P15-3A/B/C/E/F).
+ * Bootstrap pg-boss worker (P15-2 foundation + P15-3A/B/C/E/F/G).
  */
 export async function bootstrapJobWorker(): Promise<JobWorkerRuntime> {
   assertJobQueueAllowed();
@@ -57,6 +58,7 @@ export async function bootstrapJobWorker(): Promise<JobWorkerRuntime> {
   registerPushJobHandlers();
   registerOpsJobHandlers();
   registerAnalyticsJobHandlers();
+  registerMediaJobHandlers();
 
   const boss = await startQueueModule();
   await bootstrapJobSchedules(boss);

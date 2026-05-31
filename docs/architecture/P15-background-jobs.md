@@ -374,7 +374,7 @@ Extends **P13** and **P8** monitoring boundary (`data-monitoring-tier="live"`).
 | CPU vs IO classification | ✅ |
 | Sync vs async recommendation | ✅ **Keep uploads sync** |
 | `media.normalize_ad` worker wiring | ❌ **Deferred** — requires two-phase upload contract |
-| `media.purge` (account deletion) | ❌ **Deferred** → P15-3G |
+| `media.purge` (account deletion) | ✅ **P15-3G** — STAGING outbox |
 | Thumbnail pipeline | N/A — not implemented |
 | API contract / UX / production behavior | ✅ **Unchanged** |
 | Authority | [P15-3D-media-jobs-analysis.md](./P15-3D-media-jobs-analysis.md) |
@@ -409,13 +409,25 @@ Extends **P13** and **P8** monitoring boundary (`data-monitoring-tier="live"`).
 | PRODUCTION | ❌ live compute unchanged |
 | Authority | [P15-3F-analytics-rollup-migration.md](./P15-3F-analytics-rollup-migration.md) |
 
-**Remaining in P15-3 (not started):**
+#### P15-3G — Account deletion storage purge ✅ (STAGING)
 
-| Order | Migration |
-|-------|-----------|
-| 7 | Account deletion storage purge job (P15-3G) |
+| Item | Status |
+|------|--------|
+| Full deletion/cleanup inventory | ✅ |
+| Root cause (sync IO in HTTP after account delete) | ✅ |
+| `media.purge` job type + handler | ✅ |
+| STAGING gate (`PURGE_OUTBOX_ENABLED`) | ✅ |
+| Verification document paths in collection | ✅ |
+| Event-driven enqueue (no cron) | ✅ |
+| Standard retry + DLQ | ✅ |
+| Queue metrics + media health snapshot | ✅ |
+| Enqueue failure → sync fallback | ✅ |
+| PRODUCTION | ❌ sync purge unchanged |
+| Authority | [P15-3G-account-deletion-purge.md](./P15-3G-account-deletion-purge.md) |
 
-**Full P15-3 exit criteria:** P8 admin smoke PASS; queue depth stable; prod-shadow worker deploy verified — **not met until all migrations complete.**
+**P15-3 hot path migration:** ✅ **Closed** (3A–3G).
+
+**Full P15-3 exit criteria:** P8 admin smoke PASS; queue depth stable; prod-shadow worker deploy verified — **partially met**; prod-shadow deploy is **P15-4** scope.
 
 ---
 

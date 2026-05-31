@@ -63,5 +63,12 @@ export type QueueHealthSnapshot = {
     lastDailyRollupAt: string | null;
     lastDailyRollup: { periodsWritten: number; snapshotDate: string } | null;
   };
+  mediaMetrics?: {
+    enqueued: number;
+    processed: number;
+    failed: number;
+    lastPurgeAt: string | null;
+    lastPurge: { userId: number; pathsRemoved: number } | null;
+  };
   deadLetterQueue?: string;
 };

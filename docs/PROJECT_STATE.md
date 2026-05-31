@@ -63,8 +63,9 @@ Only **one open builder phase** at a time. Sequence:
 | **P15-3D** Media / image jobs analysis | ✅ **Closed** | Analysis-only — defer worker wiring |
 | **P15-3E** Cron / operations jobs | ✅ **Closed** | STAGING `ops.sla_escalate` cron; admin-read anti-pattern fixed |
 | **P15-3F** Analytics rollups | ✅ **Closed** | STAGING `analytics.daily` + rollup store |
-| P15-3 Hot path migration | ⏳ **Open** | P15-3A–3F ✅ · storage purge → P15-3G |
-| P15-4 Production hardening | ⏳ Blocked | After P15-3 |
+| **P15-3G** Account deletion storage purge | ✅ **Closed** | STAGING `media.purge` outbox; verification docs in path collection |
+| **P15-3** Hot path migration | ✅ **Closed** | P15-3A–3G complete |
+| P15-4 Production hardening | ⏳ **Open** | Next wave — worker prod-shadow, DLQ replay, alerts |
 
 ### Downstream
 
@@ -82,4 +83,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P15-3F — **Closed**: analytics daily rollup on STAGING (`analytics.daily`). Parent **P15-3 open** — storage purge (P15-3G) remains.
+P15-3G — **Closed**: account deletion storage purge on STAGING (`media.purge`). Parent **P15-3 closed** — all hot-path migrations (3A–3G) complete. **P15-4** is next (not started).

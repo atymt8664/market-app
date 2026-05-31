@@ -6,6 +6,7 @@ import {
   OPS_JOB_TYPES,
   ANALYTICS_JOB_TYPES,
   PUSH_JOB_TYPES,
+  MEDIA_JOB_TYPES,
 } from "./registry";
 import {
   DLQ_PROBE_RETRY_OPTIONS,
@@ -82,6 +83,13 @@ const REGISTERED_QUEUE_SEEDS: QueueSeed[] = [
   },
   {
     name: ANALYTICS_JOB_TYPES.DAILY,
+    options: {
+      ...STANDARD_RETRY_OPTIONS,
+      deadLetter: DLQ_QUEUE_NAME,
+    },
+  },
+  {
+    name: MEDIA_JOB_TYPES.PURGE,
     options: {
       ...STANDARD_RETRY_OPTIONS,
       deadLetter: DLQ_QUEUE_NAME,

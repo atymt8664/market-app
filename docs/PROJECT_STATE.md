@@ -56,7 +56,7 @@ Only **one open builder phase** at a time. Sequence:
 
 | Milestone | Status | Notes |
 |-----------|--------|-------|
-| **P15-1A** Architecture docs + ADRs | ✅ **Closed** | Authority: `docs/architecture/P15-background-jobs.md` · Phase 1 queue: pg-boss · Phase 2: BullMQ+Redis on trigger metrics only |
+| **P15-1A** Architecture docs + ADRs | ✅ **Closed** | Commit `a7b8c67` · Authority: `docs/architecture/P15-background-jobs.md` · Phase 1: pg-boss · Phase 2: BullMQ+Redis on trigger metrics only |
 | **P15-1** (parent — architecture wave) | ✅ **Closed** | Documentation only — no code/migrations/deploy |
 | **P15-2** Queue foundation (STAGING) | ⏳ **Open** | pg-boss + email outbox worker — **do not start until approved** |
 | P15-3 Hot path migration | ⏳ Blocked | After P15-2 |

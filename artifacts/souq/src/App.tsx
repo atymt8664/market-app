@@ -4,7 +4,6 @@ import { queryClient } from "@/lib/query-client";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { lazyWithRetry } from "@/lib/lazy-with-retry";
 import Home from "@/pages/home";
-import AdDetail from "@/pages/ad-detail";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAfterFirstPaint } from "@/lib/after-first-paint";
@@ -26,6 +25,8 @@ import { SeoRouteSync } from "@/components/seo-route-sync";
 import { resolveSeoForPath } from "@/lib/seo-foundation";
 import { applyPublicPageMeta } from "@/lib/public-page-meta";
 
+/** P7-PR-2: defer ad-detail chunk until /ad/:id navigation — keeps Home cold path lean. */
+const AdDetail = lazyWithRetry(() => import("@/pages/ad-detail"));
 const Categories = lazy(() => import("@/pages/categories"));
 const Category = lazy(() => import("@/pages/category"));
 const Search = lazy(() => import("@/pages/search"));

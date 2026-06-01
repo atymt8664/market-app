@@ -1,0 +1,28 @@
+/**
+ * P7-PR-7: Home cold-path critical CSS — sync on first paint only.
+ * Tailwind scan limited to Home / Layout / gate shell (see @source list).
+ * Full app stylesheet loads after first paint via deferred-styles.ts.
+ */
+@import "./fonts-critical.css";
+@import "tailwindcss" source(none);
+
+@source "./App.tsx";
+@source "./pages/home.tsx";
+@source "./components/layout.tsx";
+@source "./components/route-loading-fallback.tsx";
+@source "./components/ad-card.tsx";
+@source "./components/ad-card-no-image-placeholder.tsx";
+@source "./components/marketplace-search-bar.tsx";
+@source "./components/search-location-picker-button.tsx";
+@source "./components/notification-bell.tsx";
+@source "./components/horizontal-scroll-strip.tsx";
+@source "./components/home-featured-divider.tsx";
+@source "./components/ui/input.tsx";
+@source "./components/ui/skeleton.tsx";
+@source "./components/ui/button.tsx";
+@source "./lib/auth-page-styles.ts";
+@source "./lib/home-page-layout.ts";
+@source "./lib/bottom-nav-layout.ts";
+@source "./lib/marketplace-icon-button-styles.ts";
+
+@import "./theme-shared.css";

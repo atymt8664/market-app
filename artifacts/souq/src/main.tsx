@@ -26,5 +26,6 @@ function mountApp(): void {
   createRoot(document.getElementById("root")!).render(<App />);
 }
 
-/** Gate copy first, then full Arabic before paint — no raw i18n keys on refresh (P7-PR-3 fix). */
-void ensureBootstrapLocales().then(() => mountApp());
+/** P7-PR-6: gate copy sync, mount immediately; full ar.json after first paint. */
+ensureBootstrapLocales();
+mountApp();

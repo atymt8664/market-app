@@ -27,6 +27,7 @@
   "ad-card.add_favorite": "إضافة للمفضلة",
   "ad-card.unknown_city": "غير محدد",
   "ad-card.unknown_price": "غير محدد",
+  "ad-card.no_image": "لا توجد صورة",
   "search_location.open_picker": "اختيار موقع البحث",
   "search_location.current_place": "موقعي الحالي",
   "search_location.bar_label": "{place} (+{radius} كم)",

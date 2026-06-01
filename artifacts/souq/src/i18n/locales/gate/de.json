@@ -27,6 +27,7 @@
   "ad-card.add_favorite": "Zu Favoriten hinzufügen",
   "ad-card.unknown_city": "Nicht angegeben",
   "ad-card.unknown_price": "Nicht angegeben",
+  "ad-card.no_image": "Kein Bild",
   "search_location.open_picker": "Suchstandort wählen",
   "search_location.current_place": "Mein Standort",
   "search_location.bar_label": "{place} (+{radius} km)",

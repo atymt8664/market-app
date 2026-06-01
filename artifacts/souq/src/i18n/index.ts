@@ -6,7 +6,7 @@ import gateEn from "./locales/gate/en.json";
 export type Locale = "ar" | "en" | "de";
 type Dictionary = Record<string, string>;
 
-/** Defer full locale download until Gate first paint is done (6B-1 / 7A.6). */
+/** Idle delay before full locale prefetch on first-launch gate path (6B-1). */
 const GATE_FULL_LOCALE_PREFETCH_IDLE_MS = 2500;
 
 const STORAGE_KEY = "app_locale";
@@ -88,43 +88,42 @@ async function loadLocale(locale: Locale): Promise<Dictionary> {
   return promise;
 }
 
+/** P7-PR-6: load full dictionaries after first paint — never block React mount. */
+async function prefetchFullLocalesAfterGate(): Promise<void> {
+  const tasks: Promise<Dictionary>[] = [loadLocale("ar")];
+  if (activeLocale !== "ar") {
+    tasks.push(loadLocale(activeLocale));
+  }
+  await Promise.all(tasks);
+  listeners.forEach((listener) => listener());
+}
+
+function scheduleFullLocaleBootstrap(): void {
+  scheduleAfterFirstPaint(() => {
+    void prefetchFullLocalesAfterGate();
+  });
+}
+
 function scheduleFullLocalePrefetch(): void {
   scheduleAfterFirstPaint(() => {
     window.setTimeout(
-      () => void prefetchFullLocalesInBackground(),
+      () => void prefetchFullLocalesAfterGate(),
       GATE_FULL_LOCALE_PREFETCH_IDLE_MS,
     );
   });
 }
 
-function prefetchFullLocalesInBackground(): Promise<void> {
-  const tasks: Promise<Dictionary>[] = [];
-  if (gateOnlyLocales.has(activeLocale)) {
-    tasks.push(loadLocale(activeLocale));
-  }
-  return Promise.all(tasks).then(() => {
-    listeners.forEach((listener) => listener());
-  });
-}
-
 /**
- * P7-PR-3 regression fix: gate keys are incomplete (e.g. ad-card.no_image).
- * Load full Arabic before first React paint; defer non-ar active locale only.
+ * P7-PR-6: gate-only sync bootstrap — mount React immediately; full ar.json after first paint.
+ * P7-PR-3 regression: gate keys cover Home cold path (see sync-home-gate-locales.mjs).
  */
-export async function ensureBootstrapLocales(): Promise<void> {
+export function ensureBootstrapLocales(): void {
   if (!hasSavedLocale()) {
     seedFirstLaunchLocales();
   } else {
     bootstrapReturningUserLocale();
   }
-
-  await loadLocale("ar");
-
-  if (activeLocale !== "ar") {
-    scheduleFullLocalePrefetch();
-  } else {
-    listeners.forEach((listener) => listener());
-  }
+  scheduleFullLocaleBootstrap();
 }
 
 /** Active locale + Arabic fallback (for missing keys) before first React render. */
@@ -138,12 +137,8 @@ export async function ensureLocalesForActive(): Promise<void> {
     return;
   }
 
-  const loads: Promise<Dictionary>[] = [loadLocale(activeLocale)];
-  if (activeLocale !== "ar") {
-    loads.push(loadLocale("ar"));
-  }
-  await Promise.all(loads);
-  listeners.forEach((listener) => listener());
+  bootstrapReturningUserLocale();
+  scheduleFullLocaleBootstrap();
 }
 
 export function getLocale(): Locale {
@@ -168,7 +163,7 @@ export function hasSavedLocale(): boolean {
   return readSavedLocale() !== null;
 }
 
-/** Gate-only sync bootstrap for returning users — full dict loaded by ensureBootstrapLocales. */
+/** Gate-only sync bootstrap for returning users — full dict loaded after first paint (P7-PR-6). */
 export function bootstrapReturningUserLocale(): void {
   activeLocale = resolveInitialLocale();
   applyDocumentLocale(activeLocale);

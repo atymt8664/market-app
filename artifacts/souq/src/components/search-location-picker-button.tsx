@@ -1,6 +1,5 @@
 import { MapPin } from "lucide-react";
-import { useCallback, useState } from "react";
-import { SearchLocationPickerPanel } from "@/components/search-location-picker-panel";
+import { lazy, Suspense, useCallback, useState } from "react";
 import { useSearchLocation } from "@/hooks/use-search-location";
 import {
   marketplaceHeaderIconButtonActiveClass,
@@ -9,6 +8,13 @@ import {
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
+/** P7-PR-1: defer Leaflet + picker sheet until first tap — keeps Home cold path lean. */
+const SearchLocationPickerPanel = lazy(() =>
+  import("@/components/search-location-picker-panel").then((m) => ({
+    default: m.SearchLocationPickerPanel,
+  })),
+);
+
 export function SearchLocationPickerButton({
   className,
 }: {
@@ -16,8 +22,11 @@ export function SearchLocationPickerButton({
 } = {}) {
   const { barLabel, hasLocation } = useSearchLocation();
   const [open, setOpen] = useState(false);
+  /** Load picker chunk once on first open; keep mounted so repeat opens stay instant. */
+  const [pickerMounted, setPickerMounted] = useState(false);
 
   const handleOpen = useCallback(() => {
+    setPickerMounted(true);
     setOpen(true);
   }, []);
 
@@ -38,7 +47,11 @@ export function SearchLocationPickerButton({
         <MapPin className="h-4 w-4" strokeWidth={2.25} aria-hidden />
       </button>
 
-      <SearchLocationPickerPanel open={open} onOpenChange={setOpen} />
+      {pickerMounted ? (
+        <Suspense fallback={null}>
+          <SearchLocationPickerPanel open={open} onOpenChange={setOpen} />
+        </Suspense>
+      ) : null}
     </>
   );
 }

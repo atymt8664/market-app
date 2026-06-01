@@ -27,6 +27,8 @@ import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useSearchLocation } from "@/hooks/use-search-location";
 import { searchLocationCityForFeed } from "@/lib/search-location";
 import { filterHomeFeedAds } from "@/lib/home-feed-ads";
+import { getAdImageHeroUrl } from "@/lib/ad-image-url";
+import { preloadAdImage } from "@/lib/ad-image-preload";
 import { useAuth } from "@/hooks/use-auth";
 import { t } from "@/i18n";
 import type { Locale } from "@/i18n";
@@ -502,6 +504,14 @@ export default function Home() {
     () => filterHomeFeedAds(featuredAds),
     [featuredAds],
   );
+
+  /** P7-PR-5: decode-ahead for LCP lead as soon as featured API returns. */
+  useEffect(() => {
+    const raw = featuredAdsForHome?.[0]?.images?.[0];
+    if (!raw) return;
+    void preloadAdImage(getAdImageHeroUrl(raw));
+  }, [featuredAdsForHome]);
+
   const recommendedAds = useMemo(
     () => filterHomeFeedAds(recommendedAdsRaw),
     [recommendedAdsRaw],

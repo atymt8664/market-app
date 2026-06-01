@@ -11,11 +11,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { t } from "@/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocale } from "@/hooks/use-locale";
 import { createFavoriteToggleHandlers } from "@/lib/invalidate-ad-queries";
+import {
+  getAdImageHeroUrl,
+  getAdImageThumbUrl,
+} from "@/lib/ad-image-url";
 
 export interface AdCardProps {
   ad: Ad;
@@ -177,6 +181,19 @@ const StatCell = memo(function StatCell({
 type AdCardMemoProps = AdCardProps & { viewerAuthKey: string };
 
 /** يقلّل إعادة رسم الكرت عند إعادة رسم الأب مع نفس بيانات الإعلان (مرجع كائن متغيّر من الكاش). */
+/** P7-PR-5: Supabase render variants for home featured strip (LCP lead = hero). */
+function adCardDisplayImageSrc(
+  rawUrl: string | undefined,
+  featured?: boolean,
+  featuredLead?: boolean,
+  homeFeed?: boolean,
+): string | undefined {
+  if (!rawUrl) return undefined;
+  if (featured && featuredLead) return getAdImageHeroUrl(rawUrl);
+  if (featured && homeFeed) return getAdImageThumbUrl(rawUrl);
+  return rawUrl;
+}
+
 function areAdCardPropsEqual(prev: AdCardMemoProps, next: AdCardMemoProps): boolean {
   if (prev.viewerAuthKey !== next.viewerAuthKey) {
     return false;
@@ -230,13 +247,30 @@ function AdCardInner({
   const favMut = useFavoriteAd();
   const unfavMut = useUnfavoriteAd();
 
+  const rawImageUrl = ad.images?.[0];
+  const optimizedImageSrc = adCardDisplayImageSrc(
+    rawImageUrl,
+    featured,
+    featuredLead,
+    homeFeed,
+  );
+  const [imageSrc, setImageSrc] = useState(optimizedImageSrc);
   const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageSrc(optimizedImageSrc);
+    setImageFailed(false);
+  }, [optimizedImageSrc]);
 
   const isFavorite = Boolean(user && ad.isFavorited);
 
   const handleImageError = useCallback(() => {
+    if (rawImageUrl && imageSrc !== rawImageUrl) {
+      setImageSrc(rawImageUrl);
+      return;
+    }
     setImageFailed(true);
-  }, []);
+  }, [rawImageUrl, imageSrc]);
 
   const toggleFavorite = useCallback(
     (e: React.MouseEvent) => {
@@ -265,7 +299,7 @@ function AdCardInner({
     [ad, locationPath, navigate, queryClient, user, favMut, unfavMut],
   );
 
-  const hasImage = !!(ad.images && ad.images.length > 0 && ad.images[0]) && !imageFailed;
+  const hasImage = !!imageSrc && !imageFailed;
   const favCompact = Boolean(favoritesList);
   const feedCompact = Boolean(homeFeed && !favoritesList);
   /** Hint decode size for the CDN/browser without changing layout (object-cover + fixed aspect). */
@@ -322,7 +356,7 @@ function AdCardInner({
         >
           {hasImage ? (
             <img
-              src={ad.images[0]}
+              src={imageSrc}
               alt={ad.title}
               className={cn(
                 "absolute inset-0 h-full w-full object-cover",

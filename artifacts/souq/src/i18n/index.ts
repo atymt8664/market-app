@@ -88,10 +88,24 @@ async function loadLocale(locale: Locale): Promise<Dictionary> {
   return promise;
 }
 
-function prefetchFullLocalesInBackground(): void {
-  void loadLocale(activeLocale).then(() => {
-    if (activeLocale !== "ar") void loadLocale("ar");
+function scheduleFullLocalePrefetch(): void {
+  scheduleAfterFirstPaint(() => {
+    window.setTimeout(
+      () => void prefetchFullLocalesInBackground(),
+      GATE_FULL_LOCALE_PREFETCH_IDLE_MS,
+    );
   });
+}
+
+function prefetchFullLocalesInBackground(): Promise<void> {
+  return loadLocale(activeLocale)
+    .then(() => {
+      if (activeLocale !== "ar") return loadLocale("ar");
+      return undefined;
+    })
+    .then(() => {
+      listeners.forEach((listener) => listener());
+    });
 }
 
 /** Active locale + Arabic fallback (for missing keys) before first React render. */
@@ -101,10 +115,7 @@ export async function ensureLocalesForActive(): Promise<void> {
 
   if (typeof window !== "undefined" && !hasSavedLocale()) {
     seedFirstLaunchLocales();
-    scheduleAfterFirstPaint(
-      () => prefetchFullLocalesInBackground(),
-      GATE_FULL_LOCALE_PREFETCH_IDLE_MS,
-    );
+    scheduleFullLocalePrefetch();
     return;
   }
 
@@ -138,11 +149,15 @@ export function hasSavedLocale(): boolean {
   return readSavedLocale() !== null;
 }
 
-/** Start locale loads without blocking first React paint (P13-3-B / CWV). */
+/** P7-PR-3: gate copy on cold path; defer full dictionaries after first paint (L7). */
 export function bootstrapReturningUserLocale(): void {
   activeLocale = resolveInitialLocale();
   applyDocumentLocale(activeLocale);
-  void ensureLocalesForActive();
+  applyGateLocale(activeLocale);
+  if (activeLocale !== "ar") {
+    applyGateLocale("ar");
+  }
+  scheduleFullLocalePrefetch();
 }
 
 export function subscribeToLocale(listener: () => void): () => void {

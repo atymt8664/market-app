@@ -454,18 +454,11 @@ export default function Home() {
     [categories],
   );
 
-  const [featuredQueryEnabled, setFeaturedQueryEnabled] = useState(false);
-  useEffect(() => {
-    if (!categoriesFetched) return;
-    const frameId = requestAnimationFrame(() => setFeaturedQueryEnabled(true));
-    return () => cancelAnimationFrame(frameId);
-  }, [categoriesFetched]);
-
+  /** P7-PR-4: fetch featured in parallel with categories — do not wait for categoriesFetched (LCP waterfall). */
   const { data: featuredAds, isLoading: isLoadingFeatured } =
     useListFeaturedAds({
       query: {
         queryKey: getListFeaturedAdsQueryKey(),
-        enabled: featuredQueryEnabled,
         staleTime: HOME_STALE_FEATURED_MS,
       },
     });
@@ -514,7 +507,7 @@ export default function Home() {
     [recommendedAdsRaw],
   );
 
-  const isLoadingFeaturedUi = !featuredQueryEnabled || isLoadingFeatured;
+  const isLoadingFeaturedUi = isLoadingFeatured;
   const isLoadingRecommended =
     !recommendedFeedEnabled ||
     (feedCity

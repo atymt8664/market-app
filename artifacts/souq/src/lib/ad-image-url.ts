@@ -10,7 +10,7 @@ const SUPABASE_OBJECT_PUBLIC =
 const SUPABASE_RENDER_PUBLIC =
   /^(https:\/\/[^/]+\.supabase\.co\/storage\/v1)\/render\/image\/public\/(.+?)(?:\?.*)?$/;
 
-export type AdImageVariant = "thumb" | "hero" | "viewer" | "original";
+export type AdImageVariant = "thumb" | "feed" | "hero" | "viewer" | "original";
 
 const VARIANT_PARAMS: Record<
   Exclude<AdImageVariant, "original">,
@@ -18,6 +18,8 @@ const VARIANT_PARAMS: Record<
 > = {
   /** 68px strip ×2 retina */
   thumb: "width=136&height=136&resize=cover&quality=75",
+  /** Home grid tile ~200px wide ×2 retina, 4:3 cover */
+  feed: "width=400&height=300&resize=cover&quality=75",
   /** ~380px hero ×2 retina, 4:3 cover */
   hero: "width=820&height=615&resize=cover&quality=80",
   /** Fullscreen viewer — sharp without full 1920px payload */
@@ -64,6 +66,9 @@ export function getAdImageUrl(
 
 export const getAdImageThumbUrl = (url: string) =>
   getAdImageUrl(url, "thumb");
+
+export const getAdImageFeedUrl = (url: string) =>
+  getAdImageUrl(url, "feed");
 
 export const getAdImageHeroUrl = (url: string) =>
   getAdImageUrl(url, "hero");

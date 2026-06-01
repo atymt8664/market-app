@@ -4,6 +4,7 @@ import {
   getAdImageOriginalUrl,
   getAdImageHeroUrl,
   getAdImageThumbUrl,
+  getAdImageFeedUrl,
 } from "./ad-image-url.ts";
 
 const ORIGINAL =
@@ -17,6 +18,11 @@ assert.equal(
 assert.equal(
   getAdImageHeroUrl(ORIGINAL),
   "https://example.supabase.co/storage/v1/render/image/public/uploads/ads/1/photo.jpg?width=820&height=615&resize=cover&quality=80",
+);
+
+assert.equal(
+  getAdImageFeedUrl(ORIGINAL),
+  "https://example.supabase.co/storage/v1/render/image/public/uploads/ads/1/photo.jpg?width=400&height=300&resize=cover&quality=75",
 );
 
 const thumb = getAdImageThumbUrl(ORIGINAL);

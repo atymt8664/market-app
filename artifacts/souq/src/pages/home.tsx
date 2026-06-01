@@ -23,6 +23,7 @@ import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
 import { HomeFeaturedDivider } from "@/components/home-featured-divider";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
+import { useProgressiveReveal } from "@/lib/use-progressive-reveal";
 import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useSearchLocation } from "@/hooks/use-search-location";
 import { searchLocationCityForFeed } from "@/lib/search-location";
@@ -58,9 +59,14 @@ const HOME_STALE_FEED_MS = 90 * 1000;
 
 const CATEGORY_SKELETON_KEYS = [0, 1, 2, 3, 4] as const;
 const FEATURED_SKELETON_KEYS = [0, 1, 2, 3] as const;
-const GRID_SKELETON_KEYS = [
-  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-] as const;
+/** Initial recommended skeletons — matches first progressive batch (2 rows mobile). */
+const GRID_SKELETON_KEYS = [0, 1, 2, 3] as const;
+
+/** Progressive feed — first batch fast; expand on scroll / idle. */
+const HOME_FEED_INITIAL_BATCH = 4;
+const HOME_FEED_REVEAL_STEP = 4;
+const HOME_FEATURED_INITIAL = 5;
+const HOME_FEATURED_REVEAL_STEP = 3;
 
 /** Featured strip — gutter applied on wrapper; cards align with section titles. */
 const featuredStripClassName = cn(
@@ -320,7 +326,7 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
   return (
     <header
       ref={headerRef}
-      className="fixed inset-x-0 top-0 z-40 bg-[#0A0A0A]"
+      className="fixed inset-x-0 top-0 z-40 bg-[#0A0A0A] pt-[env(safe-area-inset-top,0px)]"
       dir={isRtl ? "rtl" : "ltr"}
     >
       <div className={HOME_PAGE_INSET}>
@@ -367,6 +373,30 @@ const HomeFeedSections = memo(function HomeFeedSections({
   isLoadingRecommended,
   recommendedAds,
 }: HomeFeedSectionsProps) {
+  const featuredReady = Array.isArray(featuredAds) && featuredAds.length > 0;
+  const {
+    visible: visibleFeatured,
+    hasMore: hasMoreFeatured,
+    sentinelRef: featuredSentinelRef,
+  } = useProgressiveReveal(featuredAds, {
+    initial: HOME_FEATURED_INITIAL,
+    step: HOME_FEATURED_REVEAL_STEP,
+    enabled: featuredReady,
+    idleExpandMs: 1200,
+  });
+
+  const recommendedReady = Array.isArray(recommendedAds) && recommendedAds.length > 0;
+  const {
+    visible: visibleRecommended,
+    hasMore: hasMoreRecommended,
+    sentinelRef: recommendedSentinelRef,
+  } = useProgressiveReveal(recommendedAds, {
+    initial: HOME_FEED_INITIAL_BATCH,
+    step: HOME_FEED_REVEAL_STEP,
+    enabled: recommendedReady,
+    idleExpandMs: 1500,
+  });
+
   return (
     <>
       {/* Featured Ads */}
@@ -382,15 +412,24 @@ const HomeFeedSections = memo(function HomeFeedSections({
                   <AdCardSkeleton key={i} featured homeFeed />
                 ))
               ) : Array.isArray(featuredAds) && featuredAds.length ? (
-                featuredAds.map((ad, index) => (
-                  <AdCard
-                    key={ad.id}
-                    ad={ad}
-                    featured
-                    homeFeed
-                    featuredLead={index === 0}
-                  />
-                ))
+                <>
+                  {visibleFeatured.map((ad, index) => (
+                    <AdCard
+                      key={ad.id}
+                      ad={ad}
+                      featured
+                      homeFeed
+                      featuredLead={index === 0}
+                    />
+                  ))}
+                  {hasMoreFeatured ? (
+                    <div
+                      ref={featuredSentinelRef}
+                      className="w-px shrink-0 self-stretch opacity-0"
+                      aria-hidden
+                    />
+                  ) : null}
+                </>
               ) : (
                 <div className="w-full py-5 text-center text-sm text-muted-foreground">
                   {t("home.no_featured_ads")}
@@ -415,11 +454,20 @@ const HomeFeedSections = memo(function HomeFeedSections({
               </div>
             ))
           ) : Array.isArray(recommendedAds) && recommendedAds.length ? (
-            recommendedAds.map((ad) => (
-              <div key={ad.id} className="h-full min-h-0">
-                <AdCard ad={ad} homeFeed />
-              </div>
-            ))
+            <>
+              {visibleRecommended.map((ad) => (
+                <div key={ad.id} className="h-full min-h-0">
+                  <AdCard ad={ad} homeFeed />
+                </div>
+              ))}
+              {hasMoreRecommended ? (
+                <div
+                  ref={recommendedSentinelRef}
+                  className="col-span-full h-px w-full opacity-0"
+                  aria-hidden
+                />
+              ) : null}
+            </>
           ) : (
             <div className="col-span-full text-sm text-muted-foreground text-center py-8">
               {t("home.no_ads")}
@@ -444,7 +492,7 @@ export default function Home() {
   );
   const { user, isLoading: authLoading } = useAuth();
   const reserveBellSlot = Boolean(user && !authLoading);
-  const { data: categories, isLoading: isLoadingCategories, isFetched: categoriesFetched } =
+  const { data: categories, isLoading: isLoadingCategories } =
     useListCategories({
       query: {
         queryKey: getListCategoriesQueryKey(),
@@ -466,10 +514,12 @@ export default function Home() {
     });
 
   const [recommendedQueryEnabled, setRecommendedQueryEnabled] = useState(false);
+  const featuredFetched = !isLoadingFeatured && featuredAds !== undefined;
   useEffect(() => {
-    if (!categoriesFetched) return;
-    return scheduleAfterFirstPaint(() => setRecommendedQueryEnabled(true), 400);
-  }, [categoriesFetched]);
+    if (!featuredFetched) return;
+    /** Defer recommended until featured/LCP path completes — avoids bandwidth contention. */
+    return scheduleAfterFirstPaint(() => setRecommendedQueryEnabled(true), 600);
+  }, [featuredFetched]);
 
   const recommendedFeedEnabled = recommendedQueryEnabled;
 

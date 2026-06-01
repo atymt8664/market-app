@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLocale } from "@/hooks/use-locale";
 import { createFavoriteToggleHandlers } from "@/lib/invalidate-ad-queries";
 import {
+  getAdImageFeedUrl,
   getAdImageHeroUrl,
   getAdImageThumbUrl,
 } from "@/lib/ad-image-url";
@@ -181,7 +182,7 @@ const StatCell = memo(function StatCell({
 type AdCardMemoProps = AdCardProps & { viewerAuthKey: string };
 
 /** يقلّل إعادة رسم الكرت عند إعادة رسم الأب مع نفس بيانات الإعلان (مرجع كائن متغيّر من الكاش). */
-/** P7-PR-5: Supabase render variants for home featured strip (LCP lead = hero). */
+/** P7-PR-5 / P7-Final: Supabase render variants for home feed (LCP lead = hero, grid = feed). */
 function adCardDisplayImageSrc(
   rawUrl: string | undefined,
   featured?: boolean,
@@ -191,6 +192,7 @@ function adCardDisplayImageSrc(
   if (!rawUrl) return undefined;
   if (featured && featuredLead) return getAdImageHeroUrl(rawUrl);
   if (featured && homeFeed) return getAdImageThumbUrl(rawUrl);
+  if (homeFeed) return getAdImageFeedUrl(rawUrl);
   return rawUrl;
 }
 

@@ -10,8 +10,8 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui", "browser"],
   "orientation": "portrait-primary",
-  "background_color": "#10131a",
-  "theme_color": "#c2eb6c",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
   "categories": ["shopping", "social"],
   "icons": [
     {

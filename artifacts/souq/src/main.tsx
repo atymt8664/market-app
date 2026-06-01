@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
-import { bootstrapReturningUserLocale, hasSavedLocale, seedFirstLaunchLocales } from "@/i18n";
+import { ensureBootstrapLocales } from "@/i18n";
 import { getApiBaseUrl } from "@/lib/api-url";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { queryClient } from "@/lib/query-client";
@@ -26,11 +26,5 @@ function mountApp(): void {
   createRoot(document.getElementById("root")!).render(<App />);
 }
 
-/** First launch: sync gate copy + immediate render — cuts LCP element render delay (7A.6). */
-if (!hasSavedLocale()) {
-  seedFirstLaunchLocales();
-  mountApp();
-} else {
-  bootstrapReturningUserLocale();
-  mountApp();
-}
+/** Gate copy first, then full Arabic before paint — no raw i18n keys on refresh (P7-PR-3 fix). */
+void ensureBootstrapLocales().then(() => mountApp());

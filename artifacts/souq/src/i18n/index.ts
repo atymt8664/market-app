@@ -98,14 +98,33 @@ function scheduleFullLocalePrefetch(): void {
 }
 
 function prefetchFullLocalesInBackground(): Promise<void> {
-  return loadLocale(activeLocale)
-    .then(() => {
-      if (activeLocale !== "ar") return loadLocale("ar");
-      return undefined;
-    })
-    .then(() => {
-      listeners.forEach((listener) => listener());
-    });
+  const tasks: Promise<Dictionary>[] = [];
+  if (gateOnlyLocales.has(activeLocale)) {
+    tasks.push(loadLocale(activeLocale));
+  }
+  return Promise.all(tasks).then(() => {
+    listeners.forEach((listener) => listener());
+  });
+}
+
+/**
+ * P7-PR-3 regression fix: gate keys are incomplete (e.g. ad-card.no_image).
+ * Load full Arabic before first React paint; defer non-ar active locale only.
+ */
+export async function ensureBootstrapLocales(): Promise<void> {
+  if (!hasSavedLocale()) {
+    seedFirstLaunchLocales();
+  } else {
+    bootstrapReturningUserLocale();
+  }
+
+  await loadLocale("ar");
+
+  if (activeLocale !== "ar") {
+    scheduleFullLocalePrefetch();
+  } else {
+    listeners.forEach((listener) => listener());
+  }
 }
 
 /** Active locale + Arabic fallback (for missing keys) before first React render. */
@@ -149,7 +168,7 @@ export function hasSavedLocale(): boolean {
   return readSavedLocale() !== null;
 }
 
-/** P7-PR-3: gate copy on cold path; defer full dictionaries after first paint (L7). */
+/** Gate-only sync bootstrap for returning users — full dict loaded by ensureBootstrapLocales. */
 export function bootstrapReturningUserLocale(): void {
   activeLocale = resolveInitialLocale();
   applyDocumentLocale(activeLocale);
@@ -157,7 +176,6 @@ export function bootstrapReturningUserLocale(): void {
   if (activeLocale !== "ar") {
     applyGateLocale("ar");
   }
-  scheduleFullLocalePrefetch();
 }
 
 export function subscribeToLocale(listener: () => void): () => void {

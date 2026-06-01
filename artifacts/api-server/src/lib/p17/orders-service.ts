@@ -15,6 +15,7 @@ import {
 } from "./order-state-machine";
 import {
   MarkShippedBodySchema,
+  ShippingBuyerAddressInputSchema,
   type OrderDetail,
   type OrderIssue,
   type OrderListItem,
@@ -44,6 +45,8 @@ import {
   sellerHasAccess,
   type OrderWithItemRow,
 } from "./orders-repository";
+
+export { ShippingBuyerAddressInputSchema } from "./orders-schemas";
 
 export const BuyerAddressInputSchema = z
   .object({
@@ -103,22 +106,19 @@ function mapBuyerAddressSnapshot(
   role: "buyer" | "seller",
 ): OrderDetail["buyerAddress"] {
   if (!address) return null;
-  if (role === "seller") {
-    return {
-      city: address.city,
-      countryCode: address.countryCode,
-      postalCode: address.postalCode,
-      line1: address.line1,
-      recipientName: address.recipientName,
-    };
-  }
-  return {
+  const snapshot = {
     city: address.city,
     countryCode: address.countryCode,
     postalCode: address.postalCode,
     line1: address.line1,
+    line2: address.line2,
     recipientName: address.recipientName,
+    phone: address.phone,
   };
+  if (role === "seller") {
+    return snapshot;
+  }
+  return snapshot;
 }
 
 async function enrichOrderDetail(
@@ -273,6 +273,15 @@ export class OrdersService {
       throw new OrdersApiError(400, OrdersErrorCodes.VALIDATION, "عنوان التسليم مطلوب للشحن");
     }
 
+    let normalizedBuyerAddress: z.infer<typeof ShippingBuyerAddressInputSchema> | undefined;
+    if (parsed.fulfillmentMode === "shipping" && parsed.buyerAddress) {
+      const result = ShippingBuyerAddressInputSchema.safeParse(parsed.buyerAddress);
+      if (!result.success) {
+        throw new OrdersApiError(400, OrdersErrorCodes.VALIDATION, "بيانات عنوان التسليم غير مكتملة");
+      }
+      normalizedBuyerAddress = result.data;
+    }
+
     const active = await findActiveOrderForBuyerAd(userId, parsed.adId);
     if (active) {
       throw new OrdersApiError(
@@ -312,16 +321,16 @@ export class OrdersService {
         conditionLabel: null,
       },
       buyerAddress:
-        parsed.fulfillmentMode === "shipping" && parsed.buyerAddress
+        parsed.fulfillmentMode === "shipping" && normalizedBuyerAddress
           ? {
-              label: parsed.buyerAddress.label ?? null,
-              city: parsed.buyerAddress.city,
-              countryCode: parsed.buyerAddress.countryCode.toUpperCase(),
-              postalCode: parsed.buyerAddress.postalCode ?? null,
-              line1: parsed.buyerAddress.line1,
-              line2: parsed.buyerAddress.line2 ?? null,
-              recipientName: parsed.buyerAddress.recipientName ?? null,
-              phone: parsed.buyerAddress.phone ?? null,
+              label: normalizedBuyerAddress.label ?? null,
+              city: normalizedBuyerAddress.city,
+              countryCode: normalizedBuyerAddress.countryCode.toUpperCase(),
+              postalCode: normalizedBuyerAddress.postalCode,
+              line1: normalizedBuyerAddress.line1,
+              line2: normalizedBuyerAddress.line2,
+              recipientName: normalizedBuyerAddress.recipientName,
+              phone: normalizedBuyerAddress.phone,
             }
           : undefined,
       transition,

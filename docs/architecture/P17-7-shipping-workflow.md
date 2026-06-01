@@ -14,6 +14,7 @@
 **Navigation contract:** [P17-4-navigation-contract.md](./P17-4-navigation-contract.md)  
 **Buyer reference:** [P17-5-ui.md](./P17-5-ui.md)  
 **Seller reference:** [P17-6-ui.md](./P17-6-ui.md)  
+**Address + chat contract (binding sub-spec):** [P17-7A-order-address-seller-chat-spec.md](./P17-7A-order-address-seller-chat-spec.md)  
 **Next phase (out of scope here):** **P17-8** — Tracking timeline (`in_transit`, `out_for_delivery`, `delivered`, `shipment_events` UI)
 
 **STAGING verification:** `artifacts/api-server/scripts/p17-7-0-staging-shipping-readiness.mjs`

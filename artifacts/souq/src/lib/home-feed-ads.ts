@@ -29,6 +29,8 @@ export function isHomeTestAd(ad: AdLike): boolean {
   if (/^csrf\b/.test(title) && title.length <= 48) return true;
   if (/^img csrf\b/.test(title)) return true;
   if (/^(test|demo|seed|staging)\s+ad\b/.test(title)) return true;
+  if (/^p17-prod2\b/.test(title)) return true;
+  if (/^(pickup|shipping)\s+e2e$/.test(norm(ad.description ?? ""))) return true;
   const desc = norm(ad.description ?? "");
   if (desc.includes("csrf phase") && title.length <= 32) return true;
   return false;

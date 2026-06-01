@@ -2,8 +2,8 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type CheckoutWizardProgressProps = {
-  activeStep: 0 | 1;
-  labels: [string, string];
+  activeStep: number;
+  labels: string[];
 };
 
 export function CheckoutWizardProgress({ activeStep, labels }: CheckoutWizardProgressProps) {

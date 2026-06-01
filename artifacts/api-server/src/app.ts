@@ -98,6 +98,7 @@ app.use(
       "Authorization",
       "X-Admin-Access-Key",
       "X-CSRF-Token",
+      "Idempotency-Key",
       "X-Requested-With",
       "X-Request-Id",
     ],

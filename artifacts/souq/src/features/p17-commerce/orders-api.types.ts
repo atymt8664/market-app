@@ -31,7 +31,9 @@ export type OrderBuyerAddress = {
   countryCode: string;
   postalCode: string | null;
   line1: string;
+  line2: string | null;
   recipientName: string | null;
+  phone: string | null;
 };
 
 export type OrderDetail = OrderListItem & {
@@ -64,12 +66,30 @@ export type OrderDetailResponse = {
   mock: boolean;
 };
 
-export type CreateOrderBody = {
-  adId: number;
-  fulfillmentMode: "pickup";
-  currency?: string;
-  idempotencyKey?: string;
-};
+export type CreateOrderBody =
+  | {
+      adId: number;
+      fulfillmentMode: "pickup";
+      currency?: string;
+      idempotencyKey?: string;
+    }
+  | {
+      adId: number;
+      fulfillmentMode: "shipping";
+      currency?: string;
+      shippingAmount?: string;
+      idempotencyKey?: string;
+      buyerAddress: {
+        recipientName: string;
+        phone: string;
+        countryCode: string;
+        city: string;
+        postalCode: string;
+        line1: string;
+        line2: string;
+        label?: string;
+      };
+    };
 
 export type CreateOrderResponse = {
   order: OrderDetail;
@@ -94,20 +114,37 @@ export type OrderTimelineResponse = {
   mock: boolean;
 };
 
-export const ORDERS_STATS_QUERY_KEY = ["p17", "orders", "stats"] as const;
-export const BUYER_ORDERS_QUERY_KEY = ["p17", "orders", "buyer-list"] as const;
-export const SELLER_ORDERS_QUERY_KEY = ["p17", "orders", "seller-list"] as const;
+/** Root prefix for all P17 orders React Query entries — clear on logout/login. */
+export const P17_ORDERS_QUERY_ROOT = ["p17", "orders"] as const;
 
-export function orderDetailQueryKey(variant: "buyer" | "seller", orderNumber: string) {
-  return ["p17", "orders", "detail", variant, orderNumber] as const;
+export function ordersStatsQueryKey(userId: number) {
+  return [...P17_ORDERS_QUERY_ROOT, "stats", userId] as const;
 }
 
-export function orderTimelineQueryKey(orderNumber: string) {
-  return ["p17", "orders", "timeline", orderNumber] as const;
+export function buyerOrdersQueryKey(userId: number) {
+  return [...P17_ORDERS_QUERY_ROOT, "buyer-list", userId] as const;
 }
 
-/** @deprecated P17-4A key — use ORDERS_STATS_QUERY_KEY */
-export const ORDERS_STATUS_SUMMARY_QUERY_KEY = ORDERS_STATS_QUERY_KEY;
+export function sellerOrdersQueryKey(userId: number) {
+  return [...P17_ORDERS_QUERY_ROOT, "seller-list", userId] as const;
+}
+
+export function orderDetailQueryKey(
+  userId: number,
+  variant: "buyer" | "seller",
+  orderNumber: string,
+) {
+  return [...P17_ORDERS_QUERY_ROOT, "detail", userId, variant, orderNumber] as const;
+}
+
+export function orderTimelineQueryKey(userId: number, orderNumber: string) {
+  return [...P17_ORDERS_QUERY_ROOT, "timeline", userId, orderNumber] as const;
+}
+
+/** @deprecated P17-4A key — use ordersStatsQueryKey(userId) */
+export function ordersStatusSummaryQueryKey(userId: number) {
+  return ordersStatsQueryKey(userId);
+}
 
 export function isOrdersStatsEmpty(stats: OrdersStats): boolean {
   return (

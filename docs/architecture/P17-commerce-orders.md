@@ -207,7 +207,8 @@ any (pre-shipped) ──dispute──▶ disputed  (P7)
 | [P17-4-api.md](./P17-4-api.md) | P17-4 | **Orders API — STAGING gated** |
 | [P17-5-ui.md](./P17-5-ui.md) | P17-5 / P17-5-0 | **Closed** — buyer flow |
 | [P17-6-ui.md](./P17-6-ui.md) | P17-6 / P17-6-0 | **Closed** — seller flow |
-| [P17-7-shipping-workflow.md](./P17-7-shipping-workflow.md) | P17-7 / P17-7-0 | **Spec lock** — shipping workflow binding; implementation gated |
+| [P17-7-shipping-workflow.md](./P17-7-shipping-workflow.md) | P17-7 / P17-7-0 | **Closed** — shipping workflow |
+| [P17-7A-order-address-seller-chat-spec.md](./P17-7A-order-address-seller-chat-spec.md) | **P17-7A / P17-7A-0** | **Spec lock** — address gate · seller confirm UX · chat draft · buyer status sync |
 | P17-19-rollout.md | P17-19 | *PROD activation runbook — not created* |
 
 Child specs must link back here for boundaries and must not duplicate P10 payment scope.

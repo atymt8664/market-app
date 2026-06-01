@@ -10,6 +10,7 @@ export function orderChatHref(
   conversationId: number,
   orderNumber: string,
   orderRole?: "buyer" | "seller",
+  draft?: string,
 ): string {
   const params = new URLSearchParams({
     from: "order",
@@ -18,7 +19,14 @@ export function orderChatHref(
   if (orderRole === "seller") {
     params.set("orderRole", "seller");
   }
+  if (draft && draft.trim().length > 0) {
+    params.set("draft", draft);
+  }
   return `/messages/${conversationId}?${params.toString()}`;
+}
+
+export function buildOrderChatDraft(orderNumber: string): string {
+  return t("p17.commerce.chat.order_created_draft", { orderNumber });
 }
 
 export function useOpenOrderChat() {
@@ -29,13 +37,22 @@ export function useOpenOrderChat() {
 
   return {
     isPending: startConversation.isPending,
-    open: (adId: number, orderNumber: string, orderRole?: "buyer" | "seller") => {
+    open: (
+      adId: number,
+      orderNumber: string,
+      orderRole?: "buyer" | "seller",
+      options?: { withDraft?: boolean },
+    ) => {
+      const draft =
+        options?.withDraft !== false && orderRole !== "seller"
+          ? buildOrderChatDraft(orderNumber)
+          : undefined;
       startConversation.mutate(
         { data: { adId } },
         {
           onSuccess: async (data) => {
             await prefetchConversationThread(queryClient, data.id);
-            navigate(orderChatHref(data.id, orderNumber, orderRole));
+            navigate(orderChatHref(data.id, orderNumber, orderRole, draft));
           },
           onError: (err: unknown) => {
             if (err instanceof ApiError && err.status === 403) {

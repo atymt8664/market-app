@@ -9,6 +9,7 @@ import {
   notificationsQueryKey,
   unreadCountQueryKey,
 } from "@/hooks/use-notifications";
+import { P17_ORDERS_QUERY_ROOT } from "@/features/p17-commerce/orders-api.types";
 
 /**
  * Drops authenticated-user cache entries without invalidating public listings
@@ -36,4 +37,6 @@ export async function clearUserSessionQueries(
   for (const queryKey of keys) {
     queryClient.removeQueries({ queryKey, exact: false });
   }
+
+  queryClient.removeQueries({ queryKey: P17_ORDERS_QUERY_ROOT, exact: false });
 }

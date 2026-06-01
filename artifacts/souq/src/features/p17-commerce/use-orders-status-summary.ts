@@ -1,13 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { fetchOrdersStats } from "./orders-api-client";
-import { ORDERS_STATS_QUERY_KEY } from "./orders-api.types";
+import { ordersStatsQueryKey } from "./orders-api.types";
 
 /** @deprecated Use useOrdersStats from use-orders-api.ts */
 export function useOrdersStatusSummary(options: { enabled?: boolean } = {}) {
+  const { user } = useAuth();
+  const userId = user?.id;
   return useQuery({
-    queryKey: ORDERS_STATS_QUERY_KEY,
+    queryKey: userId ? ordersStatsQueryKey(userId) : (["p17", "orders", "stats", "logged-out"] as const),
     queryFn: fetchOrdersStats,
-    enabled: options.enabled ?? true,
+    enabled: (options.enabled ?? true) && !!userId,
     staleTime: 60_000,
     retry: 1,
   });

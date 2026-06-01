@@ -17,6 +17,9 @@ import { isP17SellerOrdersEnabled, isP17ShippingEnabled } from "./p17-commerce-f
 import { SellerActionsCard } from "./seller-order-actions";
 import { SellerShippingActions } from "./seller-shipping-actions";
 import { BuyerShippingStatusCard } from "./buyer-shipping-status-card";
+import { BuyerOrderAddressCard } from "./buyer-order-address-card";
+import { SellerDeliveryAddressCard } from "./seller-delivery-address-card";
+import { resolveBuyerStatusLabel } from "./order-status-display";
 import { useToast } from "@/hooks/use-toast";
 import { OrdersApiClientError } from "./orders-api-errors";
 import {
@@ -129,9 +132,38 @@ export function OrderDetailPage({ variant, orderId }: OrderDetailPageProps) {
             <section>
               <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.detail.summary_section")}</p>
               {order ? (
-                <OrderSummaryCard order={order} isMock={isMockResponse} variant={variant} />
+                <OrderSummaryCard
+                  order={order}
+                  isMock={isMockResponse}
+                  variant={variant}
+                  statusLabel={
+                    variant === "buyer"
+                      ? resolveBuyerStatusLabel(order, timelineQuery.data?.items)
+                      : order.statusLabelAr
+                  }
+                />
               ) : null}
             </section>
+
+            {variant === "seller" &&
+            order &&
+            !isMockResponse &&
+            order.fulfillmentMode === "shipping" &&
+            order.buyerAddress ? (
+              <section>
+                <SellerDeliveryAddressCard address={order.buyerAddress} />
+              </section>
+            ) : null}
+
+            {variant === "buyer" &&
+            order &&
+            !isMockResponse &&
+            order.fulfillmentMode === "shipping" &&
+            order.buyerAddress ? (
+              <section>
+                <BuyerOrderAddressCard address={order.buyerAddress} />
+              </section>
+            ) : null}
 
             {variant === "buyer" && order && !isMockResponse && isP17ShippingEnabled() && order.fulfillmentMode === "shipping" ? (
               <section>
@@ -206,10 +238,12 @@ function OrderSummaryCard({
   order,
   isMock,
   variant,
+  statusLabel,
 }: {
   order: OrderDetail;
   isMock: boolean;
   variant: OrderDetailVariant;
+  statusLabel: string;
 }) {
   const orderNumberDisplay = order.orderNumber;
 
@@ -246,7 +280,7 @@ function OrderSummaryCard({
               className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary"
               data-testid="p17-order-detail-status"
             >
-              {order.statusLabelAr}
+              {statusLabel}
             </span>
           </div>
           <p className="mt-1.5 text-[11px] text-zinc-500">

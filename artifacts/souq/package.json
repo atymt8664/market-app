@@ -35,6 +35,7 @@
     "p17:prod": "node scripts/validate-p17-recovery-prod.mjs",
     "p17:buy-now:prod": "node scripts/validate-p17-ad-detail-buy-now-prod.mjs",
     "p17:prod-post-deploy": "node scripts/validate-p17-recovery-prod.mjs && node scripts/validate-p17-ad-detail-buy-now-prod.mjs",
+    "p17-prod3:prod": "node scripts/validate-p17-prod3-activation.mjs && node scripts/validate-p17-prod3-mobile-desktop.mjs && node scripts/validate-p17-recovery-prod.mjs && node scripts/validate-p17-ad-detail-buy-now-prod.mjs",
     "p17-5:validate": "node scripts/validate-p17-5-buyer-flow.mjs && node scripts/p17-4a-order-display-contract.mjs",
     "p17-6-1:validate": "node scripts/validate-p17-6-1-seller-flow.mjs",
     "p17-6-1:visual": "node scripts/visual/p17-6-1-seller-flow-check.mjs",

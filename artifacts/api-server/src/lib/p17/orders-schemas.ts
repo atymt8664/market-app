@@ -45,7 +45,9 @@ export const OrderBuyerAddressSchema = z
     countryCode: z.string().min(2),
     postalCode: z.string().nullable(),
     line1: z.string().min(1),
+    line2: z.string().nullable(),
     recipientName: z.string().nullable(),
+    phone: z.string().nullable(),
   })
   .strict();
 
@@ -67,6 +69,19 @@ export const MarkShippedBodySchema = z
   .object({
     carrierLabel: z.string().trim().min(1).max(120),
     trackingNumber: z.string().trim().min(2).max(64),
+  })
+  .strict();
+
+export const ShippingBuyerAddressInputSchema = z
+  .object({
+    label: z.string().trim().max(64).optional(),
+    city: z.string().trim().min(1).max(120),
+    countryCode: z.string().trim().length(2),
+    postalCode: z.string().trim().min(1).max(20),
+    line1: z.string().trim().min(1).max(200),
+    line2: z.string().trim().min(1).max(200),
+    recipientName: z.string().trim().min(2).max(120),
+    phone: z.string().trim().min(8).max(32),
   })
   .strict();
 

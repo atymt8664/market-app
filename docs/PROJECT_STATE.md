@@ -18,10 +18,10 @@
 Only **one open builder phase** at a time. Sequence:
 
 ```
-✅ P13-1 → … → ✅ P17-6 → ✅ P17-7-0 → ⏳ P17-7 (impl ready) → P17-8 … P17-19
+✅ P13-1 → … → ✅ P17-7 → ⏳ P17-7A-0 (spec lock) → P17-7A impl → P17-8 … P17-19
 ```
 
-**P17-5 closed** (STAGING DB + API closure verify PASS; buyer flow E2E signed off). **P17-4** API layer remains STAGING-gated. **Do not enable PROD** until P17-19 and explicit approval.
+**P17-5/6/7** buyer · seller · shipping flows **live on PRODUCTION** (API P17-PROD-2 + frontend P17-PROD-3). **P17-7A** addresses address gate + chat draft + buyer status sync before **P17-8**.
 
 ---
 
@@ -84,8 +84,13 @@ Only **one open builder phase** at a time. Sequence:
 | **P17-6-0** Seller flow spec lock | ✅ **Closed** | [P17-6-ui.md](./architecture/P17-6-ui.md) · `p17-6-0-seller-security-verify` PASS |
 | **P17-6** Seller order flow UI | ✅ **Closed** | P17-6-1 · `VITE_P17_SELLER_ORDERS_ENABLED` · STAGING verified |
 | **P17-7-0** Shipping workflow spec lock | ✅ **Closed** | [P17-7-shipping-workflow.md](./architecture/P17-7-shipping-workflow.md) |
-| **P17-7** Shipping workflow | ✅ **Closed** (code) | STAGING `p17-7:staging-flow` PASS · PROD deploy: [P17-5-7-production-deploy.md](./runbooks/P17-5-7-production-deploy.md) |
-| **P17-8** Tracking timeline | ⏳ **Next** | After P17-5/6/7 PROD verification |
+| **P17-7** Shipping workflow | ✅ **Closed** | STAGING `p17-7:staging-flow` PASS · PROD API: P17-PROD-2 · PROD frontend: **P17-PROD-3** |
+| **P17-7A-0** Order address + seller confirm + chat spec lock | ⏳ **Open** | [P17-7A-order-address-seller-chat-spec.md](./architecture/P17-7A-order-address-seller-chat-spec.md) — documentation only |
+| **P17-PROD-1** Production orders foundation | ✅ **Closed** | `020_p17_orders_schema.sql` on PRODUCTION · 7/7 tables OK |
+| **P17-PROD-2** Production API deployment | ✅ **Closed** | `souq-api:p17-prod-2-20260601` · `P17_ORDERS_API_ENABLED=1` · API smoke PASS |
+| **P17-PROD-3** Official frontend production activation | ⚠️ **Integrity issue** | Vercel flags OK · E2E pollution discovered in P17-PROD-FIX-1 |
+| **P17-PROD-FIX-1** Production integrity recovery | ✅ **Closed** | Removed P17-PROD-2 E2E rows (4 users, 4 ads, 6 orders) · checkout CSRF fix pending deploy |
+| **P17-8** Tracking timeline | ⏳ **Next** | Blocked until explicit approval — no scope creep |
 
 ---
 
@@ -97,4 +102,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P17-5/6/7 — **Production deployment verification** in progress ([runbook](./runbooks/P17-5-7-production-deploy.md)). P17-8 blocked until PROD smoke PASS.
+P17-7A-0 spec lock — [P17-7A-order-address-seller-chat-spec.md](./architecture/P17-7A-order-address-seller-chat-spec.md). Awaiting Mohamed sign-off before implementation.

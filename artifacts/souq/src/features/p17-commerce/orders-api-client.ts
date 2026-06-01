@@ -59,9 +59,8 @@ export function createBuyerOrder(
     headers: {
       "Content-Type": "application/json",
       ...csrfHeaders(),
-      "Idempotency-Key": idempotencyKey,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, idempotencyKey }),
   });
 }
 
@@ -132,7 +131,7 @@ export function markShippedSellerOrder(
 export async function findActiveOrderNumberForAd(adId: number): Promise<string | null> {
   const { items } = await fetchBuyerOrders();
   const candidates = items.filter(
-    (i) => i.status === "pending_confirmation" || i.status === "confirmed",
+    (i) => i.status !== "completed" && i.status !== "cancelled",
   );
   for (const item of candidates) {
     try {

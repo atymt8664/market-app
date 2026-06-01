@@ -3,7 +3,7 @@ import type { OrderStatus } from "@workspace/db";
 const BUYER_STATUS_LABELS: Record<OrderStatus, string> = {
   draft: "إتمام الطلب",
   pending_confirmation: "بانتظار تأكيد البائع",
-  confirmed: "تم تأكيد الطلب",
+  confirmed: "تم تأكيد الطلب من البائع",
   preparing: "قيد التجهيز",
   shipped: "تم الشحن",
   in_transit: "قيد الشحن",

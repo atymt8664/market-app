@@ -67,7 +67,13 @@ const BUYER_TAB_EMPTY_KEYS: Record<Exclude<BuyerOrderTab, "all">, string> = {
 function filterBuyerOrdersByTab(orders: OrderListItem[], tab: BuyerOrderTab): OrderListItem[] {
   if (tab === "all") return orders;
   if (tab === "new") return orders.filter((o) => o.status === "pending_confirmation");
-  if (tab === "active") return orders.filter((o) => o.status === "confirmed");
+  if (tab === "active") {
+    return orders.filter((o) =>
+      ["confirmed", "preparing", "shipped", "in_transit", "out_for_delivery", "delivered"].includes(
+        o.status,
+      ),
+    );
+  }
   return orders.filter((o) => o.status === "cancelled" || o.status === "completed");
 }
 

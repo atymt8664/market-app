@@ -1,12 +1,21 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Redirect, useLocation, useRoute } from "wouter";
-import { ArrowRight, Loader2, Package } from "lucide-react";
+import { ArrowRight, Loader2, Package, Truck } from "lucide-react";
 import { getGetAdQueryKey, useGetAd } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { CheckoutWizardProgress } from "@/features/p17-commerce/checkout-wizard-progress";
 import { isAdEligibleForBuyerOrder } from "@/features/p17-commerce/ad-eligibility";
+import { resolveCheckoutFulfillmentMode } from "@/features/p17-commerce/ad-fulfillment";
+import { CheckoutAddressForm } from "@/features/p17-commerce/checkout-address-form";
+import {
+  EMPTY_CHECKOUT_ADDRESS,
+  maskPhoneForPreview,
+  validateCheckoutAddress,
+  type CheckoutAddressFieldErrors,
+  type CheckoutBuyerAddress,
+} from "@/features/p17-commerce/checkout-address-types";
 import {
   clearCheckoutIdempotencyKey,
   getCheckoutIdempotencyKey,
@@ -28,10 +37,17 @@ import {
   ORDERS_SECTION_LABEL,
 } from "@/features/p17-commerce/orders-page-styles";
 import { useToast } from "@/hooks/use-toast";
+import { ensureAuthProfileCsrfReady } from "@/lib/auth-csrf";
 import { getBuyerOrderDetailPath } from "@/features/p17-commerce/order-detail-paths";
 import { isCanonicalOrderNumber } from "@/features/p17-commerce/order-detail-display";
+import type { CreateOrderBody } from "@/features/p17-commerce/orders-api.types";
 
-type CheckoutStep = "fulfillment" | "summary";
+type CheckoutStep = "fulfillment" | "address" | "summary";
+
+function normalizeAdDetailsRaw(raw: unknown): unknown {
+  if (raw == null) return {};
+  return raw;
+}
 
 export default function CheckoutPage() {
   const [, navigate] = useLocation();
@@ -45,6 +61,8 @@ export default function CheckoutPage() {
 
   const [step, setStep] = useState<CheckoutStep>("fulfillment");
   const [duplicateOrderNumber, setDuplicateOrderNumber] = useState<string | null>(null);
+  const [buyerAddress, setBuyerAddress] = useState<CheckoutBuyerAddress>(EMPTY_CHECKOUT_ADDRESS);
+  const [addressErrors, setAddressErrors] = useState<CheckoutAddressFieldErrors>({});
 
   const idempotencyKey = useMemo(
     () => (validAdId ? getCheckoutIdempotencyKey(adId) : ""),
@@ -62,22 +80,95 @@ export default function CheckoutPage() {
 
   const eligibility = isAdEligibleForBuyerOrder(ad, user?.id);
 
-  const wizardLabels: [string, string] = [
-    t("p17.commerce.checkout.step_fulfillment"),
-    t("p17.commerce.checkout.step_review"),
-  ];
-  const stepIndex = step === "fulfillment" ? 0 : 1;
+  const adDetailsRaw = ad
+    ? normalizeAdDetailsRaw((ad as unknown as Record<string, unknown>).details)
+    : {};
+  const fulfillmentMode = resolveCheckoutFulfillmentMode(adDetailsRaw);
+  const isShippingCheckout = fulfillmentMode === "shipping";
+
+  const wizardLabels = isShippingCheckout
+    ? [
+        t("p17.commerce.checkout.step_fulfillment"),
+        t("p17.commerce.checkout.step_address"),
+        t("p17.commerce.checkout.step_review"),
+      ]
+    : [t("p17.commerce.checkout.step_fulfillment"), t("p17.commerce.checkout.step_review")];
+
+  const stepIndex =
+    step === "fulfillment" ? 0 : step === "address" ? 1 : isShippingCheckout ? 2 : 1;
 
   const priceDisplay = ad?.price != null ? `${ad.price} EUR` : t("ad_detail.unknown_price");
 
+  function handleBack() {
+    if (step === "summary") {
+      setStep(isShippingCheckout ? "address" : "fulfillment");
+      return;
+    }
+    if (step === "address") {
+      setStep("fulfillment");
+      return;
+    }
+    navigate(`/ad/${adId}`);
+  }
+
+  function handleFulfillmentContinue() {
+    if (isShippingCheckout) {
+      setStep("address");
+      return;
+    }
+    setStep("summary");
+  }
+
+  function handleAddressContinue() {
+    const errors = validateCheckoutAddress(buyerAddress, t);
+    setAddressErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+    setStep("summary");
+  }
+
   async function handleConfirm() {
     if (!validAdId || !eligibility.eligible) return;
+    if (isShippingCheckout) {
+      const errors = validateCheckoutAddress(buyerAddress, t);
+      if (Object.keys(errors).length > 0) {
+        setAddressErrors(errors);
+        setStep("address");
+        return;
+      }
+    }
     setDuplicateOrderNumber(null);
     try {
-      const result = await createOrder.mutateAsync({
-        body: { adId, fulfillmentMode: "pickup", currency: "EUR" },
-        idempotencyKey,
-      });
+      const csrf = await ensureAuthProfileCsrfReady();
+      if (!csrf) {
+        toast({
+          title: t("p17.commerce.checkout.error_generic"),
+          description: t("common.try_again"),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const body: CreateOrderBody =
+        fulfillmentMode === "shipping"
+          ? {
+              adId,
+              fulfillmentMode: "shipping",
+              currency: "EUR",
+              shippingAmount: "0.00",
+              buyerAddress: {
+                recipientName: buyerAddress.recipientName.trim(),
+                phone: buyerAddress.phone.trim(),
+                countryCode: buyerAddress.countryCode.trim().toUpperCase(),
+                city: buyerAddress.city.trim(),
+                postalCode: buyerAddress.postalCode.trim(),
+                line1: buyerAddress.line1.trim(),
+                line2: buyerAddress.line2.trim(),
+                label: buyerAddress.label?.trim() || undefined,
+              },
+            }
+          : { adId, fulfillmentMode: "pickup", currency: "EUR" };
+
+      const result = await createOrder.mutateAsync({ body, idempotencyKey });
       const num = result.order.orderNumber;
       if (result.order.id !== num || !isCanonicalOrderNumber(num)) {
         toast({
@@ -112,6 +203,14 @@ export default function CheckoutPage() {
         }
         if (err.status === 401) {
           navigate(loginRedirectForCheckout(adId));
+          return;
+        }
+        if (err.status === 403) {
+          toast({
+            title: t("p17.commerce.checkout.error_generic"),
+            description: t("common.try_again"),
+            variant: "destructive",
+          });
           return;
         }
       }
@@ -204,10 +303,7 @@ export default function CheckoutPage() {
           </h1>
           <button
             type="button"
-            onClick={() => {
-              if (step === "summary") setStep("fulfillment");
-              else navigate(`/ad/${adId}`);
-            }}
+            onClick={handleBack}
             className={CREATE_AD_BACK_BTN}
             aria-label={t("common.back")}
           >
@@ -216,7 +312,7 @@ export default function CheckoutPage() {
         </div>
       </header>
 
-      <CheckoutWizardProgress activeStep={stepIndex as 0 | 1} labels={wizardLabels} />
+      <CheckoutWizardProgress activeStep={stepIndex} labels={wizardLabels} />
 
       <main className={CREATE_AD_MAIN_COLUMN}>
         {step === "fulfillment" ? (
@@ -227,22 +323,49 @@ export default function CheckoutPage() {
                 ORDERS_CARD,
                 "flex items-center gap-3 border-primary/40 bg-primary/5 py-4",
               )}
-              data-testid="p17-checkout-pickup-option"
+              data-testid={isShippingCheckout ? "p17-checkout-shipping-option" : "p17-checkout-pickup-option"}
             >
-              <Package className="h-6 w-6 shrink-0 text-primary" strokeWidth={2} />
+              {isShippingCheckout ? (
+                <Truck className="h-6 w-6 shrink-0 text-primary" strokeWidth={2} />
+              ) : (
+                <Package className="h-6 w-6 shrink-0 text-primary" strokeWidth={2} />
+              )}
               <div className="min-w-0 flex-1 text-right">
                 <p className="text-sm font-bold text-foreground">
-                  {t("p17.commerce.checkout.pickup_label")}
+                  {isShippingCheckout
+                    ? t("p17.commerce.checkout.shipping_label")
+                    : t("p17.commerce.checkout.pickup_label")}
                 </p>
                 <p className="mt-0.5 text-[11px] text-zinc-400">
-                  {t("p17.commerce.checkout.pickup_hint")}
+                  {isShippingCheckout
+                    ? t("p17.commerce.checkout.shipping_hint")
+                    : t("p17.commerce.checkout.pickup_hint")}
                 </p>
               </div>
             </div>
             <button
               type="button"
               className={cn(P17_BUY_NOW_BTN, "h-12 w-full")}
-              onClick={() => setStep("summary")}
+              onClick={handleFulfillmentContinue}
+            >
+              {t("p17.commerce.checkout.continue")}
+            </button>
+          </>
+        ) : step === "address" ? (
+          <>
+            <CheckoutAddressForm
+              value={buyerAddress}
+              errors={addressErrors}
+              onChange={(next) => {
+                setBuyerAddress(next);
+                setAddressErrors({});
+              }}
+            />
+            <button
+              type="button"
+              className={cn(P17_BUY_NOW_BTN, "h-12 w-full")}
+              data-testid="p17-checkout-address-continue"
+              onClick={handleAddressContinue}
             >
               {t("p17.commerce.checkout.continue")}
             </button>
@@ -256,8 +379,24 @@ export default function CheckoutPage() {
                 <SummaryLine label={t("p17.commerce.checkout.line_price")} value={priceDisplay} />
                 <SummaryLine
                   label={t("p17.commerce.checkout.line_fulfillment")}
-                  value={t("p17.commerce.checkout.pickup_label")}
+                  value={
+                    isShippingCheckout
+                      ? t("p17.commerce.checkout.shipping_label")
+                      : t("p17.commerce.checkout.pickup_label")
+                  }
                 />
+                {isShippingCheckout ? (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-zinc-300">
+                    <p className="font-semibold text-foreground">{buyerAddress.recipientName.trim()}</p>
+                    <p>
+                      {buyerAddress.city.trim()}, {buyerAddress.countryCode.trim().toUpperCase()}{" "}
+                      · {buyerAddress.postalCode.trim()}
+                    </p>
+                    <p dir="ltr" className="text-zinc-500">
+                      {maskPhoneForPreview(buyerAddress.phone)}
+                    </p>
+                  </div>
+                ) : null}
                 <div className="border-t border-primary/20 pt-2">
                   <SummaryLine
                     label={t("p17.commerce.checkout.line_total")}
@@ -318,9 +457,11 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 className={cn(ORDERS_GHOST_BTN, "h-10 w-full text-xs")}
-                onClick={() => setStep("fulfillment")}
+                onClick={() => setStep(isShippingCheckout ? "address" : "fulfillment")}
               >
-                {t("p17.commerce.checkout.edit_fulfillment")}
+                {isShippingCheckout
+                  ? t("p17.commerce.checkout.edit_address")
+                  : t("p17.commerce.checkout.edit_fulfillment")}
               </button>
             </div>
           </>

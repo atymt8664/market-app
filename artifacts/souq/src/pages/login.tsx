@@ -35,6 +35,7 @@ import {
   AUTH_PAGE_BG,
 } from "@/lib/auth-page-styles";
 import { resolveCommercePostLoginRedirect } from "@/features/p17-commerce/p17-commerce-redirect";
+import { P17_ORDERS_QUERY_ROOT } from "@/features/p17-commerce/orders-api.types";
 
 const schema = z.object({
   email: z.string().email("auth.validation.invalid_email"),
@@ -149,6 +150,7 @@ export default function Login() {
         /* ignore */
       }
       absorbAuthProfileCsrfFromResponse(json);
+      queryClient.removeQueries({ queryKey: P17_ORDERS_QUERY_ROOT, exact: false });
       queryClient.setQueryData(getAuthMeQueryKey(), json);
       void queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
 

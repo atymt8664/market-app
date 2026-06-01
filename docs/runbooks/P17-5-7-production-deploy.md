@@ -34,9 +34,11 @@ Verify tables exist: `orders`, `order_items`, `buyer_addresses`, `shipments`, et
 
 ---
 
-## 2. Vercel (frontend)
+## 2. Vercel (frontend) — P17-PROD-3
 
-Set **Production** environment variables:
+**Project:** `market-app-souq` (aliases `https://www.souq-arab.com`) — not `classified-marketplace`.
+
+Set **Production** environment variables (Vercel dashboard or CLI — permanent, not shell-only):
 
 | Variable | Value |
 |----------|-------|
@@ -45,13 +47,20 @@ Set **Production** environment variables:
 | `VITE_P17_SELLER_ORDERS_ENABLED` | `1` |
 | `VITE_P17_SHIPPING_ENABLED` | `1` |
 
-Redeploy `artifacts/souq` after `main` push (or trigger production deployment).
+Redeploy after env change (Vite bakes `VITE_*` at build time):
+
+```bash
+npx vercel link --project market-app-souq --yes
+npx vercel deploy --prod --yes --archive=tgz
+```
 
 Post-deploy checks:
 
 ```bash
+pnpm --filter @workspace/souq run p17-prod3:prod
 pnpm --filter @workspace/souq run p17:prod
 pnpm --filter @workspace/souq run p17:buy-now:prod
+pnpm --filter @workspace/api-server run p17:prod-smoke   # requires PROD_TEST_* on VPS
 pnpm --filter @workspace/souq run p17-7:visual   # local dev only
 ```
 

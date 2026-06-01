@@ -66,9 +66,11 @@ export function Layout({ children }: LayoutProps) {
     isImmersiveMarketingRoute ||
     isP17CheckoutFlowRoute;
 
+  const afterFirstPaint = useAfterFirstPaint();
+
   return (
     <div className="w-full min-h-[100svh] bg-[#0A0A0A]">
-      <PushNotificationsRegistrar />
+      {afterFirstPaint ? <PushNotificationsRegistrar /> : null}
       {/*
         لا نفرض overflow:hidden على html/body من هنا — ذلك يمنع pull-to-refresh.
         تمرير الشات محصور في [data-chat-scroll] (انظر index.css).

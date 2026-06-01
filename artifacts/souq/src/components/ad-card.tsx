@@ -9,8 +9,14 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import {
+  FAVORITES_CARD_SHELL,
+  FEATURED_DEFAULT_CARD_W,
+  FEATURED_HOME_FEED_CARD_W,
+  HOME_FEED_CARD_SHELL,
+} from "@/components/ad-card-shells";
+export { AdCardSkeleton } from "@/components/ad-card-skeleton";
 import { memo, useCallback, useEffect, useState } from "react";
 import { t } from "@/i18n";
 import { useAuth } from "@/hooks/use-auth";
@@ -47,23 +53,8 @@ const TITLE_BOX_FAVORITES =
 const PRICE_BOX = "min-h-[2.2rem] shrink-0";
 const PRICE_BOX_COMPACT = "min-h-[2rem] shrink-0";
 
-/** صفحة المفضلة — نفس هوية كروت البروفايل / نشر إعلان، بحجم مدمج للموبايل */
-const FAVORITES_CARD_SHELL =
-  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[transform,border-color,box-shadow] duration-200 hover:border-primary/45 hover:shadow-[0_0_26px_-12px_hsl(var(--primary)/0.22)]";
-
-/** Home feed — #0A0A0A shell; thin lime rim, no card glow. */
-const HOME_FEED_CARD_SHELL =
-  "rounded-xl border border-primary/30 bg-[#0A0A0A] ring-1 ring-primary/8 shadow-none transition-none";
 /** Location + time */
 const META_BOX = "h-[1.25rem] min-h-[1.25rem] max-h-[1.25rem] shrink-0";
-
-/** Featured strip card width — home feed compact; balanced near recommended grid tiles. */
-const FEATURED_HOME_FEED_CARD_W =
-  "w-[168px] max-w-[168px] shrink-0 sm:w-[172px] sm:max-w-[172px] md:w-[175px] md:max-w-[175px]";
-
-/** Legacy featured width when not using home feed compact body. */
-const FEATURED_DEFAULT_CARD_W =
-  "w-[136px] max-w-[136px] shrink-0 sm:w-[148px] sm:max-w-[148px] md:w-[160px] md:max-w-[160px]";
 
 function priceTypeBadgeText(type: Ad["priceType"]) {
   if (type === "negotiable") return t("ad-card.negotiable");
@@ -520,87 +511,3 @@ export function AdCard(props: AdCardProps) {
   return <AdCardMemoized {...props} viewerAuthKey={viewerAuthKey} />;
 }
 
-export function AdCardSkeleton({
-  featured,
-  homeFeed,
-  variant: _variant,
-  favoritesList,
-}: {
-  featured?: boolean;
-  homeFeed?: boolean;
-  variant?: "default" | "grid";
-  favoritesList?: boolean;
-}) {
-  const compact = Boolean(favoritesList);
-  const feedCompact = Boolean(homeFeed && !favoritesList);
-  return (
-    <div
-      className={cn(
-        "flex w-full flex-col overflow-hidden",
-        compact
-          ? FAVORITES_CARD_SHELL
-          : feedCompact
-            ? HOME_FEED_CARD_SHELL
-            : "rounded-xl border border-border/45 bg-[#0A0A0A] shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
-        featured ? "h-full" : "h-auto",
-        featured &&
-          (feedCompact ? FEATURED_HOME_FEED_CARD_W : FEATURED_DEFAULT_CARD_W),
-      )}
-    >
-      <Skeleton
-        className={cn(
-          "w-full shrink-0 rounded-none",
-          feedCompact ? "bg-primary/[0.06]" : "bg-muted/40",
-          compact
-            ? "h-[88px] sm:h-[96px] md:h-[104px]"
-            : feedCompact
-              ? featured
-                ? "aspect-[4/3]"
-                : "aspect-[4/3]"
-              : "aspect-[4/3]",
-        )}
-      />
-      <div
-        className={cn(
-          "flex flex-col",
-          compact
-            ? "gap-1 px-1.5 pb-2 pt-1"
-            : feedCompact
-              ? "gap-0.5 px-1.5 pb-1.5 pt-1"
-              : "gap-1.5 px-2 pb-2.5 pt-1.5",
-        )}
-      >
-        <Skeleton
-          className={cn(
-            "w-full rounded-md",
-            feedCompact ? "bg-primary/[0.08]" : "bg-muted/50",
-            compact ? "h-[2.125rem]" : feedCompact ? "h-4" : "h-[2.5rem]",
-          )}
-        />
-        <Skeleton
-          className={cn(
-            "rounded-md",
-            feedCompact || compact ? "bg-primary/[0.08]" : "bg-muted/50",
-            compact || feedCompact ? "h-3.5 w-2/5" : "h-[1.5rem] w-2/5",
-          )}
-        />
-        <div
-          className={cn(
-            "grid grid-cols-3 items-center gap-x-0.5 border-t border-primary/15",
-            compact ? "h-4 pt-1" : feedCompact ? "h-3.5 pt-0.5" : "h-5 border-border/35 pt-1.5",
-          )}
-        >
-          <Skeleton className={cn("mx-auto h-2.5 w-8 rounded", feedCompact ? "bg-primary/[0.07]" : "bg-muted/45")} />
-          <Skeleton className={cn("mx-auto h-2.5 w-8 rounded", feedCompact ? "bg-primary/[0.07]" : "bg-muted/45")} />
-          <Skeleton className={cn("mx-auto h-2.5 w-8 rounded", feedCompact ? "bg-primary/[0.07]" : "bg-muted/45")} />
-        </div>
-        <Skeleton className={cn("w-full rounded", feedCompact ? "bg-primary/[0.06]" : "bg-muted/40", compact ? "h-3" : feedCompact ? "h-3" : "h-[1.25rem]")} />
-      </div>
-      {compact ? (
-        <div className="px-0 pb-0.5 pt-0">
-          <Skeleton className="h-8 w-full rounded-full bg-muted/40" />
-        </div>
-      ) : null}
-    </div>
-  );
-}

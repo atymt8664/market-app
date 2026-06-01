@@ -12,18 +12,15 @@ import {
 } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { ChevronDown } from "lucide-react";
-import { AdCard, AdCardSkeleton } from "@/components/ad-card";
 import {
   adCardNoImageIconClassName,
 } from "@/components/ad-card-no-image-placeholder";
 import { CategoryIcon } from "@/components/category-icon";
 import { MarketplaceSearchBar } from "@/components/marketplace-search-bar";
-import { NotificationBell } from "@/components/notification-bell";
+import { HomeNotificationBellSlot } from "@/components/home-notification-bell-slot";
 import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
-import { HomeFeaturedDivider } from "@/components/home-featured-divider";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
-import { useProgressiveReveal } from "@/lib/use-progressive-reveal";
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { scheduleAfterFirstPaint, useAfterFirstPaint } from "@/lib/after-first-paint";
 import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useSearchLocation } from "@/hooks/use-search-location";
 import { searchLocationCityForFeed } from "@/lib/search-location";
@@ -41,51 +38,15 @@ import {
 } from "@/lib/home-page-layout";
 import { cn } from "@/lib/utils";
 
-/** Home feed ad cards — layout only; shell styling lives in AdCard HOME_FEED_CARD_SHELL. */
-const homeAdCardTone = cn(
-  "[&>div]:h-full",
-  "[&_article]:flex [&_article]:h-full [&_article]:flex-col",
-  "[&_article]:transition-none",
-  "[&_article]:active:scale-100",
-  "[&_article_img]:transition-none [&_article_img]:group-hover:scale-100",
-  "[&_article>div:first-child]:rounded-t-xl",
-  "[&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55 [&_article_button]:shadow-none [&_article_button]:transition-none [&_article_button]:active:scale-95",
-);
-
 /** React Query: تقليل إعادة الجلب عند التنقل للرئيسية دون المساس بـ invalidate بعد الطفرات/الأدمن. */
 const HOME_STALE_CATEGORIES_MS = 10 * 60 * 1000;
 const HOME_STALE_FEATURED_MS = 2 * 60 * 1000;
 const HOME_STALE_FEED_MS = 90 * 1000;
 
 const CATEGORY_SKELETON_KEYS = [0, 1, 2, 3, 4] as const;
-const FEATURED_SKELETON_KEYS = [0, 1, 2, 3] as const;
-/** Initial recommended skeletons — matches first progressive batch (2 rows mobile). */
-const GRID_SKELETON_KEYS = [0, 1, 2, 3] as const;
 
-/** Progressive feed — first batch fast; expand on scroll / idle. */
-const HOME_FEED_INITIAL_BATCH = 4;
-const HOME_FEED_REVEAL_STEP = 4;
-const HOME_FEATURED_INITIAL = 5;
-const HOME_FEATURED_REVEAL_STEP = 3;
-
-/** Featured strip — gutter applied on wrapper; cards align with section titles. */
-const featuredStripClassName = cn(
-  "flex w-max max-w-none items-start justify-start gap-2 pb-0.5 md:gap-2.5 md:pb-1",
-  homeAdCardTone,
-  "[&>div]:h-auto [&_article]:h-auto",
-);
-
-const recommendedGridClassName = cn(
-  "grid grid-cols-2 items-stretch gap-x-2 gap-y-2 md:grid-cols-3 md:gap-x-2.5 md:gap-y-2.5 xl:grid-cols-4 xl:gap-x-3 xl:gap-y-2.5 2xl:grid-cols-5 2xl:gap-x-3.5 2xl:gap-y-3",
-  homeAdCardTone,
-);
-
-/** Section titles — #0A0A0A chip; thin lime rim only. */
-const homeSectionHeading = cn(
-  "inline-flex max-w-full items-center rounded-2xl border border-primary/28 bg-[#0A0A0A] px-2 py-px",
-  "text-[15px] font-semibold leading-tight tracking-tight text-foreground md:text-base",
-  "ring-1 ring-primary/8",
-);
+/** P7-PR-8: feed sections + heavy card UI in a separate chunk after shell paint. */
+const HomeFeedSections = lazy(() => import("@/pages/home-feed-sections"));
 
 /** Unified home category tile — fixed width for strip alignment. */
 const HOME_CATEGORY_TILE_W = "w-16";
@@ -339,7 +300,7 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
             className="border-primary/28 bg-[#0A0A0A] ring-primary/8 focus-within:border-primary/38 focus-within:ring-primary/12"
           />
           {reserveBellSlot ? (
-            <NotificationBell className="h-8 w-8 shrink-0 [&_svg]:h-4 [&_svg]:w-4" />
+            <HomeNotificationBellSlot className="h-8 w-8 shrink-0 [&_svg]:h-4 [&_svg]:w-4" />
           ) : null}
         </div>
         <HomeCategoriesStrip
@@ -354,131 +315,6 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
   );
 });
 
-type HomeFeedSectionsProps = {
-  isRtl: boolean;
-  isLoadingFeatured: boolean;
-  featuredAds: Ad[] | undefined;
-  isLoadingRecommended: boolean;
-  recommendedAds: Ad[] | undefined;
-};
-
-/**
- * أقسام المحتوى تحت الهيدر — معزولة بـ memo حتى لا تعاد رسم الكروت الثقيلة
- * عند كل حرف في حقل البحث (حالة البحث تبقى في الأب فقط).
- */
-const HomeFeedSections = memo(function HomeFeedSections({
-  isRtl,
-  isLoadingFeatured,
-  featuredAds,
-  isLoadingRecommended,
-  recommendedAds,
-}: HomeFeedSectionsProps) {
-  const featuredReady = Array.isArray(featuredAds) && featuredAds.length > 0;
-  const {
-    visible: visibleFeatured,
-    hasMore: hasMoreFeatured,
-    sentinelRef: featuredSentinelRef,
-  } = useProgressiveReveal(featuredAds, {
-    initial: HOME_FEATURED_INITIAL,
-    step: HOME_FEATURED_REVEAL_STEP,
-    enabled: featuredReady,
-    idleExpandMs: 1200,
-  });
-
-  const recommendedReady = Array.isArray(recommendedAds) && recommendedAds.length > 0;
-  const {
-    visible: visibleRecommended,
-    hasMore: hasMoreRecommended,
-    sentinelRef: recommendedSentinelRef,
-  } = useProgressiveReveal(recommendedAds, {
-    initial: HOME_FEED_INITIAL_BATCH,
-    step: HOME_FEED_REVEAL_STEP,
-    enabled: recommendedReady,
-    idleExpandMs: 1500,
-  });
-
-  return (
-    <>
-      {/* Featured Ads */}
-      <section className="min-w-0 pb-1 pt-0.5 max-md:pb-0.5 md:py-4">
-        <div className={cn(HOME_PAGE_INSET, "mb-1.5 md:mb-2")}>
-          <h2 className={homeSectionHeading}>{t("home.featured_ads")}</h2>
-        </div>
-        <div className={HOME_PAGE_INSET}>
-          <HorizontalScrollStrip dir={isRtl ? "rtl" : "ltr"}>
-            <div className={featuredStripClassName} dir={isRtl ? "rtl" : "ltr"}>
-              {isLoadingFeatured ? (
-                FEATURED_SKELETON_KEYS.map((i) => (
-                  <AdCardSkeleton key={i} featured homeFeed />
-                ))
-              ) : Array.isArray(featuredAds) && featuredAds.length ? (
-                <>
-                  {visibleFeatured.map((ad, index) => (
-                    <AdCard
-                      key={ad.id}
-                      ad={ad}
-                      featured
-                      homeFeed
-                      featuredLead={index === 0}
-                    />
-                  ))}
-                  {hasMoreFeatured ? (
-                    <div
-                      ref={featuredSentinelRef}
-                      className="w-px shrink-0 self-stretch opacity-0"
-                      aria-hidden
-                    />
-                  ) : null}
-                </>
-              ) : (
-                <div className="w-full py-5 text-center text-sm text-muted-foreground">
-                  {t("home.no_featured_ads")}
-                </div>
-              )}
-            </div>
-          </HorizontalScrollStrip>
-        </div>
-      </section>
-
-      <HomeFeaturedDivider isRtl={isRtl} placement="featured-bottom" />
-
-      {/* Recommended Ads Grid */}
-      <section className={cn(HOME_PAGE_INSET, "pb-3 pt-1 max-md:pb-3 max-md:pt-0.5 md:py-4")}>
-        <h2 className={cn(homeSectionHeading, "mb-1.5 md:mb-2")}>{t("home.recommended")}</h2>
-
-        <div className={recommendedGridClassName}>
-          {isLoadingRecommended ? (
-            GRID_SKELETON_KEYS.map((i) => (
-              <div key={i} className="h-full min-h-0">
-                <AdCardSkeleton homeFeed />
-              </div>
-            ))
-          ) : Array.isArray(recommendedAds) && recommendedAds.length ? (
-            <>
-              {visibleRecommended.map((ad) => (
-                <div key={ad.id} className="h-full min-h-0">
-                  <AdCard ad={ad} homeFeed />
-                </div>
-              ))}
-              {hasMoreRecommended ? (
-                <div
-                  ref={recommendedSentinelRef}
-                  className="col-span-full h-px w-full opacity-0"
-                  aria-hidden
-                />
-              ) : null}
-            </>
-          ) : (
-            <div className="col-span-full text-sm text-muted-foreground text-center py-8">
-              {t("home.no_ads")}
-            </div>
-          )}
-        </div>
-      </section>
-    </>
-  );
-});
-
 export default function Home() {
   const { locale } = useLocale();
   const isRtl = locale === "ar";
@@ -490,7 +326,8 @@ export default function Home() {
     () => searchLocationCityForFeed(city, searchLocation),
     [city, searchLocation],
   );
-  const { user, isLoading: authLoading } = useAuth();
+  const afterFirstPaint = useAfterFirstPaint();
+  const { user, isLoading: authLoading } = useAuth({ queryEnabled: afterFirstPaint });
   const reserveBellSlot = Boolean(user && !authLoading);
   const { data: categories, isLoading: isLoadingCategories } =
     useListCategories({
@@ -514,11 +351,31 @@ export default function Home() {
     });
 
   const [recommendedQueryEnabled, setRecommendedQueryEnabled] = useState(false);
+  const recommendedGateRef = useRef<HTMLDivElement>(null);
   const featuredFetched = !isLoadingFeatured && featuredAds !== undefined;
+
   useEffect(() => {
     if (!featuredFetched) return;
-    /** Defer recommended until featured/LCP path completes — avoids bandwidth contention. */
-    return scheduleAfterFirstPaint(() => setRecommendedQueryEnabled(true), 600);
+    void import("@/pages/home-feed-sections");
+  }, [featuredFetched]);
+
+  useEffect(() => {
+    if (!featuredFetched) return;
+    const el = recommendedGateRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      return scheduleAfterFirstPaint(() => setRecommendedQueryEnabled(true), 400);
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setRecommendedQueryEnabled(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "360px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
   }, [featuredFetched]);
 
   const recommendedFeedEnabled = recommendedQueryEnabled;
@@ -619,13 +476,16 @@ export default function Home() {
         categories={homeCategories}
       />
 
-      <HomeFeedSections
-        isRtl={isRtl}
-        isLoadingFeatured={isLoadingFeaturedUi}
-        featuredAds={featuredAdsForHome}
-        isLoadingRecommended={isLoadingRecommended}
-        recommendedAds={recommendedAds}
-      />
+      <div ref={recommendedGateRef} className="h-px w-full opacity-0" aria-hidden />
+      <Suspense fallback={null}>
+        <HomeFeedSections
+          isRtl={isRtl}
+          isLoadingFeatured={isLoadingFeaturedUi}
+          featuredAds={featuredAdsForHome}
+          isLoadingRecommended={isLoadingRecommended}
+          recommendedAds={recommendedAds}
+        />
+      </Suspense>
     </main>
   );
 }

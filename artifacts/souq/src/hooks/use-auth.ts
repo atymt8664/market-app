@@ -4,11 +4,18 @@ import { useQueryClient } from "@tanstack/react-query";
 
 const ACCOUNT_DISABLED_CODE = "ACCOUNT_DISABLED";
 
-export function useAuth() {
+export type UseAuthOptions = {
+  /** P7-PR-8: defer auth/me until after first paint on Home cold path. */
+  queryEnabled?: boolean;
+};
+
+export function useAuth(options?: UseAuthOptions) {
+  const queryEnabled = options?.queryEnabled ?? true;
   const queryClient = useQueryClient();
   const { data, isLoading, isFetching, error } = useAuthMe({
     query: {
       queryKey: getAuthMeQueryKey(),
+      enabled: queryEnabled,
       retry: false,
       staleTime: 30_000,
     },

@@ -95,12 +95,28 @@ function SeoHomeBootstrap() {
   return null;
 }
 
+/** P7-PR-8: WebSocket provider only on messaging routes — not Home cold path. */
+function MessagesRoute() {
+  return (
+    <ChatSocketProvider>
+      <Messages />
+    </ChatSocketProvider>
+  );
+}
+
+function MessageThreadRoute() {
+  return (
+    <ChatSocketProvider>
+      <MessageThread />
+    </ChatSocketProvider>
+  );
+}
+
 function Router() {
   return (
     <Layout>
       <SeoRouteSync />
-      <ChatSocketProvider>
-        <Suspense fallback={<RouteLoadingFallback />}>
+      <Suspense fallback={<RouteLoadingFallback />}>
           <Switch>
           <Route path="/" component={Home} />
           <Route path="/categories" component={Categories} />
@@ -167,12 +183,11 @@ function Router() {
           <Route path="/seller-orders" component={SellerOrdersPage} />
           <Route path="/favorites" component={Favorites} />
           <Route path="/stats" component={Stats} />
-          <Route path="/messages" component={Messages} />
-          <Route path="/messages/:id" component={MessageThread} />
+          <Route path="/messages" component={MessagesRoute} />
+          <Route path="/messages/:id" component={MessageThreadRoute} />
           <Route component={NotFound} />
           </Switch>
         </Suspense>
-      </ChatSocketProvider>
     </Layout>
   );
 }

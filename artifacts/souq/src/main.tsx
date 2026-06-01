@@ -9,6 +9,7 @@ import { queryClient } from "@/lib/query-client";
 import { installAccountDisabledFetchInterceptor } from "@/lib/account-disabled-interceptor";
 import { scheduleDeferredFonts } from "@/lib/deferred-fonts";
 import { scheduleDeferredStyles } from "@/lib/deferred-styles";
+import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
 import { registerProductionServiceWorker } from "@/lib/register-production-service-worker";
 import { initWebVitalsReporting } from "@/lib/web-vitals-reporting";
 
@@ -17,8 +18,11 @@ setBaseUrl(apiBase || null);
 
 installAccountDisabledFetchInterceptor(queryClient);
 
+/** P7-PR-8: SW registration after first paint — avoids competing with LCP on Home cold path. */
 if (import.meta.env.PROD) {
-  registerProductionServiceWorker(import.meta.env.BASE_URL);
+  scheduleAfterFirstPaint(() => {
+    registerProductionServiceWorker(import.meta.env.BASE_URL);
+  });
 }
 
 scheduleDeferredFonts();

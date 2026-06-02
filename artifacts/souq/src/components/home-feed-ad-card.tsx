@@ -16,6 +16,7 @@ import {
   FEATURED_HOME_FEED_CARD_W,
   HOME_FEED_CARD_SHELL,
 } from "@/components/ad-card-shells";
+import { isHomeLcpHandoffComplete } from "@/lib/home-lcp-handoff";
 
 export type HomeFeedAdCardProps = {
   ad: Ad;
@@ -67,7 +68,8 @@ export const HomeFeedAdCard = memo(function HomeFeedAdCard({
     setImageFailed(true);
   }, [rawImageUrl, imageSrc]);
 
-  const hasImage = !!imageSrc && !imageFailed;
+  const allowFeaturedImagePaint = !featured || isHomeLcpHandoffComplete();
+  const hasImage = !!imageSrc && !imageFailed && allowFeaturedImagePaint;
   const adWithDetails = ad as Ad & { details?: Record<string, unknown> };
   const selectedCurrency =
     ((adWithDetails.details as Record<string, unknown> | undefined)?.selectedCurrency as
@@ -104,9 +106,11 @@ export const HomeFeedAdCard = memo(function HomeFeedAdCard({
                 alt={ad.title}
                 className="absolute inset-0 h-full w-full object-cover"
                 data-testid={featured && featuredLead ? "home-lcp-prerender" : undefined}
-                loading={featured && featuredLead ? "eager" : "lazy"}
+                loading={featured && featuredLead && allowFeaturedImagePaint ? "eager" : "lazy"}
                 decoding="async"
-                fetchPriority={featured && featuredLead ? "high" : undefined}
+                fetchPriority={
+                  featured && featuredLead && allowFeaturedImagePaint ? "high" : "low"
+                }
                 draggable={false}
                 sizes={imageSizes}
                 onError={handleImageError}

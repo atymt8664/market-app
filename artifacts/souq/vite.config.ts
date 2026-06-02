@@ -95,12 +95,6 @@ function souqManualChunks(id: string): string | undefined {
   return "vendor-misc";
 }
 
-/**
- * 6B-2: drop non-critical modulepreloads on first navigation (keep react/react-dom).
- * Chunks still load on demand — only parallel prefetch is reduced for Gate/Home cold start.
- */
-const DEFERRED_MODULE_PRELOAD = /vendor-(?:radix|date-fns|lucide|floating-ui|recharts|framer-motion)-/;
-
 /** P7-PR-12: build-time fallback shell (#p7-lcp-layer) when Edge middleware unavailable (local preview). */
 function injectHomeHtmlShell(): {
   name: string;
@@ -142,16 +136,14 @@ function injectHomeHtmlShell(): {
   };
 }
 
-function trimNonCriticalModulePreloads(): { name: string; transformIndexHtml: { order: "post"; handler: (html: string) => string } } {
+/** P7-PR-14: remove all modulepreload — lcp-loader defers react-dom/tanstack until after shell LCP. */
+function trimAllModulePreloads(): { name: string; transformIndexHtml: { order: "post"; handler: (html: string) => string } } {
   return {
     name: "souq-trim-modulepreload",
     transformIndexHtml: {
       order: "post",
       handler(html: string) {
-        return html.replace(
-          /\s*<link rel="modulepreload" crossorigin href="(\/assets\/[^"]+)"\s*>\s*/g,
-          (match, href: string) => (DEFERRED_MODULE_PRELOAD.test(href) ? "" : match),
-        );
+        return html.replace(/\s*<link rel="modulepreload"[^>]*>\s*/g, "");
       },
     },
   };
@@ -208,7 +200,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     injectHomeHtmlShell(),
-    trimNonCriticalModulePreloads(),
+    trimAllModulePreloads(),
     ...(process.env.BUNDLE_ANALYZE === "1"
       ? [
           visualizer({

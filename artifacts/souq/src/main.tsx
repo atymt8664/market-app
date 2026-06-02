@@ -15,14 +15,17 @@ import {
   startHomeLcpPrefetch,
   wireHomeLcpPrefetchToQueryClient,
 } from "@/lib/home-lcp-prefetch";
-import { scheduleDeferredAppMount } from "@/lib/deferred-app-bootstrap";
+import { beginHomeLcpHandoffAwait } from "@/lib/home-lcp-handoff";
 
 const apiBase = getApiBaseUrl();
 setBaseUrl(apiBase || null);
 
 installAccountDisabledFetchInterceptor(queryClient);
 
-/** P7-PR-9: featured API + LCP hero preload before React — seeds React Query on Home. */
+/** P7-PR-14: block React imgs from superseding shell LCP until handoff. */
+beginHomeLcpHandoffAwait();
+
+/** P7-PR-9: featured API after LCP-stable loader — seeds React Query on Home. */
 startHomeLcpPrefetch();
 wireHomeLcpPrefetchToQueryClient(queryClient);
 
@@ -40,11 +43,9 @@ initWebVitalsReporting();
 /** P7-PR-6: gate copy sync before mount. */
 ensureBootstrapLocales();
 
-/** P7-PR-12: defer App chunk until LCP layer paints; dynamic import shrinks sync entry. */
-scheduleDeferredAppMount(() => {
-  void import("./App").then(({ default: App }) => {
-    const root = document.getElementById("root");
-    if (!root) return;
-    createRoot(root).render(<App />);
-  });
+/** P7-PR-14: lcp-loader gates this module; mount App immediately (LCP phase already complete). */
+void import("./App").then(({ default: App }) => {
+  const root = document.getElementById("root");
+  if (!root) return;
+  createRoot(root).render(<App />);
 });

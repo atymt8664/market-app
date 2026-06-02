@@ -102,6 +102,7 @@
       #p7-lcp-layer{position:fixed;inset:0;z-index:35;pointer-events:none;background:#0A0A0A;transition:opacity .2s ease}
       #p7-lcp-layer.p7-dismissed{opacity:0;visibility:hidden}
       #root{position:relative;z-index:1;min-height:100vh;background:#0A0A0A}
+      html.p7-await-handoff #root img,html.p7-await-handoff #root picture{content-visibility:hidden!important}
     </style>
   </head>
   <body>
@@ -126,6 +127,6 @@
     </script>
     <div id="p7-lcp-layer" data-p7-pr="12"><!-- P7-PR-12:LCP_LAYER --></div>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/lcp-loader.ts"></script>
   </body>
 </html>

@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "set NODE_ENV=development&& set PORT=5173&& set BASE_PATH=/&& vite --config vite.config.ts",
-    "build": "vite build && node scripts/validate-p7-pr-12-home-shell.mjs",
+    "build": "vite build && node scripts/validate-p7-pr-12-home-shell.mjs && node scripts/validate-p7-pr-14-lcp-stabilization.mjs",
     "p7-pr-12:validate": "node scripts/validate-p7-pr-12-home-shell.mjs",
     "p7-pr-12:visual": "node scripts/visual/p7-pr-12-home-shell-lcp-check.mjs",
+    "p7-pr-14:validate": "node scripts/validate-p7-pr-14-lcp-stabilization.mjs",
+    "p7-pr-14:visual": "node scripts/visual/p7-pr-14-lcp-supersession-check.mjs",
     "build:analyze": "set BUNDLE_ANALYZE=1&& vite build",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
     "p8-1f:validate": "node --experimental-strip-types scripts/validate-p8-1f-dashboard-contracts.mjs",

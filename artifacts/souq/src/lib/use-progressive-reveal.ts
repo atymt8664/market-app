@@ -9,6 +9,8 @@ type ProgressiveRevealOptions = {
   enabled?: boolean;
   /** Expand one batch after idle even without scroll (ms timeout for requestIdleCallback). */
   idleExpandMs?: number;
+  /** P7-PR-14: when false, only scroll intersection reveals more (no idle batch). */
+  idleExpand?: boolean;
 };
 
 /**
@@ -22,6 +24,7 @@ export function useProgressiveReveal<T>(
     step = 4,
     enabled = true,
     idleExpandMs = 1500,
+    idleExpand = true,
   }: ProgressiveRevealOptions = {},
 ): {
   visible: T[];
@@ -45,7 +48,7 @@ export function useProgressiveReveal<T>(
   }, [length, step]);
 
   useEffect(() => {
-    if (!enabled || length <= initial) return;
+    if (!enabled || !idleExpand || length <= initial) return;
     const ric = window.requestIdleCallback;
     if (!ric) {
       const t = window.setTimeout(revealMore, 800);

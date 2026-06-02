@@ -17,7 +17,6 @@ const HOME_FEED_REVEAL_STEP = 4;
 /** P7-PR-14: one featured card at handoff (lead only) — avoids secondary IMG LCP supersession. */
 const HOME_FEATURED_INITIAL = 1;
 const HOME_FEATURED_REVEAL_STEP = 3;
-const HOME_FEATURED_IDLE_EXPAND_MS = 2800;
 
 const homeSectionHeading = cn(
   "inline-flex max-w-full items-center rounded-2xl border border-primary/28 bg-[#0A0A0A] px-2 py-px",
@@ -68,7 +67,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
     initial: HOME_FEATURED_INITIAL,
     step: HOME_FEATURED_REVEAL_STEP,
     enabled: featuredReady,
-    idleExpandMs: HOME_FEATURED_IDLE_EXPAND_MS,
+    idleExpand: false,
   });
 
   const recommendedReady = Array.isArray(recommendedAds) && recommendedAds.length > 0;

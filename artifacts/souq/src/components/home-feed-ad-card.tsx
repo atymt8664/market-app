@@ -16,15 +16,11 @@ import {
   FEATURED_HOME_FEED_CARD_W,
   HOME_FEED_CARD_SHELL,
 } from "@/components/ad-card-shells";
-import {
-  isHomeLcpHandoffComplete,
-  REACT_LCP_SLOT_ID,
-  handoffShellLcpToReact,
-} from "@/lib/home-lcp-handoff";
 
 export type HomeFeedAdCardProps = {
   ad: Ad;
   featured?: boolean;
+  /** First featured tile — hero-sized image URL only (no DOM handoff). */
   featuredLead?: boolean;
 };
 
@@ -72,14 +68,8 @@ export const HomeFeedAdCard = memo(function HomeFeedAdCard({
     setImageFailed(true);
   }, [rawImageUrl, imageSrc]);
 
-  const allowFeaturedImagePaint =
-    !featured || featuredLead || isHomeLcpHandoffComplete();
-  const hasImage = !!imageSrc && !imageFailed && allowFeaturedImagePaint && !featuredLead;
+  const hasImage = !!imageSrc && !imageFailed;
 
-  useEffect(() => {
-    if (!featuredLead) return;
-    handoffShellLcpToReact(REACT_LCP_SLOT_ID);
-  }, [featuredLead]);
   const adWithDetails = ad as Ad & { details?: Record<string, unknown> };
   const selectedCurrency =
     ((adWithDetails.details as Record<string, unknown> | undefined)?.selectedCurrency as
@@ -110,20 +100,14 @@ export const HomeFeedAdCard = memo(function HomeFeedAdCard({
           )}
         >
           <div className="relative w-full shrink-0 overflow-hidden bg-[#0A0A0A] aspect-[4/3]">
-            {featuredLead ? (
-              <div
-                id={REACT_LCP_SLOT_ID}
-                className="absolute inset-0 h-full w-full"
-                data-testid="home-lcp-prerender-slot"
-              />
-            ) : hasImage ? (
+            {hasImage ? (
               <img
                 src={imageSrc}
                 alt={ad.title}
                 className="absolute inset-0 h-full w-full object-cover"
-                loading={featured ? "lazy" : "lazy"}
+                loading={featured && featuredLead ? "eager" : "lazy"}
                 decoding="async"
-                fetchPriority={featured ? "low" : undefined}
+                fetchPriority={featured && featuredLead ? "high" : featured ? "low" : undefined}
                 draggable={false}
                 sizes={imageSizes}
                 onError={handleImageError}

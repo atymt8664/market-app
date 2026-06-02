@@ -1,8 +1,9 @@
 /**
- * P7-PR-12 / P7-PR-14: LCP shell handoff — move same #p7-lcp-candidate node (no supersession).
+ * P7-PR-12: Edge LCP shell lifecycle — dismiss overlay before React featured strip (no DOM handoff).
  */
 import { isHomePathname } from "@/lib/p7-home-path";
 
+/** @deprecated P7 featured stability — slot handoff removed; kept for tests/docs only. */
 export const REACT_LCP_SLOT_ID = "react-lcp-slot";
 
 /** Remove Home-only shell from SPA routes (shared index.html). */
@@ -33,48 +34,22 @@ export function subscribeHomeLcpHandoff(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-/** Mark React phase: block #root imgs from painting until DOM handoff. */
+/** @deprecated Featured stability — do not hide #root images; shell is dismissed before React featured. */
 export function beginHomeLcpHandoffAwait(): void {
-  if (typeof document === "undefined") return;
-  if (!document.getElementById("p7-lcp-layer")) return;
-  handoffComplete = false;
-  document.documentElement.classList.add("p7-await-handoff");
+  /* no-op */
 }
 
-/**
- * Move shell LCP <img> into React lead card — same element, Lighthouse keeps early LCP.
- * Returns true when the shell img was handed off.
- */
-export function handoffShellLcpToReact(slotId = REACT_LCP_SLOT_ID): boolean {
-  if (typeof document === "undefined") return false;
-  const img = document.getElementById("p7-lcp-candidate");
-  const slot = document.getElementById(slotId);
-  if (!img || !slot) return false;
-
-  handoffComplete = true;
-  document.documentElement.classList.remove("p7-await-handoff");
-  document.documentElement.setAttribute("data-p7-handoff", "1");
-
-  img.className = "absolute inset-0 h-full w-full object-cover";
-  img.removeAttribute("tabindex");
-  slot.appendChild(img);
-
-  const layer = document.getElementById("p7-lcp-layer");
-  if (layer) layer.remove();
-
-  listeners.forEach((fn) => fn());
-  return true;
+/** @deprecated DOM handoff removed — use dismissHomeLcpLayer when React featured is ready. */
+export function handoffShellLcpToReact(_slotId = REACT_LCP_SLOT_ID): boolean {
+  return false;
 }
 
-/** Fallback when lead slot is not mounted (non-Home paths). */
+/** Remove Edge/build LCP overlay — React featured strip owns all card images. */
 export function dismissHomeLcpLayer(): void {
   if (typeof document === "undefined") return;
-  if (handoffShellLcpToReact()) return;
-  const layer = document.getElementById("p7-lcp-layer");
-  if (!layer) return;
   handoffComplete = true;
   document.documentElement.classList.remove("p7-await-handoff");
-  document.documentElement.setAttribute("data-p7-handoff", "1");
-  layer.remove();
+  document.documentElement.removeAttribute("data-p7-handoff");
+  document.getElementById("p7-lcp-layer")?.remove();
   listeners.forEach((fn) => fn());
 }

@@ -37,7 +37,7 @@ import {
   HOME_PAGE_INSET,
 } from "@/lib/home-page-layout";
 import { cn } from "@/lib/utils";
-import { dismissHomeLcpLayer, isHomeLcpHandoffComplete } from "@/lib/home-lcp-handoff";
+import { dismissHomeLcpLayer } from "@/lib/home-lcp-handoff";
 
 /** React Query: تقليل إعادة الجلب عند التنقل للرئيسية دون المساس بـ invalidate بعد الطفرات/الأدمن. */
 const HOME_STALE_CATEGORIES_MS = 10 * 60 * 1000;
@@ -321,7 +321,6 @@ export default function Home() {
   const isRtl = locale === "ar";
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [lcpHandoffReady, setLcpHandoffReady] = useState(() => isHomeLcpHandoffComplete());
   const { city } = useSelectedCity();
   const { location: searchLocation } = useSearchLocation();
   const feedCity = useMemo(
@@ -414,20 +413,13 @@ export default function Home() {
     [featuredAds],
   );
 
-  /** P7-PR-14: mount featured feed when data ready; DOM handoff runs from lead card slot. */
+  /** P7 featured stability: dismiss Edge shell when featured query settles; React owns all cards. */
   useEffect(() => {
     if (!featuredFetched) return;
-    setLcpHandoffReady(true);
-    if (!Array.isArray(featuredAdsForHome) || featuredAdsForHome.length === 0) {
-      dismissHomeLcpLayer();
-    }
-  }, [featuredFetched, featuredAdsForHome]);
-
-  useEffect(() => {
-    if (!lcpHandoffReady) return;
+    dismissHomeLcpLayer();
     const raw = featuredAdsForHome?.[0]?.images?.[0];
     if (raw) void preloadAdImage(getAdImageHeroUrl(raw));
-  }, [lcpHandoffReady, featuredAdsForHome]);
+  }, [featuredFetched, featuredAdsForHome]);
 
   const recommendedAds = useMemo(
     () => filterHomeFeedAds(recommendedAdsRaw),
@@ -487,17 +479,15 @@ export default function Home() {
       />
 
       <div ref={recommendedGateRef} className="h-px w-full opacity-0" aria-hidden />
-      {lcpHandoffReady ? (
-        <Suspense fallback={null}>
-          <HomeFeedSections
-            isRtl={isRtl}
-            isLoadingFeatured={isLoadingFeaturedUi}
-            featuredAds={featuredAdsForHome}
-            isLoadingRecommended={isLoadingRecommended}
-            recommendedAds={recommendedAds}
-          />
-        </Suspense>
-      ) : null}
+      <Suspense fallback={null}>
+        <HomeFeedSections
+          isRtl={isRtl}
+          isLoadingFeatured={isLoadingFeaturedUi}
+          featuredAds={featuredAdsForHome}
+          isLoadingRecommended={isLoadingRecommended}
+          recommendedAds={recommendedAds}
+        />
+      </Suspense>
     </main>
   );
 }

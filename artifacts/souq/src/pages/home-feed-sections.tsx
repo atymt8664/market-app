@@ -1,5 +1,5 @@
 import type { Ad } from "@workspace/api-client-react";
-import { memo, useEffect, useState } from "react";
+import { memo } from "react";
 import { HomeFeedAdCard } from "@/components/home-feed-ad-card";
 import { AdCardSkeleton } from "@/components/ad-card-skeleton";
 import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
@@ -12,12 +12,9 @@ import { cn } from "@/lib/utils";
 const FEATURED_SKELETON_KEYS = [0, 1, 2, 3] as const;
 const GRID_SKELETON_KEYS = [0, 1, 2, 3] as const;
 
-/** P7-PR-14: recommended grid images defer until scroll (avoid LCP supersession). */
+/** Recommended grid only — featured strip renders all items immediately (stability). */
 const HOME_FEED_INITIAL_BATCH = 0;
 const HOME_FEED_REVEAL_STEP = 4;
-/** P7-PR-14: one featured card at handoff (lead only) — avoids secondary IMG LCP supersession. */
-const HOME_FEATURED_INITIAL = 1;
-const HOME_FEATURED_REVEAL_STEP = 3;
 
 const homeSectionHeading = cn(
   "inline-flex max-w-full items-center rounded-2xl border border-primary/28 bg-[#0A0A0A] px-2 py-px",
@@ -59,24 +56,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
   isLoadingRecommended,
   recommendedAds,
 }: HomeFeedSectionsProps) {
-  /** Delay horizontal featured sentinel so strip stays single-card during LCP window. */
-  const [featuredScrollUnlock, setFeaturedScrollUnlock] = useState(false);
-  useEffect(() => {
-    const t = window.setTimeout(() => setFeaturedScrollUnlock(true), 6000);
-    return () => window.clearTimeout(t);
-  }, []);
-
-  const featuredReady = Array.isArray(featuredAds) && featuredAds.length > 0;
-  const {
-    visible: visibleFeatured,
-    hasMore: hasMoreFeatured,
-    sentinelRef: featuredSentinelRef,
-  } = useProgressiveReveal(featuredAds, {
-    initial: HOME_FEATURED_INITIAL,
-    step: HOME_FEATURED_REVEAL_STEP,
-    enabled: featuredReady,
-    idleExpand: false,
-  });
+  const featuredList = Array.isArray(featuredAds) ? featuredAds : [];
 
   const recommendedReady = Array.isArray(recommendedAds) && recommendedAds.length > 0;
   const {
@@ -103,24 +83,15 @@ const HomeFeedSections = memo(function HomeFeedSections({
                 FEATURED_SKELETON_KEYS.map((i) => (
                   <AdCardSkeleton key={i} featured homeFeed />
                 ))
-              ) : Array.isArray(featuredAds) && featuredAds.length ? (
-                <>
-                  {visibleFeatured.map((ad, index) => (
-                    <HomeFeedAdCard
-                      key={ad.id}
-                      ad={ad}
-                      featured
-                      featuredLead={index === 0}
-                    />
-                  ))}
-                  {hasMoreFeatured && featuredScrollUnlock ? (
-                    <div
-                      ref={featuredSentinelRef}
-                      className="w-px shrink-0 self-stretch opacity-0"
-                      aria-hidden
-                    />
-                  ) : null}
-                </>
+              ) : featuredList.length ? (
+                featuredList.map((ad, index) => (
+                  <HomeFeedAdCard
+                    key={ad.id}
+                    ad={ad}
+                    featured
+                    featuredLead={index === 0}
+                  />
+                ))
               ) : (
                 <div className="w-full py-5 text-center text-sm text-muted-foreground">
                   {t("home.no_featured_ads")}

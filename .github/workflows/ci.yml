@@ -45,6 +45,12 @@ jobs:
       - name: Build frontend
         run: pnpm --filter @workspace/souq run build
 
+      - name: Home stability unit tests (P9-B)
+        run: pnpm --filter @workspace/souq run test:home-stability
+
+      - name: Home regression guards (P9-B)
+        run: pnpm --filter @workspace/souq run p9-b:guards
+
       - name: i18n key check
         run: pnpm --filter @workspace/souq run i18n:check
 

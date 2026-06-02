@@ -89,11 +89,30 @@
 
 ---
 
+## Home stability lock (P9-A — Phase A)
+
+**Active contract:** [P09-home-stability-contract.md](./P09-home-stability-contract.md)
+
+Performance optimizations on Home cold path are **blocked** until Phase C+ is opened in PROJECT_STATE.
+
+**Phase B (closed):** [P09-B-home-observability.md](./P09-B-home-observability.md) · CI: `p9-b:guards`
+
+Before any Home deploy:
+
+```bash
+pnpm --filter @workspace/souq run p9-b:guards
+```
+
+Regression plan: [P9-B-home-regression-guard-system.md](../runbooks/P9-B-home-regression-guard-system.md)
+
+---
+
 ## Testing requirements
 
 - Lighthouse runs stored as `.lighthouse-*.json` (local/CI artifact)
 - `prod-p9-map-tap-check.mjs` on STAGING/production URL (approved)
 - Frontend build must pass in CI
+- Home stability guards: `p9-a:validate`, `test:home-stability`
 
 ---
 

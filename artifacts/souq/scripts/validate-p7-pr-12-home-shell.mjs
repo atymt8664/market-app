@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { htmlHasFeaturedLeadRenderUrl } from "./ad-image-lcp-constants.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const indexPath = path.resolve(__dirname, "../dist/index.html");
@@ -34,11 +35,9 @@ if (!edgeOnlyShell) {
   if (!html.includes('data-testid="home-lcp-prerender"')) {
     errors.push("Missing prerender LCP img");
   }
-  const hasHeroRender =
-    html.includes("/render/image/public/") &&
-    (html.includes("width=820&height=615") || html.includes("width=820&amp;height=615"));
-  if (!hasHeroRender) {
-    errors.push("Prerender img must use Supabase hero render URL");
+  const hasFeaturedLeadRender = htmlHasFeaturedLeadRenderUrl(html);
+  if (!hasFeaturedLeadRender) {
+    errors.push("Prerender img must use Supabase featured-lead render URL");
   }
   if (!html.includes('id="p7-lcp-candidate"')) {
     errors.push("Missing #p7-lcp-candidate");

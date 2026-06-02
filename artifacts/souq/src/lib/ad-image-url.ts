@@ -10,7 +10,17 @@ const SUPABASE_OBJECT_PUBLIC =
 const SUPABASE_RENDER_PUBLIC =
   /^(https:\/\/[^/]+\.supabase\.co\/storage\/v1)\/render\/image\/public\/(.+?)(?:\?.*)?$/;
 
-export type AdImageVariant = "thumb" | "feed" | "hero" | "viewer" | "original";
+export type AdImageVariant =
+  | "thumb"
+  | "feed"
+  | "featuredLead"
+  | "hero"
+  | "viewer"
+  | "original";
+
+/** P9-D: Home featured lead tile — 175px max ×2 retina, 4:3 cover (LCP path). */
+export const FEATURED_LEAD_IMAGE_PARAMS =
+  "width=350&height=262&resize=cover&quality=80";
 
 const VARIANT_PARAMS: Record<
   Exclude<AdImageVariant, "original">,
@@ -20,6 +30,8 @@ const VARIANT_PARAMS: Record<
   thumb: "width=136&height=136&resize=cover&quality=75",
   /** Home grid tile ~200px wide ×2 retina, 4:3 cover */
   feed: "width=400&height=300&resize=cover&quality=75",
+  /** Home featured lead — matches FEATURED_HOME_FEED_CARD_W @2x (LCP shell + lead tile) */
+  featuredLead: FEATURED_LEAD_IMAGE_PARAMS,
   /** ~380px hero ×2 retina, 4:3 cover */
   hero: "width=820&height=615&resize=cover&quality=80",
   /** Fullscreen viewer — sharp without full 1920px payload */
@@ -69,6 +81,9 @@ export const getAdImageThumbUrl = (url: string) =>
 
 export const getAdImageFeedUrl = (url: string) =>
   getAdImageUrl(url, "feed");
+
+export const getAdImageFeaturedLeadUrl = (url: string) =>
+  getAdImageUrl(url, "featuredLead");
 
 export const getAdImageHeroUrl = (url: string) =>
   getAdImageUrl(url, "hero");

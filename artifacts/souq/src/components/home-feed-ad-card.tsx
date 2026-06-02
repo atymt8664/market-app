@@ -8,9 +8,9 @@ import { memo, useCallback, useEffect, useState } from "react";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import {
-  getAdImageFeedUrl,
-  getAdImageHeroUrl,
+  getAdImageFeaturedLeadUrl,
   getAdImageThumbUrl,
+  getAdImageFeedUrl,
 } from "@/lib/ad-image-url";
 import {
   FEATURED_HOME_FEED_CARD_W,
@@ -37,7 +37,7 @@ function adCardDisplayImageSrc(
   featuredLead?: boolean,
 ): string | undefined {
   if (!rawUrl) return undefined;
-  if (featured && featuredLead) return getAdImageHeroUrl(rawUrl);
+  if (featured && featuredLead) return getAdImageFeaturedLeadUrl(rawUrl);
   if (featured) return getAdImageThumbUrl(rawUrl);
   return getAdImageFeedUrl(rawUrl);
 }

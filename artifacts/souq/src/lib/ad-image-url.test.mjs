@@ -3,8 +3,10 @@ import {
   getAdImageUrl,
   getAdImageOriginalUrl,
   getAdImageHeroUrl,
+  getAdImageFeaturedLeadUrl,
   getAdImageThumbUrl,
   getAdImageFeedUrl,
+  FEATURED_LEAD_IMAGE_PARAMS,
 } from "./ad-image-url.ts";
 
 const ORIGINAL =
@@ -13,6 +15,11 @@ const ORIGINAL =
 assert.equal(
   getAdImageThumbUrl(ORIGINAL),
   "https://example.supabase.co/storage/v1/render/image/public/uploads/ads/1/photo.jpg?width=136&height=136&resize=cover&quality=75",
+);
+
+assert.equal(
+  getAdImageFeaturedLeadUrl(ORIGINAL),
+  `https://example.supabase.co/storage/v1/render/image/public/uploads/ads/1/photo.jpg?${FEATURED_LEAD_IMAGE_PARAMS}`,
 );
 
 assert.equal(

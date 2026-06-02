@@ -1,7 +1,7 @@
 /** Low-cardinality route label for CWV RUM (matches API observability normalization). */
 export function normalizeVitalsRoute(pathname: string): string {
   let path = pathname.split("?")[0] || "/";
-  const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+  const base = (import.meta.env?.BASE_URL ?? "/").replace(/\/$/, "");
   if (base && base !== "/" && path.startsWith(base)) {
     path = path.slice(base.length) || "/";
   }

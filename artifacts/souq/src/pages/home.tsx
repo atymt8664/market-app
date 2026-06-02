@@ -25,7 +25,7 @@ import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useSearchLocation } from "@/hooks/use-search-location";
 import { searchLocationCityForFeed } from "@/lib/search-location";
 import { buildHomeRecommendedFeed, filterHomeFeedAds } from "@/lib/home-feed-ads";
-import { getAdImageHeroUrl } from "@/lib/ad-image-url";
+import { getAdImageFeaturedLeadUrl } from "@/lib/ad-image-url";
 import { preloadAdImage } from "@/lib/ad-image-preload";
 import { useAuth } from "@/hooks/use-auth";
 import { t } from "@/i18n";
@@ -357,11 +357,6 @@ export default function Home() {
 
   useEffect(() => {
     if (!featuredFetched) return;
-    void import("@/pages/home-feed-sections");
-  }, [featuredFetched]);
-
-  useEffect(() => {
-    if (!featuredFetched) return;
     const el = recommendedGateRef.current;
     if (!el || typeof IntersectionObserver === "undefined") {
       return scheduleAfterFirstPaint(() => setRecommendedQueryEnabled(true), 400);
@@ -379,13 +374,11 @@ export default function Home() {
     return () => io.disconnect();
   }, [featuredFetched]);
 
-  const recommendedFeedEnabled = recommendedQueryEnabled;
-
   const { data: defaultRecommended, isLoading: isLoadingDefaultRec, isFetched: defaultRecFetched } =
     useListRecommendedAds({
       query: {
         queryKey: getListRecommendedAdsQueryKey(),
-        enabled: recommendedFeedEnabled,
+        enabled: recommendedQueryEnabled,
         staleTime: HOME_STALE_FEED_MS,
       },
     });
@@ -394,7 +387,7 @@ export default function Home() {
     {
       query: {
         queryKey: getListAdsQueryKey({ city: feedCity, limit: 20 }),
-        enabled: recommendedFeedEnabled && !!feedCity,
+        enabled: recommendedQueryEnabled && !!feedCity,
         staleTime: HOME_STALE_FEED_MS,
       },
     },
@@ -418,7 +411,7 @@ export default function Home() {
     if (!featuredFetched) return;
     dismissHomeLcpLayer();
     const raw = featuredAdsForHome?.[0]?.images?.[0];
-    if (raw) void preloadAdImage(getAdImageHeroUrl(raw));
+    if (raw) void preloadAdImage(getAdImageFeaturedLeadUrl(raw));
   }, [featuredFetched, featuredAdsForHome]);
 
   const recommendedAds = useMemo(
@@ -426,9 +419,8 @@ export default function Home() {
     [recommendedAdsRaw, featuredAdsForHome],
   );
 
-  const isLoadingFeaturedUi = isLoadingFeatured;
   const isLoadingRecommended =
-    !recommendedFeedEnabled ||
+    !recommendedQueryEnabled ||
     (feedCity
       ? !cityAdsFetched && !defaultRecFetched
       : isLoadingDefaultRec);
@@ -482,7 +474,7 @@ export default function Home() {
       <Suspense fallback={null}>
         <HomeFeedSections
           isRtl={isRtl}
-          isLoadingFeatured={isLoadingFeaturedUi}
+          isLoadingFeatured={isLoadingFeatured}
           featuredAds={featuredAdsForHome}
           isLoadingRecommended={isLoadingRecommended}
           recommendedAds={recommendedAds}

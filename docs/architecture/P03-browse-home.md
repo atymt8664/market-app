@@ -89,11 +89,20 @@ Help users **discover** listings: home feed shell, category navigation, search U
 
 ---
 
+## Home stability contract (P9-A)
+
+**Binding:** [P09-home-stability-contract.md](./P09-home-stability-contract.md) · [Baseline](./P09-home-stability-baseline.md) · [Checklist](../runbooks/P9-A-home-stability-checklist.md)
+
+Any Home cold-path change must pass `p9-b:guards` before deploy (Phase B CI).
+
+---
+
 ## Testing requirements
 
 - Manual: home, categories, search navigation on STAGING
 - Visual: `scripts/visual/prod-p9-map-tap-check.mjs` (with **P9**)
 - `i18n:check` for new strings
+- Home stability: `p9-a:validate`, `test:home-stability`, [P9-A checklist](../runbooks/P9-A-home-stability-checklist.md)
 
 ---
 

@@ -21,7 +21,10 @@ assert(existsSync(join(apiRoot, "src/lib/observability/vitals.test.mjs")), "api 
 
 const mainTsx = readFileSync(join(root, "src/main.tsx"), "utf8");
 assert(mainTsx.includes("initWebVitalsReporting"), "main.tsx wires initWebVitalsReporting");
-assert(mainTsx.includes("bootstrapReturningUserLocale"), "main.tsx uses bootstrapReturningUserLocale");
+assert(
+  mainTsx.includes("ensureBootstrapLocales") || mainTsx.includes("bootstrapReturningUserLocale"),
+  "main.tsx uses gate-first i18n bootstrap (ensureBootstrapLocales)",
+);
 
 const reporting = readFileSync(join(root, "src/lib/web-vitals-reporting.ts"), "utf8");
 assert(reporting.includes("web-vitals"), "web-vitals-reporting imports web-vitals");

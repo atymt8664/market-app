@@ -21,24 +21,25 @@ function featuredApiUrl() {
 const SUPABASE_OBJECT_PUBLIC =
   /^(https:\/\/[^/]+\.supabase\.co\/storage\/v1)\/object\/public\/(.+)$/;
 
-const HERO_PARAMS = "width=820&height=615&resize=cover&quality=80";
+/** SSOT mirror: ad-image-url.ts featuredLead variant (P9-D LCP sizing). */
+const FEATURED_LEAD_PARAMS = "width=350&height=262&resize=cover&quality=80";
 
 const GATE_FEATURED_HEADING = "إعلانات مميزة";
 
 export const P7_LCP_LAYER_MARKER = "<!-- P7-PR-12:LCP_LAYER -->";
 export const P7_HOME_LCP_HEAD_MARKER = "<!-- P7-PR-12:HOME_LCP_HEAD -->";
 
-export function getAdImageHeroUrl(originalUrl) {
+export function getAdImageFeaturedLeadUrl(originalUrl) {
   if (!originalUrl || typeof originalUrl !== "string") return "";
   const objectMatch = originalUrl.match(SUPABASE_OBJECT_PUBLIC);
   if (objectMatch) {
-    return `${objectMatch[1]}/render/image/public/${objectMatch[2]}?${HERO_PARAMS}`;
+    return `${objectMatch[1]}/render/image/public/${objectMatch[2]}?${FEATURED_LEAD_PARAMS}`;
   }
   const renderMatch = originalUrl.match(
     /^(https:\/\/[^/]+\.supabase\.co\/storage\/v1)\/render\/image\/public\/(.+?)(?:\?.*)?$/,
   );
   if (renderMatch) {
-    return `${renderMatch[1]}/render/image/public/${renderMatch[2]}?${HERO_PARAMS}`;
+    return `${renderMatch[1]}/render/image/public/${renderMatch[2]}?${FEATURED_LEAD_PARAMS}`;
   }
   return originalUrl;
 }
@@ -69,7 +70,7 @@ export async function fetchFeaturedLeadAd() {
     const lead = data[0];
     const raw = lead?.images?.[0];
     if (!raw || typeof raw !== "string") return null;
-    const heroUrl = getAdImageHeroUrl(raw);
+    const heroUrl = getAdImageFeaturedLeadUrl(raw);
     if (!heroUrl.startsWith("https://")) return null;
     return {
       id: lead.id,

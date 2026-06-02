@@ -23,6 +23,30 @@ Only **one open builder phase** at a time. Sequence:
 
 **P17-5/6/7** buyer · seller · shipping flows **live on PRODUCTION** (API P17-PROD-2 + frontend P17-PROD-3). **P17-7A** addresses address gate + chat draft + buyer status sync before **P17-8**.
 
+### P9-A — Home Stability Lock (Phase A)
+
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| **P9-A-0** Stability contract + baseline + guards | ✅ **Closed** | [P09-home-stability-contract.md](./architecture/P09-home-stability-contract.md) · [baseline](./architecture/P09-home-stability-baseline.md) · [checklist](./runbooks/P9-A-home-stability-checklist.md) · [regression guards](./runbooks/P9-A-home-regression-guards.md) · `p9-a:validate` + `test:home-stability` · **no production behavior change** |
+
+### P9-B — Observability & Regression Guards (Phase B)
+
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| **P9-B-0** Observability layer + CI guards + monitoring baseline | ✅ **Closed** | [P09-B-home-observability.md](./architecture/P09-B-home-observability.md) · [monitoring baseline](./architecture/P09-B-home-monitoring-baseline.md) · [guard system](./runbooks/P9-B-home-regression-guard-system.md) · [CI strategy](./runbooks/P9-B-ci-validation-strategy.md) · `p9-b:guards` in CI · **no production behavior change** |
+
+### P9-C — Rendering Simplification (Phase C)
+
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+### P9-D — Image & Feed Performance (Phase D)
+
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| **P9-D-0** LCP image sizing + delivery path | ✅ **Closed — Production verified** | `featuredLead` transform (350×262 @2x) · deploy `dpl_9vD5HcUMB77wZHtP8w69wENVSYfT` · PSI LCP 4.9s→4.2s · guards PASS · **UX unchanged** |
+
+**P9-A/B/C/D** lock Home post P7 Featured Stability Fix. No Phase E until explicit sign-off after P9-D.
+
 ---
 
 ## Phase status
@@ -102,4 +126,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P17-7A-0 spec lock — [P17-7A-order-address-seller-chat-spec.md](./architecture/P17-7A-order-address-seller-chat-spec.md). Awaiting Mohamed sign-off before implementation.
+P9-D closed on Production (`dpl_9vD5HcUMB77wZHtP8w69wENVSYfT`). Phase E not opened.

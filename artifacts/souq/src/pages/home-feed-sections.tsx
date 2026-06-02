@@ -1,5 +1,5 @@
 import type { Ad } from "@workspace/api-client-react";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import { HomeFeedAdCard } from "@/components/home-feed-ad-card";
 import { AdCardSkeleton } from "@/components/ad-card-skeleton";
 import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
 const FEATURED_SKELETON_KEYS = [0, 1, 2, 3] as const;
 const GRID_SKELETON_KEYS = [0, 1, 2, 3] as const;
 
-const HOME_FEED_INITIAL_BATCH = 4;
+/** P7-PR-14: recommended grid images defer until scroll (avoid LCP supersession). */
+const HOME_FEED_INITIAL_BATCH = 0;
 const HOME_FEED_REVEAL_STEP = 4;
 /** P7-PR-14: one featured card at handoff (lead only) — avoids secondary IMG LCP supersession. */
 const HOME_FEATURED_INITIAL = 1;
@@ -58,6 +59,13 @@ const HomeFeedSections = memo(function HomeFeedSections({
   isLoadingRecommended,
   recommendedAds,
 }: HomeFeedSectionsProps) {
+  /** Delay horizontal featured sentinel so strip stays single-card during LCP window. */
+  const [featuredScrollUnlock, setFeaturedScrollUnlock] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setFeaturedScrollUnlock(true), 6000);
+    return () => window.clearTimeout(t);
+  }, []);
+
   const featuredReady = Array.isArray(featuredAds) && featuredAds.length > 0;
   const {
     visible: visibleFeatured,
@@ -105,7 +113,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
                       featuredLead={index === 0}
                     />
                   ))}
-                  {hasMoreFeatured ? (
+                  {hasMoreFeatured && featuredScrollUnlock ? (
                     <div
                       ref={featuredSentinelRef}
                       className="w-px shrink-0 self-stretch opacity-0"

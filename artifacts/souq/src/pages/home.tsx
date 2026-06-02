@@ -374,7 +374,7 @@ export default function Home() {
           io.disconnect();
         }
       },
-      { rootMargin: "360px 0px" },
+      { rootMargin: "0px 0px" },
     );
     io.observe(el);
     return () => io.disconnect();

@@ -103,6 +103,7 @@ export const HomeFeedAdCard = memo(function HomeFeedAdCard({
                 src={imageSrc}
                 alt={ad.title}
                 className="absolute inset-0 h-full w-full object-cover"
+                data-testid={featured && featuredLead ? "home-lcp-prerender" : undefined}
                 loading={featured && featuredLead ? "eager" : "lazy"}
                 decoding="async"
                 fetchPriority={featured && featuredLead ? "high" : undefined}

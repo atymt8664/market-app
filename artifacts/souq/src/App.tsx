@@ -3,7 +3,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { lazyWithRetry } from "@/lib/lazy-with-retry";
-import Home from "@/pages/home";
+/** P7-PR-12: Home off entry bundle — cold path uses #p7-lcp-layer until lazy chunk loads. */
+const Home = lazy(() => import("@/pages/home"));
 /** P7-PR-9: Radix toast/tooltip deferred — not in entry bundle. */
 const DeferredAppChrome = lazy(() => import("@/components/deferred-app-chrome"));
 import { useAfterFirstPaint } from "@/lib/after-first-paint";

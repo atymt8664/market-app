@@ -101,6 +101,47 @@ function souqManualChunks(id: string): string | undefined {
  */
 const DEFERRED_MODULE_PRELOAD = /vendor-(?:radix|date-fns|lucide|floating-ui|recharts|framer-motion)-/;
 
+/** P7-PR-12: build-time fallback shell (#p7-lcp-layer) when Edge middleware unavailable (local preview). */
+function injectHomeHtmlShell(): {
+  name: string;
+  apply: "build";
+  transformIndexHtml: {
+    order: "pre";
+    handler: (html: string) => Promise<string>;
+  };
+} {
+  return {
+    name: "p7-pr-12-home-html-shell",
+    apply: "build",
+    transformIndexHtml: {
+      order: "pre",
+      async handler(html: string) {
+        if (process.env.HOME_LCP_SHELL_SKIP === "1") return html;
+        try {
+          const { buildHomeShellInjection, applyHomeShellToHtml } = await import(
+            "./scripts/home-lcp-shell.mjs"
+          );
+          const injection = await buildHomeShellInjection();
+          if (!injection) {
+            // eslint-disable-next-line no-console -- build diagnostics
+            console.warn("[p7-pr-12] Home LCP layer skipped (featured API unavailable at build).");
+            return html;
+          }
+          // eslint-disable-next-line no-console -- build diagnostics
+          console.info(
+            `[p7-pr-12] Home LCP layer: ad #${injection.lead.id} in #p7-lcp-layer`,
+          );
+          return applyHomeShellToHtml(html, injection);
+        } catch (err) {
+          // eslint-disable-next-line no-console -- build diagnostics
+          console.warn("[p7-pr-12] Home LCP layer injection failed:", err);
+          return html;
+        }
+      },
+    },
+  };
+}
+
 function trimNonCriticalModulePreloads(): { name: string; transformIndexHtml: { order: "post"; handler: (html: string) => string } } {
   return {
     name: "souq-trim-modulepreload",
@@ -166,6 +207,7 @@ export default defineConfig({
     },
     react(),
     tailwindcss(),
+    injectHomeHtmlShell(),
     trimNonCriticalModulePreloads(),
     ...(process.env.BUNDLE_ANALYZE === "1"
       ? [

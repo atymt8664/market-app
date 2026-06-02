@@ -94,10 +94,14 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/icons/pwa-icon-512.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" sizes="192x192" href="/icons/pwa-icon-192.png" />
-    <!-- P7-PR-9: early connection for same-origin API + storage (LCP image chain). -->
+    <!-- P7-PR-9: same-origin shell assets. P7-PR-12 adds API + storage preconnect via build/edge. -->
     <link rel="preconnect" href="https://www.souq-arab.com" crossorigin />
+    <!-- P7-PR-12:HOME_LCP_HEAD -->
     <style>
       html.dark{color-scheme:dark}body{margin:0;background:#0a0a0a}
+      #p7-lcp-layer{position:fixed;inset:0;z-index:35;pointer-events:none;background:#0A0A0A;transition:opacity .2s ease}
+      #p7-lcp-layer.p7-dismissed{opacity:0;visibility:hidden}
+      #root{position:relative;z-index:1;min-height:100vh;background:#0A0A0A}
     </style>
   </head>
   <body>
@@ -120,6 +124,7 @@
         } catch (e) {}
       })();
     </script>
+    <div id="p7-lcp-layer" data-p7-pr="12"><!-- P7-PR-12:LCP_LAYER --></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

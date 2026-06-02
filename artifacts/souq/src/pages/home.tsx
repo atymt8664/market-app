@@ -37,6 +37,7 @@ import {
   HOME_PAGE_INSET,
 } from "@/lib/home-page-layout";
 import { cn } from "@/lib/utils";
+import { dismissHomeLcpLayer } from "@/lib/home-lcp-handoff";
 
 /** React Query: تقليل إعادة الجلب عند التنقل للرئيسية دون المساس بـ invalidate بعد الطفرات/الأدمن. */
 const HOME_STALE_CATEGORIES_MS = 10 * 60 * 1000;
@@ -418,6 +419,13 @@ export default function Home() {
     if (!raw) return;
     void preloadAdImage(getAdImageHeroUrl(raw));
   }, [featuredAdsForHome]);
+
+  /** P7-PR-12: hand off LCP from static layer to React featured strip. */
+  useEffect(() => {
+    if (!featuredFetched) return;
+    if (!Array.isArray(featuredAdsForHome) || featuredAdsForHome.length === 0) return;
+    dismissHomeLcpLayer();
+  }, [featuredFetched, featuredAdsForHome]);
 
   const recommendedAds = useMemo(
     () => filterHomeFeedAds(recommendedAdsRaw),

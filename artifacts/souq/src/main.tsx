@@ -1,5 +1,4 @@
 import { createRoot } from "react-dom/client";
-import App from "./App";
 /** P7-PR-7: sync critical CSS only — full index.css deferred after first paint. */
 import "./home-critical.css";
 import { ensureBootstrapLocales } from "@/i18n";
@@ -16,13 +15,14 @@ import {
   startHomeLcpPrefetch,
   wireHomeLcpPrefetchToQueryClient,
 } from "@/lib/home-lcp-prefetch";
+import { scheduleDeferredAppMount } from "@/lib/deferred-app-bootstrap";
 
 const apiBase = getApiBaseUrl();
 setBaseUrl(apiBase || null);
 
 installAccountDisabledFetchInterceptor(queryClient);
 
-/** P7-PR-9: featured API + LCP hero preload before React — shortens LCP chain on Home. */
+/** P7-PR-9: featured API + LCP hero preload before React — seeds React Query on Home. */
 startHomeLcpPrefetch();
 wireHomeLcpPrefetchToQueryClient(queryClient);
 
@@ -37,10 +37,14 @@ scheduleDeferredFonts();
 scheduleDeferredStyles();
 initWebVitalsReporting();
 
-function mountApp(): void {
-  createRoot(document.getElementById("root")!).render(<App />);
-}
-
-/** P7-PR-6: gate copy sync, mount immediately; full ar.json after first paint. */
+/** P7-PR-6: gate copy sync before mount. */
 ensureBootstrapLocales();
-mountApp();
+
+/** P7-PR-12: defer App chunk until LCP layer paints; dynamic import shrinks sync entry. */
+scheduleDeferredAppMount(() => {
+  void import("./App").then(({ default: App }) => {
+    const root = document.getElementById("root");
+    if (!root) return;
+    createRoot(root).render(<App />);
+  });
+});

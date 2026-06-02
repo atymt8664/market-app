@@ -1,6 +1,7 @@
 /** Home feed only — hide disposable CSRF/location test ads from API (staging DB residue). */
 
 type AdLike = {
+  id?: number | null;
   title?: string | null;
   description?: string | null;
 };
@@ -39,4 +40,32 @@ export function isHomeTestAd(ad: AdLike): boolean {
 export function filterHomeFeedAds<T extends AdLike>(ads: T[] | undefined | null): T[] {
   if (!Array.isArray(ads)) return [];
   return ads.filter((ad) => !isHomeTestAd(ad));
+}
+
+/** Featured strip ids — any promoted/featured ad must not repeat in Recommended. */
+export function collectFeaturedAdIds(ads: AdLike[] | undefined | null): Set<number> {
+  const ids = new Set<number>();
+  if (!Array.isArray(ads)) return ids;
+  for (const ad of ads) {
+    if (ad?.id != null && Number.isFinite(ad.id)) ids.add(ad.id);
+  }
+  return ids;
+}
+
+export function excludeFeaturedFromRecommended<T extends AdLike>(
+  recommended: T[] | undefined | null,
+  featuredIds: Set<number>,
+): T[] {
+  if (!Array.isArray(recommended)) return [];
+  if (featuredIds.size === 0) return recommended;
+  return recommended.filter((ad) => ad?.id == null || !featuredIds.has(ad.id));
+}
+
+/** Home Recommended feed: test-ad filter + dedupe against current Featured list. */
+export function buildHomeRecommendedFeed<T extends AdLike>(
+  recommended: T[] | undefined | null,
+  featured: T[] | undefined | null,
+): T[] {
+  const cleaned = filterHomeFeedAds(recommended);
+  return excludeFeaturedFromRecommended(cleaned, collectFeaturedAdIds(featured));
 }

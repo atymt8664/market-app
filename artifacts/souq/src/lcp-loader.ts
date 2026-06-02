@@ -2,7 +2,7 @@
  * P7-PR-14: zero-React LCP phase — defer entire app graph until Edge shell LCP paints.
  */
 import { isHomePathname } from "@/lib/p7-home-path";
-import { stripHomeLcpShellIfNotHome } from "@/lib/home-lcp-handoff";
+import { dismissHomeLcpLayer, stripHomeLcpShellIfNotHome } from "@/lib/home-lcp-handoff";
 
 const HOME_LCP_MAX_WAIT_MS = 2000;
 
@@ -48,6 +48,8 @@ function waitForHomeShellLcp(): Promise<void> {
 async function bootApp(): Promise<void> {
   if (isHomePathname() && document.getElementById("p7-lcp-layer")) {
     await waitForHomeShellLcp();
+    /** Dismiss shell before React paint — avoids refresh flash of a lone featured card. */
+    dismissHomeLcpLayer();
   }
   await import("./main");
 }

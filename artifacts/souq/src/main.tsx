@@ -16,18 +16,20 @@ import {
   wireHomeLcpPrefetchToQueryClient,
 } from "@/lib/home-lcp-prefetch";
 import { beginHomeLcpHandoffAwait } from "@/lib/home-lcp-handoff";
+import { isHomePathname } from "@/lib/p7-home-path";
 
 const apiBase = getApiBaseUrl();
 setBaseUrl(apiBase || null);
 
 installAccountDisabledFetchInterceptor(queryClient);
 
-/** P7-PR-14: block React imgs from superseding shell LCP until handoff. */
-beginHomeLcpHandoffAwait();
-
-/** P7-PR-9: featured API after LCP-stable loader — seeds React Query on Home. */
-startHomeLcpPrefetch();
-wireHomeLcpPrefetchToQueryClient(queryClient);
+/** P7-PR-14: block React imgs from superseding shell LCP until handoff (Home only). */
+if (isHomePathname()) {
+  beginHomeLcpHandoffAwait();
+  /** P7-PR-9: featured API after LCP-stable loader — seeds React Query on Home. */
+  startHomeLcpPrefetch();
+  wireHomeLcpPrefetchToQueryClient(queryClient);
+}
 
 /** P7-PR-8: SW registration after first paint — avoids competing with LCP on Home cold path. */
 if (import.meta.env.PROD) {

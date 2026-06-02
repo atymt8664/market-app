@@ -1,10 +1,16 @@
 /**
  * P7-PR-12: defer App chunk until Home LCP image paints (or timeout) — shell stays visible.
  */
+import { isHomePathname } from "@/lib/p7-home-path";
+
 const HOME_LCP_MAX_WAIT_MS = 2000;
 
-function isHomeLcpLayerPresent(): boolean {
-  return typeof document !== "undefined" && Boolean(document.getElementById("p7-lcp-layer"));
+function shouldDeferForHomeLcp(): boolean {
+  return (
+    typeof document !== "undefined" &&
+    isHomePathname() &&
+    Boolean(document.getElementById("p7-lcp-layer"))
+  );
 }
 
 function waitForHomeLcpCandidate(): Promise<void> {
@@ -43,7 +49,7 @@ export function scheduleDeferredAppMount(mount: () => void): void {
     return;
   }
 
-  if (!isHomeLcpLayerPresent()) {
+  if (!shouldDeferForHomeLcp()) {
     mount();
     return;
   }

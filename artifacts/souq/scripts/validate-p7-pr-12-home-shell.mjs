@@ -16,6 +16,10 @@ if (!fs.existsSync(indexPath)) {
 }
 
 const html = fs.readFileSync(indexPath, "utf8");
+const edgeOnlyShell =
+  process.env.HOME_LCP_SHELL_SKIP === "1" ||
+  process.env.VERCEL === "1" ||
+  process.env.P7_EDGE_SHELL_ONLY === "1";
 
 if (!html.includes('id="p7-lcp-layer"')) {
   errors.push("Missing #p7-lcp-layer outside #root");
@@ -23,20 +27,22 @@ if (!html.includes('id="p7-lcp-layer"')) {
 if (html.includes('<div id="root">') && html.match(/<div id="root">[\s\S]*?p7-lcp-candidate/)) {
   errors.push("LCP candidate must not live inside #root (React would replace it)");
 }
-if (!html.includes('id="p7-lcp-hero-preload"')) {
-  errors.push("Missing <link rel=preload id=p7-lcp-hero-preload>");
-}
-if (!html.includes('data-testid="home-lcp-prerender"')) {
-  errors.push("Missing prerender LCP img");
-}
-const hasHeroRender =
-  html.includes("/render/image/public/") &&
-  (html.includes("width=820&height=615") || html.includes("width=820&amp;height=615"));
-if (!hasHeroRender) {
-  errors.push("Prerender img must use Supabase hero render URL");
-}
-if (!html.includes('id="p7-lcp-candidate"')) {
-  errors.push("Missing #p7-lcp-candidate");
+if (!edgeOnlyShell) {
+  if (!html.includes('id="p7-lcp-hero-preload"')) {
+    errors.push("Missing <link rel=preload id=p7-lcp-hero-preload>");
+  }
+  if (!html.includes('data-testid="home-lcp-prerender"')) {
+    errors.push("Missing prerender LCP img");
+  }
+  const hasHeroRender =
+    html.includes("/render/image/public/") &&
+    (html.includes("width=820&height=615") || html.includes("width=820&amp;height=615"));
+  if (!hasHeroRender) {
+    errors.push("Prerender img must use Supabase hero render URL");
+  }
+  if (!html.includes('id="p7-lcp-candidate"')) {
+    errors.push("Missing #p7-lcp-candidate");
+  }
 }
 if (/<div id="root">[\s\S]*?<\/div>\s*<\/body>/.test(html)) {
   const rootInner = html.match(/<div id="root">([\s\S]*?)<\/div>\s*<script/)?.[1]?.trim() ?? "";

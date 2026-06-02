@@ -1,7 +1,25 @@
 /**
  * P7-PR-12 / P7-PR-14: LCP shell handoff — move same #p7-lcp-candidate node (no supersession).
  */
+import { isHomePathname } from "@/lib/p7-home-path";
+
 export const REACT_LCP_SLOT_ID = "react-lcp-slot";
+
+/** Remove Home-only shell from SPA routes (shared index.html). */
+export function stripHomeLcpShell(): void {
+  if (typeof document === "undefined") return;
+  document.getElementById("p7-lcp-layer")?.remove();
+  document.getElementById("p7-lcp-hero-preload")?.remove();
+  document.documentElement.classList.remove("p7-await-handoff", "p7-lcp-stable");
+  document.documentElement.removeAttribute("data-p7-lcp-stable");
+  document.documentElement.removeAttribute("data-p7-handoff");
+  handoffComplete = true;
+  listeners.forEach((fn) => fn());
+}
+
+export function stripHomeLcpShellIfNotHome(): void {
+  if (!isHomePathname()) stripHomeLcpShell();
+}
 
 let handoffComplete = false;
 const listeners = new Set<() => void>();

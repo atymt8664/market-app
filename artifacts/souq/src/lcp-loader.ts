@@ -1,15 +1,12 @@
 /**
  * P7-PR-14: zero-React LCP phase — defer entire app graph until Edge shell LCP paints.
  */
+import { isHomePathname } from "@/lib/p7-home-path";
+import { stripHomeLcpShellIfNotHome } from "@/lib/home-lcp-handoff";
+
 const HOME_LCP_MAX_WAIT_MS = 2000;
 
-function isHomePathname(): boolean {
-  const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
-  const pathname = window.location.pathname;
-  const stripped =
-    base && pathname.startsWith(base) ? pathname.slice(base.length) || "/" : pathname;
-  return stripped === "/" || stripped === "";
-}
+stripHomeLcpShellIfNotHome();
 
 function waitForHomeShellLcp(): Promise<void> {
   return new Promise((resolve) => {

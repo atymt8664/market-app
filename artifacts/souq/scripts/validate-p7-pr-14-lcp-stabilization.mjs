@@ -19,7 +19,11 @@ const html = fs.readFileSync(indexPath, "utf8");
 if (!html.includes('id="p7-lcp-layer"')) {
   errors.push("Missing #p7-lcp-layer");
 }
-if (!html.includes('id="p7-lcp-candidate"')) {
+const edgeOnlyShell =
+  process.env.HOME_LCP_SHELL_SKIP === "1" ||
+  process.env.VERCEL === "1" ||
+  process.env.P7_EDGE_SHELL_ONLY === "1";
+if (!edgeOnlyShell && !html.includes('id="p7-lcp-candidate"')) {
   errors.push("Missing #p7-lcp-candidate");
 }
 if (html.includes('src="/src/main.tsx"') || /src="\/assets\/main-[^"]+\.js"/.test(html)) {

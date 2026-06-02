@@ -126,6 +126,18 @@
       })();
     </script>
     <div id="p7-lcp-layer" data-p7-pr="12"><!-- P7-PR-12:LCP_LAYER --></div>
+    <script>
+      (function () {
+        var p = location.pathname.replace(/\/$/, "") || "/";
+        if (p !== "/") {
+          var layer = document.getElementById("p7-lcp-layer");
+          if (layer) layer.remove();
+          var preload = document.getElementById("p7-lcp-hero-preload");
+          if (preload) preload.remove();
+          document.documentElement.classList.remove("p7-await-handoff");
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/lcp-loader.ts"></script>
   </body>

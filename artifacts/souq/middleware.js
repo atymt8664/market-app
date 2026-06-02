@@ -28,6 +28,7 @@ const OG_HEADERS = {
   "X-P11-Og-Crawler": "1",
 };
 
+/** Home edge shell only on exact `/`; OG paths unchanged. */
 export const config = {
   matcher: ["/", "/ad/:path*", "/users/:path*"],
 };

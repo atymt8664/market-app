@@ -110,7 +110,8 @@ function injectHomeHtmlShell(): {
     transformIndexHtml: {
       order: "pre",
       async handler(html: string) {
-        if (process.env.HOME_LCP_SHELL_SKIP === "1") return html;
+        /** Vercel: Edge middleware injects shell on GET / only — avoid baking featured HTML into SPA index. */
+        if (process.env.HOME_LCP_SHELL_SKIP === "1" || process.env.VERCEL === "1") return html;
         try {
           const { buildHomeShellInjection, applyHomeShellToHtml } = await import(
             "./scripts/home-lcp-shell.mjs"

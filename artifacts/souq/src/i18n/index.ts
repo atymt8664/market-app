@@ -91,33 +91,62 @@ async function loadLocale(locale: Locale): Promise<Dictionary> {
 let fullLocaleLoadStarted = false;
 let fullLocaleInteractionHooked = false;
 
-/** P7-PR-9: full ar.json — not on Home cold path; gate copy covers Home + BottomNav. */
-async function prefetchFullLocales(): Promise<void> {
-  if (fullLocaleLoadStarted) return;
-  fullLocaleLoadStarted = true;
+function isHomeRoute(): boolean {
+  if (typeof window === "undefined") return false;
+  const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+  const p = window.location.pathname;
+  const stripped = base && p.startsWith(base) ? p.slice(base.length) || "/" : p;
+  return stripped === "/" || stripped === "";
+}
 
-  const tasks: Promise<Dictionary>[] = [loadLocale("ar")];
-  if (activeLocale !== "ar") {
+type PrefetchFullLocalesOptions = {
+  /** Full ar.json fallback — skip on Home cold path (gate covers Home). */
+  loadAr?: boolean;
+};
+
+/** P7-PR-9: full dictionaries — not on Home LCP window; gate covers Home + BottomNav. */
+async function prefetchFullLocales(options: PrefetchFullLocalesOptions = {}): Promise<void> {
+  const loadAr = options.loadAr ?? !isHomeRoute();
+  const tasks: Promise<Dictionary>[] = [];
+
+  if (activeLocale !== "ar" || loadAr) {
     tasks.push(loadLocale(activeLocale));
   }
+  if (loadAr && activeLocale !== "ar") {
+    tasks.push(loadLocale("ar"));
+  }
+
+  if (tasks.length === 0) return;
+
+  if (fullLocaleLoadStarted) {
+    await Promise.all(tasks);
+    listeners.forEach((listener) => listener());
+    return;
+  }
+  fullLocaleLoadStarted = true;
+
   await Promise.all(tasks);
   listeners.forEach((listener) => listener());
 }
 
 function scheduleFullLocaleOnLongIdle(): void {
   scheduleAfterFirstPaint(() => {
+    const run = () => {
+      if (isHomeRoute()) return;
+      void prefetchFullLocales({ loadAr: true });
+    };
     const ric = window.requestIdleCallback;
     if (ric) {
-      ric(() => void prefetchFullLocales(), { timeout: FULL_LOCALE_IDLE_MS });
+      ric(run, { timeout: FULL_LOCALE_IDLE_MS });
       return;
     }
-    window.setTimeout(() => void prefetchFullLocales(), FULL_LOCALE_IDLE_MS);
+    window.setTimeout(run, FULL_LOCALE_IDLE_MS);
   }, FULL_LOCALE_IDLE_MS);
 }
 
-/** First user intent (tap/key) or route change — load full dict before deep UI. */
+/** Route change / deep UI — load full dict (incl. ar fallback when needed). */
 export function ensureFullLocaleForInteraction(): void {
-  void prefetchFullLocales();
+  void prefetchFullLocales({ loadAr: true });
 }
 
 function hookFullLocaleOnFirstInteraction(): void {
@@ -127,7 +156,7 @@ function hookFullLocaleOnFirstInteraction(): void {
   const run = () => {
     window.removeEventListener("pointerdown", run, true);
     window.removeEventListener("keydown", run, true);
-    void prefetchFullLocales();
+    void prefetchFullLocales({ loadAr: !isHomeRoute() });
   };
   window.addEventListener("pointerdown", run, { capture: true, once: true });
   window.addEventListener("keydown", run, { capture: true, once: true });

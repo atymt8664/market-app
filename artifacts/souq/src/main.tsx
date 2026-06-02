@@ -12,11 +12,19 @@ import { scheduleDeferredStyles } from "@/lib/deferred-styles";
 import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
 import { registerProductionServiceWorker } from "@/lib/register-production-service-worker";
 import { initWebVitalsReporting } from "@/lib/web-vitals-reporting";
+import {
+  startHomeLcpPrefetch,
+  wireHomeLcpPrefetchToQueryClient,
+} from "@/lib/home-lcp-prefetch";
 
 const apiBase = getApiBaseUrl();
 setBaseUrl(apiBase || null);
 
 installAccountDisabledFetchInterceptor(queryClient);
+
+/** P7-PR-9: featured API + LCP hero preload before React — shortens LCP chain on Home. */
+startHomeLcpPrefetch();
+wireHomeLcpPrefetchToQueryClient(queryClient);
 
 /** P7-PR-8: SW registration after first paint — avoids competing with LCP on Home cold path. */
 if (import.meta.env.PROD) {

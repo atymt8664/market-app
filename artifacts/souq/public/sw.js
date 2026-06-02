@@ -2,7 +2,7 @@
  * Souq Arab EU — PWA shell + Web Push (P11).
  * P9 deploy stability: never precache or serve stale HTML/JS/CSS (prevents mixed bundles).
  */
-const CACHE_VERSION = "souq-arab-eu-v4-deploy-shell";
+const CACHE_VERSION = "souq-arab-eu-v5-p7-pr-9";
 
 /** Static install assets only — no index.html or hashed /assets/* bundles. */
 const PRECACHE_URLS = [

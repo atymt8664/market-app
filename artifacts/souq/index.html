@@ -94,7 +94,8 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/icons/pwa-icon-512.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" sizes="192x192" href="/icons/pwa-icon-192.png" />
-    <!-- 7A.6: no font preload — LCP subtitle is 400; preloading 600 competed with JS/CSS on critical path -->
+    <!-- P7-PR-9: early connection for same-origin API + storage (LCP image chain). -->
+    <link rel="preconnect" href="https://www.souq-arab.com" crossorigin />
     <style>
       html.dark{color-scheme:dark}body{margin:0;background:#0a0a0a}
     </style>

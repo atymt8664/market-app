@@ -6,8 +6,8 @@ import gateEn from "./locales/gate/en.json";
 export type Locale = "ar" | "en" | "de";
 type Dictionary = Record<string, string>;
 
-/** Idle delay before full locale prefetch on first-launch gate path (6B-1). */
-const GATE_FULL_LOCALE_PREFETCH_IDLE_MS = 2500;
+/** P7-PR-9: full locale only after long idle — never on Home LCP window (~0–3s). */
+const FULL_LOCALE_IDLE_MS = 12_000;
 
 const STORAGE_KEY = "app_locale";
 const listeners = new Set<() => void>();
@@ -88,8 +88,14 @@ async function loadLocale(locale: Locale): Promise<Dictionary> {
   return promise;
 }
 
-/** P7-PR-6: load full dictionaries after first paint — never block React mount. */
-async function prefetchFullLocalesAfterGate(): Promise<void> {
+let fullLocaleLoadStarted = false;
+let fullLocaleInteractionHooked = false;
+
+/** P7-PR-9: full ar.json — not on Home cold path; gate copy covers Home + BottomNav. */
+async function prefetchFullLocales(): Promise<void> {
+  if (fullLocaleLoadStarted) return;
+  fullLocaleLoadStarted = true;
+
   const tasks: Promise<Dictionary>[] = [loadLocale("ar")];
   if (activeLocale !== "ar") {
     tasks.push(loadLocale(activeLocale));
@@ -98,19 +104,33 @@ async function prefetchFullLocalesAfterGate(): Promise<void> {
   listeners.forEach((listener) => listener());
 }
 
-function scheduleFullLocaleBootstrap(): void {
+function scheduleFullLocaleOnLongIdle(): void {
   scheduleAfterFirstPaint(() => {
-    void prefetchFullLocalesAfterGate();
-  });
+    const ric = window.requestIdleCallback;
+    if (ric) {
+      ric(() => void prefetchFullLocales(), { timeout: FULL_LOCALE_IDLE_MS });
+      return;
+    }
+    window.setTimeout(() => void prefetchFullLocales(), FULL_LOCALE_IDLE_MS);
+  }, FULL_LOCALE_IDLE_MS);
 }
 
-function scheduleFullLocalePrefetch(): void {
-  scheduleAfterFirstPaint(() => {
-    window.setTimeout(
-      () => void prefetchFullLocalesAfterGate(),
-      GATE_FULL_LOCALE_PREFETCH_IDLE_MS,
-    );
-  });
+/** First user intent (tap/key) or route change — load full dict before deep UI. */
+export function ensureFullLocaleForInteraction(): void {
+  void prefetchFullLocales();
+}
+
+function hookFullLocaleOnFirstInteraction(): void {
+  if (fullLocaleInteractionHooked || typeof window === "undefined") return;
+  fullLocaleInteractionHooked = true;
+
+  const run = () => {
+    window.removeEventListener("pointerdown", run, true);
+    window.removeEventListener("keydown", run, true);
+    void prefetchFullLocales();
+  };
+  window.addEventListener("pointerdown", run, { capture: true, once: true });
+  window.addEventListener("keydown", run, { capture: true, once: true });
 }
 
 /**
@@ -123,7 +143,8 @@ export function ensureBootstrapLocales(): void {
   } else {
     bootstrapReturningUserLocale();
   }
-  scheduleFullLocaleBootstrap();
+  scheduleFullLocaleOnLongIdle();
+  hookFullLocaleOnFirstInteraction();
 }
 
 /** Active locale + Arabic fallback (for missing keys) before first React render. */
@@ -133,12 +154,14 @@ export async function ensureLocalesForActive(): Promise<void> {
 
   if (typeof window !== "undefined" && !hasSavedLocale()) {
     seedFirstLaunchLocales();
-    scheduleFullLocalePrefetch();
+    scheduleFullLocaleOnLongIdle();
+    hookFullLocaleOnFirstInteraction();
     return;
   }
 
   bootstrapReturningUserLocale();
-  scheduleFullLocaleBootstrap();
+  scheduleFullLocaleOnLongIdle();
+  hookFullLocaleOnFirstInteraction();
 }
 
 export function getLocale(): Locale {

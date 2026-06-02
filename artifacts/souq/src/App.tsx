@@ -1,16 +1,16 @@
-﻿import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+﻿import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { lazyWithRetry } from "@/lib/lazy-with-retry";
 import Home from "@/pages/home";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
+/** P7-PR-9: Radix toast/tooltip deferred — not in entry bundle. */
+const DeferredAppChrome = lazy(() => import("@/components/deferred-app-chrome"));
 import { useAfterFirstPaint } from "@/lib/after-first-paint";
 import { Layout } from "@/components/layout";
 import { RouteLoadingFallback } from "@/components/route-loading-fallback";
 import { RouteScrollRestoration } from "@/components/route-scroll-restoration";
-import { hasSavedLocale, t, type Locale } from "@/i18n";
+import { ensureFullLocaleForInteraction, hasSavedLocale, t, type Locale } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import {
   AUTH_ACCENT_OUTLINE_BTN,
@@ -113,6 +113,17 @@ function MessageThreadRoute() {
 }
 
 function Router() {
+  const [pathname] = useLocation();
+
+  useEffect(() => {
+    const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+    const stripped =
+      base && pathname.startsWith(base) ? pathname.slice(base.length) || "/" : pathname;
+    if (stripped !== "/") {
+      ensureFullLocaleForInteraction();
+    }
+  }, [pathname]);
+
   return (
     <Layout>
       <SeoRouteSync />
@@ -288,14 +299,19 @@ function App() {
     </WouterRouter>
   );
 
-  const wrapTooltips = !showFirstLaunchSelector && afterFirstPaint;
+  const wrapChrome = !showFirstLaunchSelector && afterFirstPaint;
 
   return (
     <QueryClientProvider client={queryClient}>
       <main id="main-content">
-        {wrapTooltips ? <TooltipProvider>{main}</TooltipProvider> : main}
+        {wrapChrome ? (
+          <Suspense fallback={main}>
+            <DeferredAppChrome>{main as ReactNode}</DeferredAppChrome>
+          </Suspense>
+        ) : (
+          main
+        )}
       </main>
-      {afterFirstPaint ? <Toaster /> : null}
     </QueryClientProvider>
   );
 }

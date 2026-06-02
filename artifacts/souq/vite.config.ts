@@ -249,6 +249,8 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist"),
     emptyOutDir: true,
+    /** P7-PR-14: no dynamic modulepreload graph until lcp-loader imports main (post-LCP). */
+    modulePreload: false,
     rollupOptions: {
       output: {
         manualChunks: souqManualChunks,

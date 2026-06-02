@@ -414,14 +414,20 @@ export default function Home() {
     [featuredAds],
   );
 
-  /** P7-PR-14: dismiss shell LCP layer, then mount featured feed (no LCP supersession). */
+  /** P7-PR-14: mount featured feed when data ready; DOM handoff runs from lead card slot. */
   useEffect(() => {
     if (!featuredFetched) return;
-    dismissHomeLcpLayer();
     setLcpHandoffReady(true);
+    if (!Array.isArray(featuredAdsForHome) || featuredAdsForHome.length === 0) {
+      dismissHomeLcpLayer();
+    }
+  }, [featuredFetched, featuredAdsForHome]);
+
+  useEffect(() => {
+    if (!lcpHandoffReady) return;
     const raw = featuredAdsForHome?.[0]?.images?.[0];
     if (raw) void preloadAdImage(getAdImageHeroUrl(raw));
-  }, [featuredFetched, featuredAdsForHome]);
+  }, [lcpHandoffReady, featuredAdsForHome]);
 
   const recommendedAds = useMemo(
     () => filterHomeFeedAds(recommendedAdsRaw),

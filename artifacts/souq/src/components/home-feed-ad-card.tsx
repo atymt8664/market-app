@@ -16,7 +16,11 @@ import {
   FEATURED_HOME_FEED_CARD_W,
   HOME_FEED_CARD_SHELL,
 } from "@/components/ad-card-shells";
-import { isHomeLcpHandoffComplete } from "@/lib/home-lcp-handoff";
+import {
+  isHomeLcpHandoffComplete,
+  REACT_LCP_SLOT_ID,
+  handoffShellLcpToReact,
+} from "@/lib/home-lcp-handoff";
 
 export type HomeFeedAdCardProps = {
   ad: Ad;
@@ -68,8 +72,14 @@ export const HomeFeedAdCard = memo(function HomeFeedAdCard({
     setImageFailed(true);
   }, [rawImageUrl, imageSrc]);
 
-  const allowFeaturedImagePaint = !featured || isHomeLcpHandoffComplete();
-  const hasImage = !!imageSrc && !imageFailed && allowFeaturedImagePaint;
+  const allowFeaturedImagePaint =
+    !featured || featuredLead || isHomeLcpHandoffComplete();
+  const hasImage = !!imageSrc && !imageFailed && allowFeaturedImagePaint && !featuredLead;
+
+  useEffect(() => {
+    if (!featuredLead) return;
+    handoffShellLcpToReact(REACT_LCP_SLOT_ID);
+  }, [featuredLead]);
   const adWithDetails = ad as Ad & { details?: Record<string, unknown> };
   const selectedCurrency =
     ((adWithDetails.details as Record<string, unknown> | undefined)?.selectedCurrency as
@@ -100,17 +110,20 @@ export const HomeFeedAdCard = memo(function HomeFeedAdCard({
           )}
         >
           <div className="relative w-full shrink-0 overflow-hidden bg-[#0A0A0A] aspect-[4/3]">
-            {hasImage ? (
+            {featuredLead ? (
+              <div
+                id={REACT_LCP_SLOT_ID}
+                className="absolute inset-0 h-full w-full"
+                data-testid="home-lcp-prerender-slot"
+              />
+            ) : hasImage ? (
               <img
                 src={imageSrc}
                 alt={ad.title}
                 className="absolute inset-0 h-full w-full object-cover"
-                data-testid={featured && featuredLead ? "home-lcp-prerender" : undefined}
-                loading={featured && featuredLead && allowFeaturedImagePaint ? "eager" : "lazy"}
+                loading={featured ? "lazy" : "lazy"}
                 decoding="async"
-                fetchPriority={
-                  featured && featuredLead && allowFeaturedImagePaint ? "high" : "low"
-                }
+                fetchPriority={featured ? "low" : undefined}
                 draggable={false}
                 sizes={imageSizes}
                 onError={handleImageError}

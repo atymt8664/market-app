@@ -24,11 +24,19 @@ const mapping = readFileSync(
   "utf8",
 );
 const detail = readFileSync(join(souqRoot, "src/features/p17-commerce/order-detail-page.tsx"), "utf8");
+const trackCss = readFileSync(
+  join(souqRoot, "src/features/p17-commerce/order-tracking-track.css"),
+  "utf8",
+);
 
 for (const [needle, label, src] of [
   ["OrderTrackingTrack", "component export", track],
-  ["flex-row-reverse", "RTL track row", track],
-  ["flex-1", "equal segments", track],
+  ['dir="rtl"', "RTL track row", track],
+  ["minmax(0, 1fr)", "equal node columns", track],
+  ["p17-journey-rail", "continuous journey rail", track],
+  ["p17-journey-travel-pulse", "live travel pulse", track + trackCss],
+  ["p17-journey-rail-active-lane", "active journey lane", track + trackCss],
+  ["prefers-reduced-motion", "reduced motion guard", trackCss],
   ["p17-order-tracking-track", "track testid", track],
   ["p17-tracking-node-", "node testids", track],
   ["p17-tracking-segment-", "segment testids", track],
@@ -44,6 +52,12 @@ for (const [needle, label, src] of [
 ]) {
   if (src.includes(needle)) ok(label);
   else bad(`missing ${label}`);
+}
+
+if (!track.includes("flex-row-reverse")) {
+  ok("no double RTL reverse");
+} else {
+  bad("flex-row-reverse still present (RTL bug)");
 }
 
 if (mapping.includes('"placed"') && mapping.includes('"delivered"') && !mapping.includes("%")) {

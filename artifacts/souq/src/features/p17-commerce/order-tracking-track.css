@@ -1,0 +1,77 @@
+/* P17-8 — Live journey rail (Package 1). */
+
+.p17-journey-rail-muted {
+  background-color: rgb(39 39 42); /* zinc-800 */
+}
+
+.p17-journey-rail-solid {
+  background-color: rgb(194 235 108);
+}
+
+/* Faint lane under the live segment — shows where the order is heading. */
+.p17-journey-rail-active-lane {
+  background-color: rgb(194 235 108 / 0.14);
+}
+
+/* Traveling pulse: moves from current node → next node (RTL: right → left). */
+.p17-journey-travel-pulse {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 40%;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to left,
+    transparent 0%,
+    rgb(194 235 108 / 0.35) 28%,
+    rgb(194 235 108) 52%,
+    rgb(194 235 108 / 0.45) 72%,
+    transparent 100%
+  );
+  will-change: transform;
+  animation: p17-journey-travel 2.6s ease-in-out infinite;
+}
+
+@keyframes p17-journey-travel {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(-150%, 0, 0);
+    opacity: 0.55;
+  }
+}
+
+/* Optional: very subtle glow on current node (not a loader). */
+.p17-tracking-node-current {
+  animation: p17-node-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes p17-node-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgb(194 235 108 / 0.28);
+  }
+  50% {
+    box-shadow: 0 0 12px rgb(194 235 108 / 0.42);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p17-journey-travel-pulse {
+    animation: none;
+    transform: translate3d(-35%, 0, 0);
+    opacity: 0.75;
+    width: 50%;
+  }
+
+  .p17-tracking-node-current {
+    animation: none;
+    box-shadow: 0 0 10px rgb(194 235 108 / 0.35);
+  }
+}

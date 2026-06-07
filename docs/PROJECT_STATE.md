@@ -2,6 +2,8 @@
 
 **Authority:** Operational phase tracker. Engineering rules: [architecture/CONSTITUTION.md](./architecture/CONSTITUTION.md).
 
+**EDP:** Final Reports, Audits, Handover Reports, and Architecture Reviews MUST end with [Phase Continuity Lock](./architecture/CONSTITUTION.md#184-phase-continuity-lock--mandatory-template). Update this file before filling PCL in any handoff. New session: [Session Entry Point](./architecture/CONSTITUTION.md#183-session-entry-point) — read PROJECT_STATE → last PCL → PCL §6 only.
+
 **Stack (official):** Vercel (frontend) · Hetzner VPS (API) · Supabase Pro (DB + storage) · WebSocket · Railway = legacy/fallback only.
 
 **Environment refs (never mix):**
@@ -13,15 +15,26 @@
 
 ---
 
+## Architecture map (adopted — docs only)
+
+| Item | Value |
+|------|-------|
+| **Builder P-domains** | **P0 → P17 only** ([README](./architecture/README.md)) |
+| **Expansion** | **Sub-Phases** (e.g. `P17-7A`, `P9-A-0`) inside a builder P · **Annexes** ([annex/](./architecture/annex/README.md)) — not new P numbers |
+| **Not adopted** | P18–P25 as builder domains |
+| **New features** | [CONSTITUTION A11 + Feature Admission Flow](./architecture/CONSTITUTION.md#11-feature-admission-flow) |
+
+---
+
 ## Execution order (current wave)
 
 Only **one open builder phase** at a time. Sequence:
 
 ```
-✅ P13-1 → … → ✅ P17-7 → ⏳ P17-7A-0 (spec lock) → P17-7A impl → P17-8 … P17-19
+✅ P13-1 → … → ✅ P17-7 → ✅ P17-7A-0 → ✅ P17-7A → P17-8 … P17-19
 ```
 
-**P17-5/6/7** buyer · seller · shipping flows **live on PRODUCTION** (API P17-PROD-2 + frontend P17-PROD-3). **P17-7A** addresses address gate + chat draft + buyer status sync before **P17-8**.
+**P17-5/6/7/7A** buyer · seller · shipping · address gate **live on PRODUCTION** (API `souq-api:p17-7a-prod-20260607` · Vercel `dpl_467hoSjz7zqVCPeqJkQoykkyHrxw`). **P17-8** not opened — separate task only.
 
 ### P9-A — Home Stability Lock (Phase A)
 
@@ -109,12 +122,13 @@ Only **one open builder phase** at a time. Sequence:
 | **P17-6** Seller order flow UI | ✅ **Closed** | P17-6-1 · `VITE_P17_SELLER_ORDERS_ENABLED` · STAGING verified |
 | **P17-7-0** Shipping workflow spec lock | ✅ **Closed** | [P17-7-shipping-workflow.md](./architecture/P17-7-shipping-workflow.md) |
 | **P17-7** Shipping workflow | ✅ **Closed** | STAGING `p17-7:staging-flow` PASS · PROD API: P17-PROD-2 · PROD frontend: **P17-PROD-3** |
-| **P17-7A-0** Order address + seller confirm + chat spec lock | ⏳ **Open** | [P17-7A-order-address-seller-chat-spec.md](./architecture/P17-7A-order-address-seller-chat-spec.md) — documentation only |
+| **P17-7A-0** Order address + seller confirm + chat spec lock | ✅ **Closed** | [P17-7A-order-address-seller-chat-spec.md](./architecture/P17-7A-order-address-seller-chat-spec.md) · Closure Review PASS · Mohamed sign-off **APPROVED** 2026-06-07 · documentation only — no runtime |
+| **P17-7A** Order address + seller confirm + chat implementation | ✅ **Closed** | Commit `4036953` · STAGING `souq-api:p17-7a-staging-20260607` · PROD API `souq-api:p17-7a-prod-20260607` · Vercel `dpl_467hoSjz7zqVCPeqJkQoykkyHrxw` · `p17-7:staging-flow` + prod route smoke PASS · D9 approved 2026-06-07 |
 | **P17-PROD-1** Production orders foundation | ✅ **Closed** | `020_p17_orders_schema.sql` on PRODUCTION · 7/7 tables OK |
 | **P17-PROD-2** Production API deployment | ✅ **Closed** | `souq-api:p17-prod-2-20260601` · `P17_ORDERS_API_ENABLED=1` · API smoke PASS |
 | **P17-PROD-3** Official frontend production activation | ⚠️ **Integrity issue** | Vercel flags OK · E2E pollution discovered in P17-PROD-FIX-1 |
 | **P17-PROD-FIX-1** Production integrity recovery | ✅ **Closed** | Removed P17-PROD-2 E2E rows (4 users, 4 ads, 6 orders) · checkout CSRF fix pending deploy |
-| **P17-8** Tracking timeline | ⏳ **Next** | Blocked until explicit approval — no scope creep |
+| **P17-8** Tracking timeline | ⏳ **Next (not opened)** | **P17-7A** closed — await explicit task; no scope creep |
 
 ---
 
@@ -126,4 +140,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P9-D closed on Production (`dpl_9vD5HcUMB77wZHtP8w69wENVSYfT`). Phase E not opened.
+P17-7A closed (PROD deploy 2026-06-07). Open builder: **none** — next candidate **P17-8** (not opened). P9-E not opened.

@@ -37,7 +37,7 @@
 | Continuous journey rail + travel pulse | Notifications (P17-9) |
 | RTL grid, equal columns, mobile-first | Chat (P5), Cart (P17-CART) |
 | `p17-8:pkg1:validate` + smoke scripts | State machine / API changes |
-| `prefers-reduced-motion` guard | Production deploy (separate task) |
+| `prefers-reduced-motion` guard | ✅ Production `dpl_7wKgH4VJHWypCVTubcNKrdbo2cTU` |
 
 **Key implementation files:**
 
@@ -46,7 +46,8 @@
 - `artifacts/souq/src/features/p17-commerce/order-tracking-track.css`
 - `artifacts/souq/scripts/validate-p17-8-pkg1.mjs`
 
-**Initial commit (foundation):** `593d2b2` — subsequent visual polish commits may be local until next agreed deploy.
+**Commits:** foundation `593d2b2` · approved visual `2c96aa1`  
+**Production:** Vercel `dpl_7wKgH4VJHWypCVTubcNKrdbo2cTU` → `https://www.souq-arab.com` (verified 2026-06-08)
 
 ---
 

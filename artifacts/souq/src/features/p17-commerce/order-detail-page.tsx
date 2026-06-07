@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { CommerceMockDataBanner } from "./commerce-mock-data-banner";
 import { getOrdersListPath } from "./order-detail-paths";
 import { isCanonicalOrderNumber, shouldMaskOrderNumber } from "./order-detail-display";
-import { OrderDetailTimelineReady } from "./order-detail-timeline-ready";
+import { OrderTrackingTrack } from "./order-tracking-track";
 import { useOrderDetail, useOrderTimeline } from "./use-orders-api";
 import { useCancelBuyerOrder } from "./use-orders-mutations";
 import { useOpenOrderChat } from "./use-order-chat";
@@ -171,18 +171,11 @@ export function OrderDetailPage({ variant, orderId }: OrderDetailPageProps) {
               </section>
             ) : null}
 
-            {variant === "buyer" &&
-            order &&
-            !isMockResponse &&
-            isP17ShippingEnabled() &&
-            order.fulfillmentMode === "shipping" ? null : (
+            {order && !isMockResponse ? (
               <section>
-                <OrderDetailTimelineReady
-                  entries={isMockResponse ? [] : timelineQuery.data?.items}
-                  isLoading={!isMockResponse && timelineQuery.isLoading}
-                />
+                <OrderTrackingTrack order={order} compact={variant === "seller"} />
               </section>
-            )}
+            ) : null}
 
             <section>
               {variant === "buyer" && order ? (

@@ -31,10 +31,10 @@
 Only **one open builder phase** at a time. Sequence:
 
 ```
-✅ P13-1 → … → ✅ P17-7 → ✅ P17-7A-0 → ✅ P17-7A → P17-8 … P17-19
+✅ P13-1 → … → ✅ P17-7 → ✅ P17-7A → ✅ P17-8-0 → ✅ P17-8 Package 1 → P17-8 Package 2+ … P17-19
 ```
 
-**P17-5/6/7/7A** buyer · seller · shipping · address gate **live on PRODUCTION** (API `souq-api:p17-7a-prod-20260607` · Vercel `dpl_467hoSjz7zqVCPeqJkQoykkyHrxw`). **P17-8** not opened — separate task only.
+**P17-5/6/7/7A** buyer · seller · shipping · address gate **live on PRODUCTION** (API `souq-api:p17-7a-prod-20260607` · Vercel `dpl_467hoSjz7zqVCPeqJkQoykkyHrxw`). **P17-8 Package 1** closed (Mohamed visual APPROVED 2026-06-07) · **P17-8 Package 2+** not opened.
 
 ### P9-A — Home Stability Lock (Phase A)
 
@@ -128,7 +128,9 @@ Only **one open builder phase** at a time. Sequence:
 | **P17-PROD-2** Production API deployment | ✅ **Closed** | `souq-api:p17-prod-2-20260601` · `P17_ORDERS_API_ENABLED=1` · API smoke PASS |
 | **P17-PROD-3** Official frontend production activation | ⚠️ **Integrity issue** | Vercel flags OK · E2E pollution discovered in P17-PROD-FIX-1 |
 | **P17-PROD-FIX-1** Production integrity recovery | ✅ **Closed** | Removed P17-PROD-2 E2E rows (4 users, 4 ads, 6 orders) · checkout CSRF fix pending deploy |
-| **P17-8** Tracking timeline | ⏳ **Next (not opened)** | **P17-7A** closed — await explicit task; no scope creep |
+| **P17-8-0** Tracking timeline UX / motion / architecture lock | ✅ **Closed** | [P17-8-0-tracking-timeline-ux-lock.md](./architecture/P17-8-0-tracking-timeline-ux-lock.md) · Mohamed sign-off **APPROVED** 2026-06-07 · mobile canonical track `●━━━━●━━━━◉━━━━○━━━━○━━━━○` · documentation only |
+| **P17-8 Package 1** Order tracking track + live progress timeline | ✅ **Closed** | [P17-8-pkg1-closure.md](./architecture/P17-8-pkg1-closure.md) · `OrderTrackingTrack` · continuous rail + travel pulse · Mohamed visual **APPROVED** 2026-06-07 · `p17-8:pkg1:validate` PASS · commit `593d2b2` + local polish |
+| **P17-8 Package 2+** Tracking timeline (ETA, carriers, events, …) | ⏳ **Next (not opened)** | Await explicit task; Package 1 closed — no scope creep |
 
 ---
 
@@ -140,4 +142,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P17-7A closed (PROD deploy 2026-06-07). Open builder: **none** — next candidate **P17-8** (not opened). P9-E not opened.
+P17-8 Package 1 closed (Mohamed visual APPROVED 2026-06-07). Open builder: **none** — next candidate **P17-8 Package 2+** (not opened). Future Order SLA note recorded in P17-2 §6.1 (no implementation). P9-E not opened.

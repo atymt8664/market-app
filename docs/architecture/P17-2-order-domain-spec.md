@@ -394,6 +394,19 @@ Default proposals — tunable via admin settings future; not enforced in v1 code
 
 **v1:** SLAs stored as spec defaults only; workers in §12 apply later.
 
+### 6.1 Future SLA requirement — recorded 2026-06-07 (P17-8 Package 1 closure)
+
+**Status:** Spec note only — **no implementation**, **no new phase opened**.
+
+Mohamed direction (visual approval session for P17-8 Package 1):
+
+1. After order creation, seller must confirm within a configured window (e.g. **24h or 48h**).
+2. If seller does not confirm in time → order becomes **expired/cancelled** (seller non-response).
+3. After confirmation, a **shipping/prepare SLA** applies; breach → delay/alert visibility (not silent).
+4. Seller updates statuses manually: confirmed → preparing → shipped → in transit.
+5. Buyer alone confirms **delivered**.
+6. Workers/notifications implementation remains **P15 + P17-9** — see [P17-8-pkg1-closure.md](./P17-8-pkg1-closure.md) §4.
+
 ---
 
 ## 7. Order Issue Rules

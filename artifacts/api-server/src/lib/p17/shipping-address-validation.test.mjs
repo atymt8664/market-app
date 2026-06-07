@@ -19,4 +19,14 @@ assert.equal(ShippingBuyerAddressInputSchema.safeParse(missingPhone).success, fa
 const missingLine2 = { ...valid, line2: "" };
 assert.equal(ShippingBuyerAddressInputSchema.safeParse(missingLine2).success, false);
 
+const missingRecipient = { ...valid, recipientName: "A" };
+assert.equal(ShippingBuyerAddressInputSchema.safeParse(missingRecipient).success, false);
+
+const missingPostal = { ...valid, postalCode: "" };
+assert.equal(ShippingBuyerAddressInputSchema.safeParse(missingPostal).success, false);
+
+const missingPostalOmitted = { ...valid };
+delete missingPostalOmitted.postalCode;
+assert.equal(ShippingBuyerAddressInputSchema.safeParse(missingPostalOmitted).success, false);
+
 console.log("shipping-address-validation.test.mjs PASS");

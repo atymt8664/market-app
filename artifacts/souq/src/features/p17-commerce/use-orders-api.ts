@@ -38,6 +38,7 @@ export function useBuyerOrdersList(options: QueryOpts = {}) {
     enabled: (options.enabled ?? true) && !!userId,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
     retry: 1,
   });
 }
@@ -54,15 +55,11 @@ export function useSellerOrdersList(options: QueryOpts = {}) {
   });
 }
 
-const LIVE_ORDER_STATUSES = new Set([
+/** P17-7A §4.2 — poll while buyer awaits seller / prep (not terminal). */
+export const BUYER_DETAIL_POLL_STATUSES = new Set([
   "pending_confirmation",
   "confirmed",
   "preparing",
-  "shipped",
-  "in_transit",
-  "out_for_delivery",
-  "delivered",
-  "buyer_confirmed",
 ]);
 
 export function useOrderDetail(
@@ -82,9 +79,10 @@ export function useOrderDetail(
     enabled: (options.enabled ?? true) && !!userId && id.length > 0,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
+    refetchOnMount: variant === "buyer" ? "always" : true,
     refetchInterval: (query) => {
       const status = query.state.data?.order?.status;
-      if (variant === "buyer" && status && LIVE_ORDER_STATUSES.has(status)) {
+      if (variant === "buyer" && status && BUYER_DETAIL_POLL_STATUSES.has(status)) {
         return 30_000;
       }
       return false;

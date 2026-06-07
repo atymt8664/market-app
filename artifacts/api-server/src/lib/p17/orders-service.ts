@@ -5,6 +5,7 @@ import {
   formatAmount,
   formatRelativeTimeAr,
   orderStatusLabelAr,
+  resolveBuyerCancelledStatusLabel,
 } from "./order-labels";
 import { isOrderNumber } from "./order-number";
 import {
@@ -127,18 +128,29 @@ async function enrichOrderDetail(
   role: "buyer" | "seller",
 ): Promise<OrderDetail> {
   const base = mapDetail(row, itemTitle, role);
-  if (row.fulfillmentMode !== "shipping") {
-    return base;
+  let order: OrderDetail = base;
+
+  if (row.fulfillmentMode === "shipping") {
+    const [shipment, address] = await Promise.all([
+      findShipmentByOrderId(row.id),
+      findBuyerAddressByOrderId(row.id),
+    ]);
+    order = {
+      ...base,
+      shipment: mapShipmentSnapshot(shipment),
+      buyerAddress: mapBuyerAddressSnapshot(address, role),
+    };
   }
-  const [shipment, address] = await Promise.all([
-    findShipmentByOrderId(row.id),
-    findBuyerAddressByOrderId(row.id),
-  ]);
-  return {
-    ...base,
-    shipment: mapShipmentSnapshot(shipment),
-    buyerAddress: mapBuyerAddressSnapshot(address, role),
-  };
+
+  if (role === "buyer" && row.status === "cancelled") {
+    const events = await listOrderTimeline(row.id);
+    order = {
+      ...order,
+      statusLabelAr: resolveBuyerCancelledStatusLabel(events.map((e) => e.eventCode)),
+    };
+  }
+
+  return order;
 }
 
 function mapDetail(row: OrderRow, itemTitle: string | null, role: "buyer" | "seller"): OrderDetail {

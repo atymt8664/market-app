@@ -1,13 +1,14 @@
 import { parseStoredAdDetails } from "@/lib/ad-stored-details";
+import {
+  deriveFulfillmentModeFromShippingMeta,
+  type CheckoutFulfillmentMode,
+} from "./ad-fulfillment-mode";
 
-export type CheckoutFulfillmentMode = "pickup" | "shipping";
+export type { CheckoutFulfillmentMode };
+export { deriveFulfillmentModeFromShippingMeta };
 
-/** Derive checkout fulfillment mode from ad stored details (P17-7A §2.1). */
+/** Derive checkout fulfillment mode from ad `details` (P17-7A §2.1). */
 export function resolveCheckoutFulfillmentMode(adDetailsRaw: unknown): CheckoutFulfillmentMode {
   const parsed = parseStoredAdDetails(adDetailsRaw ?? {});
-  const shipMeta = parsed.meta?.shipping;
-  if (!shipMeta) return "pickup";
-  if (shipMeta.pickupOnly === true) return "pickup";
-  if (shipMeta.ids.length > 0) return "shipping";
-  return "pickup";
+  return deriveFulfillmentModeFromShippingMeta(parsed.meta?.shipping);
 }

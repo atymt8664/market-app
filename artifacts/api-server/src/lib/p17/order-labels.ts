@@ -35,6 +35,17 @@ export function orderStatusLabelAr(
   return role === "seller" ? SELLER_STATUS_LABELS[status] : BUYER_STATUS_LABELS[status];
 }
 
+/** P17-7A §4.1 — distinguish seller reject vs buyer cancel on `cancelled` status. */
+export function resolveBuyerCancelledStatusLabel(eventCodes: readonly string[]): string {
+  if (eventCodes.includes("seller_rejected_order")) {
+    return "تم رفض الطلب من البائع";
+  }
+  if (eventCodes.includes("buyer_cancelled_order")) {
+    return "تم إلغاء الطلب";
+  }
+  return BUYER_STATUS_LABELS.cancelled;
+}
+
 export function formatRelativeTimeAr(date: Date, now = new Date()): string {
   const diffMs = now.getTime() - date.getTime();
   if (diffMs < 0) return "الآن";

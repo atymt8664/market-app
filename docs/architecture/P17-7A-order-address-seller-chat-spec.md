@@ -508,8 +508,8 @@ Order detail `buyerAddress` for seller includes: `phone`, `line2` (already parti
 | # | Criterion | Status |
 |---|-----------|--------|
 | 0-1 | `P17-7A-order-address-seller-chat-spec.md` exists | ✓ |
-| 0-2 | Linked from P17-7 + P17 charter | Pending index update |
-| 0-3 | Mohamed sign-off on scope | ☐ Pending |
+| 0-2 | Linked from P17-7 + P17 charter | ✓ |
+| 0-3 | Mohamed sign-off on scope | ✓ APPROVED 2026-06-07 |
 | 0-4 | **No runtime changes** in P17-7A-0 | ✓ |
 
 ### P17-7A (implementation — future)

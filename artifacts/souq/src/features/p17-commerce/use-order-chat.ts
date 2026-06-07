@@ -1,29 +1,20 @@
-import { useStartConversation } from "@workspace/api-client-react";
+import {
+  listConversations,
+  useStartConversation,
+} from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { prefetchConversationThread } from "@/lib/prefetch-conversation-thread";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { t } from "@/i18n";
 import { ApiError } from "@workspace/api-client-react";
+import { useCallback, useState } from "react";
+import {
+  findConversationIdForAd,
+  orderChatHref,
+} from "./order-chat-nav";
 
-export function orderChatHref(
-  conversationId: number,
-  orderNumber: string,
-  orderRole?: "buyer" | "seller",
-  draft?: string,
-): string {
-  const params = new URLSearchParams({
-    from: "order",
-    orderNumber,
-  });
-  if (orderRole === "seller") {
-    params.set("orderRole", "seller");
-  }
-  if (draft && draft.trim().length > 0) {
-    params.set("draft", draft);
-  }
-  return `/messages/${conversationId}?${params.toString()}`;
-}
+export { findConversationIdForAd, orderChatHref } from "./order-chat-nav";
 
 export function buildOrderChatDraft(orderNumber: string): string {
   return t("p17.commerce.chat.order_created_draft", { orderNumber });
@@ -34,10 +25,10 @@ export function useOpenOrderChat() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const startConversation = useStartConversation();
+  const [isOpening, setIsOpening] = useState(false);
 
-  return {
-    isPending: startConversation.isPending,
-    open: (
+  const open = useCallback(
+    (
       adId: number,
       orderNumber: string,
       orderRole?: "buyer" | "seller",
@@ -47,30 +38,55 @@ export function useOpenOrderChat() {
         options?.withDraft !== false && orderRole !== "seller"
           ? buildOrderChatDraft(orderNumber)
           : undefined;
-      startConversation.mutate(
-        { data: { adId } },
-        {
-          onSuccess: async (data) => {
-            await prefetchConversationThread(queryClient, data.id);
-            navigate(orderChatHref(data.id, orderNumber, orderRole, draft));
-          },
-          onError: (err: unknown) => {
-            if (err instanceof ApiError && err.status === 403) {
+
+      void (async () => {
+        setIsOpening(true);
+        try {
+          let conversationId: number;
+
+          if (orderRole === "seller") {
+            const conversations = await listConversations();
+            const existingId = findConversationIdForAd(conversations, adId);
+            if (!existingId) {
               toast({
                 title: t("p17.commerce.chat.open_failed"),
-                description: err.message || t("message_thread.chat_send_blocked_toast_body"),
+                description: t("p17.commerce.chat.seller_no_thread"),
                 variant: "destructive",
               });
               return;
             }
+            conversationId = existingId;
+          } else {
+            const data = await startConversation.mutateAsync({ data: { adId } });
+            conversationId = data.id;
+          }
+
+          await prefetchConversationThread(queryClient, conversationId);
+          navigate(orderChatHref(conversationId, orderNumber, orderRole, draft));
+        } catch (err: unknown) {
+          if (err instanceof ApiError && err.status === 403) {
             toast({
               title: t("p17.commerce.chat.open_failed"),
-              description: t("common.try_again"),
+              description: err.message || t("message_thread.chat_send_blocked_toast_body"),
               variant: "destructive",
             });
-          },
-        },
-      );
+            return;
+          }
+          toast({
+            title: t("p17.commerce.chat.open_failed"),
+            description: t("common.try_again"),
+            variant: "destructive",
+          });
+        } finally {
+          setIsOpening(false);
+        }
+      })();
     },
+    [navigate, queryClient, startConversation, toast],
+  );
+
+  return {
+    isPending: isOpening || startConversation.isPending,
+    open,
   };
 }

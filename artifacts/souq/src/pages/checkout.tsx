@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Redirect, useLocation, useRoute } from "wouter";
 import { ArrowRight, Loader2, Package, Truck } from "lucide-react";
 import { getGetAdQueryKey, useGetAd } from "@workspace/api-client-react";
@@ -10,7 +10,9 @@ import { isAdEligibleForBuyerOrder } from "@/features/p17-commerce/ad-eligibilit
 import { resolveCheckoutFulfillmentMode } from "@/features/p17-commerce/ad-fulfillment";
 import { CheckoutAddressForm } from "@/features/p17-commerce/checkout-address-form";
 import {
+  buildInitialCheckoutAddressFromUser,
   EMPTY_CHECKOUT_ADDRESS,
+  hasCheckoutAddressInput,
   maskPhoneForPreview,
   validateCheckoutAddress,
   type CheckoutAddressFieldErrors,
@@ -63,6 +65,15 @@ export default function CheckoutPage() {
   const [duplicateOrderNumber, setDuplicateOrderNumber] = useState<string | null>(null);
   const [buyerAddress, setBuyerAddress] = useState<CheckoutBuyerAddress>(EMPTY_CHECKOUT_ADDRESS);
   const [addressErrors, setAddressErrors] = useState<CheckoutAddressFieldErrors>({});
+  const addressPrefilledRef = useRef(false);
+
+  useEffect(() => {
+    if (!user || addressPrefilledRef.current) return;
+    addressPrefilledRef.current = true;
+    setBuyerAddress((prev) =>
+      hasCheckoutAddressInput(prev) ? prev : buildInitialCheckoutAddressFromUser(user),
+    );
+  }, [user]);
 
   const idempotencyKey = useMemo(
     () => (validAdId ? getCheckoutIdempotencyKey(adId) : ""),
@@ -365,6 +376,7 @@ export default function CheckoutPage() {
               type="button"
               className={cn(P17_BUY_NOW_BTN, "h-12 w-full")}
               data-testid="p17-checkout-address-continue"
+              disabled={createOrder.isPending}
               onClick={handleAddressContinue}
             >
               {t("p17.commerce.checkout.continue")}

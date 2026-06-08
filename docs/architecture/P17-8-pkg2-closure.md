@@ -42,7 +42,7 @@
 | `p17-8:pkg2:validate` | PASS |
 | `p17-8:pkg1:validate` | PASS |
 | `typecheck` / `build` / `i18n:check` | PASS |
-| Production bundle verification | See PROJECT_STATE deploy ref |
+| Production bundle verification | See PROJECT_STATE — `dpl_8TNVeqkxcELqQoXxcEUsWyEN3BWU` |
 
 ---
 

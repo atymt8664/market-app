@@ -24,6 +24,8 @@ export type OrderShipment = {
   carrierLabel: string;
   trackingNumber: string;
   shippedAt: string | null;
+  /** Optional API enrichment — shown only when present (P17-8-0 §1.8). */
+  etaAt?: string | null;
 };
 
 export type OrderBuyerAddress = {

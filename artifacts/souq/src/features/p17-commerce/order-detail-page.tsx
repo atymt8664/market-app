@@ -173,7 +173,12 @@ export function OrderDetailPage({ variant, orderId }: OrderDetailPageProps) {
 
             {order && !isMockResponse ? (
               <section>
-                <OrderTrackingTrack order={order} compact={variant === "seller"} />
+                <OrderTrackingTrack
+                  order={order}
+                  compact={variant === "seller"}
+                  timelineItems={timelineQuery.data?.items}
+                  timelineLoading={!isMockResponse && timelineQuery.isLoading}
+                />
               </section>
             ) : null}
 

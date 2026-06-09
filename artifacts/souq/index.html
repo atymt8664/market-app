@@ -98,9 +98,9 @@
     <link rel="preconnect" href="https://www.souq-arab.com" crossorigin />
     <!-- P7-PR-12:HOME_LCP_HEAD -->
     <style>
-      html.dark{color-scheme:dark}html,body{margin:0;padding:0;background:#0a0a0a;height:100%;min-height:100dvh;min-height:-webkit-fill-available;overscroll-behavior-y:none}
-      [data-bottom-nav-shell]{position:fixed;left:0;right:0;bottom:0;background:#0A0A0A;padding-bottom:env(safe-area-inset-bottom,0px)}
-      [data-bottom-nav-inner]{background:#0A0A0A}
+      html.dark{color-scheme:dark}html,body{margin:0;padding:0;background:#0a0a0a;height:100%;min-height:100dvh;min-height:-webkit-fill-available}
+      [data-bottom-nav-shell]{position:fixed;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:#0A0A0A}
+      [data-bottom-nav-safe-fill]{background:#0A0A0A}
       #p7-lcp-layer{position:fixed;inset:0;z-index:35;pointer-events:none;background:#0A0A0A;transition:opacity .2s ease}
       #p7-lcp-layer.p7-dismissed{opacity:0;visibility:hidden}
       #root{position:relative;z-index:1;display:flex;flex-direction:column;flex:1;min-height:100dvh;min-height:-webkit-fill-available;background:#0A0A0A}

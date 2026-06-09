@@ -20,9 +20,7 @@ export function useOrdersHubData(variant: "buyer" | "seller"): OrdersHubData {
   const query = variant === "buyer" ? buyerQuery : sellerQuery;
 
   const orders = query.data?.items ?? [];
-  const hasOrders = orders.length > 0;
-  const querySettled = query.isFetched && query.fetchStatus === "idle";
-  const isResolving = authLoading || !user || (!hasOrders && !querySettled);
+  const isResolving = authLoading || !user || (query.isLoading && orders.length === 0);
 
   return {
     orders,

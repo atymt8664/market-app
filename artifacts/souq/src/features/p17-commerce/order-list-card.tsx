@@ -158,10 +158,10 @@ function OrderListCardThumbnail({
   isMock: boolean;
 }) {
   const adId = coerceOrderAdId(order.adId);
-  const hasSnapshotImage = Boolean(order.imageUrl?.trim());
   const { data: ad } = useGetAd(adId, {
     query: {
-      enabled: adId > 0 && !isMock && !hasSnapshotImage,
+      // Detail parity — always resolve gallery when adId is known (not mock-gated list).
+      enabled: adId > 0 && !isMock,
       queryKey: getGetAdQueryKey(adId),
       staleTime: 300_000,
       retry: 1,

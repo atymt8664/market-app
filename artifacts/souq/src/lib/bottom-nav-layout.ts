@@ -2,12 +2,13 @@
 export const BOTTOM_NAV_HEIGHT_MOBILE_PX = 50;
 export const BOTTOM_NAV_HEIGHT_MD_PX = 56;
 
-/** Fixed nav — flush to viewport bottom; safe-area is padding on the shell only (no inner lift). */
+/** Fixed nav — flush to viewport bottom; safe-area fill is an explicit child (Android/TWA). */
 export const BOTTOM_NAV_FIXED_SHELL_CLASS =
-  "fixed inset-x-0 bottom-0 z-40 w-full bg-[#0A0A0A] pb-[env(safe-area-inset-bottom,0px)] [transform:translateZ(0)]";
+  "fixed inset-x-0 bottom-0 z-40 flex w-full flex-col bg-[#0A0A0A] [transform:translateZ(0)]";
 
-/** @deprecated Inner wrapper removed — safe-area lives on shell; kept for data attribute only. */
-export const BOTTOM_NAV_INNER_CLASS = "w-full bg-[#0A0A0A]";
+/** Solid home-indicator / gesture-bar fill — extends #0A0A0A to physical screen bottom. */
+export const BOTTOM_NAV_SAFE_AREA_FILL_CLASS =
+  "w-full shrink-0 bg-[#0A0A0A] h-[env(safe-area-inset-bottom,0px)] min-h-0";
 
 /** Layout frame — single flex child; no min-h 100vh here (prevents scroll gap under fixed nav). */
 export const BOTTOM_NAV_LAYOUT_FRAME_CLASS =
@@ -29,4 +30,4 @@ export const BOTTOM_NAV_PAGE_SHELL_CLASS =
  * Solid #0A0A0A avoids a visible seam above the nav on semi-transparent chrome.
  */
 export const BOTTOM_NAV_SCROLL_END_SPACER_CLASS =
-  "min-h-[3.25rem] shrink-0 bg-[#0A0A0A] md:min-h-[3.5rem]";
+  "min-h-[calc(3.125rem+env(safe-area-inset-bottom,0px))] shrink-0 bg-[#0A0A0A] md:min-h-[calc(3.5rem+env(safe-area-inset-bottom,0px))]";

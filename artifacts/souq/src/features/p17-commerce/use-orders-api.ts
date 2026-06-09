@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
   fetchBuyerOrders,
@@ -39,6 +39,7 @@ export function useBuyerOrdersList(options: QueryOpts = {}) {
     staleTime: 30_000,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
+    placeholderData: keepPreviousData,
     retry: 1,
   });
 }
@@ -51,6 +52,8 @@ export function useSellerOrdersList(options: QueryOpts = {}) {
     queryFn: fetchSellerOrders,
     enabled: (options.enabled ?? true) && !!userId,
     staleTime: 60_000,
+    refetchOnWindowFocus: true,
+    placeholderData: keepPreviousData,
     retry: 1,
   });
 }

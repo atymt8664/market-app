@@ -21,6 +21,7 @@ import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
 import { PushNotificationsRegistrar } from "@/components/push-notifications-registrar";
 import {
   BOTTOM_NAV_FIXED_SHELL_CLASS,
+  BOTTOM_NAV_BUTTONS_ROW_CLASS,
   BOTTOM_NAV_LAYOUT_FRAME_CLASS,
 } from "@/lib/bottom-nav-layout";
 
@@ -242,8 +243,9 @@ const BottomNav = memo(function BottomNav() {
         )}
       >
         <div
-          className="relative mx-auto flex max-w-screen-2xl items-stretch gap-0.5 px-1 py-0.5 md:gap-1 md:px-2 md:py-1 lg:px-8"
+          className={BOTTOM_NAV_BUTTONS_ROW_CLASS}
           dir="rtl"
+          data-bottom-nav-buttons
         >
           <NavItem
             href="/"

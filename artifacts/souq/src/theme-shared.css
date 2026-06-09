@@ -284,6 +284,7 @@ html.dark #root {
 [data-bottom-nav-shell] {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
-  margin-bottom: 0;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  margin: 0;
+  padding: 0;
+  bottom: 0;
 }

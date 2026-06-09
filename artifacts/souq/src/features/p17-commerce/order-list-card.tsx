@@ -154,8 +154,8 @@ function OrderListCardThumbnail({
   const adId = order.adId ?? 0;
   const { data: ad } = useGetAd(adId, {
     query: {
-      // Same gate as order detail summary — list must not skip ad fetch when API snapshot is missing.
-      enabled: !interactionDisabled && adId > 0,
+      // Thumbnail fetch is independent of card click/mock gating (detail parity).
+      enabled: adId > 0,
       queryKey: getGetAdQueryKey(adId),
       staleTime: 300_000,
       retry: 1,

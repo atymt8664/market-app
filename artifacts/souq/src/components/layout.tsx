@@ -1,4 +1,5 @@
 ﻿import { memo } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation, useSearch } from "wouter";
 import { Home, Heart, Plus, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,11 +19,7 @@ import {
 } from "@/lib/query-stale-times";
 import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
 import { PushNotificationsRegistrar } from "@/components/push-notifications-registrar";
-import {
-  BOTTOM_NAV_CONTENT_PADDING_CLASS,
-  BOTTOM_NAV_FIXED_SHELL_CLASS,
-  BOTTOM_NAV_LAYOUT_FRAME_CLASS,
-} from "@/lib/bottom-nav-layout";
+import { BOTTOM_NAV_FIXED_SHELL_CLASS, BOTTOM_NAV_LAYOUT_FRAME_CLASS } from "@/lib/bottom-nav-layout";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -72,25 +69,20 @@ export function Layout({ children }: LayoutProps) {
 
   const afterFirstPaint = useAfterFirstPaint();
 
+  const showBottomNav = !isAdminPage && !hideBottomNav;
+
   return (
-    <div className="w-full min-h-[100svh] box-border bg-[#0A0A0A]">
+    <div className="flex min-h-[100dvh] w-full flex-col bg-[#0A0A0A]">
       {afterFirstPaint ? <PushNotificationsRegistrar /> : null}
       {/*
         لا نفرض overflow:hidden على html/body من هنا — ذلك يمنع pull-to-refresh.
         تمرير الشات محصور في [data-chat-scroll] (انظر index.css).
+        BottomNav يُعرض عبر portal على body لتفادي أي containing block أو scroll gap.
       */}
-      <div
-        className={cn(
-          BOTTOM_NAV_LAYOUT_FRAME_CLASS,
-          isImmersiveShell || isImmersiveMarketingRoute || isDevMockRoute || isP17CheckoutFlowRoute
-            ? "pb-0"
-            : BOTTOM_NAV_CONTENT_PADDING_CLASS,
-        )}
-      >
-        {children}
-
-        {!isAdminPage && !hideBottomNav && <BottomNav />}
-      </div>
+      <div className={BOTTOM_NAV_LAYOUT_FRAME_CLASS}>{children}</div>
+      {showBottomNav && typeof document !== "undefined"
+        ? createPortal(<BottomNav />, document.body)
+        : null}
     </div>
   );
 }
@@ -236,10 +228,10 @@ const BottomNav = memo(function BottomNav() {
     location.startsWith("/new") || location.startsWith("/create-ad");
 
   return (
-    <nav className={BOTTOM_NAV_FIXED_SHELL_CLASS}>
+    <nav className={BOTTOM_NAV_FIXED_SHELL_CLASS} data-bottom-nav-shell>
       <div
         className={cn(
-          "pointer-events-auto w-full border-t border-primary/25",
+          "w-full border-t border-primary/25",
           /* موبايل: solid #0A0A0A — no seam/gap under chrome or in safe-area fill */
           "bg-[#0A0A0A] shadow-[0_-1px_0_rgba(163,230,53,0.06),0_-6px_20px_-14px_rgba(0,0,0,0.42)]",
           /* md+: نفس الطبقة الزجاجية السابقة تقريبًا */

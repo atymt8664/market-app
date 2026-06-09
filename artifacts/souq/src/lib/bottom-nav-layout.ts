@@ -2,25 +2,24 @@
 export const BOTTOM_NAV_HEIGHT_MOBILE_PX = 50;
 export const BOTTOM_NAV_HEIGHT_MD_PX = 56;
 
-/** Fixed nav outer shell — solid baseline through home-indicator safe area. */
+/** Fixed nav — portal to body; safe-area fill is solid #0A0A0A (see theme-shared.css). */
 export const BOTTOM_NAV_FIXED_SHELL_CLASS =
-  "pointer-events-none fixed inset-x-0 bottom-0 z-40 bg-[#0A0A0A] pb-[env(safe-area-inset-bottom,0px)]";
+  "fixed inset-x-0 bottom-0 z-40 bg-[#0A0A0A] pb-[env(safe-area-inset-bottom,0px)] [transform:translateZ(0)]";
 
-/** Layout frame — box-border keeps bottom padding inside 100svh (no scroll gap under nav). */
+/** Layout frame — single flex child; no min-h 100vh here (prevents scroll gap under fixed nav). */
 export const BOTTOM_NAV_LAYOUT_FRAME_CLASS =
-  "relative mx-auto w-full max-w-screen-2xl min-h-[100svh] box-border overflow-x-hidden bg-[#0A0A0A]";
+  "relative mx-auto flex w-full max-w-screen-2xl flex-1 flex-col min-h-0 overflow-x-hidden bg-[#0A0A0A]";
 
-/** Layout content padding above fixed BottomNav */
-export const BOTTOM_NAV_CONTENT_PADDING_CLASS =
-  "pb-[calc(50px+env(safe-area-inset-bottom,0px))] md:pb-[calc(56px+env(safe-area-inset-bottom,0px))]";
+/** @deprecated Layout no longer reserves bottom padding — use BOTTOM_NAV_SCROLL_END_SPACER_CLASS in pages. */
+export const BOTTOM_NAV_CONTENT_PADDING_CLASS = "";
 
 /** Negative margin for full-bleed pages that restore scroll clearance via a spacer */
 export const BOTTOM_NAV_SCROLL_OFFSET_CLASS =
   "-mb-[calc(50px+env(safe-area-inset-bottom,0px))] md:-mb-[calc(56px+env(safe-area-inset-bottom,0px))]";
 
-/** Standard page shell — Home / Favorites / Profile parity; dark bg fills to viewport bottom */
+/** Standard page shell — flex-1 inside layout frame; never stack min-h 100dvh with layout padding. */
 export const BOTTOM_NAV_PAGE_SHELL_CLASS =
-  "flex min-h-[100svh] w-full flex-col bg-[#0A0A0A]";
+  "flex w-full flex-1 flex-col min-h-0 bg-[#0A0A0A]";
 
 /**
  * In-content scroll-end spacer — last row clears fixed BottomNav.

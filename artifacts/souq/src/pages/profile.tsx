@@ -60,7 +60,7 @@ import { getPublicAdUrl, getPublicUserProfileUrl } from "@/lib/public-url";
 import { buildAdShareText, buildProfileShareText } from "@/lib/share-text";
 import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { cn } from "@/lib/utils";
-import { BOTTOM_NAV_PAGE_SHELL_CLASS } from "@/lib/bottom-nav-layout";
+import { BOTTOM_NAV_PAGE_SHELL_CLASS, BOTTOM_NAV_SCROLL_END_SPACER_CLASS } from "@/lib/bottom-nav-layout";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 import { stashPromoteAdPreview } from "@/lib/promote-ad-preview";
 import {
@@ -852,6 +852,7 @@ export default function Profile() {
           </div>
         </DrawerContent>
       </Drawer>
+      <div aria-hidden className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS} data-testid="profile-scroll-spacer" />
     </div>
   );
 }

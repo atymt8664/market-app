@@ -273,3 +273,14 @@
     inset: -1px;
   }
 }
+
+/* P17-PRELAUNCH-2 — BottomNav flush: dark baseline through home-indicator + overscroll */
+html.dark,
+html.dark body {
+  background-color: #0a0a0a;
+}
+
+[data-bottom-nav-shell] {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}

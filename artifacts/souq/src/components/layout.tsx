@@ -18,7 +18,11 @@ import {
 } from "@/lib/query-stale-times";
 import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
 import { PushNotificationsRegistrar } from "@/components/push-notifications-registrar";
-import { BOTTOM_NAV_CONTENT_PADDING_CLASS } from "@/lib/bottom-nav-layout";
+import {
+  BOTTOM_NAV_CONTENT_PADDING_CLASS,
+  BOTTOM_NAV_FIXED_SHELL_CLASS,
+  BOTTOM_NAV_LAYOUT_FRAME_CLASS,
+} from "@/lib/bottom-nav-layout";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -69,7 +73,7 @@ export function Layout({ children }: LayoutProps) {
   const afterFirstPaint = useAfterFirstPaint();
 
   return (
-    <div className="w-full min-h-[100svh] bg-[#0A0A0A]">
+    <div className="w-full min-h-[100svh] box-border bg-[#0A0A0A]">
       {afterFirstPaint ? <PushNotificationsRegistrar /> : null}
       {/*
         لا نفرض overflow:hidden على html/body من هنا — ذلك يمنع pull-to-refresh.
@@ -77,7 +81,7 @@ export function Layout({ children }: LayoutProps) {
       */}
       <div
         className={cn(
-          "relative mx-auto w-full max-w-screen-2xl min-h-[100svh] overflow-x-hidden bg-[#0A0A0A]",
+          BOTTOM_NAV_LAYOUT_FRAME_CLASS,
           isImmersiveShell || isImmersiveMarketingRoute || isDevMockRoute || isP17CheckoutFlowRoute
             ? "pb-0"
             : BOTTOM_NAV_CONTENT_PADDING_CLASS,
@@ -232,12 +236,12 @@ const BottomNav = memo(function BottomNav() {
     location.startsWith("/new") || location.startsWith("/create-ad");
 
   return (
-    <nav className="pointer-events-none fixed bottom-0 left-0 right-0 z-40">
+    <nav className={BOTTOM_NAV_FIXED_SHELL_CLASS}>
       <div
         className={cn(
-          "pointer-events-auto w-full border-t border-primary/25 pb-[env(safe-area-inset-bottom,0px)]",
-          /* موبايل: بدون blur (تكلفة GPU أثناء السكرول) — خلفية أغلق قليلًا + ظل أخف */
-          "bg-[#0A0A0A]/98 shadow-[0_-1px_0_rgba(163,230,53,0.06),0_-6px_20px_-14px_rgba(0,0,0,0.42)]",
+          "pointer-events-auto w-full border-t border-primary/25",
+          /* موبايل: solid #0A0A0A — no seam/gap under chrome or in safe-area fill */
+          "bg-[#0A0A0A] shadow-[0_-1px_0_rgba(163,230,53,0.06),0_-6px_20px_-14px_rgba(0,0,0,0.42)]",
           /* md+: نفس الطبقة الزجاجية السابقة تقريبًا */
           "md:bg-[#0A0A0A]/94 md:backdrop-blur-md md:shadow-[0_-1px_0_rgba(163,230,53,0.08),0_-12px_36px_-16px_rgba(0,0,0,0.65)]",
         )}

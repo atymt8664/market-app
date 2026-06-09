@@ -60,6 +60,7 @@ import { getPublicAdUrl, getPublicUserProfileUrl } from "@/lib/public-url";
 import { buildAdShareText, buildProfileShareText } from "@/lib/share-text";
 import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { cn } from "@/lib/utils";
+import { BOTTOM_NAV_PAGE_SHELL_CLASS } from "@/lib/bottom-nav-layout";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 import { stashPromoteAdPreview } from "@/lib/promote-ad-preview";
 import {
@@ -216,7 +217,7 @@ export default function Profile() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-[100svh] w-full flex-col items-center justify-center bg-[#0A0A0A]">
+      <div className={cn(BOTTOM_NAV_PAGE_SHELL_CLASS, "items-center justify-center")}>
         <div className="w-12 h-12 rounded-full border-4 border-muted border-t-primary animate-spin" />
       </div>
     );
@@ -337,7 +338,7 @@ export default function Profile() {
   const avatarBusy = isUploading || updateProfile.isPending;
 
   return (
-    <div className="flex min-h-[100svh] w-full flex-col bg-[#0A0A0A]">
+    <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
       <div className="mx-auto w-full max-w-screen-sm md:max-w-[760px] lg:max-w-[860px] px-3 md:px-6 py-3 md:py-5">
         <header className="pt-2 md:pt-5" dir="rtl">
           <div className="flex w-full items-start justify-between gap-3">

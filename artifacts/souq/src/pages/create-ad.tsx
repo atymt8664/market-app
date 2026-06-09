@@ -64,7 +64,7 @@ import {
   parseStoredAdDetails,
 } from "@/lib/ad-stored-details";
 import { cn } from "@/lib/utils";
-import { BOTTOM_NAV_SCROLL_OFFSET_CLASS } from "@/lib/bottom-nav-layout";
+import { BOTTOM_NAV_PAGE_SHELL_CLASS } from "@/lib/bottom-nav-layout";
 import { SETTINGS_PRIMARY_BUTTON } from "@/components/settings-shell";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
@@ -95,14 +95,9 @@ const createAdPageTitleHeading = cn(
   "px-2.5 py-0.5 text-base font-semibold md:px-3 md:py-1 md:text-lg",
 );
 
-/**
- * حجز نهاية التمرير — يطابق `layout.tsx` BottomNav + safe-area + تنفس (~1.5rem).
- * margin سالب على الجذر يلغي padding الـ Layout المكرر؛ spacer داخل النموذج يضمن ظهور «معاينة» كاملة.
- */
-const createAdPageLayoutBottomCancel = BOTTOM_NAV_SCROLL_OFFSET_CLASS;
-/** زرّان h-11 + فجوة + تنفس فوق الشريط السفلي — دون فراغ زائد أسفل «معاينة» */
+/** زرّان h-11 + فجوة + تنفس فوق الشريط السفلي — فوق spacer القياسي للـ BottomNav */
 const createAdScrollEndSpacer =
-  "min-h-[calc(7rem+env(safe-area-inset-bottom,0px))] md:min-h-[calc(7.25rem+env(safe-area-inset-bottom,0px))]";
+  "min-h-[calc(7rem+env(safe-area-inset-bottom,0px))] shrink-0 bg-[#0A0A0A] md:min-h-[calc(7.25rem+env(safe-area-inset-bottom,0px))]";
 
 const MARKETPLACE_COUNTRY_CODE = "DE";
 const germanCitySet = new Set(
@@ -1528,12 +1523,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   }, []);
 
   return (
-    <div
-      className={cn(
-        "flex min-h-0 w-full flex-col bg-[#0A0A0A]",
-        createAdPageLayoutBottomCancel,
-      )}
-    >
+    <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
       <header
         className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]"
         dir={isRtl ? "rtl" : "ltr"}

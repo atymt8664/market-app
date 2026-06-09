@@ -17,7 +17,11 @@ export {
   SETTINGS_PAGE_BG as ORDERS_PAGE_BG,
 } from "@/components/settings-shell";
 
-import { BOTTOM_NAV_SCROLL_OFFSET_CLASS } from "@/lib/bottom-nav-layout";
+import {
+  BOTTOM_NAV_PAGE_SHELL_CLASS,
+  BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
+  BOTTOM_NAV_SCROLL_OFFSET_CLASS,
+} from "@/lib/bottom-nav-layout";
 
 export { profileStatTileShell as ORDERS_STAT_CARD } from "@/components/profile-stat-tiles";
 
@@ -43,12 +47,14 @@ export const CREATE_AD_PAGE_TITLE_HEADING = `${CREATE_AD_SECTION_HEADING} px-2.5
 /** Hub page title (buyer + seller) — balances h-11 back button (create-ad parity) */
 export const ORDERS_BUYER_PAGE_TITLE_HEADING = `${CREATE_AD_SECTION_HEADING} px-2.5 py-0.5 text-xl font-semibold md:px-3 md:py-1 md:text-[1.375rem]`;
 
-/** `create-ad.tsx` — cancels Layout bottom padding; scroll spacer restores clearance above BottomNav */
+/** @deprecated Checkout-only legacy — hub/detail use {@link ORDERS_PAGE_SHELL} instead */
 export const ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL = BOTTOM_NAV_SCROLL_OFFSET_CLASS;
 
-/** End-of-scroll spacer — clearance above BottomNav without excess dead space */
-export const ORDERS_SCROLL_END_SPACER =
-  "min-h-[calc(4.25rem+env(safe-area-inset-bottom,0px))] shrink-0 md:min-h-[calc(4.5rem+env(safe-area-inset-bottom,0px))]";
+/** Hub/detail page shell — matches Home / Favorites / Profile (no negative-margin seam) */
+export const ORDERS_PAGE_SHELL = BOTTOM_NAV_PAGE_SHELL_CLASS;
+
+/** End-of-scroll spacer — solid dark fill above fixed BottomNav */
+export const ORDERS_SCROLL_END_SPACER = BOTTOM_NAV_SCROLL_END_SPACER_CLASS;
 
 /** `create-ad.tsx` — form/main column (tighter hub/detail density) */
 export const CREATE_AD_MAIN_COLUMN =

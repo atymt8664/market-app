@@ -42,7 +42,7 @@ import {
   ORDERS_LIST_CARD_INBOX,
   ORDERS_CARD_TITLE,
   ORDERS_GHOST_BTN,
-  ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL,
+  ORDERS_PAGE_SHELL,
   ORDERS_SCROLL_END_SPACER,
   ORDERS_STICKY_CTA_BAR,
 } from "./orders-page-styles";
@@ -134,7 +134,7 @@ export function OrderDetailPage({ variant, orderId }: OrderDetailPageProps) {
 
   return (
     <div
-      className={cn("flex min-h-0 w-full flex-col bg-[#0A0A0A]", ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL)}
+      className={ORDERS_PAGE_SHELL}
       dir="rtl"
       data-testid={pageTestId}
     >
@@ -494,7 +494,7 @@ function OrderDetailNotFound({
 }) {
   return (
     <div
-      className={cn("flex min-h-0 w-full flex-col bg-[#0A0A0A]", ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL)}
+      className={ORDERS_PAGE_SHELL}
       dir="rtl"
       data-testid={pageTestId}
     >

@@ -20,6 +20,7 @@ import {
 } from "./order-status-tone";
 import { OrderNumberCopy } from "./order-number-copy";
 import { OrderProductThumbnail } from "./order-product-thumbnail";
+import { resolveFirstAdImageUrl } from "./resolve-first-ad-image-url";
 
 type OrderListCardProps = {
   order: OrderListItem;
@@ -150,17 +151,17 @@ function OrderListCardThumbnail({
   order: OrderListItem;
   interactionDisabled: boolean;
 }) {
-  const hasApiImage = Boolean(order.imageUrl?.trim());
   const adId = order.adId ?? 0;
   const { data: ad } = useGetAd(adId, {
     query: {
-      enabled: !interactionDisabled && !hasApiImage && adId > 0,
+      // Same gate as order detail summary — list must not skip ad fetch when API snapshot is missing.
+      enabled: !interactionDisabled && adId > 0,
       queryKey: getGetAdQueryKey(adId),
       staleTime: 300_000,
       retry: 1,
     },
   });
-  const imageUrl = ad?.images?.[0] ?? order.imageUrl ?? null;
+  const imageUrl = resolveFirstAdImageUrl(ad?.images) ?? order.imageUrl ?? null;
 
   return (
     <OrderProductThumbnail

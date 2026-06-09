@@ -7,6 +7,7 @@ import { HomeFeaturedDivider } from "@/components/home-featured-divider";
 import { useProgressiveReveal } from "@/lib/use-progressive-reveal";
 import { t } from "@/i18n";
 import { HOME_PAGE_INSET } from "@/lib/home-page-layout";
+import { BOTTOM_NAV_SCROLL_END_SPACER_CLASS } from "@/lib/bottom-nav-layout";
 import { cn } from "@/lib/utils";
 
 const FEATURED_SKELETON_KEYS = [0, 1, 2, 3] as const;
@@ -136,6 +137,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
           )}
         </div>
       </section>
+      <div aria-hidden className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS} />
     </>
   );
 });

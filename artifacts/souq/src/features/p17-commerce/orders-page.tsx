@@ -21,7 +21,7 @@ import {
   ORDERS_CARD_COMPACT,
   ORDERS_CARD_TITLE,
   ORDERS_SECTION_LABEL,
-  ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL,
+  ORDERS_PAGE_SHELL,
   ORDERS_SCROLL_END_SPACER,
   ORDERS_TAB_LIST,
   ORDERS_TAB_LIST_LAYOUT,
@@ -111,7 +111,7 @@ function BuyerOrdersPage() {
 
   return (
     <div
-      className={cn("flex min-h-0 w-full flex-col bg-[#0A0A0A]", ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL)}
+      className={ORDERS_PAGE_SHELL}
       dir="rtl"
       data-testid="p17-orders-page-buyer"
     >
@@ -224,7 +224,7 @@ function SellerOrdersPage() {
   if (!sellerFlowEnabled) {
     return (
       <div
-        className={cn("flex min-h-0 w-full flex-col bg-[#0A0A0A]", ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL)}
+        className={ORDERS_PAGE_SHELL}
         dir="rtl"
         data-testid="p17-orders-page-seller"
       >
@@ -243,7 +243,7 @@ function SellerOrdersPage() {
 
   return (
     <div
-      className={cn("flex min-h-0 w-full flex-col bg-[#0A0A0A]", ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL)}
+      className={ORDERS_PAGE_SHELL}
       dir="rtl"
       data-testid="p17-orders-page-seller"
     >

@@ -79,7 +79,7 @@ export async function listBuyerOrdersWithItems(
     })
     .from(ordersTable)
     .leftJoin(orderItemsTable, eq(orderItemsTable.orderId, ordersTable.id))
-    .leftJoin(adsTable, eq(orderItemsTable.adId, adsTable.id))
+    .leftJoin(adsTable, eq(ordersTable.adId, adsTable.id))
     .where(eq(ordersTable.buyerUserId, buyerUserId))
     .orderBy(desc(ordersTable.createdAt), desc(ordersTable.id))
     .limit(limit);
@@ -104,7 +104,7 @@ export async function listSellerOrdersWithItems(
     })
     .from(ordersTable)
     .leftJoin(orderItemsTable, eq(orderItemsTable.orderId, ordersTable.id))
-    .leftJoin(adsTable, eq(orderItemsTable.adId, adsTable.id))
+    .leftJoin(adsTable, eq(ordersTable.adId, adsTable.id))
     .where(eq(ordersTable.sellerUserId, sellerUserId))
     .orderBy(desc(ordersTable.createdAt), desc(ordersTable.id))
     .limit(limit);

@@ -32,6 +32,8 @@ const buyerList = OrdersListResponseSchema.parse({
       currency: "EUR",
       updatedAt: new Date().toISOString(),
       updatedAtRelativeAr: "منذ ساعتين",
+      imageUrl: "https://cdn.example/order-item.jpg",
+      adId: 3001,
     },
   ],
   total: 1,

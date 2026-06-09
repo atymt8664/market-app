@@ -20,6 +20,10 @@ import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { apiUrl } from "@/lib/api-url";
 import {
+  BOTTOM_NAV_PAGE_SHELL_CLASS,
+  BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
+} from "@/lib/bottom-nav-layout";
+import {
   Sheet,
   SheetClose,
   SheetContent,
@@ -238,7 +242,7 @@ export default function Messages() {
   if (!authLoading && !user) return <Redirect to="/guest-welcome?redirect=/messages" />;
 
   return (
-    <div className="flex min-h-0 w-full flex-col bg-[#0A0A0A]">
+    <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
       <header
         className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]"
         dir="rtl"
@@ -279,6 +283,7 @@ export default function Messages() {
                 onPrefetchThread={prefetchThread}
               />
             ))}
+            <li aria-hidden className={cn(BOTTOM_NAV_SCROLL_END_SPACER_CLASS, "list-none")} />
           </ul>
         ) : (
           <div className="flex w-full justify-center pt-2">

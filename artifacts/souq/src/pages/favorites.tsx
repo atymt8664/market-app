@@ -11,6 +11,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
+import {
+  BOTTOM_NAV_PAGE_SHELL_CLASS,
+  BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
+} from "@/lib/bottom-nav-layout";
 
 const emptyCardShell =
   "rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 p-6 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-8";
@@ -35,8 +39,7 @@ const favoritesHeaderHeartCircle = cn(
 );
 
 /** مساحة نهاية القائمة — إظهار شريط إحصائيات آخر كرت فوق Bottom Nav الثابت */
-const favoritesScrollEndSpacer =
-  "min-h-[calc(3.25rem+env(safe-area-inset-bottom,0px))] md:min-h-[calc(3.5rem+env(safe-area-inset-bottom,0px))]";
+const favoritesScrollEndSpacer = BOTTOM_NAV_SCROLL_END_SPACER_CLASS;
 
 export default function Favorites() {
   const { user, isLoading: authLoading } = useAuth();
@@ -55,7 +58,7 @@ export default function Favorites() {
   const favoriteAds = Array.isArray(data) ? data : [];
 
   return (
-    <div className="flex min-h-[100svh] w-full flex-col bg-[#0A0A0A]">
+    <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
       <header
         className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 px-3 py-3 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)] md:backdrop-blur md:px-4 md:py-3.5"
         dir="rtl"

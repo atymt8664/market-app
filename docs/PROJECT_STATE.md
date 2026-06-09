@@ -31,7 +31,7 @@
 Only **one open builder phase** at a time. Sequence:
 
 ```
-✅ P13-1 → … → ✅ P17-7 → ✅ P17-7A → ✅ P17-8-0 → ✅ P17-8 Package 1 → ✅ P17-8 Package 2 → P17-8 Package 3+ … P17-19
+✅ P13-1 → … → ✅ P17-8 Package 2 → ✅ P17-PRELAUNCH-1 → ✅ P17-PRELAUNCH-2 → P5-PRELAUNCH → P11-PRELAUNCH → P0-LAUNCH-GATE
 ```
 
 **P17-5/6/7/7A** buyer · seller · shipping · address gate **live on PRODUCTION** (API `souq-api:p17-7a-prod-20260607`). **P17-8 Package 1** closed (`2c96aa1` · `dpl_7wKgH4VJHWypCVTubcNKrdbo2cTU`). **P17-8 Package 2** closed + **prod verified** (commit `bb6070a` · Vercel `dpl_8TNVeqkxcELqQoXxcEUsWyEN3BWU` · Mohamed visual APPROVED) · **P17-8 Package 3+** not opened.
@@ -127,11 +127,13 @@ Only **one open builder phase** at a time. Sequence:
 | **P17-PROD-1** Production orders foundation | ✅ **Closed** | `020_p17_orders_schema.sql` on PRODUCTION · 7/7 tables OK |
 | **P17-PROD-2** Production API deployment | ✅ **Closed** | `souq-api:p17-prod-2-20260601` · `P17_ORDERS_API_ENABLED=1` · API smoke PASS |
 | **P17-PROD-3** Official frontend production activation | ⚠️ **Integrity issue** | Vercel flags OK · E2E pollution discovered in P17-PROD-FIX-1 |
-| **P17-PROD-FIX-1** Production integrity recovery | ✅ **Closed** | Removed P17-PROD-2 E2E rows (4 users, 4 ads, 6 orders) · checkout CSRF fix pending deploy |
+| **P17-PROD-FIX-1** Production integrity recovery | ✅ **Closed** | Removed P17-PROD-2 E2E rows (4 users, 4 ads, 6 orders) · checkout CSRF fix **deployed** (P17-PRELAUNCH-1) |
+| **P17-PRELAUNCH-1** Integrity & stability gate | ✅ **Closed — Production verified** | Vercel `dpl_8jnjZYKZg5gvW421j3fwu9pCHrpq` · `p17-prelaunch-1-prod-verify` PASS · API unchanged `souq-api:p17-7a-prod-20260607` |
 | **P17-8-0** Tracking timeline UX / motion / architecture lock | ✅ **Closed** | [P17-8-0-tracking-timeline-ux-lock.md](./architecture/P17-8-0-tracking-timeline-ux-lock.md) · Mohamed sign-off **APPROVED** 2026-06-07 · mobile canonical track `●━━━━●━━━━◉━━━━○━━━━○━━━━○` · documentation only |
 | **P17-8 Package 1** Order tracking track + live progress timeline | ✅ **Closed — Production verified** | [P17-8-pkg1-closure.md](./architecture/P17-8-pkg1-closure.md) · journey rail + travel pulse · commit `2c96aa1` · Vercel `dpl_7wKgH4VJHWypCVTubcNKrdbo2cTU` |
 | **P17-8 Package 2** Tracking enrichment (ETA · events · details · carrier readiness) | ✅ **Closed — Production verified** | [P17-8-pkg2-closure.md](./architecture/P17-8-pkg2-closure.md) · last updated · date chips · shipment events · tracking details · static carrier URLs · Mohamed visual **APPROVED** · commit `bb6070a` · Vercel `dpl_8TNVeqkxcELqQoXxcEUsWyEN3BWU` · `p17-8:pkg2:validate` PASS |
-| **P17-8 Package 3+** Tracking timeline (extended features) | ⏳ **Next (not opened)** | Await explicit task; Package 2 closed |
+| **P17-8 Package 3+** Tracking timeline (extended features) | ⏳ **Not opened** | Deferred — pre-launch polish sequence active |
+| **P17-PRELAUNCH-2** Commerce surfaces polish | ✅ **Closed — Production verified** | Order list thumbnails · bottom nav flush · orders refresh · commit `d980862` · Vercel `index-CARgRcHP.js` · prod visual account `atymt8664@gmail.com` (6 orders) · `p17-prelaunch-2-prod-close` PASS |
 
 ---
 
@@ -143,4 +145,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P17-8 Package 2 closed + prod verified (commit `bb6070a` · `dpl_8TNVeqkxcELqQoXxcEUsWyEN3BWU`). Open builder: **none** — next candidate **P17-8 Package 3+** (not opened). P9-E not opened.
+P17-PRELAUNCH-2 closed (Production verified — orders images, bottom nav flush, refresh). Open builder: **none** — next candidate **P5-PRELAUNCH** (not opened). Production visual verification account: `atymt8664@gmail.com` (env: `PROD_VERIFY_EMAIL` / `PROD_VERIFY_PASSWORD`).

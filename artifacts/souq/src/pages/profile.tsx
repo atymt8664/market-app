@@ -35,6 +35,10 @@ import { useUpload } from "@workspace/object-storage-web";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
+import {
+  FavoriteListItem,
+  FavoriteListItemSkeleton,
+} from "@/components/favorite-list-item";
 import { AdCardNoImagePlaceholder } from "@/components/ad-card-no-image-placeholder";
 import { AvatarCircle } from "@/components/avatar-circle";
 import { useToast } from "@/hooks/use-toast";
@@ -622,26 +626,19 @@ export default function Profile() {
 
             <TabsContent value="favorites" className="mt-3 md:mt-4">
               {favoritesLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                <ul className="mx-auto flex w-full max-w-lg flex-col gap-2 sm:max-w-xl md:max-w-2xl md:gap-2.5">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <AdCardSkeleton key={i} favoritesList />
+                    <FavoriteListItemSkeleton key={i} />
                   ))}
-                </div>
+                </ul>
               ) : favoriteAds.length === 0 ? (
                 <div className="py-12 text-center text-sm text-muted-foreground">{t("profile.favorites.empty")}</div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                <ul className="mx-auto flex w-full max-w-lg flex-col gap-2 sm:max-w-xl md:max-w-2xl md:gap-2.5">
                   {favoriteAds.map((ad) => (
-                    <div key={ad.id}>
-                      <div className="md:hidden">
-                        <AdCard ad={ad} favoritesList />
-                      </div>
-                      <div className="hidden md:block">
-                        <ProfileDesktopAdCard ad={ad} onOpen={() => navigate(`/ad/${ad.id}`)} />
-                      </div>
-                    </div>
+                    <FavoriteListItem key={ad.id} ad={ad} />
                   ))}
-                </div>
+                </ul>
               )}
             </TabsContent>
 

@@ -274,13 +274,16 @@
   }
 }
 
-/* P17-PRELAUNCH-2 — BottomNav flush: dark baseline through home-indicator + overscroll */
+/* P17-PRELAUNCH-2 — BottomNav flush: dark baseline through home-indicator */
 html.dark,
-html.dark body {
+html.dark body,
+html.dark #root {
   background-color: #0a0a0a;
 }
 
 [data-bottom-nav-shell] {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+  margin-bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }

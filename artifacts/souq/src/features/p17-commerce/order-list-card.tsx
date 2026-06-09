@@ -21,6 +21,7 @@ import {
 import { OrderNumberCopy } from "./order-number-copy";
 import { OrderProductThumbnail } from "./order-product-thumbnail";
 import { resolveOrderThumbnailImageUrl } from "./resolve-order-thumbnail-image-url";
+import { useOrderDetail } from "./use-orders-api";
 
 type OrderListCardProps = {
   order: OrderListItem;
@@ -59,7 +60,7 @@ export function OrderListCard({
   const inner = (
     <div className="flex w-full items-center gap-2.5 md:gap-3">
       <div className="relative shrink-0">
-        <OrderListCardThumbnail order={order} isMock={interactionDisabled} />
+        <OrderListCardThumbnail order={order} variant={variant} isMock={interactionDisabled} />
         {isSellerNewOrder ? (
           <span
             className="absolute top-1 start-1 rounded-full border border-amber-500/55 bg-amber-500/25 px-1.5 py-px text-[9px] font-bold text-amber-50"
@@ -152,12 +153,20 @@ function coerceOrderAdId(adId: OrderListItem["adId"]): number {
 /** Same image fallback chain as order detail summary — API snapshot → ad gallery → placeholder. */
 function OrderListCardThumbnail({
   order,
+  variant,
   isMock,
 }: {
   order: OrderListItem;
+  variant: OrderHubVariant;
   isMock: boolean;
 }) {
-  const adId = coerceOrderAdId(order.adId);
+  const listAdId = coerceOrderAdId(order.adId);
+  const needsDetailAdId = listAdId === 0 && !isMock && order.orderNumber.trim().length > 0;
+  const detailQuery = useOrderDetail(variant, order.orderNumber, {
+    enabled: needsDetailAdId,
+  });
+  const adId = listAdId || coerceOrderAdId(detailQuery.data?.order?.adId);
+  const snapshotImageUrl = order.imageUrl ?? detailQuery.data?.order?.imageUrl;
   const { data: ad } = useGetAd(adId, {
     query: {
       // Detail parity — always resolve gallery when adId is known (not mock-gated list).
@@ -167,7 +176,7 @@ function OrderListCardThumbnail({
       retry: 1,
     },
   });
-  const imageUrl = resolveOrderThumbnailImageUrl(ad?.images, order.imageUrl);
+  const imageUrl = resolveOrderThumbnailImageUrl(ad?.images, snapshotImageUrl);
 
   return (
     <OrderProductThumbnail

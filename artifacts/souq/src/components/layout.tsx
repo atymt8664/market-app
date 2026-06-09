@@ -22,7 +22,6 @@ import { PushNotificationsRegistrar } from "@/components/push-notifications-regi
 import {
   BOTTOM_NAV_FIXED_SHELL_CLASS,
   BOTTOM_NAV_LAYOUT_FRAME_CLASS,
-  BOTTOM_NAV_SAFE_AREA_FILL_CLASS,
 } from "@/lib/bottom-nav-layout";
 
 interface LayoutProps {
@@ -304,7 +303,6 @@ const BottomNav = memo(function BottomNav() {
           </button>
         </div>
       </div>
-      <div aria-hidden className={BOTTOM_NAV_SAFE_AREA_FILL_CLASS} data-bottom-nav-safe-fill />
     </nav>
   );
 });

@@ -1,5 +1,6 @@
 ﻿import type { KeyboardEvent, ReactNode } from "react";
 import { ChevronLeft } from "lucide-react";
+import { getGetAdQueryKey, useGetAd } from "@workspace/api-client-react";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import type { OrderHubVariant } from "./order-detail-paths";
@@ -57,11 +58,9 @@ export function OrderListCard({
   const inner = (
     <div className="flex w-full items-center gap-2.5 md:gap-3">
       <div className="relative shrink-0">
-        <OrderProductThumbnail
-          imageUrl={order.imageUrl}
-          title={order.title}
-          size="list"
-          className="border-primary/25"
+        <OrderListCardThumbnail
+          order={order}
+          interactionDisabled={interactionDisabled}
         />
         {isSellerNewOrder ? (
           <span
@@ -140,6 +139,36 @@ export function OrderListCard({
     >
       {inner}
     </button>
+  );
+}
+
+/** Same image fallback chain as order detail summary — ad gallery → API snapshot → placeholder. */
+function OrderListCardThumbnail({
+  order,
+  interactionDisabled,
+}: {
+  order: OrderListItem;
+  interactionDisabled: boolean;
+}) {
+  const hasApiImage = Boolean(order.imageUrl?.trim());
+  const adId = order.adId ?? 0;
+  const { data: ad } = useGetAd(adId, {
+    query: {
+      enabled: !interactionDisabled && !hasApiImage && adId > 0,
+      queryKey: getGetAdQueryKey(adId),
+      staleTime: 300_000,
+      retry: 1,
+    },
+  });
+  const imageUrl = ad?.images?.[0] ?? order.imageUrl ?? null;
+
+  return (
+    <OrderProductThumbnail
+      imageUrl={imageUrl}
+      title={order.title}
+      size="list"
+      className="border-primary/25"
+    />
   );
 }
 

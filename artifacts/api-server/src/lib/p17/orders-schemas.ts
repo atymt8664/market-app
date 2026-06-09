@@ -30,6 +30,8 @@ export const OrderListItemSchema = z
     updatedAtRelativeAr: z.string().min(1),
     /** Snapshot from order_items.image_url — list thumbnails (H1). */
     imageUrl: z.string().nullable().optional(),
+    /** Linked ad — list thumbnail fallback when snapshot image is missing. */
+    adId: z.number().int().positive().optional(),
   })
   .strict();
 

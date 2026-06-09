@@ -19,13 +19,19 @@ export type OrderWithItemRow = OrderRow & {
   itemImageUrl: string | null;
 };
 
-function firstAdImage(images: unknown): string | null {
+export function firstAdImage(images: unknown): string | null {
   if (!Array.isArray(images)) return null;
-  const first = images[0];
-  return typeof first === "string" && first.trim().length > 0 ? first.trim() : null;
+  for (const item of images) {
+    if (typeof item === "string" && item.trim().length > 0) return item.trim();
+    if (item && typeof item === "object" && "url" in item) {
+      const url = (item as { url?: unknown }).url;
+      if (typeof url === "string" && url.trim().length > 0) return url.trim();
+    }
+  }
+  return null;
 }
 
-function resolveOrderListImage(itemImageUrl: string | null, adImages: unknown): string | null {
+export function resolveOrderListImage(itemImageUrl: string | null, adImages: unknown): string | null {
   if (itemImageUrl?.trim()) return itemImageUrl.trim();
   return firstAdImage(adImages);
 }
@@ -73,7 +79,7 @@ export async function listBuyerOrdersWithItems(
     })
     .from(ordersTable)
     .leftJoin(orderItemsTable, eq(orderItemsTable.orderId, ordersTable.id))
-    .leftJoin(adsTable, eq(ordersTable.adId, adsTable.id))
+    .leftJoin(adsTable, eq(orderItemsTable.adId, adsTable.id))
     .where(eq(ordersTable.buyerUserId, buyerUserId))
     .orderBy(desc(ordersTable.createdAt), desc(ordersTable.id))
     .limit(limit);
@@ -98,7 +104,7 @@ export async function listSellerOrdersWithItems(
     })
     .from(ordersTable)
     .leftJoin(orderItemsTable, eq(orderItemsTable.orderId, ordersTable.id))
-    .leftJoin(adsTable, eq(ordersTable.adId, adsTable.id))
+    .leftJoin(adsTable, eq(orderItemsTable.adId, adsTable.id))
     .where(eq(ordersTable.sellerUserId, sellerUserId))
     .orderBy(desc(ordersTable.createdAt), desc(ordersTable.id))
     .limit(limit);

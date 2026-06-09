@@ -20,6 +20,8 @@ export type OrderListItem = {
   updatedAtRelativeAr: string;
   /** Optional API enrichment — thumbnail when exposed (A2). */
   imageUrl?: string | null;
+  /** Linked ad — client thumbnail fallback (matches order detail). */
+  adId?: number;
   /** Optional API enrichment — fulfillment chip (B3). */
   fulfillmentMode?: "shipping" | "pickup" | null;
 };

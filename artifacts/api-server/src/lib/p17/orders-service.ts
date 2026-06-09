@@ -37,6 +37,7 @@ import {
   getPrimaryOrderItem,
   insertOrderWithHistory,
   isAdEligibleForOrder,
+  firstAdImage,
   listBuyerOrdersWithItems,
   listOrderIssues,
   listOrderTimeline,
@@ -76,6 +77,17 @@ export const CreateOrderBodySchema = z
 
 export type CreateOrderBody = z.infer<typeof CreateOrderBodySchema>;
 
+async function enrichListItemImage(
+  row: OrderWithItemRow,
+  item: OrderListItem,
+): Promise<OrderListItem> {
+  if (item.imageUrl?.trim()) return item;
+  if (!row.adId) return item;
+  const ad = await loadAdForOrder(row.adId);
+  const imageUrl = firstAdImage(ad?.images ?? null);
+  return imageUrl ? { ...item, imageUrl } : item;
+}
+
 function mapListItem(row: OrderWithItemRow, role: "buyer" | "seller"): OrderListItem {
   const updatedAt = row.updatedAt ?? row.createdAt;
   return {
@@ -89,6 +101,7 @@ function mapListItem(row: OrderWithItemRow, role: "buyer" | "seller"): OrderList
     updatedAt: updatedAt.toISOString(),
     updatedAtRelativeAr: formatRelativeTimeAr(updatedAt),
     imageUrl: row.itemImageUrl ?? null,
+    adId: row.adId,
   };
 }
 
@@ -196,13 +209,17 @@ const ISSUE_STATUS_LABELS: Record<string, string> = {
 export class OrdersService {
   async listBuyerOrders(userId: number): Promise<{ items: OrderListItem[]; total: number }> {
     const rows = await listBuyerOrdersWithItems(userId);
-    const items = rows.map((r) => mapListItem(r, "buyer"));
+    const items = await Promise.all(
+      rows.map(async (r) => enrichListItemImage(r, mapListItem(r, "buyer"))),
+    );
     return { items, total: items.length };
   }
 
   async listSellerOrders(userId: number): Promise<{ items: OrderListItem[]; total: number }> {
     const rows = await listSellerOrdersWithItems(userId);
-    const items = rows.map((r) => mapListItem(r, "seller"));
+    const items = await Promise.all(
+      rows.map(async (r) => enrichListItemImage(r, mapListItem(r, "seller"))),
+    );
     return { items, total: items.length };
   }
 

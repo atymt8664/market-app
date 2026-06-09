@@ -18,6 +18,10 @@ export type OrderListItem = {
   currency: string;
   updatedAt: string;
   updatedAtRelativeAr: string;
+  /** Optional API enrichment — thumbnail when exposed (A2). */
+  imageUrl?: string | null;
+  /** Optional API enrichment — fulfillment chip (B3). */
+  fulfillmentMode?: "shipping" | "pickup" | null;
 };
 
 export type OrderShipment = {

@@ -1,26 +1,17 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Activity,
-  AlertCircle,
-  ArrowRight,
-  Check,
-  CheckCircle2,
-  Package,
-  Sparkles,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { CommerceMockDataBanner } from "./commerce-mock-data-banner";
-import { OrdersHubList } from "./order-list-card";
+import { OrdersHubList, sortOrdersForInbox } from "./order-list-card";
 import { useOrdersHubData } from "./use-orders-hub-data";
-import { useOrdersStats } from "./use-orders-api";
 import type { OrderListItem } from "./orders-api.types";
-import { isP17BuyerFlowActive, isP17SellerOrdersEnabled } from "./p17-commerce-flags";
+import { countBuyerHubTabs, countSellerHubTabs } from "./order-hub-tab-counts";
+import { isP17SellerOrdersEnabled } from "./p17-commerce-flags";
 import {
   CREATE_AD_BACK_BTN,
   CREATE_AD_HEADER_BAR,
@@ -29,18 +20,24 @@ import {
   ORDERS_BUYER_PAGE_TITLE_HEADING,
   ORDERS_CARD_COMPACT,
   ORDERS_CARD_TITLE,
-  ORDERS_GHOST_BTN,
+  ORDERS_SECTION_LABEL,
   ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL,
   ORDERS_SCROLL_END_SPACER,
-  ORDERS_SECTION_LABEL,
-  ORDERS_STAT_CARD,
   ORDERS_TAB_LIST,
+  ORDERS_TAB_LIST_LAYOUT,
   ORDERS_TAB_TRIGGER,
 } from "./orders-page-styles";
 
-export type OrdersPageVariant = "buyer" | "seller";
+function HubTabTriggerLabel({ labelKey, count }: { labelKey: string; count: number }) {
+  return (
+    <span className="inline-flex items-center justify-center gap-1 tabular-nums leading-tight">
+      <span>{t(labelKey)}</span>
+      <span className="font-bold text-primary/90">({count})</span>
+    </span>
+  );
+}
 
-const PAGE_LOAD_MS = 320;
+export type OrdersPageVariant = "buyer" | "seller";
 
 const TAB_PANEL_MOTION = {
   initial: { opacity: 0, y: 8 },
@@ -58,22 +55,23 @@ const BUYER_TABS = [
 
 type BuyerOrderTab = (typeof BUYER_TABS)[number]["value"];
 
-const BUYER_TAB_EMPTY_KEYS: Record<Exclude<BuyerOrderTab, "all">, string> = {
-  new: "p17.commerce.page.empty_tab_new",
-  active: "p17.commerce.page.empty_tab_active",
-  completed: "p17.commerce.page.empty_tab_completed",
-};
+const IN_PROGRESS_ORDER_STATUSES = [
+  "confirmed",
+  "preparing",
+  "shipped",
+  "in_transit",
+  "out_for_delivery",
+  "delivered",
+] as const;
+
+function isInProgressOrderStatus(status: OrderListItem["status"]): boolean {
+  return (IN_PROGRESS_ORDER_STATUSES as readonly string[]).includes(status);
+}
 
 function filterBuyerOrdersByTab(orders: OrderListItem[], tab: BuyerOrderTab): OrderListItem[] {
   if (tab === "all") return orders;
   if (tab === "new") return orders.filter((o) => o.status === "pending_confirmation");
-  if (tab === "active") {
-    return orders.filter((o) =>
-      ["confirmed", "preparing", "shipped", "in_transit", "out_for_delivery", "delivered"].includes(
-        o.status,
-      ),
-    );
-  }
+  if (tab === "active") return orders.filter((o) => isInProgressOrderStatus(o.status));
   return orders.filter((o) => o.status === "cancelled" || o.status === "completed");
 }
 
@@ -86,27 +84,12 @@ const SELLER_TABS = [
 
 type SellerOrderTab = (typeof SELLER_TABS)[number]["value"];
 
-const SELLER_TAB_EMPTY_KEYS: Record<Exclude<SellerOrderTab, "all">, string> = {
-  new: "p17.commerce.page.seller_empty_tab_new",
-  active: "p17.commerce.page.seller_empty_tab_active",
-  done: "p17.commerce.page.seller_empty_tab_done",
-};
-
 function filterSellerOrdersByTab(orders: OrderListItem[], tab: SellerOrderTab): OrderListItem[] {
   if (tab === "all") return orders;
   if (tab === "new") return orders.filter((o) => o.status === "pending_confirmation");
-  if (tab === "active") return orders.filter((o) => o.status === "confirmed");
+  if (tab === "active") return orders.filter((o) => isInProgressOrderStatus(o.status));
   return orders.filter((o) => o.status === "cancelled" || o.status === "completed");
 }
-
-const BUYER_UPCOMING_FEATURES = [
-  "p17.commerce.page.buyer_feature_tracking",
-  "p17.commerce.page.buyer_feature_shipping",
-  "p17.commerce.page.buyer_feature_chat",
-  "p17.commerce.page.buyer_feature_issue",
-  "p17.commerce.page.buyer_feature_protection",
-] as const;
-
 
 type OrdersPageProps = {
   variant: OrdersPageVariant;
@@ -121,25 +104,10 @@ export function OrdersPage({ variant }: OrdersPageProps) {
 
 function BuyerOrdersPage() {
   const [, navigate] = useLocation();
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<BuyerOrderTab>("all");
-  const { orders, isMock } = useOrdersHubData("buyer");
-  const statsQuery = useOrdersStats({ enabled: !isMock });
-  const filteredOrders = filterBuyerOrdersByTab(orders, activeTab);
-  const buyerFlowActive = isP17BuyerFlowActive();
-  const showBuyerUpcomingPreview = !buyerFlowActive;
-  const showBuyerPhaseFootnote = buyerFlowActive && !isMock && orders.length > 0;
-
-  const buyerStatCards = [
-    { key: "p17.commerce.page.stat_card_new", count: statsQuery.data?.new ?? 0, icon: Sparkles },
-    { key: "p17.commerce.page.stat_card_active", count: statsQuery.data?.confirming ?? 0, icon: Activity },
-    { key: "p17.commerce.page.stat_card_completed", count: statsQuery.data?.completed ?? 0, icon: CheckCircle2 },
-  ] as const;
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), PAGE_LOAD_MS);
-    return () => window.clearTimeout(timer);
-  }, []);
+  const { orders, isResolving, isMock } = useOrdersHubData("buyer");
+  const tabCounts = countBuyerHubTabs(orders);
+  const filteredOrders = sortOrdersForInbox(filterBuyerOrdersByTab(orders, activeTab), activeTab);
 
   return (
     <div
@@ -154,7 +122,7 @@ function BuyerOrdersPage() {
       />
 
       <main className={CREATE_AD_MAIN_COLUMN}>
-        {loading ? (
+        {isResolving ? (
           <BuyerOrdersSkeleton />
         ) : (
           <>
@@ -166,12 +134,12 @@ function BuyerOrdersPage() {
                 className="w-full"
               >
                 <TabsList
-                  className={cn(ORDERS_TAB_LIST, "grid grid-cols-4")}
+                  className={cn(ORDERS_TAB_LIST, ORDERS_TAB_LIST_LAYOUT)}
                   data-testid="p17-orders-tabs"
                 >
                   {BUYER_TABS.map((tab) => (
                     <TabsTrigger key={tab.value} value={tab.value} className={ORDERS_TAB_TRIGGER}>
-                      {t(tab.labelKey)}
+                      <HubTabTriggerLabel labelKey={tab.labelKey} count={tabCounts[tab.value]} />
                     </TabsTrigger>
                   ))}
                 </TabsList>
@@ -182,45 +150,24 @@ function BuyerOrdersPage() {
               <motion.div
                 key={activeTab}
                 data-testid="p17-orders-tab-panel"
-                className="flex flex-col gap-2.5 md:gap-3"
+                className="flex flex-col gap-2 md:gap-2.5"
                 {...TAB_PANEL_MOTION}
               >
-                {!isMock && statsQuery.data ? (
-                  <section>
-                    <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.page.buyer_hub_status_section")}</p>
-                    <OrdersStatusGridCards cards={buyerStatCards} />
-                  </section>
-                ) : null}
-
                 {isMock ? (
                   <section>
                     <CommerceMockDataBanner />
                   </section>
                 ) : null}
 
-                <section>
-                  <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.preview.recent_orders")}</p>
+                <section aria-label={t("p17.commerce.page.buyer_title")}>
                   <OrdersHubList
                     variant="buyer"
                     orders={filteredOrders}
                     interactionDisabled={isMock}
-                    empty={<BuyerTabEmptyCard tab={activeTab} onBrowse={() => navigate("/")} />}
+                    empty={<OrdersHubEmptyState testId="p17-orders-empty-recent" />}
                   />
                 </section>
 
-                {showBuyerUpcomingPreview ? (
-                  <section>
-                    <BuyerUpcomingFeaturesCard />
-                  </section>
-                ) : null}
-                {showBuyerPhaseFootnote ? (
-                  <p
-                    className="px-0.5 text-center text-[10px] leading-relaxed text-zinc-500"
-                    data-testid="p17-orders-buyer-phase-footnote"
-                  >
-                    {t("p17.commerce.page.buyer_phase_footnote")}
-                  </p>
-                ) : null}
               </motion.div>
             </AnimatePresence>
 
@@ -256,117 +203,23 @@ function CreateAdPatternHeader({
   );
 }
 
-function OrdersStatusGridCards({
-  cards,
-}: {
-  cards: ReadonlyArray<{ key: string; count: number; icon: LucideIcon }>;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-2.5" data-testid="p17-orders-status-grid">
-      {cards.map(({ key, count, icon: Icon }) => (
-        <div key={key} className={cn(ORDERS_STAT_CARD, "select-none")}>
-          <div className="flex h-5 w-5 shrink-0 items-center justify-center text-primary [&_svg]:h-5 [&_svg]:w-5">
-            <Icon strokeWidth={2.1} />
-          </div>
-          <p className="text-base font-bold tabular-nums leading-none text-foreground md:text-lg">{count}</p>
-          <p className="max-w-[100%] truncate px-0.5 text-[9px] font-medium leading-tight text-muted-foreground md:text-[10px]">
-            {t(key)}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function BuyerTabEmptyCard({ tab, onBrowse }: { tab: BuyerOrderTab; onBrowse: () => void }) {
-  const isAllTab = tab === "all";
-  const title = isAllTab
-    ? t("p17.commerce.page.empty_title")
-    : t(BUYER_TAB_EMPTY_KEYS[tab]);
-  const body = isAllTab ? t("p17.commerce.page.empty_body_hub") : t("p17.commerce.page.empty_body_short");
-
-  return (
-    <div className={cn(ORDERS_CARD_COMPACT, "py-3.5 text-center")} data-testid="p17-orders-empty-recent">
-      <Package className="mx-auto mb-1.5 h-6 w-6 text-primary" strokeWidth={2} />
-      <p className="text-sm font-semibold text-foreground">{title}</p>
-      <p className="mx-auto mt-1 max-w-[17rem] text-[11px] leading-relaxed text-zinc-500">{body}</p>
-      {isAllTab ? (
-        <button
-          type="button"
-          data-testid="p17-orders-empty-cta"
-          className={cn(
-            ORDERS_GHOST_BTN,
-            "mx-auto mt-2.5 min-h-9 w-auto min-w-[8.75rem] px-3 py-1.5 text-[11px]",
-          )}
-          onClick={onBrowse}
-        >
-          {t("p17.commerce.page.empty_cta")}
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-function BuyerUpcomingFeaturesCard() {
-  return (
-    <div className={cn(ORDERS_CARD_COMPACT, "py-3")} data-testid="p17-orders-system-preview-buyer">
-      <p className={cn(ORDERS_CARD_TITLE, "mb-1.5")}>{t("p17.commerce.page.upcoming_features_title")}</p>
-      <ul className="space-y-1">
-        {BUYER_UPCOMING_FEATURES.map((key) => (
-          <li key={key} className="flex items-center gap-2 text-[11px] text-zinc-200 md:text-xs">
-            <Check className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.5} />
-            <span>{t(key)}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 function BuyerOrdersSkeleton() {
   return (
-    <div className="flex flex-col gap-2.5 md:gap-3" data-testid="p17-orders-page-skeleton" aria-busy="true">
-      <Skeleton className="h-12 w-full rounded-xl bg-primary/10" />
-      <div className="grid grid-cols-2 gap-2.5">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-[5rem] rounded-2xl bg-primary/10 md:h-[5.25rem]" />
-        ))}
-      </div>
-      <Skeleton className="h-28 w-full rounded-2xl bg-primary/10" />
-      <Skeleton className="h-24 w-full rounded-2xl bg-primary/10" />
+    <div className="flex flex-col gap-2 md:gap-2.5" data-testid="p17-orders-page-skeleton" aria-busy="true">
+      <Skeleton className="h-11 w-full rounded-xl bg-primary/10" />
+      <Skeleton className="h-40 w-full rounded-2xl bg-primary/10" />
+      <Skeleton className="h-40 w-full rounded-2xl bg-primary/10" />
     </div>
   );
 }
 
 function SellerOrdersPage() {
   const [, navigate] = useLocation();
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<SellerOrderTab>("all");
-  const { orders, isMock } = useOrdersHubData("seller");
+  const { orders, isResolving, isMock } = useOrdersHubData("seller");
   const sellerFlowEnabled = isP17SellerOrdersEnabled();
-  const filteredOrders = filterSellerOrdersByTab(orders, activeTab);
-  const sellerStatCards = [
-    {
-      key: "p17.commerce.page.stat_card_new",
-      count: orders.filter((o) => o.status === "pending_confirmation").length,
-      icon: Sparkles,
-    },
-    {
-      key: "p17.commerce.page.stat_card_active",
-      count: orders.filter((o) => o.status === "confirmed").length,
-      icon: Activity,
-    },
-    {
-      key: "p17.commerce.page.stat_card_completed",
-      count: orders.filter((o) => o.status === "cancelled" || o.status === "completed").length,
-      icon: CheckCircle2,
-    },
-  ] as const;
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), PAGE_LOAD_MS);
-    return () => window.clearTimeout(timer);
-  }, []);
+  const tabCounts = countSellerHubTabs(orders);
+  const filteredOrders = sortOrdersForInbox(filterSellerOrdersByTab(orders, activeTab), activeTab);
 
   if (!sellerFlowEnabled) {
     return (
@@ -401,7 +254,7 @@ function SellerOrdersPage() {
       />
 
       <main className={CREATE_AD_MAIN_COLUMN}>
-        {loading ? (
+        {isResolving ? (
           <SellerOrdersSkeleton />
         ) : (
           <>
@@ -413,12 +266,12 @@ function SellerOrdersPage() {
                 className="w-full"
               >
                 <TabsList
-                  className={cn(ORDERS_TAB_LIST, "grid grid-cols-4")}
+                  className={cn(ORDERS_TAB_LIST, ORDERS_TAB_LIST_LAYOUT)}
                   data-testid="p17-seller-orders-tabs"
                 >
                   {SELLER_TABS.map((tab) => (
                     <TabsTrigger key={tab.value} value={tab.value} className={ORDERS_TAB_TRIGGER}>
-                      {t(tab.labelKey)}
+                      <HubTabTriggerLabel labelKey={tab.labelKey} count={tabCounts[tab.value]} />
                     </TabsTrigger>
                   ))}
                 </TabsList>
@@ -429,27 +282,21 @@ function SellerOrdersPage() {
               <motion.div
                 key={activeTab}
                 data-testid="p17-seller-orders-tab-panel"
-                className="flex flex-col gap-2.5 md:gap-3"
+                className="flex flex-col gap-2 md:gap-2.5"
                 {...TAB_PANEL_MOTION}
               >
-                <section>
-                  <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.page.seller_hub_status_section")}</p>
-                  <OrdersStatusGridCards cards={sellerStatCards} />
-                </section>
-
                 {isMock ? (
                   <section>
                     <CommerceMockDataBanner testId="p17-seller-orders-mock-banner" />
                   </section>
                 ) : null}
 
-                <section>
-                  <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.page.seller_recent_orders")}</p>
+                <section aria-label={t("p17.commerce.page.seller_title")}>
                   <OrdersHubList
                     variant="seller"
                     orders={filteredOrders}
                     interactionDisabled={isMock}
-                    empty={<SellerTabEmptyCard tab={activeTab} />}
+                    empty={<OrdersHubEmptyState testId="p17-seller-orders-empty-recent" />}
                   />
                 </section>
               </motion.div>
@@ -463,34 +310,16 @@ function SellerOrdersPage() {
   );
 }
 
-function SellerTabEmptyCard({ tab }: { tab: SellerOrderTab }) {
-  const isAllTab = tab === "all";
-  const title = isAllTab
-    ? t("p17.commerce.page.seller_empty_title")
-    : t(SELLER_TAB_EMPTY_KEYS[tab]);
-  const body = isAllTab
-    ? t("p17.commerce.page.seller_empty_body")
-    : t("p17.commerce.page.seller_empty_body_short");
-
+function OrdersHubEmptyState({ testId }: { testId: string }) {
   return (
-    <div className={cn(ORDERS_CARD_COMPACT, "py-3.5 text-center")} data-testid="p17-seller-orders-empty-recent">
-      <Package className="mx-auto mb-1.5 h-6 w-6 text-primary" strokeWidth={2} />
-      <p className="text-sm font-semibold text-foreground">{title}</p>
-      <p className="mx-auto mt-1 max-w-[17rem] text-[11px] leading-relaxed text-zinc-500">{body}</p>
-      {isAllTab ? (
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          data-testid="p17-seller-orders-empty-cta"
-          className={cn(
-            ORDERS_GHOST_BTN,
-            "mx-auto mt-2.5 min-h-9 w-auto min-w-[8.75rem] cursor-default px-3 py-1.5 text-[11px] opacity-70",
-          )}
-        >
-          {t("p17.commerce.page.seller_empty_cta")}
-        </button>
-      ) : null}
+    <div
+      className={cn(
+        ORDERS_CARD_COMPACT,
+        "border border-primary/22 px-3 py-3.5 text-center",
+      )}
+      data-testid={testId}
+    >
+      <p className="text-[12px] font-medium text-zinc-500">{t("p17.commerce.page.empty_unified")}</p>
     </div>
   );
 }
@@ -498,7 +327,6 @@ function SellerTabEmptyCard({ tab }: { tab: SellerOrderTab }) {
 function SellerOrdersPhaseDeferredCard() {
   return (
     <div className={cn(ORDERS_CARD_COMPACT, "py-4 text-center")} data-testid="p17-seller-orders-phase-deferred">
-      <Package className="mx-auto mb-2 h-7 w-7 text-primary" strokeWidth={2} />
       <p className={cn(ORDERS_CARD_TITLE, "mb-1.5")}>{t("p17.commerce.page.seller_phase_deferred_title")}</p>
       <p className="mx-auto max-w-[20rem] text-[11px] leading-relaxed text-zinc-500">
         {t("p17.commerce.page.seller_phase_deferred_body")}
@@ -509,15 +337,10 @@ function SellerOrdersPhaseDeferredCard() {
 
 function SellerOrdersSkeleton() {
   return (
-    <div className="flex flex-col gap-2.5 md:gap-3" data-testid="p17-seller-orders-page-skeleton" aria-busy="true">
-      <Skeleton className="h-12 w-full rounded-xl bg-primary/10" />
-      <div className="grid grid-cols-2 gap-2.5">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-[5rem] rounded-2xl bg-primary/10 md:h-[5.25rem]" />
-        ))}
-      </div>
-      <Skeleton className="h-28 w-full rounded-2xl bg-primary/10" />
-      <Skeleton className="h-24 w-full rounded-2xl bg-primary/10" />
+    <div className="flex flex-col gap-2 md:gap-2.5" data-testid="p17-seller-orders-page-skeleton" aria-busy="true">
+      <Skeleton className="h-11 w-full rounded-xl bg-primary/10" />
+      <Skeleton className="h-40 w-full rounded-2xl bg-primary/10" />
+      <Skeleton className="h-40 w-full rounded-2xl bg-primary/10" />
     </div>
   );
 }

@@ -28,6 +28,8 @@ export const OrderListItemSchema = z
     currency: z.string().min(1),
     updatedAt: z.string().datetime(),
     updatedAtRelativeAr: z.string().min(1),
+    /** Snapshot from order_items.image_url — list thumbnails (H1). */
+    imageUrl: z.string().nullable().optional(),
   })
   .strict();
 

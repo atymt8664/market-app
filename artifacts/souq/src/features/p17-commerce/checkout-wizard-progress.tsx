@@ -9,7 +9,7 @@ type CheckoutWizardProgressProps = {
 export function CheckoutWizardProgress({ activeStep, labels }: CheckoutWizardProgressProps) {
   return (
     <div
-      className="mx-auto flex w-full max-w-[900px] items-center justify-center gap-2 px-4 py-3 md:max-w-[760px] md:px-6"
+      className="mx-auto flex w-full max-w-[900px] items-center justify-center gap-1.5 px-4 py-2 md:max-w-[760px] md:gap-2 md:px-6"
       dir="rtl"
       data-testid="p17-checkout-wizard-progress"
     >

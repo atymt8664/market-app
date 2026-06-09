@@ -46,25 +46,48 @@ export const ORDERS_BUYER_PAGE_TITLE_HEADING = `${CREATE_AD_SECTION_HEADING} px-
 /** `create-ad.tsx` — cancels Layout bottom padding; scroll spacer restores clearance above BottomNav */
 export const ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL = BOTTOM_NAV_SCROLL_OFFSET_CLASS;
 
-/** End-of-scroll spacer — matches create-ad clearance above BottomNav */
+/** End-of-scroll spacer — clearance above BottomNav without excess dead space */
 export const ORDERS_SCROLL_END_SPACER =
-  "min-h-[calc(7rem+env(safe-area-inset-bottom,0px))] shrink-0 md:min-h-[calc(7.25rem+env(safe-area-inset-bottom,0px))]";
+  "min-h-[calc(4.25rem+env(safe-area-inset-bottom,0px))] shrink-0 md:min-h-[calc(4.5rem+env(safe-area-inset-bottom,0px))]";
 
-/** `create-ad.tsx` — form/main column */
+/** `create-ad.tsx` — form/main column (tighter hub/detail density) */
 export const CREATE_AD_MAIN_COLUMN =
-  "mx-auto flex w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-2.5 flex flex-col gap-2.5 md:gap-3 md:py-3";
+  "mx-auto flex w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-2 flex flex-col gap-2 md:gap-2.5 md:py-2.5";
 
-/** `profile.tsx` — PROFILE_TAB_LIST */
+/** Three-up stat row for buyer/seller hub */
+export const ORDERS_STAT_GRID = "grid grid-cols-3 gap-2";
+
+/** `profile.tsx` — PROFILE_TAB_LIST shell */
 export const ORDERS_TAB_LIST =
-  "h-auto w-full gap-1.5 rounded-xl border border-primary/32 bg-[#0A0A0A]/78 p-1.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12";
+  "h-auto w-full gap-1 rounded-xl border border-primary/32 bg-[#0A0A0A]/78 p-1 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12 md:gap-1.5 md:p-1.5";
 
-/** `profile.tsx` — PROFILE_TAB_TRIGGER */
+/** Mobile-first inbox tabs — horizontal scroll; grid on md+ (H6). */
+export const ORDERS_TAB_LIST_LAYOUT =
+  "flex overflow-x-auto overscroll-x-contain scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-4 md:overflow-visible";
+
+/** `profile.tsx` — PROFILE_TAB_TRIGGER — premium touch targets on small screens (H6). */
 export const ORDERS_TAB_TRIGGER =
-  "rounded-lg border border-transparent bg-transparent px-1.5 py-2.5 text-[10px] font-semibold leading-tight text-primary/55 transition-all sm:px-2 sm:text-xs data-[state=active]:border-primary/52 data-[state=active]:bg-black/95 data-[state=active]:text-primary data-[state=active]:shadow-[0_0_24px_-12px_hsl(var(--primary)/0.32)] data-[state=active]:ring-1 data-[state=active]:ring-primary/28 hover:border-primary/22 hover:bg-[#0A0A0A]/85 hover:text-primary/85";
+  "min-h-10 min-w-[5.25rem] shrink-0 snap-start rounded-lg border border-transparent bg-transparent px-2 py-2 text-[10px] font-semibold leading-tight text-primary/55 transition-all sm:min-w-[5.75rem] sm:text-[11px] data-[state=active]:border-primary/55 data-[state=active]:bg-black/95 data-[state=active]:text-primary data-[state=active]:shadow-[0_0_28px_-10px_hsl(var(--primary)/0.38)] data-[state=active]:ring-1 data-[state=active]:ring-primary/32 hover:border-primary/22 hover:bg-[#0A0A0A]/85 hover:text-primary/85 md:min-h-0 md:min-w-0 md:flex-1 md:px-2 md:py-2.5 md:text-[11px]";
+
+/** Hub list card — dense horizontal row (profile my-ads parity). */
+export const ORDERS_LIST_CARD_INBOX =
+  "w-full rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 p-2.5 text-right shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-3";
+
+/** L1 hero card — product-centric summary (lighter chrome, B1) */
+export const ORDERS_CARD_HERO =
+  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/88 p-2.5 text-right md:p-3";
+
+/** L3 support card — secondary blocks (reduced glow, B1) */
+export const ORDERS_CARD_SUPPORT =
+  "rounded-2xl border border-primary/22 bg-[#0A0A0A]/65 p-2.5 text-right md:p-3";
+
+/** Mobile sticky primary CTA bar (A5) */
+export const ORDERS_STICKY_CTA_BAR =
+  "sticky bottom-0 z-30 -mx-4 border-t border-primary/22 bg-[#0A0A0A]/96 px-4 py-2 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.65)] backdrop-blur-sm pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none";
 
 /** Hub order list card — interactive shell (orders-account-card-grid parity) */
 export const ORDERS_LIST_CARD =
-  "w-full rounded-2xl border border-primary/35 bg-[#0A0A0A]/78 p-3 text-right shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-3.5";
+  "w-full rounded-2xl border border-primary/35 bg-[#0A0A0A]/78 p-2.5 text-right shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-3";
 
 /** Hub order list card — hover / pressed / touch feedback */
 export const ORDERS_LIST_CARD_INTERACTIVE =

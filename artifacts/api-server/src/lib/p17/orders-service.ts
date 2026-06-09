@@ -88,6 +88,7 @@ function mapListItem(row: OrderWithItemRow, role: "buyer" | "seller"): OrderList
     currency: row.currency,
     updatedAt: updatedAt.toISOString(),
     updatedAtRelativeAr: formatRelativeTimeAr(updatedAt),
+    imageUrl: row.itemImageUrl ?? null,
   };
 }
 

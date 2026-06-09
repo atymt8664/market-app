@@ -27,16 +27,20 @@ import { OrdersApiClientError } from "@/features/p17-commerce/orders-api-errors"
 import { findActiveOrderNumberForAd } from "@/features/p17-commerce/orders-api-client";
 import { useCreateBuyerOrder } from "@/features/p17-commerce/use-orders-mutations";
 import { P17_BUY_NOW_BTN } from "@/features/p17-commerce/ad-detail-commerce-styles";
+import { OrderProductThumbnail } from "@/features/p17-commerce/order-product-thumbnail";
 import {
   CREATE_AD_BACK_BTN,
   CREATE_AD_HEADER_BAR,
   CREATE_AD_HEADER_INNER,
   CREATE_AD_MAIN_COLUMN,
+  ORDERS_BUYER_PAGE_TITLE_HEADING,
   ORDERS_CARD,
   ORDERS_CARD_COMPACT,
+  ORDERS_CARD_SUPPORT,
   ORDERS_GHOST_BTN,
   ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL,
   ORDERS_SECTION_LABEL,
+  ORDERS_STICKY_CTA_BAR,
 } from "@/features/p17-commerce/orders-page-styles";
 import { useToast } from "@/hooks/use-toast";
 import { ensureAuthProfileCsrfReady } from "@/lib/auth-csrf";
@@ -109,6 +113,7 @@ export default function CheckoutPage() {
     step === "fulfillment" ? 0 : step === "address" ? 1 : isShippingCheckout ? 2 : 1;
 
   const priceDisplay = ad?.price != null ? `${ad.price} EUR` : t("ad_detail.unknown_price");
+  const shippingDisplay = isShippingCheckout ? "0.00 EUR" : t("p17.commerce.checkout.shipping_free_pickup");
 
   function handleBack() {
     if (step === "summary") {
@@ -307,10 +312,12 @@ export default function CheckoutPage() {
     >
       <header className={CREATE_AD_HEADER_BAR}>
         <div className={CREATE_AD_HEADER_INNER}>
-          <h1 className="truncate text-sm font-bold text-foreground md:text-base">
-            {step === "summary"
-              ? t("p17.commerce.checkout.summary_title")
-              : t("p17.commerce.checkout.title")}
+          <h1 className="min-w-0 flex-1 text-start">
+            <span className={ORDERS_BUYER_PAGE_TITLE_HEADING}>
+              {step === "summary"
+                ? t("p17.commerce.checkout.summary_title")
+                : t("p17.commerce.checkout.title")}
+            </span>
           </h1>
           <button
             type="button"
@@ -328,11 +335,11 @@ export default function CheckoutPage() {
       <main className={CREATE_AD_MAIN_COLUMN}>
         {step === "fulfillment" ? (
           <>
-            <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.checkout.fulfillment_title")}</p>
+            <p className={cn(ORDERS_SECTION_LABEL, "mb-0")}>{t("p17.commerce.checkout.fulfillment_title")}</p>
             <div
               className={cn(
                 ORDERS_CARD,
-                "flex items-center gap-3 border-primary/40 bg-primary/5 py-4",
+                "flex items-center gap-2.5 border-primary/40 bg-primary/5 py-3",
               )}
               data-testid={isShippingCheckout ? "p17-checkout-shipping-option" : "p17-checkout-pickup-option"}
             >
@@ -356,7 +363,7 @@ export default function CheckoutPage() {
             </div>
             <button
               type="button"
-              className={cn(P17_BUY_NOW_BTN, "h-12 w-full")}
+              className={cn(P17_BUY_NOW_BTN, "h-11 w-full")}
               onClick={handleFulfillmentContinue}
             >
               {t("p17.commerce.checkout.continue")}
@@ -374,7 +381,7 @@ export default function CheckoutPage() {
             />
             <button
               type="button"
-              className={cn(P17_BUY_NOW_BTN, "h-12 w-full")}
+              className={cn(P17_BUY_NOW_BTN, "h-11 w-full")}
               data-testid="p17-checkout-address-continue"
               disabled={createOrder.isPending}
               onClick={handleAddressContinue}
@@ -384,11 +391,21 @@ export default function CheckoutPage() {
           </>
         ) : (
           <>
-            <p className={ORDERS_SECTION_LABEL}>{t("p17.commerce.checkout.summary_title")}</p>
-            <div className={cn(ORDERS_CARD, "py-4")} data-testid="p17-checkout-summary-card">
-              <p className="text-sm font-bold text-foreground">{ad.title}</p>
-              <div className="mt-3 space-y-1.5 text-right text-[12px]">
-                <SummaryLine label={t("p17.commerce.checkout.line_price")} value={priceDisplay} />
+            <p className={cn(ORDERS_SECTION_LABEL, "mb-0")}>{t("p17.commerce.checkout.summary_title")}</p>
+            <div className={cn(ORDERS_CARD, "py-3")} data-testid="p17-checkout-summary-card">
+              <div className="flex items-start gap-3 border-b border-primary/15 pb-3">
+                <OrderProductThumbnail
+                  imageUrl={ad.images?.[0] ?? null}
+                  title={ad.title}
+                  size="md"
+                />
+                <div className="min-w-0 flex-1 text-right">
+                  <p className="line-clamp-2 text-sm font-bold text-foreground md:text-base">{ad.title}</p>
+                  <p className="mt-1 text-base font-bold text-primary md:text-lg">{priceDisplay}</p>
+                </div>
+              </div>
+              <div className="mt-2 space-y-1 text-right text-[11px] md:text-[12px]">
+                <SummaryLine label={t("p17.commerce.checkout.line_shipping")} value={shippingDisplay} />
                 <SummaryLine
                   label={t("p17.commerce.checkout.line_fulfillment")}
                   value={
@@ -398,7 +415,7 @@ export default function CheckoutPage() {
                   }
                 />
                 {isShippingCheckout ? (
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-zinc-300">
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-[10px] text-zinc-300 md:text-[11px]">
                     <p className="font-semibold text-foreground">{buyerAddress.recipientName.trim()}</p>
                     <p>
                       {buyerAddress.city.trim()}, {buyerAddress.countryCode.trim().toUpperCase()}{" "}
@@ -417,16 +434,16 @@ export default function CheckoutPage() {
                   />
                 </div>
               </div>
-              <p className="mt-3 text-[11px] text-primary/90">
+              <p className="mt-2 text-[10px] text-primary/90 md:text-[11px]">
                 {t("p17.commerce.checkout.reassurance")}
               </p>
             </div>
 
-            <div className={ORDERS_CARD_COMPACT}>
-              <p className="text-xs font-semibold text-zinc-500">
+            <div className={cn(ORDERS_CARD_SUPPORT, "py-2")}>
+              <p className="text-[10px] font-semibold text-zinc-500">
                 {t("p17.commerce.checkout.what_next_title")}
               </p>
-              <ul className="mt-2 list-inside list-disc space-y-1 text-[11px] text-zinc-300">
+              <ul className="mt-1 list-inside list-disc space-y-0.5 text-[10px] text-zinc-400">
                 <li>{t("p17.commerce.checkout.what_next_seller")}</li>
                 <li>{t("p17.commerce.checkout.what_next_hub")}</li>
               </ul>
@@ -452,29 +469,31 @@ export default function CheckoutPage() {
               </div>
             ) : null}
 
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                className={cn(P17_BUY_NOW_BTN, "h-12 w-full")}
-                disabled={createOrder.isPending}
-                data-testid="p17-checkout-confirm"
-                onClick={() => void handleConfirm()}
-              >
-                {createOrder.isPending ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  t("p17.commerce.checkout.confirm_cta")
-                )}
-              </button>
-              <button
-                type="button"
-                className={cn(ORDERS_GHOST_BTN, "h-10 w-full text-xs")}
-                onClick={() => setStep(isShippingCheckout ? "address" : "fulfillment")}
-              >
-                {isShippingCheckout
-                  ? t("p17.commerce.checkout.edit_address")
-                  : t("p17.commerce.checkout.edit_fulfillment")}
-              </button>
+            <div className={ORDERS_STICKY_CTA_BAR}>
+              <div className="flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  className={cn(P17_BUY_NOW_BTN, "h-11 w-full")}
+                  disabled={createOrder.isPending}
+                  data-testid="p17-checkout-confirm"
+                  onClick={() => void handleConfirm()}
+                >
+                  {createOrder.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    t("p17.commerce.checkout.confirm_cta")
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className={cn(ORDERS_GHOST_BTN, "h-10 w-full text-xs")}
+                  onClick={() => setStep(isShippingCheckout ? "address" : "fulfillment")}
+                >
+                  {isShippingCheckout
+                    ? t("p17.commerce.checkout.edit_address")
+                    : t("p17.commerce.checkout.edit_fulfillment")}
+                </button>
+              </div>
             </div>
           </>
         )}
@@ -537,7 +556,9 @@ function CheckoutShell({
     >
       <header className={CREATE_AD_HEADER_BAR}>
         <div className={CREATE_AD_HEADER_INNER}>
-          <h1 className="truncate text-sm font-bold text-foreground">{title}</h1>
+          <h1 className="min-w-0 flex-1 text-start">
+            <span className={ORDERS_BUYER_PAGE_TITLE_HEADING}>{title}</span>
+          </h1>
           <button type="button" onClick={onBack} className={CREATE_AD_BACK_BTN}>
             <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
           </button>

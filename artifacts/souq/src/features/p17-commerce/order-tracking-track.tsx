@@ -29,20 +29,34 @@ type OrderTrackingTrackProps = {
   timelineItems?: OrderTimelineEntry[];
   timelineLoading?: boolean;
   isLoading?: boolean;
-  /** Seller read-only — slightly denser layout */
+  /** Seller read-only — slightly denser horizontal layout */
   compact?: boolean;
+  /** Detail page — tighter chrome, enhanced horizontal readability */
+  premiumCompact?: boolean;
 };
 
 function TrackingNode({
   state,
   stepId,
   compact,
+  enhanced,
 }: {
   state: TrackingNodeState;
   stepId: TrackingStepId;
   compact?: boolean;
+  enhanced?: boolean;
 }) {
-  const size = compact ? "h-4 w-4" : state === "current" ? "h-6 w-6" : "h-5 w-5";
+  const size = compact
+    ? "h-4 w-4"
+    : enhanced
+      ? state === "current"
+        ? "h-6 w-6"
+        : state === "completed"
+          ? "h-5 w-5"
+          : "h-4 w-4"
+      : state === "current"
+        ? "h-6 w-6"
+        : "h-5 w-5";
 
   if (state === "completed") {
     return (
@@ -82,7 +96,7 @@ function TrackingNode({
       data-state="future"
       className={cn(
         "relative z-20 shrink-0 rounded-full border-2 border-zinc-600 bg-[#0A0A0A]",
-        compact ? "h-3.5 w-3.5" : "h-4 w-4",
+        compact ? "h-3.5 w-3.5" : enhanced ? "h-4 w-4 border-zinc-500" : "h-4 w-4",
       )}
       aria-hidden
     />
@@ -171,11 +185,13 @@ export function OrderTrackingTrack({
   timelineLoading = false,
   isLoading = false,
   compact = false,
+  premiumCompact = false,
 }: OrderTrackingTrackProps) {
   const locale = getLocale();
   const model = resolveTrackingTrackModel(order);
   const stepCount = model.steps.length;
-  const nodeLane = compact ? "h-5" : "h-6";
+  const enhanced = premiumCompact && !compact;
+  const nodeLane = compact ? "h-5" : enhanced ? "h-7" : "h-6";
   const railInset = `calc(100% / ${stepCount * 2})`;
   const journey = journeyGeometry(stepCount, model.currentIndex, model.nodeStates);
 
@@ -192,16 +208,28 @@ export function OrderTrackingTrack({
 
   return (
     <div
-      className={cn(ORDERS_CARD_COMPACT, "border border-primary/20 py-3")}
+      className={cn(
+        ORDERS_CARD_COMPACT,
+        "border border-primary/25",
+        premiumCompact ? "px-2.5 py-2" : "border-primary/20 py-3",
+      )}
       data-testid="p17-order-tracking-track"
+      data-layout="horizontal"
     >
-      <p className={cn(ORDERS_CARD_TITLE, "mb-1")}>{t("p17.commerce.tracking.title")}</p>
+      <p className={cn(ORDERS_CARD_TITLE, premiumCompact ? "mb-0.5 text-[12px]" : "mb-1")}>
+        {t("p17.commerce.tracking.title")}
+      </p>
 
       <p
-        className="mb-3 text-right text-[10px] leading-relaxed text-zinc-500 md:text-[11px]"
+        className={cn(
+          "text-right leading-tight",
+          premiumCompact
+            ? "mb-1.5 text-[11px] font-medium text-zinc-300"
+            : "mb-3 text-[10px] leading-relaxed text-zinc-500 md:text-[11px]",
+        )}
         data-testid="p17-tracking-last-updated"
       >
-        {t("p17.commerce.tracking.last_updated", {
+        {t("p17.commerce.tracking.status_relative", {
           status: t(currentStepKey),
           relative: order.updatedAtRelativeAr,
         })}
@@ -209,29 +237,37 @@ export function OrderTrackingTrack({
 
       {showEtaBanner && order.shipment?.etaAt ? (
         <div
-          className="mb-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 text-right"
+          className={cn(
+            "rounded-lg border border-primary/25 bg-primary/5 text-right",
+            premiumCompact ? "mb-1.5 px-2 py-1" : "mb-3 rounded-xl px-3 py-2",
+          )}
           data-testid="p17-tracking-eta"
         >
-          <p className="text-[10px] text-zinc-500">{t("p17.commerce.tracking.eta_label")}</p>
-          <p className="text-[12px] font-medium text-primary">
+          <p className={cn(premiumCompact ? "text-[9px]" : "text-[10px]", "text-zinc-500")}>
+            {t("p17.commerce.tracking.eta_label")}
+          </p>
+          <p className={cn(premiumCompact ? "text-[11px]" : "text-[12px]", "font-semibold text-primary")}>
             {formatTrackingEtaDate(order.shipment.etaAt, locale)}
           </p>
         </div>
       ) : null}
 
       {isLoading ? (
-        <Skeleton className="h-14 w-full rounded-xl bg-primary/10" aria-busy="true" />
+        <Skeleton
+          className={cn("w-full rounded-xl bg-primary/10", premiumCompact ? "h-16" : "h-14")}
+          aria-busy="true"
+        />
       ) : (
         <div className="w-full overflow-visible px-0.5" data-testid="p17-tracking-track-scroll">
           <div className="w-full" data-testid="p17-tracking-track-row" dir="rtl">
             <div
-              className="relative grid w-full gap-y-1"
+              className="relative grid w-full gap-y-0.5"
               style={{ gridTemplateColumns: `repeat(${stepCount}, minmax(0, 1fr))` }}
             >
               <div
                 className="pointer-events-none absolute z-0 h-0.5"
                 style={{
-                  top: compact ? 10 : 11,
+                  top: compact ? 10 : enhanced ? 13 : 11,
                   left: railInset,
                   right: railInset,
                 }}
@@ -268,16 +304,28 @@ export function OrderTrackingTrack({
                 return (
                   <div key={stepId} className="relative z-10 flex min-w-0 flex-col items-center">
                     <div className={cn(nodeLane, "flex w-full items-center justify-center")}>
-                      <TrackingNode state={nodeState} stepId={stepId} compact={compact} />
+                      <TrackingNode
+                        state={nodeState}
+                        stepId={stepId}
+                        compact={compact}
+                        enhanced={enhanced}
+                      />
                     </div>
                     <p
                       className={cn(
-                        "mt-1 w-full px-px text-center text-[8px] leading-[1.15] md:text-[9px]",
+                        "w-full px-0.5 text-center leading-tight",
+                        enhanced
+                          ? "mt-0.5 text-[10px] md:text-[11px]"
+                          : "mt-1 text-[8px] leading-[1.15] md:text-[9px]",
                         nodeState === "current"
-                          ? "font-medium text-primary"
+                          ? "font-semibold text-primary"
                           : nodeState === "completed"
-                            ? "text-zinc-300"
-                            : "text-zinc-600",
+                            ? enhanced
+                              ? "font-medium text-zinc-200"
+                              : "text-zinc-300"
+                            : enhanced
+                              ? "text-zinc-500"
+                              : "text-zinc-600",
                       )}
                       title={label}
                     >
@@ -292,7 +340,13 @@ export function OrderTrackingTrack({
       )}
 
       {dateChips.length > 0 ? (
-        <div className="mt-3 flex flex-wrap justify-end gap-1.5" data-testid="p17-tracking-date-chips">
+        <div
+          className={cn(
+            "flex flex-wrap justify-end gap-1",
+            premiumCompact ? "mt-1.5" : "mt-3 gap-1.5",
+          )}
+          data-testid="p17-tracking-date-chips"
+        >
           {dateChips.map((chip) => (
             <span
               key={chip.id}
@@ -307,7 +361,10 @@ export function OrderTrackingTrack({
 
       {showDetails ? (
         <div
-          className="mt-3 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-right"
+          className={cn(
+            "rounded-lg border border-primary/30 bg-primary/5 text-right",
+            premiumCompact ? "mt-1.5 px-2 py-1.5" : "mt-3 rounded-xl px-3 py-2",
+          )}
           data-testid="p17-tracking-details"
         >
           <p className="text-[10px] text-zinc-500">{t("p17.commerce.tracking.details_title")}</p>
@@ -339,14 +396,23 @@ export function OrderTrackingTrack({
           </div>
         </div>
       ) : order.fulfillmentMode === "pickup" ? (
-        <p className="mt-3 text-right text-[10px] text-zinc-500" data-testid="p17-tracking-pickup-note">
+        <p
+          className={cn(
+            "text-right text-zinc-400",
+            premiumCompact ? "mt-1 text-[10px]" : "mt-3 text-[10px] text-zinc-500",
+          )}
+          data-testid="p17-tracking-pickup-note"
+        >
           {t("p17.commerce.tracking.pickup_only_note")}
         </p>
       ) : null}
 
       {timelineLoading ? (
-        <Skeleton className="mt-3 h-16 w-full rounded-xl bg-primary/10" aria-busy="true" />
-      ) : shipmentEvents.length > 0 ? (
+        <Skeleton
+          className={cn("w-full rounded-xl bg-primary/10", premiumCompact ? "mt-1.5 h-10" : "mt-3 h-16")}
+          aria-busy="true"
+        />
+      ) : shipmentEvents.length > 0 && !premiumCompact ? (
         <div className="mt-3" data-testid="p17-tracking-shipment-events">
           <p className={cn(ORDERS_CARD_TITLE, "mb-2 text-[11px]")}>
             {t("p17.commerce.tracking.events_title")}

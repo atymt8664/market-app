@@ -19,6 +19,17 @@ export type OrderWithItemRow = OrderRow & {
   itemImageUrl: string | null;
 };
 
+function firstAdImage(images: unknown): string | null {
+  if (!Array.isArray(images)) return null;
+  const first = images[0];
+  return typeof first === "string" && first.trim().length > 0 ? first.trim() : null;
+}
+
+function resolveOrderListImage(itemImageUrl: string | null, adImages: unknown): string | null {
+  if (itemImageUrl?.trim()) return itemImageUrl.trim();
+  return firstAdImage(adImages);
+}
+
 export async function findOrderByReference(
   reference: string,
 ): Promise<OrderRow | undefined> {
@@ -58,9 +69,11 @@ export async function listBuyerOrdersWithItems(
       order: ordersTable,
       itemTitle: orderItemsTable.title,
       itemImageUrl: orderItemsTable.imageUrl,
+      adImages: adsTable.images,
     })
     .from(ordersTable)
     .leftJoin(orderItemsTable, eq(orderItemsTable.orderId, ordersTable.id))
+    .leftJoin(adsTable, eq(ordersTable.adId, adsTable.id))
     .where(eq(ordersTable.buyerUserId, buyerUserId))
     .orderBy(desc(ordersTable.createdAt), desc(ordersTable.id))
     .limit(limit);
@@ -68,7 +81,7 @@ export async function listBuyerOrdersWithItems(
   return rows.map((r) => ({
     ...r.order,
     itemTitle: r.itemTitle,
-    itemImageUrl: r.itemImageUrl,
+    itemImageUrl: resolveOrderListImage(r.itemImageUrl, r.adImages),
   }));
 }
 
@@ -81,9 +94,11 @@ export async function listSellerOrdersWithItems(
       order: ordersTable,
       itemTitle: orderItemsTable.title,
       itemImageUrl: orderItemsTable.imageUrl,
+      adImages: adsTable.images,
     })
     .from(ordersTable)
     .leftJoin(orderItemsTable, eq(orderItemsTable.orderId, ordersTable.id))
+    .leftJoin(adsTable, eq(ordersTable.adId, adsTable.id))
     .where(eq(ordersTable.sellerUserId, sellerUserId))
     .orderBy(desc(ordersTable.createdAt), desc(ordersTable.id))
     .limit(limit);
@@ -91,7 +106,7 @@ export async function listSellerOrdersWithItems(
   return rows.map((r) => ({
     ...r.order,
     itemTitle: r.itemTitle,
-    itemImageUrl: r.itemImageUrl,
+    itemImageUrl: resolveOrderListImage(r.itemImageUrl, r.adImages),
   }));
 }
 

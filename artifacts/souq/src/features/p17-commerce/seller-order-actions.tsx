@@ -18,7 +18,7 @@ import { OrdersApiClientError } from "./orders-api-errors";
 import type { OrderDetail } from "./orders-api.types";
 import { useAcceptSellerOrder, useRejectSellerOrder } from "./use-orders-mutations";
 import { useOpenOrderChat } from "./use-order-chat";
-import { ORDERS_CARD_COMPACT, ORDERS_CARD_TITLE, ORDERS_GHOST_BTN } from "./orders-page-styles";
+import { ORDERS_CARD_COMPACT, ORDERS_GHOST_BTN } from "./orders-page-styles";
 
 type SellerActionsCardProps = {
   order: OrderDetail;
@@ -78,8 +78,11 @@ export function SellerActionsCard({ order, isMock }: SellerActionsCardProps) {
 
   return (
     <>
-      <div className={cn(ORDERS_CARD_COMPACT, "py-3")} data-testid="p17-order-detail-seller-actions">
-        <p className={cn(ORDERS_CARD_TITLE, "mb-2")}>{t("p17.commerce.detail.seller_actions_title")}</p>
+      <div
+        className={cn(ORDERS_CARD_COMPACT, "py-3")}
+        data-testid="p17-order-detail-seller-actions"
+        aria-label={t("p17.commerce.detail.seller_actions_title")}
+      >
         <div className="flex flex-col gap-2">
           {isPending ? (
             <>

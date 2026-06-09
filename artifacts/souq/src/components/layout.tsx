@@ -19,7 +19,7 @@ import {
 } from "@/lib/query-stale-times";
 import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
 import { PushNotificationsRegistrar } from "@/components/push-notifications-registrar";
-import { BOTTOM_NAV_FIXED_SHELL_CLASS, BOTTOM_NAV_LAYOUT_FRAME_CLASS, BOTTOM_NAV_SAFE_AREA_FILL_CLASS } from "@/lib/bottom-nav-layout";
+import { BOTTOM_NAV_FIXED_SHELL_CLASS, BOTTOM_NAV_INNER_CLASS, BOTTOM_NAV_LAYOUT_FRAME_CLASS } from "@/lib/bottom-nav-layout";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -229,9 +229,10 @@ const BottomNav = memo(function BottomNav() {
 
   return (
     <nav className={BOTTOM_NAV_FIXED_SHELL_CLASS} data-bottom-nav-shell>
-      <div
-        className={cn(
-          "w-full border-t border-primary/25",
+      <div className={BOTTOM_NAV_INNER_CLASS} data-bottom-nav-inner>
+        <div
+          className={cn(
+            "w-full border-t border-primary/25",
           /* موبايل: solid #0A0A0A — no seam/gap under chrome or in safe-area fill */
           "bg-[#0A0A0A] shadow-[0_-1px_0_rgba(163,230,53,0.06),0_-6px_20px_-14px_rgba(0,0,0,0.42)]",
           /* md+: نفس الطبقة الزجاجية السابقة تقريبًا */
@@ -300,7 +301,7 @@ const BottomNav = memo(function BottomNav() {
           </button>
         </div>
       </div>
-      <div aria-hidden className={BOTTOM_NAV_SAFE_AREA_FILL_CLASS} data-bottom-nav-safe-fill />
+      </div>
     </nav>
   );
 });

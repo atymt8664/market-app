@@ -33,7 +33,7 @@ async function dismissGuestGate(page) {
 async function measureBottomNavGap(page) {
   return page.evaluate(() => {
     const nav = document.querySelector("[data-bottom-nav-shell]");
-    const safeFill = document.querySelector("[data-bottom-nav-safe-fill]");
+    const safeFill = document.querySelector("[data-bottom-nav-inner]");
     if (!nav) return { found: false, gapPx: null, hasSafeFill: false };
     const rect = nav.getBoundingClientRect();
     const gapPx = Math.max(0, window.innerHeight - rect.bottom);
@@ -80,9 +80,9 @@ async function checkBottomNav(page, label, screenshotName) {
     ok(`${label}: nav flush (gap=${metrics.gapPx?.toFixed(2)}px)`);
   }
   if (!metrics.hasSafeFill) {
-    fail(`${label}: missing data-bottom-nav-safe-fill`);
+    fail(`${label}: missing data-bottom-nav-inner`);
   } else {
-    ok(`${label}: safe-area fill present`);
+    ok(`${label}: inner safe-area wrapper present`);
   }
   if (!metrics.bottomInsideNav) {
     fail(`${label}: viewport bottom pixel not inside nav shell`);
@@ -109,6 +109,81 @@ async function probeOrdersApiUnauthenticated() {
     return;
   }
   fail(`GET /api/orders unexpected HTTP ${res.status}`);
+}
+
+async function loginSession(email, password) {
+  const res = await fetch(`${API}/api/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const body = await res.json().catch(() => ({}));
+  const raw = res.headers.get("set-cookie") ?? "";
+  const sid = raw.match(/souq\.sid=[^;]+/)?.[0];
+  if (!res.ok || !sid) throw new Error(`login HTTP ${res.status}`);
+  return { cookie: sid, csrf: body.csrfToken };
+}
+
+async function checkOrdersHubImages(page, label, routePath, screenshotName) {
+  await page.goto(`${WEB}${routePath}`, { waitUntil: "networkidle", timeout: 90_000 });
+  await page.waitForTimeout(1500);
+  const cards = page.locator('[data-testid^="p17-orders-list-card-"]');
+  const count = await cards.count();
+  if (count === 0) {
+    fail(`${label}: no order list cards rendered`);
+    return;
+  }
+  const thumbs = page.locator('[data-testid^="p17-orders-list-card-"] img[src]');
+  const thumbCount = await thumbs.count();
+  await page.screenshot({ path: path.join(OUT, screenshotName), fullPage: false });
+  report.ordersApi[`${label}-cards`] = count;
+  report.ordersApi[`${label}-thumbs`] = thumbCount;
+  if (thumbCount < 1) {
+    fail(`${label}: no real ad thumbnails (placeholders only)`);
+  } else {
+    ok(`${label}: ${thumbCount}/${count} cards show img[src]`);
+  }
+}
+
+async function verifyOrdersVisual(browser) {
+  const email =
+    process.env.PROD_TEST_BUYER_EMAIL?.trim() ||
+    process.env.PROD_SMOKE_EMAIL?.trim() ||
+    process.env.STAGING_SMOKE_EMAIL?.trim();
+  const password =
+    process.env.PROD_TEST_BUYER_PASSWORD?.trim() ||
+    process.env.PROD_SMOKE_PASSWORD?.trim() ||
+    process.env.STAGING_SMOKE_PASSWORD?.trim();
+  if (!email || !password) {
+    fail("orders visual skipped — set PROD_TEST_BUYER_* or STAGING_SMOKE_* in env");
+    return;
+  }
+
+  const ctx = await browser.newContext({
+    ...devices["Pixel 7"],
+    locale: "ar",
+    colorScheme: "dark",
+  });
+  const page = await ctx.newPage();
+  await page.goto(`${WEB}/`, { waitUntil: "networkidle", timeout: 60_000 });
+  await dismissGuestGate(page);
+
+  const session = await loginSession(email, password);
+  await ctx.addCookies([
+    {
+      name: "souq.sid",
+      value: session.cookie.replace("souq.sid=", ""),
+      domain: "www.souq-arab.com",
+      path: "/",
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+    },
+  ]);
+
+  await checkOrdersHubImages(page, "buyer-orders", "/orders", "orders-buyer-thumbnails.png");
+  await checkOrdersHubImages(page, "seller-orders", "/seller-orders", "orders-seller-thumbnails.png");
+  await ctx.close();
 }
 
 async function main() {
@@ -143,6 +218,8 @@ async function main() {
   const desktop = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "ar" });
   const desktopPage = await desktop.newPage();
   await checkBottomNav(desktopPage, "mobile390", "bottom-nav-mobile390.png");
+
+  await verifyOrdersVisual(browser);
 
   await browser.close();
 

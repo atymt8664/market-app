@@ -1,4 +1,4 @@
-import { resolveFirstAdImageUrl } from "./resolve-first-ad-image-url";
+import { resolveFirstAdImageUrl } from "./resolve-first-ad-image-url.ts";
 
 /** Same chain as order detail summary — ad gallery first, then API snapshot. */
 export function resolveOrderThumbnailImageUrl(

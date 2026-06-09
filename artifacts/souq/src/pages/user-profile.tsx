@@ -4,17 +4,15 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   MapPin,
-  Eye,
   UserPlus,
   UserCheck,
   Loader2,
   Flag,
   ShieldBan,
   ShieldOff,
-  Megaphone,
-  CalendarDays,
   MoreVertical,
-  Users,
+  Clock,
+  Megaphone,
 } from "lucide-react";
 import { AvatarCircle } from "@/components/avatar-circle";
 import { cn } from "@/lib/utils";
@@ -60,17 +58,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AUTH_ACCENT_OUTLINE_BTN } from "@/lib/auth-page-styles";
-import { AdCard, AdCardSkeleton } from "@/components/ad-card";
+import { HomeFeedAdCard } from "@/components/home-feed-ad-card";
+import { AdCardSkeleton } from "@/components/ad-card-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
 import { usePageSeo } from "@/hooks/use-page-seo";
 import { buildProfileSocialOverride } from "@/lib/social-meta-foundation";
 import { apiUrl } from "@/lib/api-url";
 import { t } from "@/i18n";
+import { ProfileMetricsBand } from "@/components/profile-metrics-band";
 import {
-  PROFILE_STATS_GRID,
-  ProfileStatTile,
-} from "@/components/profile-stat-tiles";
+  PROFILE_SECTION_HEADER,
+  PROFILE_SECTION_LABEL,
+  PROFILE_SECTION_STACK_GAP,
+  profileSectionClassName,
+} from "@/components/profile-section-shell";
 import { ProfileStatsDetailSheet } from "@/components/profile-stats-detail-sheet";
 import { ProfileStatsListsPanel } from "@/components/profile-stats-lists-panel";
 import { UserPresenceBadge } from "@/components/user-presence-badge";
@@ -114,26 +116,31 @@ const reportReasonBtn = (active: boolean, alignClass: string) =>
       : "border-primary/25 bg-[#0A0A0A]/85 hover:border-primary/38 hover:bg-black/70",
   );
 
-/** مطابقة أزرار الرأس في ad-detail */
-const floatingHeaderBtn =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-[#0A0A0A]/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
+/** أزرار الرأس — متناسقة مع /profile */
+const publicProfileHeaderBtn =
+  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-[#0A0A0A]/90 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.18)] transition-colors hover:border-primary/75 hover:bg-[#0A0A0A]/95 active:opacity-90 disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
 
-const pageMax =
-  "mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6";
+const PAGE_INSET =
+  "mx-auto w-full max-w-screen-sm md:max-w-[760px] lg:max-w-[860px] px-3 md:px-6";
 
-/** كرت المحتوى — نفس ad-detail (lime + glow) */
-const deviceInfoShell =
-  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/80 p-4 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 bg-[#0A0A0A]/70 md:p-5";
+/** Home recommended grid — identical card tone to home feed */
+const homeAdCardTone = cn(
+  "[&>div]:h-full",
+  "[&_article]:flex [&_article]:h-full [&_article]:flex-col",
+  "[&_article]:transition-none",
+  "[&_article]:active:scale-100",
+);
 
-const sellerInnerShell =
-  "rounded-2xl border border-zinc-700/45 bg-[#0A0A0A]/85 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] ring-1 ring-white/[0.05] md:p-5";
+const publicProfileAdsGrid = cn(
+  "grid min-w-0 grid-cols-2 items-stretch gap-x-2 gap-y-2 md:grid-cols-3 md:gap-x-2.5 md:gap-y-2.5",
+  homeAdCardTone,
+);
 
-const statsStripSurface =
-  "rounded-2xl border border-primary/40 bg-muted/25 p-1 shadow-[0_0_28px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 bg-[#0A0A0A]/70";
+const profileTextAlign = (dir: "rtl" | "ltr") => (dir === "rtl" ? "text-right" : "text-left");
 
-/** تجاوز مظهر AdCard ليتوافق مع ad-detail دون تعديل المكوّن */
-const sellerAdsGridCardTone =
-  "[&_article]:rounded-2xl [&_article]:border-primary/40 [&_article]:bg-[#0A0A0A]/80 [&_article]:shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] [&_article]:ring-1 [&_article]:ring-primary/15 [&_article]:bg-[#0A0A0A]/70 [&_article]:hover:border-primary/50 [&_article]:hover:shadow-[0_0_32px_-10px_hsl(var(--primary)/0.28)] [&_article>div:first-child]:rounded-t-2xl [&_button]:rounded-full [&_button]:border [&_button]:border-primary/50 [&_button]:bg-black/55 [&_button]:shadow-[0_0_14px_-4px_hsl(var(--primary)/0.35)] [&_button]:hover:border-primary/65";
+const publicProfileFollowBtn = cn(
+  "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-semibold shadow-[0_0_12px_-6px_hsl(var(--primary)/0.2)] transition-colors active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60",
+);
 
 export default function UserProfile() {
   const params = useParams();
@@ -147,6 +154,8 @@ export default function UserProfile() {
   );
   const otherReportLabel = t("user_profile.report.opt_other");
   const numberLocale = locale === "en" ? "en-US" : locale === "de" ? "de-DE" : "ar";
+  const profileDir = locale === "ar" ? "rtl" : "ltr";
+  const dateLocale = locale === "en" ? "en-US" : locale === "de" ? "de-DE" : "ar";
   const { user: me } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -161,14 +170,14 @@ export default function UserProfile() {
     if (!userId || !profile?.name) return null;
     const cityPart = profile.city?.trim();
     const description = cityPart
-      ? `${cityPart} · تصفّح إعلانات هذا العضو`
-      : "تصفّح إعلانات هذا العضو";
+      ? `${cityPart} · ${t("user_profile.browse_ads_desc")}`
+      : t("user_profile.browse_ads_desc");
     return {
       title: `${profile.name} | Souq Arab EU`,
       description,
       canonicalPath: `/users/${userId}`,
     };
-  }, [userId, profile?.name, profile?.city]);
+  }, [userId, profile?.name, profile?.city, locale]);
 
   const profileSocialOverride = useMemo(() => {
     if (!userId || !profile) return null;
@@ -469,18 +478,17 @@ export default function UserProfile() {
   if (!profileQueryEnabled) {
     return (
       <div
-        dir="rtl"
+        dir={profileDir}
         className="flex min-h-[100dvh] w-full flex-col items-center justify-center bg-[#0A0A0A] px-4 text-center"
       >
-        <p className="text-sm text-muted-foreground">الملف الشخصي غير موجود</p>
-        <Button
+        <p className="text-sm text-muted-foreground">{t("user_profile.not_found")}</p>
+        <button
           type="button"
-          className="mt-4"
-          variant="outline"
+          className={cn(AUTH_ACCENT_OUTLINE_BTN, "mt-4 px-5")}
           onClick={() => navigate("/")}
         >
-          العودة للرئيسية
-        </Button>
+          {t("user_profile.back_home")}
+        </button>
       </div>
     );
   }
@@ -488,20 +496,17 @@ export default function UserProfile() {
   if (isError) {
     return (
       <div
-        dir="rtl"
+        dir={profileDir}
         className="flex min-h-[100dvh] w-full flex-col items-center justify-center bg-[#0A0A0A] px-4 text-center"
       >
-        <p className="text-sm text-muted-foreground">
-          تعذر تحميل الملف الشخصي. حاول مرة أخرى.
-        </p>
-        <Button
+        <p className="text-sm text-muted-foreground">{t("user_profile.load_error")}</p>
+        <button
           type="button"
-          className="mt-4"
-          variant="outline"
+          className={cn(AUTH_ACCENT_OUTLINE_BTN, "mt-4 px-5")}
           onClick={() => navigate("/")}
         >
-          العودة للرئيسية
-        </Button>
+          {t("user_profile.back_home")}
+        </button>
       </div>
     );
   }
@@ -509,8 +514,8 @@ export default function UserProfile() {
   if (isLoading || !profile) {
     return (
       <div
-        dir="rtl"
-        className="flex flex-col w-full min-h-[100dvh] items-center justify-center bg-[#0A0A0A]"
+        dir={profileDir}
+        className="flex min-h-[100dvh] w-full flex-col items-center justify-center bg-[#0A0A0A]"
       >
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
@@ -519,6 +524,12 @@ export default function UserProfile() {
 
   const isPending = followMut.isPending || unfollowMut.isPending;
   const isSelfProfile = profile.isSelf;
+  const memberSince = profile.createdAt
+    ? new Date(profile.createdAt).toLocaleDateString(dateLocale, {
+        year: "numeric",
+        month: "long",
+      })
+    : null;
 
   const avatarBusy =
     isSelfProfile && (isUploading || updateProfile.isPending);
@@ -562,18 +573,19 @@ export default function UserProfile() {
 
   return (
     <motion.div
-      dir="rtl"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex min-h-[100dvh] w-full flex-col bg-[#0A0A0A] pb-10"
+      dir={profileDir}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className="flex min-h-[100dvh] w-full min-w-0 flex-col overflow-x-hidden bg-[#0A0A0A] pb-10"
     >
-      <div className={`${pageMax} pb-2 pt-3 md:pt-4`}>
+      <div className={`${PAGE_INSET} pb-2 pt-3 md:pt-4`}>
         <div className="flex items-center justify-between gap-3 py-1">
           <button
             type="button"
             onClick={() => window.history.back()}
-            className={floatingHeaderBtn}
-            aria-label="رجوع"
+            className={publicProfileHeaderBtn}
+            aria-label={t("user_profile.back_aria")}
           >
             <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
           </button>
@@ -583,20 +595,20 @@ export default function UserProfile() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className={floatingHeaderBtn}
-                  aria-label="المزيد"
+                  className={publicProfileHeaderBtn}
+                  aria-label={t("user_profile.more_aria")}
                   onClick={() => dismissMoreHint()}
                 >
                   <MoreVertical className="h-5 w-5" strokeWidth={2.25} />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className={dropdownSurface} dir="rtl">
+              <DropdownMenuContent align="end" className={dropdownSurface} dir={profileDir}>
                 <DropdownMenuItem
                   className={dropdownItemClass}
                   onSelect={() => setReportOpen(true)}
                 >
                   <Flag className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
-                  إبلاغ عن المستخدم
+                  {t("user_profile.report_user")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className={dropdownItemClass}
@@ -627,28 +639,32 @@ export default function UserProfile() {
       </div>
 
       {showMoreHint && !isSelfProfile && (
-        <div
-          className={`${pageMax} pb-3`}
-        >
+        <div className={`${PAGE_INSET} pb-2`}>
           <div className="flex items-start justify-between gap-2 rounded-2xl border border-amber-500/35 bg-[#0A0A0A]/80 px-3 py-2.5 text-xs leading-relaxed text-foreground/90 shadow-[0_0_20px_-8px_hsl(var(--primary)/0.15)] ring-1 ring-amber-500/15">
-            <span>
-              يمكنك الإبلاغ عن هذا المستخدم أو حظره من قائمة «المزيد» (⋮) أعلى الصفحة.
-            </span>
+            <span>{t("user_profile.more_hint")}</span>
             <button
               type="button"
               onClick={dismissMoreHint}
               className="shrink-0 text-[11px] font-medium text-primary underline underline-offset-2"
             >
-              فهمت
+              {t("user_profile.more_hint_dismiss")}
             </button>
           </div>
         </div>
       )}
 
-      <div className={`${pageMax} flex-1 py-2 md:py-4`}>
-        <section className={cn(deviceInfoShell, "space-y-4")}>
-          <div className={cn(sellerInnerShell, "space-y-4")}>
-            <div className="flex items-center gap-4">
+      <div className={cn(PAGE_INSET, "min-w-0 flex-1 py-2 md:py-3")}>
+        <section
+          dir={profileDir}
+          className={profileSectionClassName("overflow-hidden")}
+          data-testid="public-profile-identity"
+        >
+          <div className={cn(PROFILE_SECTION_HEADER, profileDir === "rtl" ? "text-right" : "text-left")}>
+            <p className={PROFILE_SECTION_LABEL}>{t("user_profile.section.identity")}</p>
+          </div>
+
+          <div className="px-2.5 py-3 md:px-3">
+            <div className="flex items-start gap-3">
               <div className="relative shrink-0">
                 <button
                   type="button"
@@ -667,11 +683,15 @@ export default function UserProfile() {
                         ? t("profile.change_avatar")
                         : t("profile.avatar_preview.title")
                   }
-                  className={cn(
-                    "shrink-0 rounded-full ring-2 ring-primary/25 ring-offset-2 ring-offset-zinc-950 transition-[opacity,transform] hover:opacity-95 active:scale-[0.99] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950",
-                  )}
+                  className="rounded-full p-[3px] shadow-[0_0_16px_-4px_rgba(182,227,86,0.28)] transition-[opacity,transform] hover:opacity-95 active:scale-[0.99] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
+                  style={{
+                    background:
+                      "linear-gradient(145deg, rgba(182,227,86,0.5), rgba(182,227,86,0.08))",
+                  }}
                 >
-                  <AvatarCircle name={profile.name} src={profile.avatarUrl} size={84} />
+                  <div className="rounded-full bg-black p-[2px]">
+                    <AvatarCircle name={profile.name} src={profile.avatarUrl} size={80} />
+                  </div>
                 </button>
                 {isSelfProfile && !profile.avatarUrl ? (
                   <ProfileAvatarCameraBadge
@@ -690,12 +710,13 @@ export default function UserProfile() {
                   />
                 ) : null}
               </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="truncate text-xl font-bold text-foreground md:text-2xl">
+
+              <div className={cn("min-w-0 flex-1 overflow-hidden", profileTextAlign(profileDir))}>
+                <h1 className="truncate text-xl font-bold leading-tight text-foreground md:text-2xl">
                   {profile.name}
-                </h2>
+                </h1>
                 {profilePresenceTargets.length > 0 ? (
-                  <div className="mt-1.5 w-full min-w-0">
+                  <div className="mt-1.5 w-full min-w-0 overflow-hidden">
                     <UserPresenceBadge
                       entry={profilePresenceEntry}
                       isLoading={profilePresenceQ.isPending}
@@ -704,120 +725,114 @@ export default function UserProfile() {
                   </div>
                 ) : null}
                 {profile.city ? (
-                  <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5 shrink-0 text-primary/80" />
-                    <span>{profile.city}</span>
-                  </div>
+                  <p className="mt-1.5 text-[0.82rem] leading-tight text-muted-foreground md:text-sm">
+                    <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
+                      <span className="min-w-0 truncate">{profile.city}</span>
+                    </span>
+                  </p>
                 ) : null}
-                <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-black/40 px-2.5 py-1 text-[11px] text-muted-foreground ring-1 ring-primary/10">
-                  <CalendarDays className="h-3.5 w-3.5 text-primary/80" />
-                  عضو منذ {new Date(profile.createdAt).toLocaleDateString("ar")}
-                </div>
+                {memberSince ? (
+                  <p className="mt-1.5 text-[0.8rem] leading-tight text-muted-foreground/85 md:text-sm">
+                    <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
+                      <span className="min-w-0 truncate">
+                        {t("profile.member_since", { date: memberSince })}
+                      </span>
+                    </span>
+                  </p>
+                ) : null}
               </div>
             </div>
-          </div>
 
-          <div className={cn(statsStripSurface, "p-2 md:p-2.5")}>
-            <div className={PROFILE_STATS_GRID} dir="rtl">
-              <ProfileStatTile
-                icon={<Megaphone strokeWidth={2.25} />}
-                value={profile.adCount}
-                label={t("profile.stats.ads")}
-                numberLocale={numberLocale}
-              />
-              <ProfileStatTile
-                icon={<UserPlus strokeWidth={2.25} />}
-                value={profile.followerCount}
-                label={t("profile.stats.followers")}
-                numberLocale={numberLocale}
-                onClick={() => setStatsSheet("followers")}
-              />
-              <ProfileStatTile
-                icon={<Users strokeWidth={2.25} />}
-                value={profile.followingCount}
-                label={t("profile.stats.following")}
-                numberLocale={numberLocale}
-                onClick={() => setStatsSheet("following")}
-              />
-              <ProfileStatTile
-                icon={<Eye strokeWidth={2.25} />}
-                value={profile.profileViews}
-                label={t("profile.stats.views")}
-                numberLocale={numberLocale}
-                onClick={() => setStatsSheet("views")}
-              />
-            </div>
+            {!isSelfProfile ? (
+              <button
+                type="button"
+                onClick={toggleFollow}
+                disabled={isPending}
+                className={cn(
+                  publicProfileFollowBtn,
+                  "mt-3 border-t border-primary/15 pt-3",
+                  profile.isFollowing
+                    ? "border-primary/40 bg-[#0A0A0A]/90 text-foreground hover:bg-black/95"
+                    : "border-primary/55 bg-[#0A0A0A]/90 text-primary hover:border-primary/70 hover:bg-black/95",
+                )}
+              >
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : profile.isFollowing ? (
+                  <>
+                    <UserCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                    {t("user_profile.following_active")}
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                    {t("user_profile.follow")}
+                  </>
+                )}
+              </button>
+            ) : null}
           </div>
-
-          {!isSelfProfile && (
-            <Button
-              type="button"
-              onClick={toggleFollow}
-              disabled={isPending}
-              className={cn(
-                "h-12 w-full gap-2 rounded-2xl border-2 text-sm font-semibold shadow-[0_0_12px_-6px_hsl(var(--primary)/0.2)] transition-colors",
-                profile.isFollowing
-                  ? "border-primary/40 bg-[#0A0A0A]/90 text-foreground hover:bg-black/95"
-                  : "border-primary/55 bg-[#0A0A0A]/90 text-primary hover:border-primary/70 hover:bg-black/95",
-              )}
-            >
-              {isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : profile.isFollowing ? (
-                <>
-                  <UserCheck className="h-4 w-4" /> تتم المتابعة
-                </>
-              ) : (
-                <>
-                  <UserPlus className="h-4 w-4" /> متابعة
-                </>
-              )}
-            </Button>
-          )}
         </section>
 
-        <section className="mt-6 md:mt-8">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="text-base font-bold text-foreground">
-              إعلانات {profile.name}
-            </h3>
-            <span className="text-xs text-primary/80 tabular-nums">
-              {sellerAds.length} إعلان
+        <ProfileMetricsBand
+          className={PROFILE_SECTION_STACK_GAP}
+          dir={profileDir}
+          adCount={profile.adCount}
+          profileViews={profile.profileViews}
+          followerCount={profile.followerCount}
+          followingCount={profile.followingCount}
+          numberLocale={numberLocale}
+          onFollowersClick={() => setStatsSheet("followers")}
+          onFollowingClick={() => setStatsSheet("following")}
+          onViewsClick={() => setStatsSheet("views")}
+        />
+
+        <section
+          dir={profileDir}
+          className={profileSectionClassName(cn("overflow-hidden", PROFILE_SECTION_STACK_GAP))}
+          data-testid="public-profile-ads"
+        >
+          <div
+            className={cn(
+              PROFILE_SECTION_HEADER,
+              "flex items-center justify-between gap-2",
+              profileDir === "rtl" ? "text-right" : "text-left",
+            )}
+          >
+            <p className={PROFILE_SECTION_LABEL}>{t("user_profile.section.ads")}</p>
+            <span className="shrink-0 text-[11px] font-medium tabular-nums text-primary/85 md:text-xs">
+              {t("user_profile.ads_count", { count: profile.adCount ?? sellerAds.length })}
             </span>
           </div>
 
-          {adsLoading ? (
-            <div
-              className={cn(
-                "grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4 lg:gap-3.5",
-                sellerAdsGridCardTone,
-              )}
-            >
-              {Array.from({ length: 8 }).map((_, i) => (
-                <AdCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : sellerAds.length === 0 ? (
-            <div
-              className={cn(
-                deviceInfoShell,
-                "py-12 text-center text-sm text-muted-foreground",
-              )}
-            >
-              لا توجد إعلانات حالياً
-            </div>
-          ) : (
-            <div
-              className={cn(
-                "grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4 lg:gap-3.5",
-                sellerAdsGridCardTone,
-              )}
-            >
-              {sellerAds.map((ad) => (
-                <AdCard key={ad.id} ad={ad} />
-              ))}
-            </div>
-          )}
+          <div className="min-w-0 border-t border-primary/20 px-2 pb-2 pt-1.5 md:px-2.5 md:pb-2.5 md:pt-2">
+            {adsLoading ? (
+              <div className={publicProfileAdsGrid}>
+                {Array.from({ length: profile.adCount === 1 ? 2 : 4 }).map((_, i) => (
+                  <div key={i} className="h-full min-h-0">
+                    <AdCardSkeleton homeFeed />
+                  </div>
+                ))}
+              </div>
+            ) : sellerAds.length === 0 ? (
+              <div className="flex flex-col items-center py-10 text-center">
+                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary shadow-[0_0_18px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/20">
+                  <Megaphone className="h-7 w-7" strokeWidth={2.25} />
+                </div>
+                <p className="text-sm font-medium text-foreground">{t("user_profile.empty_ads")}</p>
+              </div>
+            ) : (
+              <div className={publicProfileAdsGrid}>
+                {sellerAds.map((ad) => (
+                  <div key={ad.id} className="h-full min-h-0">
+                    <HomeFeedAdCard ad={ad} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
       </div>
 
@@ -857,18 +872,19 @@ export default function UserProfile() {
 
       <AlertDialog open={avatarRemoveOpen} onOpenChange={setAvatarRemoveOpen}>
         <AlertDialogContent
-          dir="rtl"
+          dir={profileDir}
           className={cn(
             SETTINGS_DIALOG_CONTENT,
-            "!p-0 gap-0 overflow-hidden text-right sm:max-w-md",
+            "!p-0 gap-0 overflow-hidden sm:max-w-md",
+            profileDir === "rtl" ? "text-right" : "text-left",
           )}
         >
           <div className="border-b border-primary/20 px-5 py-4">
-            <AlertDialogHeader className="space-y-1.5 text-right">
-              <AlertDialogTitle className="text-right text-base font-bold text-foreground">
+            <AlertDialogHeader className={cn("space-y-1.5", profileTextAlign(profileDir))}>
+              <AlertDialogTitle className={cn("text-base font-bold text-foreground", profileTextAlign(profileDir))}>
                 {t("profile.avatar_remove_dialog.title")}
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-right text-sm leading-relaxed text-zinc-400">
+              <AlertDialogDescription className={cn("text-sm leading-relaxed text-zinc-400", profileTextAlign(profileDir))}>
                 {t("profile.avatar_remove_dialog.description")}
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -959,8 +975,8 @@ export default function UserProfile() {
       </Dialog>
 
       <AlertDialog open={blockConfirmOpen} onOpenChange={setBlockConfirmOpen}>
-        <AlertDialogContent dir="rtl" className={cn(alertSurface, "text-right")}>
-          <AlertDialogHeader className="space-y-2 text-right">
+        <AlertDialogContent dir={profileDir} className={cn(alertSurface, profileTextAlign(profileDir))}>
+          <AlertDialogHeader className={cn("space-y-2", profileTextAlign(profileDir))}>
             <AlertDialogTitle className="text-lg font-bold text-foreground">
               {t("user_profile.block_confirm_title")}
             </AlertDialogTitle>
@@ -968,7 +984,12 @@ export default function UserProfile() {
               {t("user_profile.block_confirm_desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="flex flex-row-reverse flex-wrap gap-2 pt-4">
+          <div
+            className={cn(
+              "flex flex-wrap gap-2 pt-4",
+              profileDir === "rtl" ? "flex-row-reverse" : "flex-row",
+            )}
+          >
             <button
               type="button"
               onClick={() => void attemptBlockUser()}
@@ -990,8 +1011,8 @@ export default function UserProfile() {
       </AlertDialog>
 
       <AlertDialog open={unblockConfirmOpen} onOpenChange={setUnblockConfirmOpen}>
-        <AlertDialogContent dir="rtl" className={cn(alertSurface, "text-right")}>
-          <AlertDialogHeader className="space-y-2 text-right">
+        <AlertDialogContent dir={profileDir} className={cn(alertSurface, profileTextAlign(profileDir))}>
+          <AlertDialogHeader className={cn("space-y-2", profileTextAlign(profileDir))}>
             <AlertDialogTitle className="text-lg font-bold text-foreground">
               {t("user_profile.unblock_confirm_title")}
             </AlertDialogTitle>
@@ -999,7 +1020,12 @@ export default function UserProfile() {
               {t("user_profile.unblock_confirm_desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="flex flex-row-reverse flex-wrap gap-2 pt-4">
+          <div
+            className={cn(
+              "flex flex-wrap gap-2 pt-4",
+              profileDir === "rtl" ? "flex-row-reverse" : "flex-row",
+            )}
+          >
             <button
               type="button"
               onClick={() => void attemptUnblockUser()}

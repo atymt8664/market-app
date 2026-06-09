@@ -1,6 +1,5 @@
 ﻿import { Link, Redirect, useLocation } from "wouter";
 import {
-  UserPlus,
   Trash2,
   Pencil,
   Plus,
@@ -16,8 +15,6 @@ import {
   RefreshCw,
   ThumbsUp,
   ArrowUp,
-  Megaphone,
-  Users,
 } from "lucide-react";
 import { useState, useRef } from "react";
 import {
@@ -44,10 +41,13 @@ import { AvatarCircle } from "@/components/avatar-circle";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
 import { t } from "@/i18n";
+import { ProfileMetricsBand } from "@/components/profile-metrics-band";
+import { ProfileIdentityStrip, type ProfilePlanTier } from "@/components/profile-identity-strip";
 import {
-  PROFILE_STATS_GRID,
-  ProfileStatTile,
-} from "@/components/profile-stat-tiles";
+  ProfileContentTabShell,
+  type ProfileContentTab,
+} from "@/components/profile-content-tab-shell";
+import { PROFILE_SECTION_STACK_GAP } from "@/components/profile-section-shell";
 import {
   SETTINGS_DIALOG_CONTENT,
   SETTINGS_OUTLINE_BUTTON,
@@ -77,7 +77,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Drawer,
   DrawerContent,
@@ -113,62 +112,6 @@ const profileAdActionDelete = cn(
   "border-red-500/38 bg-red-950/[0.22] text-red-300 shadow-[0_0_18px_-14px_rgba(239,68,68,0.18)] ring-red-500/18 hover:border-red-500/48 hover:bg-red-950/35",
 );
 
-const PROFILE_TAB_LIST =
-  "h-auto w-full grid grid-cols-3 gap-1.5 rounded-xl border border-primary/32 bg-[#0A0A0A]/78 p-1.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12";
-
-/** نفس لغة `PROFILE_TAB_LIST` — أربعة أعمدة، صف واحد */
-const PROFILE_PLAN_TAB_LIST =
-  "h-auto w-full min-w-0 grid grid-cols-4 gap-1.5 rounded-xl border border-primary/32 bg-[#0A0A0A]/78 p-1.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12";
-
-const PROFILE_TAB_TRIGGER =
-  "rounded-lg border border-transparent bg-transparent px-2 py-2.5 text-xs font-semibold text-primary/55 transition-all md:text-sm data-[state=active]:border-primary/52 data-[state=active]:bg-black/95 data-[state=active]:text-primary data-[state=active]:shadow-[0_0_24px_-12px_hsl(var(--primary)/0.32)] data-[state=active]:ring-1 data-[state=active]:ring-primary/28 hover:border-primary/22 hover:bg-[#0A0A0A]/85 hover:text-primary/85";
-
-/** تبويبات الخطط: نفس `PROFILE_TAB_TRIGGER` + ضبط بسيط للأربعة في سطر واحد */
-const PROFILE_PLAN_TAB_TRIGGER = cn(
-  PROFILE_TAB_TRIGGER,
-  "min-h-0 px-1.5 py-2 text-center text-[11px] leading-tight sm:px-2 sm:text-xs md:py-2.5 md:text-sm",
-  "focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:ring-offset-0",
-);
-
-type ProfilePlanTier = "personal" | "featured" | "professional" | "trust";
-
-const PROFILE_PLAN_LEARN_MORE_HREF: Record<ProfilePlanTier, string> = {
-  personal: "/professional-seller/personal",
-  featured: "/professional-seller/premium",
-  professional: "/professional-seller/professional",
-  trust: "/professional-seller/trust",
-};
-
-function planTierSummaryCopy(tier: ProfilePlanTier): { title: string; status: string } {
-  switch (tier) {
-    case "personal":
-      return {
-        title: t("profile.plan_tier.summary.personal.title"),
-        status: t("profile.plan_tier.summary.personal.status"),
-      };
-    case "featured":
-      return {
-        title: t("profile.plan_tier.summary.featured.title"),
-        status: t("profile.plan_tier.summary.featured.status"),
-      };
-    case "professional":
-      return {
-        title: t("profile.plan_tier.summary.professional.title"),
-        status: t("profile.plan_tier.summary.professional.status"),
-      };
-    case "trust":
-      return {
-        title: t("profile.plan_tier.summary.trust.title"),
-        status: t("profile.plan_tier.summary.trust.status"),
-      };
-    default:
-      return {
-        title: t("profile.plan_tier.summary.personal.title"),
-        status: t("profile.plan_tier.summary.personal.status"),
-      };
-  }
-}
-
 export default function Profile() {
   const { locale } = useLocale();
   const profileDir = locale === "ar" ? "rtl" : "ltr";
@@ -193,7 +136,7 @@ export default function Profile() {
       staleTime: STALE_USER_ADS_MS,
     },
   });
-  const [activeTab, setActiveTab] = useState("my-ads");
+  const [activeTab, setActiveTab] = useState<ProfileContentTab>("my-ads");
   const [planTier, setPlanTier] = useState<ProfilePlanTier>("personal");
   const [statsSheet, setStatsSheet] = useState<
     null | "followers" | "following" | "views"
@@ -347,7 +290,7 @@ export default function Profile() {
         <header className="pt-2 md:pt-5" dir="rtl">
           <div className="flex w-full items-start justify-between gap-3">
             <div className="flex min-w-0 flex-col items-start gap-2.5 text-right">
-              <span className="inline-flex rounded-full border-2 border-primary/60 bg-black/40 px-4 py-1.5 text-sm font-semibold text-primary shadow-[0_0_12px_-6px_hsl(var(--primary)/0.22)]">
+              <span className="inline-flex rounded-full border-2 border-primary/60 bg-black/40 px-4 py-1.5 text-sm font-semibold text-foreground shadow-[0_0_12px_-6px_hsl(var(--primary)/0.22)]">
                 {t("profile.title")}
               </span>
               <div className="relative shrink-0">
@@ -429,245 +372,135 @@ export default function Profile() {
           </div>
         </header>
 
-        <section className="mt-5 md:mt-6 px-0 md:px-1" dir="rtl">
-          <div className={PROFILE_STATS_GRID} dir="rtl">
-            <ProfileStatTile
-              icon={<Megaphone strokeWidth={2.25} />}
-              value={adCount}
-              label={t("profile.stats.ads")}
-              numberLocale={numberLocale}
-            />
-            <ProfileStatTile
-              icon={<UserPlus strokeWidth={2.25} />}
-              value={followerCount}
-              label={t("profile.stats.followers")}
-              numberLocale={numberLocale}
-              onClick={() => setStatsSheet("followers")}
-            />
-            <ProfileStatTile
-              icon={<Users strokeWidth={2.25} />}
-              value={followingCount}
-              label={t("profile.stats.following")}
-              numberLocale={numberLocale}
-              onClick={() => setStatsSheet("following")}
-            />
-            <ProfileStatTile
-              icon={<Eye strokeWidth={2.25} />}
-              value={profileViews}
-              label={t("profile.stats.views")}
-              numberLocale={numberLocale}
-              onClick={() => setStatsSheet("views")}
-            />
-          </div>
-        </section>
-
-        <section className="mt-2 md:mt-2.5 px-0 md:px-1" dir="rtl">
-          <OrdersAccountCardGrid
-            onBuyerNavigate={() => navigate("/orders")}
-            onSellerNavigate={() => navigate("/seller-orders")}
-          />
-        </section>
-
-        <section
-          className={cn(
-            AD_CARD_SHELL,
-            "mt-3 md:mt-4 p-2.5 md:p-4",
-          )}
+        <ProfileMetricsBand
+          className="mt-4 md:mt-5"
           dir={profileDir}
+          adCount={adCount}
+          profileViews={profileViews}
+          followerCount={followerCount}
+          followingCount={followingCount}
+          numberLocale={numberLocale}
+          onFollowersClick={() => setStatsSheet("followers")}
+          onFollowingClick={() => setStatsSheet("following")}
+          onViewsClick={() => setStatsSheet("views")}
+        />
+
+        <OrdersAccountCardGrid
+          className={PROFILE_SECTION_STACK_GAP}
+          onBuyerNavigate={() => navigate("/orders")}
+          onSellerNavigate={() => navigate("/seller-orders")}
+        />
+
+        <ProfileIdentityStrip
+          className={PROFILE_SECTION_STACK_GAP}
+          dir={profileDir}
+          planTier={planTier}
+          onPlanTierChange={setPlanTier}
+        />
+
+        <ProfileContentTabShell
+          className={PROFILE_SECTION_STACK_GAP}
+          dir={profileDir}
+          value={activeTab}
+          onChange={setActiveTab}
+          ariaLabel={t("profile.tabs.nav_aria")}
+          tabs={[
+            { value: "my-ads", label: t("profile.tabs.my_ads") },
+            { value: "favorites", label: t("profile.tabs.favorites") },
+            { value: "public", label: t("profile.tabs.public") },
+          ]}
         >
-          <Tabs
-            value={planTier}
-            onValueChange={(v) => setPlanTier(v as ProfilePlanTier)}
-            dir={profileDir}
-            className="w-full"
-          >
-            <TabsList
-              className={cn(
-                PROFILE_PLAN_TAB_LIST,
-                "!bg-[#0A0A0A]/78 !text-primary/55 ring-offset-0",
-              )}
-              aria-label={t("profile.plan_tier.nav_aria")}
-            >
-              <TabsTrigger value="personal" className={PROFILE_PLAN_TAB_TRIGGER}>
-                {t("profile.plan_tier.tab.personal")}
-              </TabsTrigger>
-              <TabsTrigger value="featured" className={PROFILE_PLAN_TAB_TRIGGER}>
-                {t("profile.plan_tier.tab.featured")}
-              </TabsTrigger>
-              <TabsTrigger value="professional" className={PROFILE_PLAN_TAB_TRIGGER}>
-                {t("profile.plan_tier.tab.professional")}
-              </TabsTrigger>
-              <TabsTrigger value="trust" className={PROFILE_PLAN_TAB_TRIGGER}>
-                {t("profile.plan_tier.tab.trust")}
-              </TabsTrigger>
-            </TabsList>
-
-            {(["personal", "featured", "professional", "trust"] as const).map((tier) => {
-              const { title, status } = planTierSummaryCopy(tier);
-              return (
-                <TabsContent
-                  key={tier}
-                  value={tier}
-                  className="mt-3 outline-none ring-0 ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 md:mt-4"
-                >
-                  <div
-                    className={cn(
-                      "rounded-lg border border-primary/28 bg-[#0A0A0A]/72 p-2 ring-1 ring-primary/10 md:p-2.5",
-                    )}
-                  >
-                    <p
-                      className={cn(
-                        "text-xs font-semibold leading-snug text-foreground md:text-[13px]",
-                        profileDir === "rtl" ? "text-right" : "text-left",
-                      )}
-                    >
-                      {title}
-                    </p>
-                    <p
-                      className={cn(
-                        "mt-0.5 text-[11px] leading-snug text-muted-foreground md:text-xs",
-                        profileDir === "rtl" ? "text-right" : "text-left",
-                      )}
-                    >
-                      {status}
-                    </p>
-                    <div
-                      className={cn(
-                        "mt-2 flex",
-                        profileDir === "rtl" ? "justify-end" : "justify-start",
-                      )}
-                    >
-                      <Link
-                        href={PROFILE_PLAN_LEARN_MORE_HREF[tier]}
-                        className={cn(
-                          "inline-flex min-h-8 items-center justify-center rounded-lg border border-primary/36 bg-[#0A0A0A]/82 px-2.5 py-1.5 text-[11px] font-semibold text-primary shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12 transition-colors hover:border-primary/48 hover:bg-black/90 active:scale-[0.99] md:text-xs",
-                        )}
-                      >
-                        {t("pro_seller.entry_cta")}
-                      </Link>
-                    </div>
-                  </div>
-                </TabsContent>
-              );
-            })}
-          </Tabs>
-        </section>
-
-        <section
-          className={cn(
-            AD_CARD_SHELL,
-            "mt-3 md:mt-4 p-2.5 md:p-4",
-          )}
-        >
-          <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">
-            <TabsList className={PROFILE_TAB_LIST}>
-              <TabsTrigger value="my-ads" className={PROFILE_TAB_TRIGGER}>
-                {t("profile.tabs.my_ads")}
-              </TabsTrigger>
-              <TabsTrigger value="favorites" className={PROFILE_TAB_TRIGGER}>
-                {t("profile.tabs.favorites")}
-              </TabsTrigger>
-              <TabsTrigger value="public" className={PROFILE_TAB_TRIGGER}>
-                {t("profile.tabs.public")}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="my-ads" className="mt-3 md:mt-4">
-              {!adsLoading && adCount === 0 ? (
-                <div className="py-10 text-center">
-                  <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-primary/20 text-primary flex items-center justify-center">
-                    <Plus className="w-7 h-7" />
-                  </div>
-                  <h3 className="font-bold text-base mb-1">{t("profile.empty.first_ad_title")}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{t("profile.empty.first_ad_subtitle")}</p>
-                  <Link href="/new">
-                    <Button className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-primary/50 bg-[#0A0A0A]/92 px-5 py-2.5 text-sm font-semibold text-primary shadow-[0_0_18px_-10px_hsl(var(--primary)/0.32)] ring-1 ring-primary/18 transition-colors hover:border-primary/65 hover:bg-black/95 hover:shadow-[0_0_24px_-10px_hsl(var(--primary)/0.42)] active:scale-[0.98]">
-                      <Plus className="w-4 h-4 text-primary" />
-                      {t("profile.empty.create_ad")}
-                    </Button>
-                  </Link>
+          {activeTab === "my-ads" ? (
+            !adsLoading && adCount === 0 ? (
+              <div className="py-10 text-center">
+                <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-primary/20 text-primary flex items-center justify-center">
+                  <Plus className="w-7 h-7" />
                 </div>
-              ) : adsLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <AdCardSkeleton key={i} />
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
-                  {Array.isArray(myAds) &&
-                    myAds.map((ad) => (
-                      <div key={ad.id} className="relative w-full">
-                        <div className="md:hidden">
-                          <ProfileMobileAdCard
-                            ad={ad}
-                            onOpen={() => navigate(`/ad/${ad.id}`)}
-                            onOpenActions={() => setActionAd(ad)}
-                            onEdit={() => navigate(`/edit/${ad.id}`)}
-                            onDelete={() => setAdToDelete(ad.id)}
-                            onPromote={() => openPromoteForAd(ad)}
-                          />
-                        </div>
-                        <div className="hidden md:block">
-                          <ProfileDesktopAdCard
-                            ad={ad}
-                            onOpen={() => navigate(`/ad/${ad.id}`)}
-                            showActions
-                            onEdit={() => navigate(`/edit/${ad.id}`)}
-                            onDelete={() => setAdToDelete(ad.id)}
-                            onPromote={() => openPromoteForAd(ad)}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="favorites" className="mt-3 md:mt-4">
-              {favoritesLoading ? (
-                <ul className="mx-auto flex w-full max-w-lg flex-col gap-2 sm:max-w-xl md:max-w-2xl md:gap-2.5">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <FavoriteListItemSkeleton key={i} />
-                  ))}
-                </ul>
-              ) : favoriteAds.length === 0 ? (
-                <div className="py-12 text-center text-sm text-muted-foreground">{t("profile.favorites.empty")}</div>
-              ) : (
-                <ul className="mx-auto flex w-full max-w-lg flex-col gap-2 sm:max-w-xl md:max-w-2xl md:gap-2.5">
-                  {favoriteAds.map((ad) => (
-                    <FavoriteListItem key={ad.id} ad={ad} />
-                  ))}
-                </ul>
-              )}
-            </TabsContent>
-
-            <TabsContent value="public" className="mt-3 md:mt-4">
-              <div
-                className={cn(
-                  AD_CARD_SHELL,
-                  "p-4 text-right md:p-5",
-                )}
-              >
-                <h3 className="text-base font-semibold leading-snug text-foreground md:text-lg">
-                  شاهد ملفك كما يراه الآخرون
-                </h3>
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                  يمكنك مراجعة إعلاناتك وبياناتك العامة كما تظهر للزوار.
-                </p>
-                <Link
-                  href={`/users/${user.id}`}
-                  className={cn(
-                    "mt-5 flex w-full min-w-0 max-w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-[#0A0A0A]/90 px-1 py-3.5 text-sm font-semibold text-foreground shadow-[0_0_10px_-6px_hsl(var(--primary)/0.15)] transition-colors hover:border-primary/55 hover:bg-black/95",
-                  )}
-                >
-                  <UserCheck className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
-                  فتح الملف العام
+                <h3 className="font-bold text-base mb-1">{t("profile.empty.first_ad_title")}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{t("profile.empty.first_ad_subtitle")}</p>
+                <Link href="/new">
+                  <Button className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-primary/50 bg-[#0A0A0A]/92 px-5 py-2.5 text-sm font-semibold text-primary shadow-[0_0_18px_-10px_hsl(var(--primary)/0.32)] ring-1 ring-primary/18 transition-colors hover:border-primary/65 hover:bg-black/95 hover:shadow-[0_0_24px_-10px_hsl(var(--primary)/0.42)] active:scale-[0.98]">
+                    <Plus className="w-4 h-4 text-primary" />
+                    {t("profile.empty.create_ad")}
+                  </Button>
                 </Link>
               </div>
-            </TabsContent>
-          </Tabs>
-        </section>
+            ) : adsLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <AdCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
+                {Array.isArray(myAds) &&
+                  myAds.map((ad) => (
+                    <div key={ad.id} className="relative w-full">
+                      <div className="md:hidden">
+                        <ProfileMobileAdCard
+                          ad={ad}
+                          onOpen={() => navigate(`/ad/${ad.id}`)}
+                          onOpenActions={() => setActionAd(ad)}
+                          onEdit={() => navigate(`/edit/${ad.id}`)}
+                          onDelete={() => setAdToDelete(ad.id)}
+                          onPromote={() => openPromoteForAd(ad)}
+                        />
+                      </div>
+                      <div className="hidden md:block">
+                        <ProfileDesktopAdCard
+                          ad={ad}
+                          onOpen={() => navigate(`/ad/${ad.id}`)}
+                          showActions
+                          onEdit={() => navigate(`/edit/${ad.id}`)}
+                          onDelete={() => setAdToDelete(ad.id)}
+                          onPromote={() => openPromoteForAd(ad)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )
+          ) : activeTab === "favorites" ? (
+            favoritesLoading ? (
+              <ul className="mx-auto flex w-full max-w-lg flex-col gap-2 sm:max-w-xl md:max-w-2xl md:gap-2.5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <FavoriteListItemSkeleton key={i} />
+                ))}
+              </ul>
+            ) : favoriteAds.length === 0 ? (
+              <div className="py-12 text-center text-sm text-muted-foreground">{t("profile.favorites.empty")}</div>
+            ) : (
+              <ul className="mx-auto flex w-full max-w-lg flex-col gap-2 sm:max-w-xl md:max-w-2xl md:gap-2.5">
+                {favoriteAds.map((ad) => (
+                  <FavoriteListItem key={ad.id} ad={ad} />
+                ))}
+              </ul>
+            )
+          ) : (
+            <div
+              className={cn(
+                AD_CARD_SHELL,
+                "p-4 text-right md:p-5",
+              )}
+            >
+              <h3 className="text-base font-semibold leading-snug text-foreground md:text-lg">
+                شاهد ملفك كما يراه الآخرون
+              </h3>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                يمكنك مراجعة إعلاناتك وبياناتك العامة كما تظهر للزوار.
+              </p>
+              <Link
+                href={`/users/${user.id}`}
+                className={cn(
+                  "mt-5 flex w-full min-w-0 max-w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-[#0A0A0A]/90 px-1 py-3.5 text-sm font-semibold text-foreground shadow-[0_0_10px_-6px_hsl(var(--primary)/0.15)] transition-colors hover:border-primary/55 hover:bg-black/95",
+                )}
+              >
+                <UserCheck className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
+                فتح الملف العام
+              </Link>
+            </div>
+          )}
+        </ProfileContentTabShell>
       </div>
 
       <ProfileAvatarPreviewDialog
@@ -1077,9 +910,9 @@ function ProfileMobileAdCard({
           e.stopPropagation();
           onOpenActions();
         }}
-        className="absolute left-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A]/85 text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.18)] ring-1 ring-primary/14 transition-colors hover:border-primary/48 hover:bg-black/95 hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.26)]"
+        className="pointer-events-auto absolute left-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-lg border border-primary/32 bg-[#0A0A0A]/90 text-primary shadow-[0_0_12px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/12 transition-colors hover:border-primary/45 hover:bg-black/95 active:scale-[0.98]"
       >
-        <MoreVertical className="h-5 w-5" strokeWidth={2.25} />
+        <MoreVertical className="h-3.5 w-3.5" strokeWidth={2.25} />
       </button>
 
       <div className="flex items-start gap-3 w-full">

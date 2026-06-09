@@ -2,9 +2,13 @@
 export const BOTTOM_NAV_HEIGHT_MOBILE_PX = 50;
 export const BOTTOM_NAV_HEIGHT_MD_PX = 56;
 
-/** Fixed nav — portal to body; safe-area fill is solid #0A0A0A (see theme-shared.css). */
+/** Fixed nav — flush to viewport bottom; safe-area fill is an explicit child (Android/TWA). */
 export const BOTTOM_NAV_FIXED_SHELL_CLASS =
-  "fixed inset-x-0 bottom-0 z-40 bg-[#0A0A0A] pb-[env(safe-area-inset-bottom,0px)] [transform:translateZ(0)]";
+  "fixed inset-x-0 bottom-0 z-40 flex w-full flex-col bg-[#0A0A0A] [transform:translateZ(0)]";
+
+/** Solid home-indicator / gesture-bar fill — same #0A0A0A, no padding gap on outer shell. */
+export const BOTTOM_NAV_SAFE_AREA_FILL_CLASS =
+  "w-full shrink-0 bg-[#0A0A0A] h-[env(safe-area-inset-bottom,0px)] min-h-0";
 
 /** Layout frame — single flex child; no min-h 100vh here (prevents scroll gap under fixed nav). */
 export const BOTTOM_NAV_LAYOUT_FRAME_CLASS =

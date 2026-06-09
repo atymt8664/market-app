@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-TAG="souq-api:p17-prelaunch-2-imgfix-20260609"
+TAG="souq-api:p17-prelaunch-2-imgfix-20260609b"
 BASE="/opt/souq-arab"
 CTX="${BASE}/build-context"
 GIT_DIR="${BASE}/src/market-app"

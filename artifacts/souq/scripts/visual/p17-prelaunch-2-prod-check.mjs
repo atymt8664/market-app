@@ -33,21 +33,24 @@ async function dismissGuestGate(page) {
 async function measureBottomNavGap(page) {
   return page.evaluate(() => {
     const nav = document.querySelector("[data-bottom-nav-shell]");
-    if (!nav) return { found: false, gapPx: null, scrollSlackPx: null };
+    const safeFill = document.querySelector("[data-bottom-nav-safe-fill]");
+    if (!nav) return { found: false, gapPx: null, hasSafeFill: false };
     const rect = nav.getBoundingClientRect();
     const gapPx = Math.max(0, window.innerHeight - rect.bottom);
-    const scrollSlackPx = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-    const bottomCenter = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 1);
+    const x = Math.floor(window.innerWidth / 2);
+    const y = Math.max(0, window.innerHeight - 1);
+    const bottomEl = document.elementFromPoint(x, y);
+    const bottomInsideNav =
+      bottomEl instanceof Node && (nav.contains(bottomEl) || bottomEl === nav);
     const bottomBg =
-      bottomCenter instanceof Element
-        ? getComputedStyle(bottomCenter).backgroundColor
-        : null;
+      bottomEl instanceof Element ? getComputedStyle(bottomEl).backgroundColor : null;
     return {
       found: true,
       gapPx,
-      scrollSlackPx,
+      hasSafeFill: !!safeFill,
       navBottom: rect.bottom,
       innerHeight: window.innerHeight,
+      bottomInsideNav,
       bottomBg,
     };
   });
@@ -76,10 +79,25 @@ async function checkBottomNav(page, label, screenshotName) {
   } else {
     ok(`${label}: nav flush (gap=${metrics.gapPx?.toFixed(2)}px)`);
   }
-  if (metrics.scrollSlackPx > 8) {
-    fail(`${label}: document scroll slack below viewport = ${metrics.scrollSlackPx}px`);
+  if (!metrics.hasSafeFill) {
+    fail(`${label}: missing data-bottom-nav-safe-fill`);
   } else {
-    ok(`${label}: no scroll gap under nav (slack=${metrics.scrollSlackPx}px)`);
+    ok(`${label}: safe-area fill present`);
+  }
+  if (!metrics.bottomInsideNav) {
+    fail(`${label}: viewport bottom pixel not inside nav shell`);
+  } else {
+    ok(`${label}: bottom pixel inside nav`);
+  }
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(400);
+  const scrolled = await measureBottomNavGap(page);
+  report.bottomNav[`${label}-scrolled`] = scrolled;
+  if (scrolled.gapPx > 1.5) {
+    fail(`${label} scrolled: gap below nav = ${scrolled.gapPx.toFixed(2)}px`);
+  } else {
+    ok(`${label} scrolled: nav still flush (gap=${scrolled.gapPx?.toFixed(2)}px)`);
   }
 }
 
@@ -112,6 +130,15 @@ async function main() {
   });
   const mobilePage = await mobile.newPage();
   await checkBottomNav(mobilePage, "iphone14pro", "bottom-nav-iphone14pro.png");
+
+  const pixel7 = devices["Pixel 7"];
+  const android = await browser.newContext({
+    ...pixel7,
+    locale: "ar",
+    colorScheme: "dark",
+  });
+  const androidPage = await android.newPage();
+  await checkBottomNav(androidPage, "pixel7-android", "bottom-nav-pixel7-android.png");
 
   const desktop = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "ar" });
   const desktopPage = await desktop.newPage();

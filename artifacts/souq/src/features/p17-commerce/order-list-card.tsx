@@ -20,7 +20,7 @@ import {
 } from "./order-status-tone";
 import { OrderNumberCopy } from "./order-number-copy";
 import { OrderProductThumbnail } from "./order-product-thumbnail";
-import { resolveFirstAdImageUrl } from "./resolve-first-ad-image-url";
+import { resolveOrderThumbnailImageUrl } from "./resolve-order-thumbnail-image-url";
 
 type OrderListCardProps = {
   order: OrderListItem;
@@ -59,10 +59,7 @@ export function OrderListCard({
   const inner = (
     <div className="flex w-full items-center gap-2.5 md:gap-3">
       <div className="relative shrink-0">
-        <OrderListCardThumbnail
-          order={order}
-          interactionDisabled={interactionDisabled}
-        />
+        <OrderListCardThumbnail order={order} isMock={interactionDisabled} />
         {isSellerNewOrder ? (
           <span
             className="absolute top-1 start-1 rounded-full border border-amber-500/55 bg-amber-500/25 px-1.5 py-px text-[9px] font-bold text-amber-50"
@@ -146,22 +143,21 @@ export function OrderListCard({
 /** Same image fallback chain as order detail summary — ad gallery → API snapshot → placeholder. */
 function OrderListCardThumbnail({
   order,
-  interactionDisabled,
+  isMock,
 }: {
   order: OrderListItem;
-  interactionDisabled: boolean;
+  isMock: boolean;
 }) {
-  const adId = order.adId ?? 0;
+  const adId = typeof order.adId === "number" && order.adId > 0 ? order.adId : 0;
   const { data: ad } = useGetAd(adId, {
     query: {
-      // Thumbnail fetch is independent of card click/mock gating (detail parity).
-      enabled: adId > 0,
+      enabled: adId > 0 && !isMock,
       queryKey: getGetAdQueryKey(adId),
       staleTime: 300_000,
       retry: 1,
     },
   });
-  const imageUrl = resolveFirstAdImageUrl(ad?.images) ?? order.imageUrl ?? null;
+  const imageUrl = resolveOrderThumbnailImageUrl(ad?.images, order.imageUrl);
 
   return (
     <OrderProductThumbnail

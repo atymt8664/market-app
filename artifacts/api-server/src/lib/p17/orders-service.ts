@@ -101,7 +101,7 @@ function mapListItem(row: OrderWithItemRow, role: "buyer" | "seller"): OrderList
     updatedAt: updatedAt.toISOString(),
     updatedAtRelativeAr: formatRelativeTimeAr(updatedAt),
     imageUrl: row.itemImageUrl ?? null,
-    adId: row.adId,
+    ...(typeof row.adId === "number" && row.adId > 0 ? { adId: row.adId } : {}),
   };
 }
 

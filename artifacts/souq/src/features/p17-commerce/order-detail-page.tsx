@@ -23,6 +23,7 @@ import { SellerDeliveryAddressCard } from "./seller-delivery-address-card";
 import { resolveOrderStatusLabel, formatOrderUpdatedAt, formatOrderPrice } from "./order-display-labels";
 import { OrderNumberCopy } from "./order-number-copy";
 import { OrderProductThumbnail } from "./order-product-thumbnail";
+import { resolveOrderThumbnailImageUrl } from "./resolve-order-thumbnail-image-url";
 import {
   inferListFulfillmentMode,
   ORDER_STATUS_BADGE_CLASS,
@@ -281,7 +282,7 @@ function OrderSummaryCard({
   const statusTone = resolveOrderStatusTone(order.status);
   const statusLabel = resolveOrderStatusLabel(order, variant, timelineItems);
   const fulfillmentMode = inferListFulfillmentMode(order.status, order.fulfillmentMode);
-  const imageUrl = ad?.images?.[0] ?? order.imageUrl ?? null;
+  const imageUrl = resolveOrderThumbnailImageUrl(ad?.images, order.imageUrl);
 
   return (
     <div

@@ -13,6 +13,7 @@ import {
 import { routeAccountDeletionStoragePurge } from "../lib/purge-outbox";
 import { getSessionClearCookieOptions, SESSION_COOKIE_NAME } from "../lib/session-cookie";
 import { logger } from "../lib/logger";
+import { listBlockedUsersForMe } from "../lib/list-blocked-users";
 
 const router: IRouter = Router();
 
@@ -98,6 +99,10 @@ function isPgUndefinedTableError(err: unknown): boolean {
     (err as { code: string }).code === "42P01"
   );
 }
+
+router.get("/account/blocked-users", requireAuth, async (req, res) => {
+  await listBlockedUsersForMe(req.session.userId!, req.query as Record<string, unknown>, res);
+});
 
 router.get("/account/notification-preferences", requireAuth, async (req, res, next) => {
   try {

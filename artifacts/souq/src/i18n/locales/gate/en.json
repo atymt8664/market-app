@@ -37,5 +37,10 @@
   "search_location.open_picker": "Choose search location",
   "search_location.current_place": "My location",
   "search_location.bar_label": "{place} (+{radius}km)",
-  "notifications.bell_aria": "Notifications"
+  "notifications.bell_aria": "Notifications",
+  "p5.chat.inbox.clear_selection": "Cancel",
+  "p5.chat.inbox.last_seen_prefix": "Last seen ",
+  "p5.chat.inbox.online": "Active now",
+  "p5.chat.inbox.select_all": "Select all",
+  "p5.chat.inbox.selection_count": "Selected: {count}"
 }

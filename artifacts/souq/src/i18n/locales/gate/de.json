@@ -37,5 +37,10 @@
   "search_location.open_picker": "Suchstandort wählen",
   "search_location.current_place": "Mein Standort",
   "search_location.bar_label": "{place} (+{radius} km)",
-  "notifications.bell_aria": "Benachrichtigungen"
+  "notifications.bell_aria": "Benachrichtigungen",
+  "p5.chat.inbox.clear_selection": "Abbrechen",
+  "p5.chat.inbox.last_seen_prefix": "Zuletzt online ",
+  "p5.chat.inbox.online": "Jetzt aktiv",
+  "p5.chat.inbox.select_all": "Alle auswählen",
+  "p5.chat.inbox.selection_count": "Ausgewählt: {count}"
 }

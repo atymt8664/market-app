@@ -82,3 +82,20 @@ export function applyIncomingMessageToInboxCache(
     void queryClient.invalidateQueries({ queryKey: key });
   }
 }
+
+/** Optimistic removal after hide/delete — keeps user on inbox without full refetch. */
+export function removeConversationsFromInboxCache(
+  queryClient: QueryClient,
+  conversationIds: readonly number[],
+): void {
+  const remove = new Set(
+    conversationIds.filter((id) => Number.isInteger(id) && id > 0),
+  );
+  if (remove.size === 0) return;
+
+  queryClient.setQueryData<ConversationListItem[]>(getListConversationsQueryKey(), (old) => {
+    if (!old || !Array.isArray(old)) return old;
+    const next = old.filter((c) => !remove.has(c.id));
+    return next.length === old.length ? old : next;
+  });
+}

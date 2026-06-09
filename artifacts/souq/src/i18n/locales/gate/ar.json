@@ -37,5 +37,10 @@
   "search_location.open_picker": "اختيار موقع البحث",
   "search_location.current_place": "موقعي الحالي",
   "search_location.bar_label": "{place} (+{radius} كم)",
-  "notifications.bell_aria": "الإشعارات"
+  "notifications.bell_aria": "الإشعارات",
+  "p5.chat.inbox.clear_selection": "إلغاء",
+  "p5.chat.inbox.last_seen_prefix": "آخر ظهور ",
+  "p5.chat.inbox.online": "متصل الآن",
+  "p5.chat.inbox.select_all": "تحديد الكل",
+  "p5.chat.inbox.selection_count": "محدد: {count}"
 }

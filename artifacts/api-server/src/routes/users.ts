@@ -28,6 +28,7 @@ import { PUBLIC_AD_STATUSES } from "../lib/ad-visibility";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import { isUserSocketConnected } from "../lib/realtime";
+import { listBlockedUsersForMe } from "../lib/list-blocked-users";
 import {
   clampLimit,
   finalizePage,
@@ -195,6 +196,10 @@ router.post("/users/presence-batch", requireAuth, async (req, res) => {
     };
   }
   res.json({ byUserId });
+});
+
+router.get("/users/blocked", requireAuth, async (req, res) => {
+  await listBlockedUsersForMe(req.session.userId!, req.query as Record<string, unknown>, res);
 });
 
 router.get("/users/:userId/block-status", requireAuth, async (req, res) => {

@@ -140,7 +140,16 @@ export function OrderListCard({
   );
 }
 
-/** Same image fallback chain as order detail summary — ad gallery → API snapshot → placeholder. */
+function coerceOrderAdId(adId: OrderListItem["adId"]): number {
+  if (typeof adId === "number" && Number.isFinite(adId) && adId > 0) return adId;
+  if (typeof adId === "string" && adId.trim()) {
+    const parsed = Number.parseInt(adId.trim(), 10);
+    if (Number.isInteger(parsed) && parsed > 0) return parsed;
+  }
+  return 0;
+}
+
+/** Same image fallback chain as order detail summary — API snapshot → ad gallery → placeholder. */
 function OrderListCardThumbnail({
   order,
   isMock,
@@ -148,10 +157,11 @@ function OrderListCardThumbnail({
   order: OrderListItem;
   isMock: boolean;
 }) {
-  const adId = typeof order.adId === "number" && order.adId > 0 ? order.adId : 0;
+  const adId = coerceOrderAdId(order.adId);
+  const hasSnapshotImage = Boolean(order.imageUrl?.trim());
   const { data: ad } = useGetAd(adId, {
     query: {
-      enabled: adId > 0 && !isMock,
+      enabled: adId > 0 && !isMock && !hasSnapshotImage,
       queryKey: getGetAdQueryKey(adId),
       staleTime: 300_000,
       retry: 1,

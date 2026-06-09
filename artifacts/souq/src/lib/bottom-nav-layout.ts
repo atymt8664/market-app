@@ -2,13 +2,12 @@
 export const BOTTOM_NAV_HEIGHT_MOBILE_PX = 50;
 export const BOTTOM_NAV_HEIGHT_MD_PX = 56;
 
-/** Fixed nav — flush bottom edge; safe-area padding lives on inner wrapper only. */
+/** Fixed nav — flush to viewport bottom; safe-area is padding on the shell only (no inner lift). */
 export const BOTTOM_NAV_FIXED_SHELL_CLASS =
-  "fixed inset-x-0 bottom-0 z-40 w-full bg-[#0A0A0A] [transform:translateZ(0)]";
+  "fixed inset-x-0 bottom-0 z-40 w-full bg-[#0A0A0A] pb-[env(safe-area-inset-bottom,0px)] [transform:translateZ(0)]";
 
-/** Inner chrome — buttons + home-indicator inset (solid #0A0A0A, no outer padding gap). */
-export const BOTTOM_NAV_INNER_CLASS =
-  "w-full bg-[#0A0A0A] pb-[env(safe-area-inset-bottom,0px)]";
+/** @deprecated Inner wrapper removed — safe-area lives on shell; kept for data attribute only. */
+export const BOTTOM_NAV_INNER_CLASS = "w-full bg-[#0A0A0A]";
 
 /** Layout frame — single flex child; no min-h 100vh here (prevents scroll gap under fixed nav). */
 export const BOTTOM_NAV_LAYOUT_FRAME_CLASS =
@@ -19,7 +18,7 @@ export const BOTTOM_NAV_CONTENT_PADDING_CLASS = "";
 
 /** Negative margin for full-bleed pages that restore scroll clearance via a spacer */
 export const BOTTOM_NAV_SCROLL_OFFSET_CLASS =
-  "-mb-[calc(50px+env(safe-area-inset-bottom,0px))] md:-mb-[calc(56px+env(safe-area-inset-bottom,0px))]";
+  "-mb-[50px] md:-mb-[56px]";
 
 /** Standard page shell — flex-1 inside layout frame; never stack min-h 100dvh with layout padding. */
 export const BOTTOM_NAV_PAGE_SHELL_CLASS =
@@ -30,4 +29,4 @@ export const BOTTOM_NAV_PAGE_SHELL_CLASS =
  * Solid #0A0A0A avoids a visible seam above the nav on semi-transparent chrome.
  */
 export const BOTTOM_NAV_SCROLL_END_SPACER_CLASS =
-  "min-h-[calc(3.25rem+env(safe-area-inset-bottom,0px))] shrink-0 bg-[#0A0A0A] md:min-h-[calc(3.5rem+env(safe-area-inset-bottom,0px))]";
+  "min-h-[3.25rem] shrink-0 bg-[#0A0A0A] md:min-h-[3.5rem]";

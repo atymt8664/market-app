@@ -9,6 +9,7 @@
   useUnfavoriteAd,
   getAuthProfileCsrfTokenForRequest,
   useUserPresenceBatch,
+  useGetUserProfile,
   ApiError,
 } from "@workspace/api-client-react";
 import { apiUrl } from "@/lib/api-url";
@@ -50,7 +51,8 @@ import {
   P17_MESSAGE_SELLER_BTN,
   P17_WHATSAPP_BTN,
 } from "@/features/p17-commerce/ad-detail-commerce-styles";
-import { UserPresenceBadge } from "@/components/user-presence-badge";
+import { AdDetailSellerPresenceBadge } from "@/components/ad-detail-seller-presence-badge";
+import { ProfileAvatarRing } from "@/components/profile-avatar-ring";
 import { t, type Locale } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
@@ -314,6 +316,14 @@ export default function AdDetail() {
     enabled: sellerPresenceTargets.length > 0,
   });
   const sellerPresenceEntry = sellerPresenceQ.data?.byUserId[String(ad?.userId ?? "")];
+
+  const sellerUserId = ad?.userId ?? null;
+  const sellerProfileQueryEnabled =
+    sellerUserId != null && Number.isFinite(sellerUserId) && sellerUserId > 0;
+  const { data: sellerProfile } = useGetUserProfile(sellerUserId ?? 0, {
+    query: { enabled: sellerProfileQueryEnabled },
+  });
+  const sellerDisplayName = sellerProfile?.name ?? ad?.sellerName ?? "";
 
   const [copied, setCopied] = useState(false);
   const [viewCount, setViewCount] = useState<number | null>(null);
@@ -888,21 +898,21 @@ export default function AdDetail() {
             <div className="space-y-3.5">
               <div className={cn(sellerInnerShell, "space-y-3")}>
                 <div className="flex items-center gap-3 text-right">
-                  <div
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-primary-foreground shadow-[0_0_14px_-5px_hsl(var(--primary)/0.38)]"
-                    aria-hidden
-                  >
-                    {(ad.sellerName || "?").charAt(0).toUpperCase()}
+                  <div className="shrink-0" aria-hidden>
+                    <ProfileAvatarRing
+                      name={sellerDisplayName}
+                      src={sellerProfile?.avatarUrl}
+                      size={44}
+                    />
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col items-stretch gap-1">
                     <p className="truncate text-base font-bold leading-tight text-foreground">
-                      {ad.sellerName}
+                      {sellerDisplayName}
                     </p>
                     {sellerPresenceTargets.length > 0 ? (
-                      <UserPresenceBadge
+                      <AdDetailSellerPresenceBadge
                         entry={sellerPresenceEntry}
                         isLoading={sellerPresenceQ.isPending}
-                        variant="compact"
                       />
                     ) : null}
                     <p className="text-xs leading-snug text-muted-foreground">

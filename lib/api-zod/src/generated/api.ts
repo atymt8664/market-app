@@ -29,6 +29,232 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * @summary List buyer orders (P17-4)
+ */
+export const ListBuyerOrdersResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().describe("Equals orderNumber (P17-4-NAV)"),
+      orderNumber: zod.string(),
+      status: zod.string(),
+      statusLabelAr: zod.string(),
+      title: zod.string(),
+      totalAmount: zod.string(),
+      currency: zod.string(),
+      updatedAt: zod.coerce.date(),
+      updatedAtRelativeAr: zod.string(),
+    }),
+  ),
+  total: zod.number(),
+  mock: zod.boolean(),
+});
+
+/**
+ * @summary Create order (P17-4 STAGING)
+ */
+export const CreateOrderHeader = zod.object({
+  "Idempotency-Key": zod.string().optional(),
+});
+
+export const createOrderBodyCurrencyDefault = `EUR`;
+export const createOrderBodyCurrencyMin = 3;
+export const createOrderBodyCurrencyMax = 3;
+
+export const CreateOrderBody = zod.object({
+  adId: zod.number(),
+  fulfillmentMode: zod.enum(["shipping", "pickup"]),
+  currency: zod
+    .string()
+    .min(createOrderBodyCurrencyMin)
+    .max(createOrderBodyCurrencyMax)
+    .default(createOrderBodyCurrencyDefault),
+  shippingAmount: zod.string().optional(),
+  shippingMethodLabel: zod.string().optional(),
+  idempotencyKey: zod.string().optional(),
+  buyerAddress: zod
+    .object({
+      label: zod.string().optional(),
+      city: zod.string().optional(),
+      countryCode: zod.string().optional(),
+      postalCode: zod.string().optional(),
+      line1: zod.string().optional(),
+      line2: zod.string().optional(),
+      recipientName: zod.string().optional(),
+      phone: zod.string().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary List seller orders (P17-4)
+ */
+export const ListSellerOrdersResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().describe("Equals orderNumber (P17-4-NAV)"),
+      orderNumber: zod.string(),
+      status: zod.string(),
+      statusLabelAr: zod.string(),
+      title: zod.string(),
+      totalAmount: zod.string(),
+      currency: zod.string(),
+      updatedAt: zod.coerce.date(),
+      updatedAtRelativeAr: zod.string(),
+    }),
+  ),
+  total: zod.number(),
+  mock: zod.boolean(),
+});
+
+/**
+ * @summary Order detail by order number (P17-4-NAV)
+ */
+export const getOrderDetailPathOrderNumberRegExp = new RegExp(
+  "^SOUQ-\\d{4}-\\d{6}$",
+);
+
+export const GetOrderDetailParams = zod.object({
+  orderNumber: zod.coerce.string().regex(getOrderDetailPathOrderNumberRegExp),
+});
+
+export const GetOrderDetailResponse = zod.object({
+  order: zod
+    .object({
+      id: zod.string().describe("Equals orderNumber (P17-4-NAV)"),
+      orderNumber: zod.string(),
+      status: zod.string(),
+      statusLabelAr: zod.string(),
+      title: zod.string(),
+      totalAmount: zod.string(),
+      currency: zod.string(),
+      updatedAt: zod.coerce.date(),
+      updatedAtRelativeAr: zod.string(),
+    })
+    .and(
+      zod.object({
+        fulfillmentMode: zod.enum(["shipping", "pickup"]),
+        buyerUserId: zod.number(),
+        sellerUserId: zod.number(),
+        adId: zod.number(),
+        subtotalAmount: zod.string(),
+        shippingAmount: zod.string(),
+        createdAt: zod.coerce.date(),
+        issueFlag: zod.boolean(),
+        version: zod.number().optional(),
+      }),
+    ),
+  mock: zod.boolean(),
+});
+
+/**
+ * @summary Seller accept order (P17-4)
+ */
+export const AcceptOrderParams = zod.object({
+  orderNumber: zod.coerce.string(),
+});
+
+export const AcceptOrderResponse = zod.object({
+  order: zod
+    .object({
+      id: zod.string().describe("Equals orderNumber (P17-4-NAV)"),
+      orderNumber: zod.string(),
+      status: zod.string(),
+      statusLabelAr: zod.string(),
+      title: zod.string(),
+      totalAmount: zod.string(),
+      currency: zod.string(),
+      updatedAt: zod.coerce.date(),
+      updatedAtRelativeAr: zod.string(),
+    })
+    .and(
+      zod.object({
+        fulfillmentMode: zod.enum(["shipping", "pickup"]),
+        buyerUserId: zod.number(),
+        sellerUserId: zod.number(),
+        adId: zod.number(),
+        subtotalAmount: zod.string(),
+        shippingAmount: zod.string(),
+        createdAt: zod.coerce.date(),
+        issueFlag: zod.boolean(),
+        version: zod.number().optional(),
+      }),
+    ),
+  mock: zod.boolean(),
+});
+
+/**
+ * @summary Seller reject order (P17-4)
+ */
+export const RejectOrderParams = zod.object({
+  orderNumber: zod.coerce.string(),
+});
+
+export const RejectOrderResponse = zod.object({
+  order: zod
+    .object({
+      id: zod.string().describe("Equals orderNumber (P17-4-NAV)"),
+      orderNumber: zod.string(),
+      status: zod.string(),
+      statusLabelAr: zod.string(),
+      title: zod.string(),
+      totalAmount: zod.string(),
+      currency: zod.string(),
+      updatedAt: zod.coerce.date(),
+      updatedAtRelativeAr: zod.string(),
+    })
+    .and(
+      zod.object({
+        fulfillmentMode: zod.enum(["shipping", "pickup"]),
+        buyerUserId: zod.number(),
+        sellerUserId: zod.number(),
+        adId: zod.number(),
+        subtotalAmount: zod.string(),
+        shippingAmount: zod.string(),
+        createdAt: zod.coerce.date(),
+        issueFlag: zod.boolean(),
+        version: zod.number().optional(),
+      }),
+    ),
+  mock: zod.boolean(),
+});
+
+/**
+ * @summary Cancel order (P17-4)
+ */
+export const CancelOrderParams = zod.object({
+  orderNumber: zod.coerce.string(),
+});
+
+export const CancelOrderResponse = zod.object({
+  order: zod
+    .object({
+      id: zod.string().describe("Equals orderNumber (P17-4-NAV)"),
+      orderNumber: zod.string(),
+      status: zod.string(),
+      statusLabelAr: zod.string(),
+      title: zod.string(),
+      totalAmount: zod.string(),
+      currency: zod.string(),
+      updatedAt: zod.coerce.date(),
+      updatedAtRelativeAr: zod.string(),
+    })
+    .and(
+      zod.object({
+        fulfillmentMode: zod.enum(["shipping", "pickup"]),
+        buyerUserId: zod.number(),
+        sellerUserId: zod.number(),
+        adId: zod.number(),
+        subtotalAmount: zod.string(),
+        shippingAmount: zod.string(),
+        createdAt: zod.coerce.date(),
+        issueFlag: zod.boolean(),
+        version: zod.number().optional(),
+      }),
+    ),
+  mock: zod.boolean(),
+});
+
+/**
  * @summary List all main categories
  */
 export const ListCategoriesResponseItem = zod.object({
@@ -51,7 +277,7 @@ export const ListSubcategoriesResponseItem = zod.object({
   categoryId: zod.number(),
 });
 export const ListSubcategoriesResponse = zod.array(
-  ListSubcategoriesResponseItem
+  ListSubcategoriesResponseItem,
 );
 
 /**
@@ -59,15 +285,6 @@ export const ListSubcategoriesResponse = zod.array(
  */
 export const listAdsQueryLimitDefault = 50;
 export const listAdsQueryLimitMax = 100;
-
-function clampListAdsQueryLimit(raw: unknown): number {
-  if (raw === undefined || raw === null || raw === "") {
-    return listAdsQueryLimitDefault;
-  }
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 1) return listAdsQueryLimitDefault;
-  return Math.min(Math.floor(n), listAdsQueryLimitMax);
-}
 
 export const ListAdsQueryParams = zod.object({
   q: zod.coerce.string().optional(),
@@ -81,15 +298,19 @@ export const ListAdsQueryParams = zod.object({
     .number()
     .optional()
     .describe(
-      "When set, return only ads owned by this user (public approved statuses)."
+      "When set, return only ads owned by this user (public approved statuses).",
     ),
-  limit: zod
-    .preprocess(
-      (val) => clampListAdsQueryLimit(val),
-      zod.number().int().min(1).max(listAdsQueryLimitMax),
-    )
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(listAdsQueryLimitMax)
     .default(listAdsQueryLimitDefault),
-  cursor: zod.coerce.string().optional(),
+  cursor: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Opaque keyset cursor from X-Pagination-Next-Cursor response header.",
+    ),
 });
 
 export const ListAdsResponseItem = zod.object({
@@ -198,7 +419,7 @@ export const ListRecommendedAdsResponseItem = zod.object({
   createdAt: zod.coerce.date(),
 });
 export const ListRecommendedAdsResponse = zod.array(
-  ListRecommendedAdsResponseItem
+  ListRecommendedAdsResponseItem,
 );
 
 /**
@@ -212,13 +433,13 @@ export const GetAdsStatsResponse = zod.object({
     zod.object({
       categoryName: zod.string(),
       count: zod.number(),
-    })
+    }),
   ),
   byCity: zod.array(
     zod.object({
       city: zod.string(),
       count: zod.number(),
-    })
+    }),
   ),
 });
 
@@ -396,7 +617,7 @@ export const AuthSignupResponse = zod.object({
     .string()
     .optional()
     .describe(
-      "Returned only outside production while no email provider is connected."
+      "Returned only outside production while no email provider is connected.",
     ),
 });
 
@@ -424,7 +645,7 @@ export const AuthLoginResponse = zod.object({
     .string()
     .optional()
     .describe(
-      "Returned only outside production while no email provider is connected."
+      "Returned only outside production while no email provider is connected.",
     ),
 });
 
@@ -445,7 +666,7 @@ export const AuthMeResponse = zod.object({
     .string()
     .optional()
     .describe(
-      "Returned only outside production while no email provider is connected."
+      "Returned only outside production while no email provider is connected.",
     ),
 });
 
@@ -477,7 +698,7 @@ export const AuthUpdateProfileResponse = zod.object({
     .string()
     .optional()
     .describe(
-      "Returned only outside production while no email provider is connected."
+      "Returned only outside production while no email provider is connected.",
     ),
 });
 
@@ -509,7 +730,7 @@ export const AuthVerifyEmailResponse = zod.object({
     .string()
     .optional()
     .describe(
-      "Returned only outside production while no email provider is connected."
+      "Returned only outside production while no email provider is connected.",
     ),
 });
 
@@ -596,7 +817,7 @@ export const GetUserProfileViewersResponse = zod.object({
       name: zod.string(),
       avatarUrl: zod.string().nullish(),
       lastViewedAt: zod.coerce.date(),
-    })
+    }),
   ),
   anonymousDistinctCount: zod.number(),
 });
@@ -715,7 +936,7 @@ export const ListConversationsResponseItem = zod.object({
   unreadCount: zod.number(),
 });
 export const ListConversationsResponse = zod.array(
-  ListConversationsResponseItem
+  ListConversationsResponseItem,
 );
 
 /**
@@ -746,6 +967,7 @@ export const GetConversationResponse = zod.object({
   adPriceType: zod.string().nullish(),
   otherId: zod.number(),
   otherName: zod.string(),
+  otherAvatarUrl: zod.string().nullish(),
   isSeller: zod.boolean(),
 });
 
@@ -762,6 +984,22 @@ export const ListMessagesResponseItem = zod.object({
   imageUrl: zod.string().nullish(),
   deliveredAt: zod.coerce.date().nullish(),
   readAt: zod.coerce.date().nullish(),
+  deletedForEveryoneAt: zod.coerce.date().nullish(),
+  replyToMessageId: zod.number().nullish(),
+  quotedMessage: zod
+    .object({
+      id: zod.number(),
+      senderId: zod.number(),
+      body: zod.string(),
+      messageType: zod.enum(["text", "image", "location"]),
+      imageUrl: zod.string().nullish(),
+      deletedForEveryoneAt: zod.coerce.date().nullish(),
+    })
+    .nullish(),
+  myReaction: zod
+    .string()
+    .nullish()
+    .describe("Current viewer's reaction emoji on this message"),
   createdAt: zod.coerce.date(),
 });
 export const ListMessagesResponse = zod.array(ListMessagesResponseItem);
@@ -772,15 +1010,33 @@ export const SendMessageParams = zod.object({
 
 export const sendMessageBodyBodyMax = 2000;
 
+export const sendMessageBodyLatitudeMin = -90;
+export const sendMessageBodyLatitudeMax = 90;
+
+export const sendMessageBodyLongitudeMin = -180;
+export const sendMessageBodyLongitudeMax = 180;
+
 export const SendMessageBody = zod
   .object({
     body: zod.string().max(sendMessageBodyBodyMax).optional(),
     imageUrl: zod.string().nullish(),
-    latitude: zod.number().min(-90).max(90).optional(),
-    longitude: zod.number().min(-180).max(180).optional(),
+    latitude: zod
+      .number()
+      .min(sendMessageBodyLatitudeMin)
+      .max(sendMessageBodyLatitudeMax)
+      .optional(),
+    longitude: zod
+      .number()
+      .min(sendMessageBodyLongitudeMin)
+      .max(sendMessageBodyLongitudeMax)
+      .optional(),
+    replyToMessageId: zod
+      .number()
+      .nullish()
+      .describe("Reply target message id within the same conversation"),
   })
   .describe(
-    "Send either a text message (`body` non-empty) or an image message (`imageUrl` set to a URL returned from POST \/conversations\/{convId}\/messages\/upload-image). Optional caption with image.\n"
+    "Send a text message (`body`), an image (`imageUrl` from upload-image), or a location (`latitude` + `longitude`, no body\/image). Types are mutually exclusive.\n",
   );
 
 export const MarkConversationReadParams = zod.object({
@@ -796,6 +1052,25 @@ export const HideConversationForMeParams = zod.object({
 
 export const HideConversationForMeResponse = zod.object({
   ok: zod.boolean(),
+});
+
+/**
+ * @summary Set, replace, or toggle off the current user's reaction on a message
+ */
+export const SetMessageReactionParams = zod.object({
+  convId: zod.coerce.number(),
+  messageId: zod.coerce.number(),
+});
+
+export const setMessageReactionBodyEmojiMax = 32;
+
+export const SetMessageReactionBody = zod.object({
+  emoji: zod.string().max(setMessageReactionBodyEmojiMax),
+});
+
+export const SetMessageReactionResponse = zod.object({
+  messageId: zod.number(),
+  myReaction: zod.string().nullable(),
 });
 
 /**

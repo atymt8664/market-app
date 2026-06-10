@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/sheet";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { CHAT_COMPOSER_INLINE_BTN } from "@/lib/chat-composer-styles";
 
 export type ChatAttachmentKind = "camera" | "gallery" | "file";
 
@@ -114,14 +115,11 @@ export function ChatComposerAttachButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={cn(
-        "mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-primary transition-[background-color,transform] hover:bg-primary/10 active:scale-[0.96] disabled:opacity-45",
-        dirRtl ? "order-first" : "order-first",
-      )}
+      className={CHAT_COMPOSER_INLINE_BTN}
       aria-label={t("message_thread.attach_open")}
       data-testid="chat-composer-attach-btn"
     >
-      <Paperclip className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+      <Paperclip className="h-6 w-6" strokeWidth={2.25} aria-hidden />
     </button>
   );
 }

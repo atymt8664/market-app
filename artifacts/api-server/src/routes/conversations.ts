@@ -8,6 +8,7 @@ import {
   usersTable,
   messageHidesTable,
   conversationHidesTable,
+  messageReactionsTable,
 } from "@workspace/db";
 import { and, asc, desc, eq, inArray, isNull, ne, notInArray, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
@@ -21,6 +22,7 @@ import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 import { isPublicAdStatus } from "../lib/ad-visibility";
 import { eitherUserBlocksTheOther } from "../lib/user-blocks";
+import { resolvePublicAvatarUrl } from "../lib/trust-safety/avatar-moderation";
 import {
   finalizePage,
   handlePaginationError,
@@ -43,6 +45,7 @@ import {
   isValidChatCoordinates,
   stringifyChatLocationBody,
 } from "../lib/chat-location-message";
+import { isValidChatReactionEmoji } from "../lib/chat-message-reaction";
 
 const router: IRouter = Router();
 
@@ -55,27 +58,81 @@ const chatImageUpload = multer({
   limits: { fileSize: 5 * 1024 * 1024, files: 1 },
 });
 
-function serializeMessage(m: typeof messagesTable.$inferSelect) {
-  const mt =
-    m.messageType === "image"
-      ? "image"
-      : m.messageType === CHAT_LOCATION_MESSAGE_TYPE
-        ? CHAT_LOCATION_MESSAGE_TYPE
-        : "text";
+function resolveMessageType(m: typeof messagesTable.$inferSelect) {
+  return m.messageType === "image"
+    ? "image"
+    : m.messageType === CHAT_LOCATION_MESSAGE_TYPE
+      ? CHAT_LOCATION_MESSAGE_TYPE
+      : "text";
+}
+
+function serializeQuotedMessage(m: typeof messagesTable.$inferSelect) {
+  return {
+    id: m.id,
+    senderId: m.senderId,
+    body: m.body,
+    messageType: resolveMessageType(m),
+    imageUrl: m.imageUrl ?? null,
+    deletedForEveryoneAt: m.deletedForEveryoneAt
+      ? m.deletedForEveryoneAt.toISOString()
+      : null,
+  };
+}
+
+function serializeMessage(
+  m: typeof messagesTable.$inferSelect,
+  myReaction: string | null = null,
+  quotedSource?: typeof messagesTable.$inferSelect | null,
+) {
   return {
     id: m.id,
     conversationId: m.conversationId,
     senderId: m.senderId,
     body: m.body,
-    messageType: mt,
+    messageType: resolveMessageType(m),
     imageUrl: m.imageUrl ?? null,
     deliveredAt: m.deliveredAt ? m.deliveredAt.toISOString() : null,
     readAt: m.readAt ? m.readAt.toISOString() : null,
     deletedForEveryoneAt: m.deletedForEveryoneAt
       ? m.deletedForEveryoneAt.toISOString()
       : null,
+    replyToMessageId: m.replyToMessageId ?? null,
+    quotedMessage: quotedSource ? serializeQuotedMessage(quotedSource) : null,
+    myReaction,
     createdAt: m.createdAt.toISOString(),
   };
+}
+
+async function fetchQuotedMessagesById(
+  messageIds: number[],
+): Promise<Map<number, typeof messagesTable.$inferSelect>> {
+  const uniqueIds = [...new Set(messageIds.filter((id) => Number.isInteger(id) && id > 0))];
+  if (!uniqueIds.length) return new Map();
+  const rows = await db
+    .select()
+    .from(messagesTable)
+    .where(inArray(messagesTable.id, uniqueIds));
+  return new Map(rows.map((row) => [row.id, row]));
+}
+
+async function fetchMyReactionsByMessageId(
+  userId: number,
+  messageIds: number[],
+): Promise<Map<number, string>> {
+  if (!messageIds.length) return new Map();
+  const rows = await db
+    .select({
+      messageId: messageReactionsTable.messageId,
+      emoji: messageReactionsTable.emoji,
+    })
+    .from(messageReactionsTable)
+    .where(
+      and(
+        eq(messageReactionsTable.userId, userId),
+        inArray(messageReactionsTable.messageId, messageIds),
+      ),
+    );
+  return new Map(rows.map((r) => [r.messageId, r.emoji]));
 }
 
 function handleChatImageUploadError(err: unknown, res: Response): boolean {
@@ -501,6 +558,7 @@ router.get("/conversations/:convId", requireAuth, async (req, res) => {
   const ad = adRows[0];
   const otherId = conv.buyerId === userId ? conv.sellerId : conv.buyerId;
   const otherRows = await db.select().from(usersTable).where(eq(usersTable.id, otherId)).limit(1);
+  const otherUser = otherRows[0];
   res.json({
     id: conv.id,
     adId: conv.adId,
@@ -510,7 +568,10 @@ router.get("/conversations/:convId", requireAuth, async (req, res) => {
     adPrice: ad && ad.price !== null ? Number(ad.price) : null,
     adPriceType: ad?.priceType ?? null,
     otherId,
-    otherName: otherRows[0]?.name ?? "",
+    otherName: otherUser?.name ?? "",
+    otherAvatarUrl: otherUser
+      ? resolvePublicAvatarUrl(otherUser, false)
+      : null,
     isSeller: conv.sellerId === userId,
   });
 });
@@ -574,7 +635,24 @@ router.get("/conversations/:convId/messages", requireAuth, async (req, res) => {
     at: m.createdAt,
     id: m.id,
   }));
-  sendJsonArrayPage(res, items.map(serializeMessage), meta);
+  const reactionMap = await fetchMyReactionsByMessageId(
+    userId,
+    items.map((m) => m.id),
+  );
+  const quotedMap = await fetchQuotedMessagesById(
+    items.map((m) => m.replyToMessageId).filter((id): id is number => id != null),
+  );
+  sendJsonArrayPage(
+    res,
+    items.map((m) =>
+      serializeMessage(
+        m,
+        reactionMap.get(m.id) ?? null,
+        m.replyToMessageId ? quotedMap.get(m.replyToMessageId) ?? null : null,
+      ),
+    ),
+    meta,
+  );
   } catch (err) {
     if (handlePaginationError(err, res)) return;
     throw err;
@@ -667,6 +745,106 @@ router.post(
   },
 );
 
+router.put(
+  "/conversations/:convId/messages/:messageId/reaction",
+  requireAuth,
+  requireUserCsrf,
+  async (req, res) => {
+    const userId = req.session.userId!;
+    const convId = Number(req.params["convId"]);
+    const messageId = Number(req.params["messageId"]);
+    const emojiRaw = (req.body as { emoji?: unknown })?.emoji;
+    if (!Number.isInteger(convId) || convId <= 0) {
+      res.status(400).json({ error: "معرّف المحادثة غير صالح" });
+      return;
+    }
+    if (!Number.isInteger(messageId) || messageId <= 0) {
+      res.status(400).json({ error: "معرّف الرسالة غير صالح" });
+      return;
+    }
+    if (!isValidChatReactionEmoji(emojiRaw)) {
+      res.status(400).json({ error: "تفاعل غير صالح" });
+      return;
+    }
+    const emoji = emojiRaw.trim();
+
+    const r = await loadConversation(convId, userId);
+    if ("error" in r) {
+      res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
+      return;
+    }
+    const { conv } = r;
+    const peerId = conv.buyerId === userId ? conv.sellerId : conv.buyerId;
+    if (await eitherUserBlocksTheOther(userId, peerId)) {
+      res.status(403).json({ error: CHAT_USER_BLOCK_FORBIDDEN_MESSAGE });
+      return;
+    }
+
+    const msgRows = await db
+      .select()
+      .from(messagesTable)
+      .where(and(eq(messagesTable.id, messageId), eq(messagesTable.conversationId, convId)))
+      .limit(1);
+    const msg = msgRows[0];
+    if (!msg) {
+      res.status(404).json({ error: "الرسالة غير موجودة" });
+      return;
+    }
+    if (msg.deletedForEveryoneAt) {
+      res.status(400).json({ error: "لا يمكن التفاعل مع رسالة محذوفة" });
+      return;
+    }
+
+    const existing = await db
+      .select()
+      .from(messageReactionsTable)
+      .where(
+        and(
+          eq(messageReactionsTable.messageId, messageId),
+          eq(messageReactionsTable.userId, userId),
+        ),
+      )
+      .limit(1);
+    const prev = existing[0];
+    const now = new Date();
+
+    if (prev?.emoji === emoji) {
+      await db
+        .delete(messageReactionsTable)
+        .where(
+          and(
+            eq(messageReactionsTable.messageId, messageId),
+            eq(messageReactionsTable.userId, userId),
+          ),
+        );
+      res.json({ messageId, myReaction: null });
+      return;
+    }
+
+    if (prev) {
+      await db
+        .update(messageReactionsTable)
+        .set({ emoji, updatedAt: now })
+        .where(
+          and(
+            eq(messageReactionsTable.messageId, messageId),
+            eq(messageReactionsTable.userId, userId),
+          ),
+        );
+    } else {
+      await db.insert(messageReactionsTable).values({
+        messageId,
+        userId,
+        emoji,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    res.json({ messageId, myReaction: emoji });
+  },
+);
+
 /** Specific sub-path before POST `/messages` so Express never treats it as an unknown sibling. */
 router.post(
   "/conversations/:convId/messages/delete-for-everyone",
@@ -683,6 +861,7 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
     imageUrl?: unknown;
     latitude?: unknown;
     longitude?: unknown;
+    replyToMessageId?: unknown;
   };
   const imageUrlRaw = typeof raw.imageUrl === "string" ? raw.imageUrl.trim() : "";
   const body = String(raw.body ?? "").trim();
@@ -753,6 +932,28 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
     imageUrl = null;
   }
 
+  let replyToMessageId: number | null = null;
+  let quotedSource: typeof messagesTable.$inferSelect | null = null;
+  if (raw.replyToMessageId !== undefined && raw.replyToMessageId !== null) {
+    const replyId = Number(raw.replyToMessageId);
+    if (!Number.isInteger(replyId) || replyId <= 0) {
+      res.status(400).json({ error: "معرّف رسالة الرد غير صالح" });
+      return;
+    }
+    const sourceRows = await db
+      .select()
+      .from(messagesTable)
+      .where(and(eq(messagesTable.id, replyId), eq(messagesTable.conversationId, convId)))
+      .limit(1);
+    const source = sourceRows[0];
+    if (!source) {
+      res.status(400).json({ error: "رسالة الرد غير موجودة في هذه المحادثة" });
+      return;
+    }
+    replyToMessageId = replyId;
+    quotedSource = source;
+  }
+
   const recipient = conv.buyerId === userId ? conv.sellerId : conv.buyerId;
   const now = new Date();
   const deliverToRecipient = isUserFocusedOnConversation(recipient, convId);
@@ -771,6 +972,7 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
       body: messageBody,
       messageType,
       imageUrl,
+      ...(replyToMessageId != null ? { replyToMessageId } : {}),
       ...(deliverToRecipient ? { deliveredAt: now } : {}),
     })
     .returning();
@@ -783,7 +985,8 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
     })
     .where(eq(conversationsTable.id, convId));
 
-  const payload = { type: "message", conversationId: convId, message: serializeMessage(created!) };
+  const serialized = serializeMessage(created!, null, quotedSource);
+  const payload = { type: "message", conversationId: convId, message: serialized };
   broadcastToUser(recipient, payload);
   // Echo to sender's other devices too.
   broadcastToUser(userId, payload);
@@ -805,7 +1008,7 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
     }
   }
 
-  res.status(201).json(serializeMessage(created!));
+  res.status(201).json(serialized);
 });
 
 router.post("/conversations/:convId/read", requireAuth, requireUserCsrf, async (req, res) => {

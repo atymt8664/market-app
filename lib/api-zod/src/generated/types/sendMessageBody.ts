@@ -7,13 +7,23 @@
  */
 
 /**
- * Send either a text message (`body` non-empty) or an image message (`imageUrl` set to a URL returned from POST /conversations/{convId}/messages/upload-image). Optional caption with image.
+ * Send a text message (`body`), an image (`imageUrl` from upload-image), or a location (`latitude` + `longitude`, no body/image). Types are mutually exclusive.
 
  */
 export type SendMessageBody = {
   /** @maxLength 2000 */
   body?: string;
   imageUrl?: string | null;
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
   latitude?: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
   longitude?: number;
+  /** Reply target message id within the same conversation */
+  replyToMessageId?: number | null;
 };

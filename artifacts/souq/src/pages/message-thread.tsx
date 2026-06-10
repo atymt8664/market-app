@@ -1,4 +1,4 @@
-﻿import { Link, Redirect, useLocation, useParams, useSearch } from "wouter";
+﻿import { Redirect, useLocation, useParams, useSearch } from "wouter";
 import {
   memo,
   useCallback,
@@ -24,35 +24,75 @@ import {
   invalidateUserPresenceBatchQueries,
   useUserPresenceBatch,
   type Message as ChatMessage,
+  type QuotedMessage,
   ApiError,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  ArrowRight,
   Ban,
   Check,
   CheckCheck,
+  CornerUpLeft,
   Loader2,
   Send,
   X,
 } from "lucide-react";
 import { useChatSocket } from "@/hooks/use-chat-socket";
 import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
-import { applyIncomingMessageToInboxCache } from "@/lib/inbox-conversation-cache";
+import { useChatThreadViewportResize } from "@/hooks/use-chat-thread-viewport-resize";
+import {
+  applyIncomingMessageToInboxCache,
+  clearConversationUnreadInInboxCache,
+} from "@/lib/inbox-conversation-cache";
 import { deleteMessagesForEveryone } from "@/lib/chat-delete-for-everyone";
+import { setMessageReaction } from "@/lib/chat-message-reaction";
 import {
   getChatMessageCopyText,
   selectionHasCopyableMessages,
 } from "@/lib/chat-message-copy";
 import { copyTextToClipboard } from "@/lib/copy-text";
 import { isMessageDeletedForEveryone } from "@/lib/chat-message-deleted";
-import { ChatSelectionActionBar } from "@/components/chat-selection-action-bar";
+import { ChatThreadDeleteSheet } from "@/components/chat-thread-delete-sheet";
+import { ChatThreadSelectionHeader } from "@/components/chat-thread-selection-header";
+import {
+  ChatMessageReactionsBar,
+  type MessageAnchorRect,
+} from "@/components/chat-message-reactions-bar";
+import { ChatMessageActionsSheet } from "@/components/chat-message-actions-sheet";
+import { ChatMessageFocusBackdrop } from "@/components/chat-message-focus-backdrop";
+import { ChatMessageFocusErrorBoundary } from "@/components/chat-message-focus-error-boundary";
+import { ChatForwardPickerSheet } from "@/components/chat-forward-picker-sheet";
+import { ChatReplyPreviewBar } from "@/components/chat-reply-preview-bar";
+import {
+  ChatMessageReplyQuote,
+  type MessageReplyQuoteData,
+} from "@/components/chat-message-reply-quote";
+import {
+  filterForwardableMessages,
+  resolveForwardCapability,
+} from "@/lib/chat-forward-message";
+import {
+  chatBubbleImageClass,
+  chatBubbleTextClass,
+  chatBubbleTimestampClass,
+  CHAT_RECV_BUBBLE_SHELL,
+  CHAT_QUICK_REPLY_CHIP,
+  CHAT_QUICK_REPLY_ROW,
+  CHAT_SENT_BUBBLE_SHELL,
+} from "@/lib/chat-message-bubble-styles";
+import {
+  blockChatNativeMenu,
+  chatBlockNativeMenuDivProps,
+  CHAT_MESSAGE_BUBBLE_TOUCH,
+  CHAT_MESSAGE_TOUCH_GUARD,
+} from "@/lib/chat-message-touch-guard";
 import {
   ChatComposerAttachButton,
   ChatComposerAttachmentSheet,
   type ChatAttachmentKind,
 } from "@/components/chat-composer-attachment-sheet";
+import { ChatComposerEmojiButton } from "@/components/chat-composer-emoji-button";
 import { CHAT_COMPOSER_FIELD_SHELL, CHAT_COMPOSER_TEXTAREA } from "@/lib/chat-composer-styles";
 import { ChatLocationMessageCard } from "@/components/chat-location-message-card";
 import {
@@ -71,8 +111,8 @@ import {
 } from "@/lib/query-stale-times";
 import { apiUrl } from "@/lib/api-url";
 import { useToast } from "@/hooks/use-toast";
-import { ChatThreadOverflowMenu } from "@/components/chat-thread-overflow-menu";
-import { UserPresenceBadge } from "@/components/user-presence-badge";
+import { ChatThreadHeader } from "@/components/chat-thread-header";
+import { ChatProductContextBar } from "@/components/chat-product-context-bar";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -94,22 +134,6 @@ import {
   getSellerOrderDetailPath,
 } from "@/features/p17-commerce/order-detail-paths";
 import { isCanonicalOrderNumber } from "@/features/p17-commerce/order-detail-display";
-
-/**
- * فقاعات — بدون isolate/overflow-hidden التي مع backdrop-blur على الأسلاف تسبب على WebKit اختفاء النص (stacking/compositing).
- */
-const CHAT_BUBBLE_BASE =
-  "relative overflow-visible rounded-2xl border border-primary/35 bg-[#0A0A0A] shadow-[0_0_26px_-14px_hsl(var(--primary)/0.22),0_4px_22px_-12px_rgba(0,0,0,0.42)] ring-1 ring-primary/15";
-
-const CHAT_RECV_OUTER = `${CHAT_BUBBLE_BASE} rounded-bl-md`;
-
-const CHAT_SENT_OUTER = `${CHAT_BUBBLE_BASE} rounded-br-md`;
-
-const QUICK_REPLY_CHIP =
-  "max-w-[240px] shrink-0 truncate whitespace-nowrap rounded-2xl border border-primary/35 bg-[#0A0A0A] px-3.5 py-2.5 text-[13px] font-medium text-white shadow-[0_0_22px_-14px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 transition-[transform,box-shadow,border-color] duration-200 hover:border-primary/55 hover:shadow-[0_0_28px_-12px_hsl(var(--primary)/0.28)] active:scale-[0.98]";
-
-const QUICK_REPLY_ROW =
-  "scrollbar-thin flex gap-2 overflow-x-auto rounded-2xl border border-primary/32 bg-[#0A0A0A] p-2.5 shadow-[0_0_24px_-16px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12";
 
 /** بطاقات تلميحات أول مرة فقط — لا تُستخدم على فقاعات الرسائل. */
 const CHAT_TIP_CARD =
@@ -160,6 +184,31 @@ function insertMessageSorted(list: ChatMessage[], incoming: ChatMessage): ChatMe
   return [...list.slice(0, lo), incoming, ...list.slice(lo)];
 }
 
+function toQuotedMessageFromChat(m: ChatMessage): QuotedMessage {
+  return {
+    id: m.id,
+    senderId: m.senderId,
+    body: m.body,
+    messageType: m.messageType,
+    imageUrl: m.imageUrl ?? null,
+    deletedForEveryoneAt: m.deletedForEveryoneAt ?? null,
+  };
+}
+
+/** Ensure POST/WS payloads show reply quote immediately in thread UI. */
+function enrichSentMessageWithReply(
+  newMsg: ChatMessage,
+  replyingTo: ChatMessage | null,
+): ChatMessage {
+  if (!replyingTo) return newMsg;
+  if (newMsg.quotedMessage) return newMsg;
+  return {
+    ...newMsg,
+    replyToMessageId: newMsg.replyToMessageId ?? replyingTo.id,
+    quotedMessage: toQuotedMessageFromChat(replyingTo),
+  };
+}
+
 /** دمج رسالة واردة في القائمة دون إعادة ترتيب كامل عند الإدراج في النهاية. */
 function mergeMessagesIntoList(
   prev: ChatMessage[] | undefined,
@@ -169,7 +218,15 @@ function mergeMessagesIntoList(
   const idx = list.findIndex((m) => m.id === incoming.id);
   if (idx >= 0) {
     const next = [...list];
-    next[idx] = { ...next[idx], ...incoming };
+    const prevRow = next[idx]!;
+    const merged: ChatMessage = { ...prevRow, ...incoming };
+    if (!incoming.quotedMessage && prevRow.quotedMessage) {
+      merged.quotedMessage = prevRow.quotedMessage;
+    }
+    if (incoming.replyToMessageId == null && prevRow.replyToMessageId != null) {
+      merged.replyToMessageId = prevRow.replyToMessageId;
+    }
+    next[idx] = merged;
     return next;
   }
   if (list.length === 0) {
@@ -210,17 +267,26 @@ function splitMessageSegments(text: string): Array<{ kind: "text" | "link"; valu
   return out;
 }
 
-function renderMessageRichText(raw: string, dirRtl: boolean): ReactNode {
+function renderMessageRichText(
+  raw: string,
+  dirRtl: boolean,
+  isCompact = false,
+  mine = false,
+): ReactNode {
   const text = raw || "";
   const segments = splitMessageSegments(text);
   const hasLink = segments.some((s) => s.kind === "link");
-  const linkClass =
-    "break-all font-medium text-primary underline decoration-primary/45 underline-offset-[3px] [overflow-wrap:anywhere]";
+  const textClass = cn(chatBubbleTextClass(mine, isCompact), CHAT_MESSAGE_TOUCH_GUARD);
+  const linkClass = cn(
+    "break-all font-medium text-primary underline decoration-primary/45 underline-offset-[3px] [overflow-wrap:anywhere]",
+    CHAT_MESSAGE_TOUCH_GUARD,
+  );
   if (!hasLink) {
     return (
       <span
         dir={dirRtl ? "rtl" : "ltr"}
-        className="block whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white opacity-100 [overflow-wrap:anywhere] [-webkit-text-fill-color:#ffffff] [text-rendering:optimizeLegibility]"
+        onContextMenu={blockChatNativeMenu}
+        className={cn("block break-words", textClass)}
       >
         {text}
       </span>
@@ -229,7 +295,8 @@ function renderMessageRichText(raw: string, dirRtl: boolean): ReactNode {
   return (
     <div
       dir={dirRtl ? "rtl" : "ltr"}
-      className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white opacity-100 [overflow-wrap:anywhere] [-webkit-text-fill-color:#ffffff] [text-rendering:optimizeLegibility]"
+      onContextMenu={blockChatNativeMenu}
+      className={textClass}
     >
       {segments.map((seg, idx) =>
         seg.kind === "text" ? (
@@ -240,6 +307,7 @@ function renderMessageRichText(raw: string, dirRtl: boolean): ReactNode {
             href={seg.value}
             target="_blank"
             rel="noopener noreferrer"
+            onContextMenu={blockChatNativeMenu}
             className={linkClass}
             dir={seg.value.startsWith("http") ? "ltr" : undefined}
           >
@@ -274,17 +342,47 @@ function renderBubbleDeliveryIcon(m: ChatMessage): ReactNode {
 
 type MessageBubbleLocale = "ar" | "de" | "en";
 
+/** WhatsApp-like: clear drag distance before reply commits on release. */
+const CHAT_SWIPE_REPLY_THRESHOLD_PX = 88;
+const CHAT_SWIPE_REPLY_MAX_OFFSET_RATIO = 0.42;
+const CHAT_SWIPE_REPLY_AXIS_LOCK_PX = 14;
+const CHAT_SWIPE_REPLY_AXIS_RATIO = 1.45;
+
+function getSwipeReplyMaxOffsetPx(): number {
+  if (typeof window === "undefined") return 168;
+  return Math.round(window.innerWidth * CHAT_SWIPE_REPLY_MAX_OFFSET_RATIO);
+}
+
+type SwipeTrackState = {
+  startX: number;
+  startY: number;
+  active: boolean;
+  axis: "undecided" | "horizontal" | "vertical";
+  pointerId: number;
+  fired: boolean;
+};
+
 type ChatMessageBubbleRowProps = {
   m: ChatMessage;
   mine: boolean;
   selectMode: boolean;
+  /** Single-message focus: show selection circles on all rows without multi-select header. */
+  showFocusSelectChrome: boolean;
   isSelected: boolean;
+  isFocused: boolean;
+  isHighlighted: boolean;
+  myReaction: string | null;
+  replyQuote: MessageReplyQuoteData | null;
+  interactionLocked: boolean;
   dirRtl: boolean;
   locale: MessageBubbleLocale;
-  onRowPointerDown: (m: ChatMessage, e: PointerEvent) => void;
+  onRowPointerDown: (m: ChatMessage, e: PointerEvent, bubbleEl: HTMLElement) => void;
   onRowPointerEnd: () => void;
+  onRowTapWhileFocus: (m: ChatMessage) => void;
   onRowClick: (m: ChatMessage, e: MouseEvent) => void;
   onRowKeyDown: (m: ChatMessage, e: KeyboardEvent) => void;
+  onSwipeReply: (m: ChatMessage) => void;
+  onReplyQuoteNavigate: (sourceMessageId: number) => void;
 };
 
 function chatMessageBubbleRowPropsAreEqual(
@@ -295,7 +393,13 @@ function chatMessageBubbleRowPropsAreEqual(
     a.m === b.m &&
     a.mine === b.mine &&
     a.selectMode === b.selectMode &&
+    a.showFocusSelectChrome === b.showFocusSelectChrome &&
     a.isSelected === b.isSelected &&
+    a.isFocused === b.isFocused &&
+    a.isHighlighted === b.isHighlighted &&
+    a.myReaction === b.myReaction &&
+    a.replyQuote === b.replyQuote &&
+    a.interactionLocked === b.interactionLocked &&
     a.dirRtl === b.dirRtl &&
     a.locale === b.locale
   );
@@ -305,14 +409,45 @@ const ChatMessageBubbleRow = memo(function ChatMessageBubbleRow({
   m,
   mine,
   selectMode,
+  showFocusSelectChrome,
   isSelected,
+  isFocused,
+  isHighlighted,
+  myReaction,
+  replyQuote,
+  interactionLocked,
   dirRtl,
   locale,
   onRowPointerDown,
   onRowPointerEnd,
+  onRowTapWhileFocus,
   onRowClick,
   onRowKeyDown,
+  onSwipeReply,
+  onReplyQuoteNavigate,
 }: ChatMessageBubbleRowProps) {
+  const swipeTrackRef = useRef<SwipeTrackState | null>(null);
+  const bubbleRef = useRef<HTMLDivElement | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [swipeDragging, setSwipeDragging] = useState(false);
+
+  const releaseSwipePointer = (pointerId: number) => {
+    const el = bubbleRef.current;
+    if (el?.hasPointerCapture(pointerId)) {
+      try {
+        el.releasePointerCapture(pointerId);
+      } catch {
+        /* already released */
+      }
+    }
+  };
+
+  const resetSwipeTrack = (pointerId?: number) => {
+    if (pointerId != null) releaseSwipePointer(pointerId);
+    swipeTrackRef.current = null;
+    setSwipeOffset(0);
+    setSwipeDragging(false);
+  };
   const deletedForEveryone = isMessageDeletedForEveryone(m);
   const plain = m.body ?? "";
   const isImageMsg = m.messageType === "image" && Boolean(m.imageUrl);
@@ -327,45 +462,195 @@ const ChatMessageBubbleRow = memo(function ChatMessageBubbleRow({
       ? t("message_thread.deleted_for_everyone_by_me")
       : t("message_thread.deleted_for_everyone_by_peer")
     : null;
+  const showSelectChrome = selectMode || showFocusSelectChrome;
+  const isCompactText =
+    showText &&
+    !replyQuote &&
+    !isImageMsg &&
+    !isLocationMsg &&
+    plain.length <= 72 &&
+    !plain.includes("\n");
+  const swipePastThreshold = Math.abs(swipeOffset) >= CHAT_SWIPE_REPLY_THRESHOLD_PX;
   return (
     <div
       className={cn(
-        "flex min-w-0 max-w-[min(100%,85%)] items-end gap-2 sm:max-w-[80%] md:max-w-[72%]",
-        mine ? "flex-row-reverse self-end" : "flex-row self-start",
+        "flex w-fit min-w-0 max-w-[min(100%,85%)] items-end gap-2 sm:max-w-[80%] md:max-w-[72%]",
+        mine ? "ml-auto flex-row-reverse" : "mr-auto flex-row",
       )}
     >
-      {selectMode ? (
+      {showSelectChrome ? (
         <span
           className={cn(
             "mb-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
             isSelected
-              ? "border-primary bg-primary/20 text-primary shadow-[0_0_12px_-6px_hsl(var(--primary)/0.45)]"
-              : "border-zinc-500 bg-[#0A0A0A] text-transparent",
+              ? "border-primary bg-primary/25 text-primary shadow-[0_0_14px_-4px_hsl(var(--primary)/0.55)]"
+              : "border-zinc-500/90 bg-[#0A0A0A] text-transparent",
           )}
           aria-hidden
         >
-          <Check className="h-3.5 w-3.5 stroke-[3]" />
+          <Check className={cn("h-3.5 w-3.5 stroke-[3]", isSelected ? "opacity-100" : "opacity-0")} />
         </span>
       ) : null}
+      <div className="relative">
       <div
+        ref={bubbleRef}
         role="button"
         tabIndex={0}
-        onPointerDown={(e) => onRowPointerDown(m, e)}
-        onPointerUp={onRowPointerEnd}
-        onPointerCancel={onRowPointerEnd}
-        onPointerLeave={onRowPointerEnd}
+        data-message-id={m.id}
+        onPointerDown={(e) => {
+          if (e.button !== 0) return;
+          const el = e.currentTarget as HTMLElement;
+          swipeTrackRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            active: true,
+            axis: "undecided",
+            pointerId: e.pointerId,
+            fired: false,
+          };
+          onRowPointerDown(m, e, el);
+          if (showSelectChrome || interactionLocked) return;
+        }}
+        onPointerMove={(e) => {
+          const track = swipeTrackRef.current;
+          if (!track?.active || track.pointerId !== e.pointerId) return;
+          if (showSelectChrome || interactionLocked) return;
+
+          const dx = e.clientX - track.startX;
+          const dy = e.clientY - track.startY;
+          const absDx = Math.abs(dx);
+          const absDy = Math.abs(dy);
+
+          if (track.axis === "undecided") {
+            if (absDx < CHAT_SWIPE_REPLY_AXIS_LOCK_PX && absDy < CHAT_SWIPE_REPLY_AXIS_LOCK_PX) {
+              return;
+            }
+            if (absDy > absDx * CHAT_SWIPE_REPLY_AXIS_RATIO) {
+              track.axis = "vertical";
+              track.active = false;
+              resetSwipeTrack(track.pointerId);
+              onRowPointerEnd();
+              return;
+            }
+            if (absDx > absDy * CHAT_SWIPE_REPLY_AXIS_RATIO) {
+              track.axis = "horizontal";
+              onRowPointerEnd();
+              const el = bubbleRef.current;
+              if (el) {
+                try {
+                  el.setPointerCapture(e.pointerId);
+                } catch {
+                  /* unsupported */
+                }
+              }
+            } else {
+              return;
+            }
+          }
+
+          if (track.axis !== "horizontal" || track.fired) return;
+
+          e.preventDefault();
+          setSwipeDragging(true);
+
+          const naturalSwipe = mine ? dx < 0 : dx > 0;
+          if (!naturalSwipe) {
+            setSwipeOffset(0);
+            return;
+          }
+          const clamped = Math.min(absDx, getSwipeReplyMaxOffsetPx());
+          setSwipeOffset(dx > 0 ? clamped : -clamped);
+        }}
+        onPointerUp={(e) => {
+          const track = swipeTrackRef.current;
+          const pointerId = track?.pointerId ?? e.pointerId;
+          if (interactionLocked && track?.active && track.axis === "undecided") {
+            const dx = e.clientX - track.startX;
+            const dy = e.clientY - track.startY;
+            if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
+              onRowTapWhileFocus(m);
+            }
+          }
+          if (
+            track?.axis === "horizontal" &&
+            !track.fired &&
+            !showSelectChrome &&
+            !interactionLocked
+          ) {
+            const dx = e.clientX - track.startX;
+            const absDx = Math.abs(dx);
+            const naturalSwipe = mine ? dx < 0 : dx > 0;
+            if (naturalSwipe && absDx >= CHAT_SWIPE_REPLY_THRESHOLD_PX) {
+              track.fired = true;
+              if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+                try {
+                  navigator.vibrate(10);
+                } catch {
+                  /* optional haptic */
+                }
+              }
+              onSwipeReply(m);
+            }
+          }
+          resetSwipeTrack(pointerId);
+          onRowPointerEnd();
+        }}
+        onPointerCancel={(e) => {
+          resetSwipeTrack(swipeTrackRef.current?.pointerId ?? e.pointerId);
+          onRowPointerEnd();
+        }}
         onClick={(e) => onRowClick(m, e)}
         onKeyDown={(e) => onRowKeyDown(m, e)}
+        {...chatBlockNativeMenuDivProps}
+        style={
+          swipeOffset !== 0 || swipeDragging
+            ? {
+                transform: swipeOffset !== 0 ? `translateX(${swipeOffset}px)` : undefined,
+                transition: swipeDragging ? "none" : "transform 180ms ease-out",
+              }
+            : undefined
+        }
         className={cn(
-          "min-w-0 max-w-[min(100%,280px)] sm:max-w-[min(100%,300px)] md:max-w-[min(100%,320px)] touch-manipulation",
-          selectMode ? "cursor-pointer" : "cursor-default",
-          mine ? CHAT_SENT_OUTER : CHAT_RECV_OUTER,
+          "min-w-0 max-w-[min(78vw,280px)] sm:max-w-[min(72vw,300px)] md:max-w-[min(68vw,320px)]",
+          CHAT_MESSAGE_BUBBLE_TOUCH,
+          showSelectChrome ? "cursor-pointer" : "cursor-default",
+          mine ? CHAT_SENT_BUBBLE_SHELL : CHAT_RECV_BUBBLE_SHELL,
+          isFocused &&
+            "relative z-[58] ring-2 ring-primary shadow-[0_0_44px_-6px_hsl(var(--primary)/0.72)]",
+          isSelected &&
+            showFocusSelectChrome &&
+            "relative z-[58] ring-2 ring-primary shadow-[0_0_44px_-6px_hsl(var(--primary)/0.72)]",
+          isHighlighted && "relative z-[58] ring-2 ring-primary/80 shadow-[0_0_40px_-6px_hsl(var(--primary)/0.65)]",
         )}
       >
+        {swipeOffset !== 0 ? (
+          <span
+            className={cn(
+              "pointer-events-none absolute top-1/2 z-[1] flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border transition-all duration-150",
+              swipePastThreshold
+                ? "border-primary/50 bg-primary/15 text-primary shadow-[0_0_14px_-4px_hsl(var(--primary)/0.45)]"
+                : "border-primary/20 bg-black/40 text-zinc-500",
+              mine
+                ? dirRtl
+                  ? "right-full mr-2"
+                  : "left-full ml-2"
+                : dirRtl
+                  ? "left-full ml-2"
+                  : "right-full mr-2",
+            )}
+            style={{
+              opacity: Math.min(1, Math.abs(swipeOffset) / CHAT_SWIPE_REPLY_THRESHOLD_PX),
+            }}
+            aria-hidden
+          >
+            <CornerUpLeft className="h-4 w-4" />
+          </span>
+        ) : null}
         <div
           className={cn(
-            "relative z-[2] px-3 pb-2 pt-2.5 md:px-3.5 md:pb-2.5 md:pt-3",
-            selectMode && "pointer-events-none",
+            "relative z-[2]",
+            isCompactText ? "px-2.5 pb-1 pt-1.5" : "px-3 pb-2 pt-2 md:px-3.5 md:pb-2.5 md:pt-2.5",
+            showSelectChrome && "pointer-events-none",
           )}
         >
           {deletedForEveryone && deletedLabel ? (
@@ -388,7 +673,14 @@ const ChatMessageBubbleRow = memo(function ChatMessageBubbleRow({
               —
             </span>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className={cn("flex flex-col", isCompactText ? "gap-1" : "gap-1.5")}>
+              {replyQuote ? (
+                <ChatMessageReplyQuote
+                  quote={replyQuote}
+                  dirRtl={dirRtl}
+                  onNavigate={() => onReplyQuoteNavigate(replyQuote.sourceMessageId)}
+                />
+              ) : null}
               {isLocationMsg && locationPayload ? (
                 <ChatLocationMessageCard
                   location={locationPayload}
@@ -397,33 +689,40 @@ const ChatMessageBubbleRow = memo(function ChatMessageBubbleRow({
                 />
               ) : null}
               {isImageMsg && m.imageUrl ? (
-                <a
-                  href={m.imageUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    if (selectMode) return;
+                    e.stopPropagation();
+                    window.open(m.imageUrl!, "_blank", "noopener,noreferrer");
+                  }}
+                  onContextMenu={blockChatNativeMenu}
+                  className="block w-full shrink-0 cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <img
                     src={m.imageUrl}
                     alt=""
-                    className="max-h-64 w-full max-w-[min(100%,280px)] rounded-xl border border-primary/35 object-cover shadow-[0_0_22px_-12px_hsl(var(--primary)/0.45)] ring-1 ring-primary/20 sm:max-w-[300px]"
+                    draggable={false}
+                    onContextMenu={blockChatNativeMenu}
+                    className={cn(chatBubbleImageClass(mine), CHAT_MESSAGE_TOUCH_GUARD)}
                     loading="lazy"
                     decoding="async"
                     sizes="(max-width: 640px) min(100vw - 3rem, 280px), 300px"
                   />
-                </a>
+                </button>
               ) : null}
-              {showText ? renderMessageRichText(plain, dirRtl) : null}
+              {showText ? renderMessageRichText(plain, dirRtl, isCompactText, mine) : null}
             </div>
           )}
           <div
-            className={`mt-1.5 flex items-center gap-0.5 ${mine ? "justify-end" : "justify-start"}`}
+            className={cn(
+              "flex items-center gap-0.5",
+              isCompactText ? "mt-0.5" : "mt-1",
+              mine ? "justify-end" : "justify-start",
+            )}
             dir="ltr"
           >
-            <time
-              dateTime={m.createdAt}
-              className="text-[10px] font-medium tabular-nums leading-none text-muted-foreground"
-            >
+            <time dateTime={m.createdAt} className={chatBubbleTimestampClass(mine)}>
               {formatMessageTimestamp(m.createdAt, locale)}
             </time>
             {mine && (
@@ -436,6 +735,26 @@ const ChatMessageBubbleRow = memo(function ChatMessageBubbleRow({
             )}
           </div>
         </div>
+      </div>
+      {myReaction ? (
+        <span
+          className={cn(
+            "pointer-events-none absolute -bottom-2 z-[4] inline-flex min-h-[22px] min-w-[22px] items-center justify-center rounded-full border border-primary/35 bg-[#0A0A0A] px-1 text-[14px] leading-none shadow-[0_2px_10px_-4px_rgba(0,0,0,0.7)] ring-1 ring-primary/20",
+            mine
+              ? dirRtl
+                ? "left-0"
+                : "right-0"
+              : dirRtl
+                ? "right-0"
+                : "left-0",
+          )}
+          aria-label={myReaction}
+        >
+          <span aria-hidden className="[font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif]">
+            {myReaction}
+          </span>
+        </span>
+      ) : null}
       </div>
     </div>
   );
@@ -529,7 +848,9 @@ export default function MessageThread() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialScrollDoneRef = useRef(false);
   const scrollAnchorConvRef = useRef<number | null>(null);
-  const rowPointerDownRef = useRef<(m: ChatMessage, e: PointerEvent) => void>(() => {});
+  const rowPointerDownRef = useRef<
+    (m: ChatMessage, e: PointerEvent, bubbleEl: HTMLElement) => void
+  >(() => {});
   const rowPointerEndRef = useRef<() => void>(() => {});
   const rowClickRef = useRef<(m: ChatMessage, e: MouseEvent) => void>(() => {});
   const rowKeyDownRef = useRef<(m: ChatMessage, e: KeyboardEvent) => void>(() => {});
@@ -542,8 +863,17 @@ export default function MessageThread() {
   const [peerTyping, setPeerTyping] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [messageFocus, setMessageFocus] = useState<{
+    message: ChatMessage;
+    anchor: MessageAnchorRect;
+  } | null>(null);
+  const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(null);
   const lpTimerRef = useRef<number | null>(null);
   const longPressConsumedRef = useRef(false);
+  const messageFocusHistoryPushedRef = useRef(false);
+  const messageFocusClosingViaPopRef = useRef(false);
+  const rowSwipeReplyRef = useRef<(m: ChatMessage) => void>(() => {});
+  const rowTapWhileFocusRef = useRef<(m: ChatMessage) => void>(() => {});
   const hideMessagesForMe = useHideMessagesForMe();
   const [menuTipSeen, setMenuTipSeen] = useState<boolean>(() =>
     readSeenFlag(CHAT_MENU_TIP_SEEN_KEY),
@@ -557,8 +887,33 @@ export default function MessageThread() {
   const [inlineUnblockConfirmOpen, setInlineUnblockConfirmOpen] = useState(false);
   const [inlineUnblockPending, setInlineUnblockPending] = useState(false);
   const [selectionActionBusy, setSelectionActionBusy] = useState(false);
+  const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
+  const [forwardMessages, setForwardMessages] = useState<ChatMessage[]>([]);
+  const [forwardPickerOpen, setForwardPickerOpen] = useState(false);
+  const [highlightMessageId, setHighlightMessageId] = useState<number | null>(null);
+  const [composerEmojiOpen, setComposerEmojiOpen] = useState(false);
+  const [composerFocused, setComposerFocused] = useState(false);
+  const composerFormRef = useRef<HTMLFormElement | null>(null);
+  const composerSendingRef = useRef(false);
 
-  useAutoResizeTextarea(composerTextareaRef, body);
+  useChatThreadViewportResize(conversationOk);
+
+  useAutoResizeTextarea(composerTextareaRef, body, { minPx: 22, maxPx: 104 });
+
+  useEffect(() => {
+    if (!composerFocused) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    });
+  }, [composerFocused]);
+
+  const insertComposerEmoji = useCallback((emoji: string) => {
+    setBody((prev) => `${prev}${emoji}`);
+    setComposerEmojiOpen(false);
+    requestAnimationFrame(() => composerTextareaRef.current?.focus());
+  }, []);
 
   const pendingImagePreviewUrl = useMemo(() => {
     if (!pendingImageFile) return null;
@@ -604,6 +959,30 @@ export default function MessageThread() {
     return [];
   }, [messagesRaw]);
 
+  const messageReactions = useMemo(() => {
+    const map: Record<number, string> = {};
+    for (const m of messages ?? []) {
+      const reaction = m.myReaction;
+      if (typeof reaction === "string" && reaction.length > 0) {
+        map[m.id] = reaction;
+      }
+    }
+    return map;
+  }, [messages]);
+
+  const patchMessageReactionInCache = useCallback(
+    (messageId: number, myReaction: string | null) => {
+      queryClient.setQueryData<ChatMessage[]>(
+        getListMessagesQueryKey(convIdForQuery),
+        (old) =>
+          (old ?? []).map((m) =>
+            m.id === messageId ? { ...m, myReaction } : m,
+          ),
+      );
+    },
+    [queryClient, convIdForQuery],
+  );
+
   /** Secondary thread queries run only after the messages request has settled (success or error). */
   const secondaryQueriesReady =
     messagesQueryEnabled && !isPending && (messagesRaw !== undefined || isError);
@@ -645,19 +1024,26 @@ export default function MessageThread() {
     () => (typeof conv?.otherId === "number" && conv.otherId > 0 ? [conv.otherId] : []),
     [conv?.otherId],
   );
+  const peerPresenceEnabled =
+    Boolean(user) &&
+    messagesQueryEnabled &&
+    peerPresenceTargets.length > 0 &&
+    Boolean(conv?.otherId);
+
   const peerPresenceQ = useUserPresenceBatch(peerPresenceTargets, {
-    enabled:
-      secondaryQueriesReady &&
-      messagesQueryEnabled &&
-      peerPresenceTargets.length > 0,
+    enabled: peerPresenceEnabled,
   });
   const peerPresenceEntry = peerPresenceQ.data?.byUserId[String(conv?.otherId ?? "")];
+
+  useEffect(() => {
+    if (!peerPresenceEnabled || !conv?.otherId) return;
+    void invalidateUserPresenceBatchQueries(queryClient, [conv.otherId]);
+  }, [conv?.otherId, peerPresenceEnabled, queryClient]);
 
   const chatPeerMessagingDisabled =
     Boolean(peerBlockStatus?.blockedByMe) || Boolean(peerBlockStatus?.blocksMe);
   const composerLocked =
-    peerBlockQueryEnabled &&
-    (peerBlockPending || peerBlockQueryError || chatPeerMessagingDisabled);
+    peerBlockQueryEnabled && (peerBlockPending || chatPeerMessagingDisabled);
 
   const performInlineUnblock = useCallback(async () => {
     setInlineUnblockConfirmOpen(false);
@@ -882,6 +1268,8 @@ export default function MessageThread() {
   useEffect(() => {
     setSelectMode(false);
     setSelectedIds(new Set());
+    setMessageFocus(null);
+    setReplyToMessage(null);
   }, [conversationId]);
 
   const clearLongPressTimer = useCallback(() => {
@@ -891,16 +1279,97 @@ export default function MessageThread() {
     }
   }, []);
 
+  const closeMessageFocus = useCallback(() => {
+    setMessageFocus(null);
+    setSelectedIds((prev) => (selectMode ? prev : new Set()));
+  }, [selectMode]);
+
+  useEffect(() => {
+    if (!messageFocus || selectMode) return;
+
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeMessageFocus();
+      }
+    };
+
+    messageFocusClosingViaPopRef.current = false;
+    messageFocusHistoryPushedRef.current = false;
+    try {
+      window.history.pushState({ souqMessageFocus: true }, "");
+      messageFocusHistoryPushedRef.current = true;
+    } catch {
+      /* history unavailable */
+    }
+
+    const onPopState = () => {
+      messageFocusClosingViaPopRef.current = true;
+      closeMessageFocus();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("popstate", onPopState);
+      if (
+        messageFocusHistoryPushedRef.current &&
+        !messageFocusClosingViaPopRef.current &&
+        window.history.state?.souqMessageFocus
+      ) {
+        window.history.back();
+      }
+      messageFocusHistoryPushedRef.current = false;
+      messageFocusClosingViaPopRef.current = false;
+    };
+  }, [messageFocus, selectMode, closeMessageFocus]);
+
   const exitSelectMode = useCallback(() => {
     clearLongPressTimer();
     setSelectMode(false);
     setSelectedIds(new Set());
+    setDeleteSheetOpen(false);
+    setMessageFocus(null);
   }, [clearLongPressTimer]);
 
-  const enterSelectWith = useCallback((id: number) => {
-    setSelectMode(true);
-    setSelectedIds(new Set([id]));
+  useEffect(() => {
+    if (selectMode && selectedIds.size < 2) {
+      exitSelectMode();
+    }
+  }, [exitSelectMode, selectMode, selectedIds.size]);
+
+  useEffect(() => {
+    if (!conversationOk || messages == null) return;
+    clearConversationUnreadInInboxCache(queryClient, conversationId);
+  }, [conversationId, conversationOk, messages, queryClient]);
+
+  const openMessageFocus = useCallback((m: ChatMessage, bubbleEl: HTMLElement) => {
+    if (isMessageDeletedForEveryone(m)) return;
+    const rect = bubbleEl.getBoundingClientRect();
+    setSelectMode(false);
+    setSelectedIds(new Set([m.id]));
+    setMessageFocus({
+      message: m,
+      anchor: {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      },
+    });
   }, []);
+
+  const startReply = useCallback(
+    (m: ChatMessage) => {
+      setReplyToMessage(m);
+      closeMessageFocus();
+      requestAnimationFrame(() => {
+        composerTextareaRef.current?.focus();
+      });
+    },
+    [closeMessageFocus],
+  );
 
   const toggleSelected = useCallback((id: number) => {
     setSelectedIds((prev) => {
@@ -911,14 +1380,26 @@ export default function MessageThread() {
     });
   }, []);
 
-  const onMessagePointerDown = (m: ChatMessage, e: React.PointerEvent) => {
+  const onMessagePointerDown = (
+    m: ChatMessage,
+    e: React.PointerEvent,
+    bubbleEl: HTMLElement,
+  ) => {
     if (selectMode) return;
-    if ((e.target as HTMLElement).closest("a")) return;
+    if (messageFocus && messageFocus.message.id === m.id) return;
     clearLongPressTimer();
+    const targetEl = bubbleEl;
     lpTimerRef.current = window.setTimeout(() => {
       lpTimerRef.current = null;
       longPressConsumedRef.current = true;
-      enterSelectWith(m.id);
+      openMessageFocus(m, targetEl);
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        try {
+          navigator.vibrate(12);
+        } catch {
+          /* optional haptic */
+        }
+      }
     }, 480);
   };
 
@@ -926,16 +1407,152 @@ export default function MessageThread() {
     clearLongPressTimer();
   };
 
+  const addSecondMessageToSelection = useCallback(
+    (m: ChatMessage) => {
+      if (!messageFocus || selectMode) return;
+      if (m.id === messageFocus.message.id) return;
+      setSelectMode(true);
+      setSelectedIds(new Set([messageFocus.message.id, m.id]));
+      setMessageFocus(null);
+    },
+    [messageFocus, selectMode],
+  );
+
+  const onMessageTapWhileFocus = useCallback(
+    (m: ChatMessage) => {
+      addSecondMessageToSelection(m);
+    },
+    [addSecondMessageToSelection],
+  );
+
   const onMessageClick = (m: ChatMessage, e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("a")) return;
     if (longPressConsumedRef.current) {
       longPressConsumedRef.current = false;
       return;
     }
+    if (messageFocus && !selectMode) {
+      e.preventDefault();
+      if (m.id === messageFocus.message.id) {
+        closeMessageFocus();
+        return;
+      }
+      addSecondMessageToSelection(m);
+      return;
+    }
     if (!selectMode) return;
     e.preventDefault();
     toggleSelected(m.id);
   };
+
+  const onSwipeReply = (m: ChatMessage) => {
+    if (selectMode || isMessageDeletedForEveryone(m)) return;
+    closeMessageFocus();
+    startReply(m);
+  };
+
+  const scrollToMessage = useCallback(
+    (messageId: number): boolean => {
+      const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
+      if (!el) return false;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightMessageId(messageId);
+      window.setTimeout(() => setHighlightMessageId(null), 1800);
+      return true;
+    },
+    [],
+  );
+
+  const openForwardPicker = useCallback((msgs: ChatMessage[]) => {
+    const forwardable = filterForwardableMessages(msgs);
+    if (!forwardable.length) {
+      const cap = msgs[0] ? resolveForwardCapability(msgs[0]) : null;
+      toast({
+        title: t(
+          cap?.kind === "unsupported" ? cap.reasonKey : "message_thread.forward_unsupported",
+        ),
+        variant: "destructive",
+      });
+      return;
+    }
+    setForwardMessages(forwardable);
+    setForwardPickerOpen(true);
+  }, [toast, t]);
+
+  const onForwardSelected = useCallback(() => {
+    if (!selectedIds.size || !messages?.length) return;
+    const selected = messages.filter((m) => selectedIds.has(m.id));
+    openForwardPicker(selected);
+    exitSelectMode();
+  }, [selectedIds, messages, openForwardPicker, exitSelectMode]);
+
+  const navigateToQuotedMessage = useCallback(
+    (sourceMessageId: number) => {
+      const stillInThread = (messages ?? []).some(
+        (m) => m.id === sourceMessageId && !isMessageDeletedForEveryone(m),
+      );
+      if (!stillInThread || !scrollToMessage(sourceMessageId)) {
+        toast({
+          title: t("message_thread.reply_source_unavailable"),
+          variant: "destructive",
+        });
+      }
+    },
+    [messages, scrollToMessage, toast, t],
+  );
+
+  const navigateToReplySource = useCallback(() => {
+    if (!replyToMessage) return;
+    navigateToQuotedMessage(replyToMessage.id);
+  }, [replyToMessage, navigateToQuotedMessage]);
+
+  const buildReplyQuoteData = useCallback(
+    (source: Pick<ChatMessage, "id" | "senderId" | "body" | "messageType" | "imageUrl" | "deletedForEveryoneAt">): MessageReplyQuoteData => {
+      const isMine = source.senderId === user?.id;
+      const authorLabel = t("message_thread.reply_preview_label", {
+        name: isMine
+          ? t("message_thread.reply_preview_self")
+          : conv?.otherName?.trim() || t("messages.user"),
+      });
+      let preview: string;
+      if (source.deletedForEveryoneAt) {
+        preview = isMine
+          ? t("message_thread.deleted_for_everyone_by_me")
+          : t("message_thread.deleted_for_everyone_by_peer");
+      } else {
+        preview =
+          getChatMessageCopyText(source as ChatMessage) ??
+          (source.messageType === "image"
+            ? t("message_thread.reply_preview_image")
+            : t("message_thread.reply_preview_empty"));
+      }
+      return {
+        sourceMessageId: source.id,
+        authorLabel,
+        preview,
+      };
+    },
+    [user?.id, conv?.otherName, t],
+  );
+
+  const replyQuotesByMessageId = useMemo(() => {
+    const list = messages ?? [];
+    const byId = new Map(list.map((m) => [m.id, m]));
+    const map: Record<number, MessageReplyQuoteData> = {};
+    for (const m of list) {
+      const quoted =
+        m.quotedMessage ??
+        (m.replyToMessageId != null
+          ? (() => {
+              const src = byId.get(m.replyToMessageId);
+              return src ? toQuotedMessageFromChat(src) : null;
+            })()
+          : null);
+      if (!quoted) continue;
+      map[m.id] = buildReplyQuoteData(quoted);
+    }
+    return map;
+  }, [messages, buildReplyQuoteData]);
 
   const onMessageRowKeyDown = (m: ChatMessage, e: React.KeyboardEvent) => {
     if (!selectMode) return;
@@ -945,22 +1562,39 @@ export default function MessageThread() {
     }
   };
 
+  const selectableMessages = useMemo(
+    () =>
+      (messages ?? []).filter((m) => !isMessageDeletedForEveryone(m)),
+    [messages],
+  );
+
+  const enterMultiSelectFromFocus = useCallback(() => {
+    setSelectMode(true);
+    setSelectedIds(new Set(selectableMessages.map((m) => m.id)));
+    setMessageFocus(null);
+  }, [selectableMessages]);
+
   const canDeleteSelectedForEveryone = useMemo(() => {
     if (!user || !selectedIds.size || !messages?.length) return false;
-    return [...selectedIds].some((id) => {
-      const m = messages.find((x) => x.id === id);
-      return (
-        m != null &&
-        m.senderId === user.id &&
-        !isMessageDeletedForEveryone(m)
-      );
-    });
+    const selected = (messages ?? []).filter((m) => selectedIds.has(m.id));
+    if (selected.length !== selectedIds.size) return false;
+    return selected.every(
+      (m) => m.senderId === user.id && !isMessageDeletedForEveryone(m),
+    );
   }, [user, selectedIds, messages]);
+
+  const canReplySelected = selectedIds.size === 1;
 
   const canCopySelected = useMemo(
     () => selectionHasCopyableMessages(messages, selectedIds),
     [messages, selectedIds],
   );
+
+  const canForwardSelected = useMemo(() => {
+    if (!selectedIds.size || !messages?.length) return false;
+    const selected = messages.filter((m) => selectedIds.has(m.id));
+    return filterForwardableMessages(selected).length > 0;
+  }, [messages, selectedIds]);
 
   const onCopySelected = useCallback(async () => {
     if (!selectedIds.size || !canCopySelected) return;
@@ -1031,11 +1665,26 @@ export default function MessageThread() {
     t,
   ]);
 
-  const stableRowPointerDown = useCallback((m: ChatMessage, e: React.PointerEvent) => {
-    rowPointerDownRef.current(m, e);
+  const stableRowPointerDown = useCallback(
+    (m: ChatMessage, e: React.PointerEvent, bubbleEl: HTMLElement) => {
+      rowPointerDownRef.current(m, e, bubbleEl);
+    },
+    [],
+  );
+  const stableSwipeReply = useCallback((m: ChatMessage) => {
+    rowSwipeReplyRef.current(m);
   }, []);
+  const stableReplyQuoteNavigate = useCallback(
+    (sourceMessageId: number) => {
+      navigateToQuotedMessage(sourceMessageId);
+    },
+    [navigateToQuotedMessage],
+  );
   const stableRowPointerEnd = useCallback(() => {
     rowPointerEndRef.current();
+  }, []);
+  const stableRowTapWhileFocus = useCallback((m: ChatMessage) => {
+    rowTapWhileFocusRef.current(m);
   }, []);
   const stableRowClick = useCallback((m: ChatMessage, e: React.MouseEvent) => {
     rowClickRef.current(m, e);
@@ -1043,6 +1692,161 @@ export default function MessageThread() {
   const stableRowKeyDown = useCallback((m: ChatMessage, e: React.KeyboardEvent) => {
     rowKeyDownRef.current(m, e);
   }, []);
+
+  const selectAllMessages = useCallback(() => {
+    setSelectMode(true);
+    setSelectedIds(new Set(selectableMessages.map((m) => m.id)));
+  }, [selectableMessages]);
+
+  const onReplySelected = useCallback(() => {
+    if (selectedIds.size !== 1 || !messages?.length) return;
+    const id = [...selectedIds][0]!;
+    const msg = messages.find((x) => x.id === id);
+    if (!msg || isMessageDeletedForEveryone(msg)) return;
+    startReply(msg);
+    exitSelectMode();
+  }, [selectedIds, messages, startReply, exitSelectMode]);
+
+  const onFocusCopy = useCallback(async () => {
+    if (!messageFocus) return;
+    const text = getChatMessageCopyText(messageFocus.message);
+    if (!text?.length) {
+      toast({
+        title: t("message_thread.select_copy_empty"),
+        variant: "destructive",
+      });
+      return;
+    }
+    const ok = await copyTextToClipboard(text);
+    if (!ok) {
+      toast({
+        title: t("message_thread.select_copy_failed"),
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({ title: t("message_thread.select_copy_done") });
+    closeMessageFocus();
+  }, [messageFocus, toast, t, closeMessageFocus]);
+
+  const onFocusDeleteForMe = useCallback(() => {
+    if (!messageFocus || !conversationOk || selectionActionBusy) return;
+    const id = messageFocus.message.id;
+    setSelectionActionBusy(true);
+    hideMessagesForMe.mutate(
+      { convId: conversationId, data: { messageIds: [id] } },
+      {
+        onSuccess: () => {
+          removeMessagesFromCache([id]);
+          closeMessageFocus();
+          void queryClient.invalidateQueries({
+            queryKey: getListMessagesQueryKey(convIdForQuery),
+          });
+        },
+        onError: (err: unknown) => {
+          toast({
+            title: t("message_thread.delete_for_me_failed"),
+            description: err instanceof Error && err.message ? err.message : undefined,
+            variant: "destructive",
+          });
+        },
+        onSettled: () => {
+          setSelectionActionBusy(false);
+        },
+      },
+    );
+  }, [
+    messageFocus,
+    conversationOk,
+    selectionActionBusy,
+    hideMessagesForMe,
+    conversationId,
+    removeMessagesFromCache,
+    closeMessageFocus,
+    queryClient,
+    convIdForQuery,
+    toast,
+    t,
+  ]);
+
+  const onFocusDeleteForEveryone = useCallback(async () => {
+    if (!messageFocus || !conversationOk || !user || selectionActionBusy) return;
+    const m = messageFocus.message;
+    if (m.senderId !== user.id || isMessageDeletedForEveryone(m)) return;
+    setSelectionActionBusy(true);
+    try {
+      const result = await deleteMessagesForEveryone(conversationId, [m.id]);
+      if (result.deletedForEveryoneAt) {
+        markMessagesDeletedForEveryoneInCache(
+          result.messageIds,
+          result.deletedForEveryoneAt,
+        );
+      } else {
+        removeMessagesFromCache(result.messageIds);
+      }
+      closeMessageFocus();
+      void queryClient.invalidateQueries({ queryKey: getListConversationsQueryKey() });
+    } catch (err: unknown) {
+      toast({
+        title: t("message_thread.delete_for_everyone_failed"),
+        description: err instanceof Error && err.message ? err.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setSelectionActionBusy(false);
+    }
+  }, [
+    messageFocus,
+    conversationOk,
+    user,
+    selectionActionBusy,
+    conversationId,
+    markMessagesDeletedForEveryoneInCache,
+    removeMessagesFromCache,
+    closeMessageFocus,
+    queryClient,
+    toast,
+    t,
+  ]);
+
+  const onReactionPick = useCallback(
+    (emoji: string) => {
+      if (!messageFocus || !conversationOk) return;
+      const messageId = messageFocus.message.id;
+      const prevReaction = messageReactions[messageId] ?? null;
+      const optimisticReaction = prevReaction === emoji ? null : emoji;
+      patchMessageReactionInCache(messageId, optimisticReaction);
+      closeMessageFocus();
+      void (async () => {
+        try {
+          const result = await setMessageReaction(conversationId, messageId, emoji);
+          patchMessageReactionInCache(result.messageId, result.myReaction);
+        } catch (err: unknown) {
+          patchMessageReactionInCache(messageId, prevReaction);
+          toast({
+            title: t("message_thread.reaction_save_failed"),
+            description: err instanceof Error && err.message ? err.message : undefined,
+            variant: "destructive",
+          });
+        }
+      })();
+    },
+    [
+      messageFocus,
+      conversationOk,
+      conversationId,
+      messageReactions,
+      patchMessageReactionInCache,
+      closeMessageFocus,
+      toast,
+      t,
+    ],
+  );
+
+  const onFocusSelectAll = useCallback(() => {
+    if (!messageFocus) return;
+    enterMultiSelectFromFocus();
+  }, [messageFocus, enterMultiSelectFromFocus]);
 
   const onDeleteSelectedForMe = () => {
     if (!selectedIds.size || !conversationOk || selectionActionBusy) return;
@@ -1181,11 +1985,13 @@ export default function MessageThread() {
     messages == null &&
     !isError;
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSend = (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!conversationOk) return;
+    composerSendingRef.current = true;
     flushTypingToPeer();
     if (composerLocked) {
+      composerSendingRef.current = false;
       toast({
         title: t("message_thread.chat_send_blocked_toast_title"),
         description: peerBlockPending
@@ -1196,19 +2002,28 @@ export default function MessageThread() {
       return;
     }
     const trimmed = body.trim();
-    if (!trimmed && !pendingImageFile) return;
+    if (!trimmed && !pendingImageFile) {
+      composerSendingRef.current = false;
+      return;
+    }
+
+    const replyingTo = replyToMessage;
 
     const onSuccess = (newMsg: ChatMessage) => {
+      const mergedMsg = enrichSentMessageWithReply(newMsg, replyingTo);
       setBody("");
       setPendingImageFile(null);
+      setReplyToMessage(null);
       scrollToBottom();
       queryClient.setQueryData<ChatMessage[]>(
         getListMessagesQueryKey(convIdForQuery),
-        (old) => mergeMessagesIntoList(old, newMsg),
+        (old) => mergeMessagesIntoList(old, mergedMsg),
       );
+      composerSendingRef.current = false;
     };
 
     const onSendBlockedOrError = (err: unknown) => {
+      composerSendingRef.current = false;
       if (err instanceof ApiError && err.status === 403) {
         void queryClient.invalidateQueries({ queryKey: peerBlockQueryKey });
         void invalidateUserPresenceBatchQueries(queryClient, peerPresenceTargets);
@@ -1237,11 +2052,13 @@ export default function MessageThread() {
               data: {
                 imageUrl,
                 ...(trimmed ? { body: trimmed } : {}),
+                ...(replyingTo ? { replyToMessageId: replyingTo.id } : {}),
               },
             },
             {
               onSuccess,
               onError: (err) => {
+                composerSendingRef.current = false;
                 if (err instanceof ApiError && err.status === 403) {
                   void queryClient.invalidateQueries({ queryKey: peerBlockQueryKey });
                   void invalidateUserPresenceBatchQueries(queryClient, peerPresenceTargets);
@@ -1264,6 +2081,7 @@ export default function MessageThread() {
             },
           );
         } catch (err) {
+          composerSendingRef.current = false;
           setUploadBusy(false);
           toast({
             title:
@@ -1278,7 +2096,13 @@ export default function MessageThread() {
     }
 
     send.mutate(
-      { convId: conversationId, data: { body: trimmed } },
+      {
+        convId: conversationId,
+        data: {
+          body: trimmed,
+          ...(replyingTo ? { replyToMessageId: replyingTo.id } : {}),
+        },
+      },
       {
         onSuccess,
         onError: onSendBlockedOrError,
@@ -1352,7 +2176,12 @@ export default function MessageThread() {
 
   const canSend = Boolean(body.trim() || pendingImageFile);
 
-  const quickKeys = conv?.isSeller ? SELLER_QUICK_KEYS : BUYER_QUICK_KEYS;
+  const quickKeys =
+    conv?.isSeller === true
+      ? SELLER_QUICK_KEYS
+      : conv?.isSeller === false
+        ? BUYER_QUICK_KEYS
+        : null;
   const dirRtl = locale === "ar";
 
   const showPeerTyping =
@@ -1369,7 +2198,7 @@ export default function MessageThread() {
     });
   };
 
-  const quickReplies = quickKeys.map((key) => t(key));
+  const quickReplies = quickKeys?.map((key) => t(key)) ?? [];
 
   const dismissMenuTip = () => {
     setSeenFlag(CHAT_MENU_TIP_SEEN_KEY);
@@ -1388,144 +2217,62 @@ export default function MessageThread() {
   rowPointerEndRef.current = onMessagePointerEnd;
   rowClickRef.current = onMessageClick;
   rowKeyDownRef.current = onMessageRowKeyDown;
+  rowSwipeReplyRef.current = onSwipeReply;
+  rowTapWhileFocusRef.current = onMessageTapWhileFocus;
 
   return (
     <div
-      className="flex min-h-[100dvh] w-full flex-col bg-[#0A0A0A]"
-      style={{ height: "100dvh" }}
+      className="flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-[#0A0A0A]"
       dir={dirRtl ? "rtl" : "ltr"}
     >
-      <header className="shrink-0 bg-[#0A0A0A] px-4 pb-2 pt-3 md:px-6">
-        <div className="mx-auto w-full max-w-[820px] rounded-2xl border border-primary/35 bg-[#0A0A0A] px-3 py-2.5 shadow-[0_0_24px_-14px_hsl(var(--primary)/0.12),0_4px_20px_-12px_rgba(0,0,0,0.45)] ring-1 ring-primary/15">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-1 items-start gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectMode) exitSelectMode();
-                  else if (orderReturnNumber) {
-                    navigate(
-                      orderReturnRole === "seller"
-                        ? getSellerOrderDetailPath(orderReturnNumber)
-                        : getBuyerOrderDetailPath(orderReturnNumber),
-                    );
-                  }
-                  else navigate("/messages");
-                }}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/60 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 hover:bg-black/90 active:opacity-90"
-              >
-                <ArrowRight className="h-5 w-5" />
-              </button>
-              {conv?.adImage && conv?.adAvailable !== false ? (
-                <Link
-                  href={`/ad/${conv.adId}`}
-                  className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-[#0A0A0A]"
-                >
-                  <img
-                    src={conv.adImage}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    loading="eager"
-                    decoding="async"
-                    sizes="44px"
-                  />
-                </Link>
-              ) : (
-                <div
-                  className="h-11 w-11 shrink-0 rounded-xl border border-primary/25 bg-[#0A0A0A]"
-                  title={
-                    conv?.adAvailable === false
-                      ? t("message_thread.menu_ad_unavailable")
-                      : undefined
-                  }
-                />
-              )}
-              <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
-                <div className="w-full min-w-0 truncate text-sm font-bold leading-tight text-white">
-                  {conv?.otherName || "..."}
-                </div>
-                {showPeerTyping ? (
-                  <div
-                    className="flex min-w-0 items-center gap-1.5 text-[12px] font-medium leading-tight text-primary/90 sm:text-[13px]"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <span className="min-w-0 shrink truncate">{t("message_thread.typing")}</span>
-                    <span className="inline-flex shrink-0 items-end gap-0.5 pb-0.5" aria-hidden>
-                      <span className="inline-block h-1 w-1 animate-bounce rounded-full bg-primary [animation-duration:1s] [animation-delay:0ms]" />
-                      <span className="inline-block h-1 w-1 animate-bounce rounded-full bg-primary/75 [animation-duration:1s] [animation-delay:120ms]" />
-                      <span className="inline-block h-1 w-1 animate-bounce rounded-full bg-primary/55 [animation-duration:1s] [animation-delay:240ms]" />
-                    </span>
-                  </div>
-                ) : null}
-                {peerPresenceTargets.length > 0 && secondaryQueriesReady && !showPeerTyping ? (
-                  <div className="w-full min-w-0 max-w-full shrink-0">
-                    <UserPresenceBadge
-                      entry={peerPresenceEntry}
-                      isLoading={peerPresenceQ.isPending}
-                      variant="default"
-                    />
-                  </div>
-                ) : null}
-                {conv &&
-                  (conv.adAvailable !== false ? (
-                    <Link
-                      href={`/ad/${conv.adId}`}
-                      className="block truncate text-xs text-zinc-400 hover:text-primary"
-                    >
-                      {conv.adTitle}
-                    </Link>
-                  ) : (
-                    <span
-                      className="block truncate text-xs text-zinc-500"
-                      title={t("message_thread.menu_ad_unavailable")}
-                    >
-                      {conv.adTitle || t("message_thread.menu_ad_unavailable")}
-                    </span>
-                  ))}
-              </div>
-            </div>
-            {conv ? (
-              <div className="relative">
-                {!menuTipSeen ? (
-                  <aside
-                    className="absolute -bottom-[4.55rem] end-0 z-30 w-[min(18.5rem,74vw)]"
-                    dir={dirRtl ? "rtl" : "ltr"}
-                  >
-                    <div className={`${CHAT_TIP_CARD} p-2.5`}>
-                      <div className="mb-1 flex items-start justify-between gap-2">
-                        <span className="text-[11px] font-semibold text-primary">⋮</span>
-                        <button
-                          type="button"
-                          onClick={dismissMenuTip}
-                          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-primary/35 bg-[#0A0A0A] text-primary hover:bg-black/30"
-                          aria-label={t("message_thread.tip_close")}
-                        >
-                          <X className="h-3 w-3" aria-hidden />
-                        </button>
-                      </div>
-                      <p className="text-[11px] leading-snug text-zinc-300">
-                        {t("message_thread.tip_menu")}
-                      </p>
-                    </div>
-                  </aside>
-                ) : null}
-                <ChatThreadOverflowMenu
-                  conversationId={conversationId}
-                  otherUserId={conv.otherId}
-                  adId={conv.adId}
-                  adAvailable={conv.adAvailable !== false}
-                  dirRtl={dirRtl}
-                />
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </header>
+      {selectMode && selectedIds.size >= 2 ? (
+        <ChatThreadSelectionHeader
+          dirRtl={dirRtl}
+          selectedCount={selectedIds.size}
+          totalCount={selectableMessages.length}
+          busy={selectionActionBusy || hideMessagesForMe.isPending}
+          onCancel={exitSelectMode}
+          onSelectAll={selectAllMessages}
+        />
+      ) : (
+        <ChatThreadHeader
+          conv={conv}
+          dirRtl={dirRtl}
+          showPeerTyping={showPeerTyping}
+          peerPresenceEntry={peerPresenceEntry}
+          peerPresenceLoading={peerPresenceQ.isPending && peerPresenceEnabled}
+          menuTipSeen={menuTipSeen}
+          onDismissMenuTip={dismissMenuTip}
+          onBack={() => {
+            if (orderReturnNumber) {
+              navigate(
+                orderReturnRole === "seller"
+                  ? getSellerOrderDetailPath(orderReturnNumber)
+                  : getBuyerOrderDetailPath(orderReturnNumber),
+              );
+            } else navigate("/messages");
+          }}
+        />
+      )}
+
+      {conv && !(selectMode && selectedIds.size >= 2) ? (
+        <ChatProductContextBar conv={conv} dirRtl={dirRtl} />
+      ) : null}
+
+      <ChatThreadDeleteSheet
+        open={deleteSheetOpen}
+        dirRtl={dirRtl}
+        selectedCount={selectedIds.size}
+        canDeleteForEveryone={canDeleteSelectedForEveryone}
+        busy={selectionActionBusy || hideMessagesForMe.isPending}
+        onOpenChange={setDeleteSheetOpen}
+        onConfirmDeleteForMe={onDeleteSelectedForMe}
+        onConfirmDeleteForEveryone={() => void onDeleteSelectedForEveryone()}
+      />
 
       {orderReturnNumber ? <OrderChatContextBanner orderNumber={orderReturnNumber} /> : null}
 
-      {conversationOk && !selectionTipSeen ? (
+      {conversationOk && !selectionTipSeen && !selectMode && !messageFocus ? (
         <aside
           className="mx-auto w-full max-w-[820px] shrink-0 px-4 pb-1.5 pt-0 md:px-6"
           dir={dirRtl ? "rtl" : "ltr"}
@@ -1549,11 +2296,21 @@ export default function MessageThread() {
         </aside>
       ) : null}
 
-      <div className="mx-auto flex min-h-0 w-full max-w-[820px] flex-1 flex-col px-4 pt-2 md:px-6">
+      <div className="mx-auto flex min-h-0 w-full max-w-[820px] flex-1 flex-col pl-1.5 pr-2.5 pt-2 md:pl-2 md:pr-4">
         <div
           ref={scrollRef}
           data-chat-scroll
-          className="flex min-h-0 flex-1 touch-pan-y flex-col items-start gap-2 overflow-y-auto px-3 pb-3 pt-2"
+          dir="ltr"
+          onContextMenu={blockChatNativeMenu}
+          onClick={(e) => {
+            if (!messageFocus || selectMode) return;
+            if ((e.target as HTMLElement).closest("[data-message-id]")) return;
+            closeMessageFocus();
+          }}
+          className={cn(
+            "relative flex min-h-0 flex-1 touch-pan-y flex-col gap-2 overflow-y-auto pb-3 pl-0 pr-0.5 pt-2",
+            CHAT_MESSAGE_TOUCH_GUARD,
+          )}
         >
             {isError && hasStoredMessages ? (
               <div className="sticky top-0 z-10 mb-1 flex w-full flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/35 bg-amber-950 px-3 py-2 text-[12px] text-amber-100">
@@ -1571,8 +2328,8 @@ export default function MessageThread() {
             ) : null}
             {showMessagesSkeleton ? (
               <>
-                <Skeleton className="h-[3.5rem] max-w-[75%] self-start rounded-2xl rounded-bl-md bg-[#0A0A0A]/70" />
-                <Skeleton className="h-[3.5rem] max-w-[75%] self-end rounded-2xl rounded-br-md bg-[#0A0A0A]/70" />
+                <Skeleton className="mr-auto h-[3.5rem] max-w-[75%] rounded-[17px] rounded-bl-[6px] border border-zinc-600/35 bg-[#151515]/80" />
+                <Skeleton className="ml-auto h-[3.5rem] max-w-[75%] rounded-[17px] rounded-br-[6px] border border-primary/30 bg-[#0d1209]/80" />
               </>
             ) : isError && !hasStoredMessages ? (
               <div className="flex w-full flex-col items-center justify-center gap-3 py-14 text-center">
@@ -1589,19 +2346,36 @@ export default function MessageThread() {
               </div>
             ) : hasStoredMessages ? (
               (messages ?? []).map((m: ChatMessage) => (
-                <ChatMessageBubbleRow
+                <div
                   key={m.id}
+                  className="relative flex w-full transition-opacity duration-150"
+                >
+                <ChatMessageBubbleRow
                   m={m}
                   mine={m.senderId === user!.id}
                   selectMode={selectMode}
+                  showFocusSelectChrome={messageFocus != null && !selectMode}
                   isSelected={selectedIds.has(m.id)}
+                  isFocused={messageFocus?.message.id === m.id}
+                  isHighlighted={highlightMessageId === m.id}
+                  myReaction={messageReactions[m.id] ?? null}
+                  replyQuote={replyQuotesByMessageId[m.id] ?? null}
+                  interactionLocked={
+                    messageFocus != null &&
+                    !selectMode &&
+                    messageFocus.message.id !== m.id
+                  }
                   dirRtl={dirRtl}
                   locale={locale as MessageBubbleLocale}
                   onRowPointerDown={stableRowPointerDown}
                   onRowPointerEnd={stableRowPointerEnd}
+                  onRowTapWhileFocus={stableRowTapWhileFocus}
                   onRowClick={stableRowClick}
                   onRowKeyDown={stableRowKeyDown}
+                  onSwipeReply={stableSwipeReply}
+                  onReplyQuoteNavigate={stableReplyQuoteNavigate}
                 />
+                </div>
               ))
             ) : (
               <div className="flex w-full flex-col items-center justify-center py-12 text-sm text-zinc-500">
@@ -1609,28 +2383,102 @@ export default function MessageThread() {
               </div>
             )}
         </div>
-        {selectMode ? (
-          <ChatSelectionActionBar
-            dirRtl={dirRtl}
-            selectedCount={selectedIds.size}
-            canDeleteForEveryone={canDeleteSelectedForEveryone}
-            canCopy={canCopySelected}
-            busy={selectionActionBusy || hideMessagesForMe.isPending}
-            onDeleteForMe={onDeleteSelectedForMe}
-            onDeleteForEveryone={() => void onDeleteSelectedForEveryone()}
-            onCopy={() => void onCopySelected()}
-            onCancel={exitSelectMode}
-          />
-        ) : null}
       </div>
+
+      {messageFocus && !selectMode ? (
+        <ChatMessageFocusErrorBoundary onError={closeMessageFocus}>
+          <ChatMessageFocusBackdrop />
+          <ChatMessageReactionsBar
+            anchor={messageFocus.anchor}
+            messageId={messageFocus.message.id}
+            dirRtl={dirRtl}
+            onPick={onReactionPick}
+          />
+          <ChatMessageActionsSheet
+            mode="focus"
+            open
+            dirRtl={dirRtl}
+            message={messageFocus.message}
+            mine={messageFocus.message.senderId === user?.id}
+            canCopy={Boolean(getChatMessageCopyText(messageFocus.message))}
+            canForward={
+              resolveForwardCapability(messageFocus.message).kind === "send"
+            }
+            busy={selectionActionBusy || hideMessagesForMe.isPending}
+            onOpenChange={(open) => {
+              if (!open) closeMessageFocus();
+            }}
+            onReply={() => startReply(messageFocus.message)}
+            onForward={() => openForwardPicker([messageFocus.message])}
+            onCopy={() => void onFocusCopy()}
+            onSelectAll={onFocusSelectAll}
+            onDeleteForMe={onFocusDeleteForMe}
+            onDeleteForEveryone={() => void onFocusDeleteForEveryone()}
+          />
+        </ChatMessageFocusErrorBoundary>
+      ) : null}
+
+      {selectMode && selectedIds.size >= 2 ? (
+        <ChatMessageActionsSheet
+          mode="multi"
+          open
+          dirRtl={dirRtl}
+          selectedCount={selectedIds.size}
+          canReply={canReplySelected}
+          canCopy={canCopySelected}
+          canForward={canForwardSelected}
+          canDeleteForEveryone={canDeleteSelectedForEveryone}
+          busy={selectionActionBusy || hideMessagesForMe.isPending}
+          onReply={onReplySelected}
+          onForward={onForwardSelected}
+          onCopy={() => void onCopySelected()}
+          onDeleteForMe={onDeleteSelectedForMe}
+          onDeleteForEveryone={() => void onDeleteSelectedForEveryone()}
+        />
+      ) : null}
+
+      <ChatForwardPickerSheet
+        open={forwardPickerOpen}
+        dirRtl={dirRtl}
+        currentConvId={conversationId}
+        messages={forwardMessages}
+        onOpenChange={setForwardPickerOpen}
+        onDone={({ sent, failed }) => {
+          if (sent > 0 && failed === 0) {
+            toast({ title: t("message_thread.forward_success", { count: sent }) });
+          } else if (sent > 0) {
+            toast({
+              title: t("message_thread.forward_partial", { sent, failed }),
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: t("message_thread.forward_failed"),
+              variant: "destructive",
+            });
+          }
+        }}
+      />
+
       <form
+        ref={composerFormRef}
         onSubmit={handleSend}
         className={cn(
-          "sticky bottom-0 z-50 w-full shrink-0 border-t border-primary/20 bg-[#0A0A0A] px-3 pt-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_20px_-12px_rgba(0,0,0,0.65)]",
+          "z-50 w-full shrink-0 border-t border-primary/18 bg-[#0A0A0A] px-2.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_-12px_rgba(0,0,0,0.6)]",
           selectMode && "pointer-events-none opacity-40",
         )}
       >
-        <div className="mx-auto flex w-full max-w-[820px] flex-col gap-2">
+        <div className="mx-auto flex w-full max-w-[820px] flex-col gap-1.5">
+          {replyToMessage ? (
+            <ChatReplyPreviewBar
+              message={replyToMessage}
+              peerName={conv?.otherName}
+              currentUserId={user?.id}
+              dirRtl={dirRtl}
+              onCancel={() => setReplyToMessage(null)}
+              onNavigateToSource={navigateToReplySource}
+            />
+          ) : null}
           <input
             ref={galleryInputRef}
             type="file"
@@ -1700,19 +2548,21 @@ export default function MessageThread() {
                   </button>
                 </div>
               ) : null}
-              <div className={QUICK_REPLY_ROW}>
-                {quickReplies.map((line) => (
-                  <button
-                    key={`fixed-${line}`}
-                    type="button"
-                    disabled={composerLocked}
-                    onClick={() => appendQuick(line)}
-                    className={QUICK_REPLY_CHIP}
-                  >
-                    {line}
-                  </button>
-                ))}
-              </div>
+              {quickKeys ? (
+                <div className={CHAT_QUICK_REPLY_ROW}>
+                  {quickReplies.map((line, index) => (
+                    <button
+                      key={`${quickKeys[index]}`}
+                      type="button"
+                      disabled={composerLocked}
+                      onClick={() => appendQuick(line)}
+                      className={CHAT_QUICK_REPLY_CHIP}
+                    >
+                      {line}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               {peerBlockQueryEnabled && !peerBlockPending && chatPeerMessagingDisabled ? (
                 <div
                   role="alert"
@@ -1743,17 +2593,35 @@ export default function MessageThread() {
               ) : null}
             </>
           )}
-          <div className="flex min-w-0 items-end gap-2">
-            <div className={CHAT_COMPOSER_FIELD_SHELL} dir={dirRtl ? "rtl" : "ltr"}>
-              <ChatComposerAttachButton
+          <div className="flex min-w-0 items-end gap-1.5">
+            <div className={CHAT_COMPOSER_FIELD_SHELL} dir="ltr">
+              <ChatComposerEmojiButton
                 dirRtl={dirRtl}
                 disabled={busy || composerLocked}
-                onClick={() => setAttachSheetOpen(true)}
+                open={composerEmojiOpen}
+                onOpenChange={(next) => {
+                  if (next) composerTextareaRef.current?.blur();
+                  setComposerEmojiOpen(next);
+                }}
+                onPick={insertComposerEmoji}
               />
               <textarea
                 ref={composerTextareaRef}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
+                onFocus={() => {
+                  setComposerEmojiOpen(false);
+                  setComposerFocused(true);
+                }}
+                onBlur={() => {
+                  if (composerSendingRef.current) return;
+                  window.setTimeout(() => {
+                    if (composerSendingRef.current) return;
+                    if (composerTextareaRef.current === document.activeElement) return;
+                    if (composerFormRef.current?.contains(document.activeElement)) return;
+                    setComposerFocused(false);
+                  }, 80);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -1763,21 +2631,32 @@ export default function MessageThread() {
                 placeholder={t("message_thread.placeholder")}
                 rows={1}
                 disabled={composerLocked}
+                dir={dirRtl ? "rtl" : "ltr"}
                 className={CHAT_COMPOSER_TEXTAREA}
+              />
+              <ChatComposerAttachButton
+                dirRtl={dirRtl}
+                disabled={busy || composerLocked}
+                onClick={() => setAttachSheetOpen(true)}
               />
             </div>
             <button
-            type="submit"
-            disabled={busy || !canSend || composerLocked}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-black shadow-[0_0_16px_-8px_hsl(var(--primary)/0.52)] transition-[transform,box-shadow] hover:shadow-[0_0_20px_-8px_hsl(var(--primary)/0.62)] active:scale-[0.98] disabled:opacity-50"
-            aria-label={t("message_thread.send")}
-          >
-            {send.isPending ? (
-              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-            ) : (
-              <Send className="h-5 w-5" aria-hidden />
-            )}
-          </button>
+              type="button"
+              tabIndex={-1}
+              disabled={busy || !canSend || composerLocked}
+              onPointerDown={(e) => {
+                e.preventDefault();
+              }}
+              onClick={() => handleSend()}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-black shadow-[0_0_14px_-8px_hsl(var(--primary)/0.48)] transition-[transform,box-shadow] hover:shadow-[0_0_18px_-8px_hsl(var(--primary)/0.58)] active:scale-[0.98] disabled:opacity-50"
+              aria-label={t("message_thread.send")}
+            >
+              {send.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <Send className="h-5 w-5" aria-hidden />
+              )}
+            </button>
           </div>
         </div>
       </form>

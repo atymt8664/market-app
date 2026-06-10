@@ -43,8 +43,10 @@ import {
   X,
 } from "lucide-react";
 
-/** نفس زر الرجوع في رأس الشات */
-const CHAT_HEADER_ICON_BTN =
+import { CHAT_INBOX_OVERFLOW_BTN } from "@/lib/chat-thread-header-styles";
+
+/** Legacy circular lime header control — retained for non-compact callers. */
+const CHAT_HEADER_ICON_BTN_LEGACY =
   "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/60 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 hover:bg-black/90 active:opacity-90";
 
 /** نفس أسلوب bottom sheet صفحة إنشاء إعلان */
@@ -81,6 +83,7 @@ export function ChatThreadOverflowMenu({
   adId,
   adAvailable = true,
   dirRtl,
+  compact = false,
 }: {
   conversationId: number;
   otherUserId: number;
@@ -88,6 +91,8 @@ export function ChatThreadOverflowMenu({
   /** From GET /conversations/:id — false when the ad row was deleted. */
   adAvailable?: boolean;
   dirRtl: boolean;
+  /** Compact ghost icon — P5 thread header polish. */
+  compact?: boolean;
 }) {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
@@ -349,7 +354,7 @@ export function ChatThreadOverflowMenu({
     <>
       <button
         type="button"
-        className={CHAT_HEADER_ICON_BTN}
+        className={compact ? CHAT_INBOX_OVERFLOW_BTN : CHAT_HEADER_ICON_BTN_LEGACY}
         aria-label={t("message_thread.menu_open")}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -359,7 +364,7 @@ export function ChatThreadOverflowMenu({
           setOpen(true);
         }}
       >
-        <MoreVertical className="h-5 w-5" aria-hidden />
+        <MoreVertical className="h-5 w-5" strokeWidth={2.25} aria-hidden />
       </button>
 
       <Sheet

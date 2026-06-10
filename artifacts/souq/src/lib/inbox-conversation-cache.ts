@@ -83,6 +83,23 @@ export function applyIncomingMessageToInboxCache(
   }
 }
 
+/** Zero unread badge after thread messages load (server marks read on GET messages). */
+export function clearConversationUnreadInInboxCache(
+  queryClient: QueryClient,
+  conversationId: number,
+): void {
+  if (!Number.isInteger(conversationId) || conversationId <= 0) return;
+
+  queryClient.setQueryData<ConversationListItem[]>(getListConversationsQueryKey(), (old) => {
+    if (!old || !Array.isArray(old)) return old;
+    const idx = old.findIndex((c) => c.id === conversationId);
+    if (idx < 0 || old[idx]!.unreadCount === 0) return old;
+    const next = [...old];
+    next[idx] = { ...next[idx]!, unreadCount: 0 };
+    return next;
+  });
+}
+
 /** Optimistic removal after hide/delete — keeps user on inbox without full refetch. */
 export function removeConversationsFromInboxCache(
   queryClient: QueryClient,

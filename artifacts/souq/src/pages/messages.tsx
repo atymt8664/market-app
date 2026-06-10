@@ -312,7 +312,7 @@ export default function Messages() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: conversations, isPending, isFetching } = useListConversations({
+  const { data: conversations, isPending, isFetching, isError } = useListConversations({
     query: {
       queryKey: getListConversationsQueryKey(),
       enabled: !!user,
@@ -396,18 +396,19 @@ export default function Messages() {
   );
 
   const runHideConversations = useCallback(
-    async (ids: number[]) => {
+    async (ids: number[], successKey: "p5.chat.inbox.hide_success" | "p5.chat.inbox.delete_success") => {
       if (ids.length === 0) return;
       setActionsBusy(true);
       removeConversationsFromInboxCache(queryClient, ids);
       try {
         await Promise.all(ids.map((id) => hideConversationMutation.mutateAsync({ convId: id })));
         await queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
-        toast({ title: t("p5.chat.inbox.hide_success") });
+        toast({ title: t(successKey) });
         setActionSheetConvId(null);
         exitSelectMode();
       } catch {
         await queryClient.invalidateQueries({ queryKey: getListConversationsQueryKey() });
+        await queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
         toast({ title: t("p5.chat.inbox.hide_failed"), variant: "destructive" });
       } finally {
         setActionsBusy(false);
@@ -509,6 +510,7 @@ export default function Messages() {
       <ChatInboxMutedCollection
         rows={conversations ?? []}
         mutedIds={prefs.mutedIds}
+        loading={isPending}
         onUnmute={toggleMute}
         onBack={() => setCollectionView(null)}
       />
@@ -541,6 +543,7 @@ export default function Messages() {
             <ChatInboxCollectionsMenuButton
               onClick={() => {
                 void queryClient.invalidateQueries({ queryKey: inboxBlockedQueryKey() });
+                void queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
                 setCollectionsMenuOpen(true);
               }}
             />
@@ -580,6 +583,17 @@ export default function Messages() {
             ))}
             <li aria-hidden className={cn(BOTTOM_NAV_SCROLL_END_SPACER_CLASS, "list-none")} />
           </ul>
+        ) : isError ? (
+          <div className="flex w-full flex-col items-center justify-center gap-3 py-10 text-center">
+            <p className="max-w-sm text-sm text-red-300">{t("messages.load_error")}</p>
+            <button
+              type="button"
+              onClick={() => void queryClient.invalidateQueries({ queryKey: getListConversationsQueryKey() })}
+              className="rounded-full border border-primary/40 bg-primary/15 px-5 py-2 text-sm font-medium text-primary hover:bg-primary/25"
+            >
+              {t("message_thread.retry")}
+            </button>
+          </div>
         ) : showInboxEmpty ? (
           <div className="flex w-full justify-center pt-2">
             <div
@@ -658,7 +672,9 @@ export default function Messages() {
         cancelLabel={t("message_thread.hide_confirm_cancel")}
         busy={actionsBusy}
         onConfirm={() => {
-          if (pendingConfirm?.kind === "hide") void runHideConversations(pendingConfirm.ids);
+          if (pendingConfirm?.kind === "hide") {
+            void runHideConversations(pendingConfirm.ids, "p5.chat.inbox.hide_success");
+          }
         }}
         onOpenChange={(next) => {
           if (!next && !actionsBusy) setPendingConfirm(null);
@@ -676,7 +692,9 @@ export default function Messages() {
         busy={actionsBusy}
         destructive
         onConfirm={() => {
-          if (pendingConfirm?.kind === "delete") void runHideConversations(pendingConfirm.ids);
+          if (pendingConfirm?.kind === "delete") {
+            void runHideConversations(pendingConfirm.ids, "p5.chat.inbox.delete_success");
+          }
         }}
         onOpenChange={(next) => {
           if (!next && !actionsBusy) setPendingConfirm(null);

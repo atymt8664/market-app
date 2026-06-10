@@ -17,5 +17,6 @@ export interface ConversationDetail {
   adPriceType?: string | null;
   otherId: number;
   otherName: string;
+  otherAvatarUrl?: string | null;
   isSeller: boolean;
 }

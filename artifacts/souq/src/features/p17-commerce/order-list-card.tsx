@@ -141,7 +141,7 @@ export function OrderListCard({
   );
 }
 
-function coerceOrderAdId(adId: OrderListItem["adId"]): number {
+function coerceOrderAdId(adId: number | string | null | undefined): number {
   if (typeof adId === "number" && Number.isFinite(adId) && adId > 0) return adId;
   if (typeof adId === "string" && adId.trim()) {
     const parsed = Number.parseInt(adId.trim(), 10);

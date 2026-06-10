@@ -5,6 +5,7 @@ import {
   integer,
   timestamp,
   uniqueIndex,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { adsTable } from "./ads";
 import { usersTable } from "./users";
@@ -57,6 +58,10 @@ export const messagesTable = pgTable("messages", {
   readAt: timestamp("read_at", { withTimezone: true }),
   /** Set when the sender deletes the message for everyone (thread tombstone). */
   deletedForEveryoneAt: timestamp("deleted_for_everyone_at", { withTimezone: true }),
+  /** Reply target within the same conversation (nullable). */
+  replyToMessageId: integer("reply_to_message_id").references((): AnyPgColumn => messagesTable.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

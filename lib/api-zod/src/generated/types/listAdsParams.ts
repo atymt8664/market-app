@@ -19,5 +19,13 @@ export type ListAdsParams = {
    * When set, return only ads owned by this user (public approved statuses).
    */
   userId?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
   limit?: number;
+  /**
+   * Opaque keyset cursor from X-Pagination-Next-Cursor response header.
+   */
+  cursor?: string;
 };

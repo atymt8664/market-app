@@ -1152,6 +1152,7 @@ paths:
                 imageUrl: { type: string, nullable: true }
                 latitude: { type: number, minimum: -90, maximum: 90 }
                 longitude: { type: number, minimum: -180, maximum: 180 }
+                replyToMessageId: { type: integer, nullable: true, description: Reply target message id within the same conversation }
       responses:
         "201":
           description: Created
@@ -1199,6 +1200,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+
+  /conversations/{convId}/messages/{messageId}/reaction:
+    put:
+      operationId: setMessageReaction
+      tags: [conversations]
+      summary: Set, replace, or toggle off the current user's reaction on a message
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emoji]
+              properties:
+                emoji: { type: string, maxLength: 32 }
+      responses:
+        "200":
+          description: Reaction applied or removed (toggle)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [messageId, myReaction]
+                properties:
+                  messageId: { type: integer }
+                  myReaction: { type: string, nullable: true }
 
   /conversations/{convId}/messages/hide-for-me:
     post:
@@ -1527,6 +1563,8 @@ components:
         isFavorited: { type: boolean }
         userId: { type: integer, nullable: true }
         createdAt: { type: string, format: date-time }
+        status: { type: string }
+        details: {}
 
     ReactionResponse:
       type: object
@@ -1591,7 +1629,19 @@ components:
         adPriceType: { type: string, nullable: true }
         otherId: { type: integer }
         otherName: { type: string }
+        otherAvatarUrl: { type: string, nullable: true }
         isSeller: { type: boolean }
+
+    QuotedMessage:
+      type: object
+      required: [id, senderId, body, messageType]
+      properties:
+        id: { type: integer }
+        senderId: { type: integer }
+        body: { type: string }
+        messageType: { type: string, enum: [text, image, location] }
+        imageUrl: { type: string, nullable: true }
+        deletedForEveryoneAt: { type: string, format: date-time, nullable: true }
 
     Message:
       type: object
@@ -1606,6 +1656,9 @@ components:
         deliveredAt: { type: string, format: date-time, nullable: true }
         readAt: { type: string, format: date-time, nullable: true }
         deletedForEveryoneAt: { type: string, format: date-time, nullable: true }
+        replyToMessageId: { type: integer, nullable: true }
+        quotedMessage: { $ref: "#/components/schemas/QuotedMessage", nullable: true }
+        myReaction: { type: string, nullable: true, description: Current viewer's reaction emoji on this message, if any }
         createdAt: { type: string, format: date-time }
 
     CreateAdInput:

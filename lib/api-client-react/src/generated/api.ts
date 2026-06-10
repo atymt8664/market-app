@@ -28,6 +28,7 @@ import type {
   ConversationListItem,
   ConversationRef,
   CreateAdInput,
+  CreateOrderBody,
   ErrorEnvelope,
   FollowResponse,
   ForgotPasswordInput,
@@ -42,6 +43,8 @@ import type {
   LoginInput,
   Message,
   OkResponse,
+  OrderDetailResponse,
+  OrdersListResponse,
   ProfileFollowUser,
   ProfileViewResponse,
   ProfileViewersResponse,
@@ -51,6 +54,8 @@ import type {
   ResendVerificationResponse,
   ResetPasswordInput,
   SendMessageBody,
+  SetMessageReaction200,
+  SetMessageReactionBody,
   SignupInput,
   StartConversationBody,
   Subcategory,
@@ -78,7 +83,7 @@ export const getGetPublicObjectUrl = (filePath: string) => {
 
 export const getPublicObject = async (
   filePath: string,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Blob> => {
   return customFetch<Blob>(getGetPublicObjectUrl(filePath), {
     ...options,
@@ -102,7 +107,7 @@ export const getGetPublicObjectQueryOptions = <
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
@@ -146,7 +151,7 @@ export function useGetPublicObject<
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetPublicObjectQueryOptions(filePath, options);
 
@@ -166,7 +171,7 @@ export const getGetStorageObjectUrl = (objectPath: string) => {
 
 export const getStorageObject = async (
   objectPath: string,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Blob> => {
   return customFetch<Blob>(getGetStorageObjectUrl(objectPath), {
     ...options,
@@ -190,7 +195,7 @@ export const getGetStorageObjectQueryOptions = <
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
@@ -235,7 +240,7 @@ export function useGetStorageObject<
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetStorageObjectQueryOptions(objectPath, options);
 
@@ -254,7 +259,7 @@ export const getHealthCheckUrl = () => {
 };
 
 export const healthCheck = async (
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<HealthStatus> => {
   return customFetch<HealthStatus>(getHealthCheckUrl(), {
     ...options,
@@ -322,6 +327,582 @@ export function useHealthCheck<
 }
 
 /**
+ * @summary List buyer orders (P17-4)
+ */
+export const getListBuyerOrdersUrl = () => {
+  return `/api/orders`;
+};
+
+export const listBuyerOrders = async (
+  options?: RequestInit,
+): Promise<OrdersListResponse> => {
+  return customFetch<OrdersListResponse>(getListBuyerOrdersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListBuyerOrdersQueryKey = () => {
+  return [`/api/orders`] as const;
+};
+
+export const getListBuyerOrdersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listBuyerOrders>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listBuyerOrders>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListBuyerOrdersQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listBuyerOrders>>> = ({
+    signal,
+  }) => listBuyerOrders({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listBuyerOrders>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListBuyerOrdersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listBuyerOrders>>
+>;
+export type ListBuyerOrdersQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary List buyer orders (P17-4)
+ */
+
+export function useListBuyerOrders<
+  TData = Awaited<ReturnType<typeof listBuyerOrders>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listBuyerOrders>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListBuyerOrdersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create order (P17-4 STAGING)
+ */
+export const getCreateOrderUrl = () => {
+  return `/api/orders`;
+};
+
+export const createOrder = async (
+  createOrderBody: CreateOrderBody,
+  options?: RequestInit,
+): Promise<OrderDetailResponse> => {
+  return customFetch<OrderDetailResponse>(getCreateOrderUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createOrderBody),
+  });
+};
+
+export const getCreateOrderMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrder>>,
+    TError,
+    { data: BodyType<CreateOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createOrder>>,
+  TError,
+  { data: BodyType<CreateOrderBody> },
+  TContext
+> => {
+  const mutationKey = ["createOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createOrder>>,
+    { data: BodyType<CreateOrderBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createOrder(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createOrder>>
+>;
+export type CreateOrderMutationBody = BodyType<CreateOrderBody>;
+export type CreateOrderMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Create order (P17-4 STAGING)
+ */
+export const useCreateOrder = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrder>>,
+    TError,
+    { data: BodyType<CreateOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createOrder>>,
+  TError,
+  { data: BodyType<CreateOrderBody> },
+  TContext
+> => {
+  return useMutation(getCreateOrderMutationOptions(options));
+};
+
+/**
+ * @summary List seller orders (P17-4)
+ */
+export const getListSellerOrdersUrl = () => {
+  return `/api/orders/seller`;
+};
+
+export const listSellerOrders = async (
+  options?: RequestInit,
+): Promise<OrdersListResponse> => {
+  return customFetch<OrdersListResponse>(getListSellerOrdersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSellerOrdersQueryKey = () => {
+  return [`/api/orders/seller`] as const;
+};
+
+export const getListSellerOrdersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSellerOrders>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listSellerOrders>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListSellerOrdersQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSellerOrders>>
+  > = ({ signal }) => listSellerOrders({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSellerOrders>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSellerOrdersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSellerOrders>>
+>;
+export type ListSellerOrdersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List seller orders (P17-4)
+ */
+
+export function useListSellerOrders<
+  TData = Awaited<ReturnType<typeof listSellerOrders>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listSellerOrders>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSellerOrdersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Order detail by order number (P17-4-NAV)
+ */
+export const getGetOrderDetailUrl = (orderNumber: string) => {
+  return `/api/orders/${orderNumber}`;
+};
+
+export const getOrderDetail = async (
+  orderNumber: string,
+  options?: RequestInit,
+): Promise<OrderDetailResponse> => {
+  return customFetch<OrderDetailResponse>(getGetOrderDetailUrl(orderNumber), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOrderDetailQueryKey = (orderNumber: string) => {
+  return [`/api/orders/${orderNumber}`] as const;
+};
+
+export const getGetOrderDetailQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOrderDetail>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  orderNumber: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrderDetail>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetOrderDetailQueryKey(orderNumber);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrderDetail>>> = ({
+    signal,
+  }) => getOrderDetail(orderNumber, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!orderNumber,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOrderDetail>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOrderDetailQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOrderDetail>>
+>;
+export type GetOrderDetailQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Order detail by order number (P17-4-NAV)
+ */
+
+export function useGetOrderDetail<
+  TData = Awaited<ReturnType<typeof getOrderDetail>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  orderNumber: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrderDetail>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOrderDetailQueryOptions(orderNumber, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Seller accept order (P17-4)
+ */
+export const getAcceptOrderUrl = (orderNumber: string) => {
+  return `/api/orders/${orderNumber}/accept`;
+};
+
+export const acceptOrder = async (
+  orderNumber: string,
+  options?: RequestInit,
+): Promise<OrderDetailResponse> => {
+  return customFetch<OrderDetailResponse>(getAcceptOrderUrl(orderNumber), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAcceptOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acceptOrder>>,
+    TError,
+    { orderNumber: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acceptOrder>>,
+  TError,
+  { orderNumber: string },
+  TContext
+> => {
+  const mutationKey = ["acceptOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acceptOrder>>,
+    { orderNumber: string }
+  > = (props) => {
+    const { orderNumber } = props ?? {};
+
+    return acceptOrder(orderNumber, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AcceptOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof acceptOrder>>
+>;
+
+export type AcceptOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Seller accept order (P17-4)
+ */
+export const useAcceptOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acceptOrder>>,
+    TError,
+    { orderNumber: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof acceptOrder>>,
+  TError,
+  { orderNumber: string },
+  TContext
+> => {
+  return useMutation(getAcceptOrderMutationOptions(options));
+};
+
+/**
+ * @summary Seller reject order (P17-4)
+ */
+export const getRejectOrderUrl = (orderNumber: string) => {
+  return `/api/orders/${orderNumber}/reject`;
+};
+
+export const rejectOrder = async (
+  orderNumber: string,
+  options?: RequestInit,
+): Promise<OrderDetailResponse> => {
+  return customFetch<OrderDetailResponse>(getRejectOrderUrl(orderNumber), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRejectOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejectOrder>>,
+    TError,
+    { orderNumber: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rejectOrder>>,
+  TError,
+  { orderNumber: string },
+  TContext
+> => {
+  const mutationKey = ["rejectOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rejectOrder>>,
+    { orderNumber: string }
+  > = (props) => {
+    const { orderNumber } = props ?? {};
+
+    return rejectOrder(orderNumber, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RejectOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rejectOrder>>
+>;
+
+export type RejectOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Seller reject order (P17-4)
+ */
+export const useRejectOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejectOrder>>,
+    TError,
+    { orderNumber: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rejectOrder>>,
+  TError,
+  { orderNumber: string },
+  TContext
+> => {
+  return useMutation(getRejectOrderMutationOptions(options));
+};
+
+/**
+ * @summary Cancel order (P17-4)
+ */
+export const getCancelOrderUrl = (orderNumber: string) => {
+  return `/api/orders/${orderNumber}/cancel`;
+};
+
+export const cancelOrder = async (
+  orderNumber: string,
+  options?: RequestInit,
+): Promise<OrderDetailResponse> => {
+  return customFetch<OrderDetailResponse>(getCancelOrderUrl(orderNumber), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCancelOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelOrder>>,
+    TError,
+    { orderNumber: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cancelOrder>>,
+  TError,
+  { orderNumber: string },
+  TContext
+> => {
+  const mutationKey = ["cancelOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cancelOrder>>,
+    { orderNumber: string }
+  > = (props) => {
+    const { orderNumber } = props ?? {};
+
+    return cancelOrder(orderNumber, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cancelOrder>>
+>;
+
+export type CancelOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Cancel order (P17-4)
+ */
+export const useCancelOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelOrder>>,
+    TError,
+    { orderNumber: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cancelOrder>>,
+  TError,
+  { orderNumber: string },
+  TContext
+> => {
+  return useMutation(getCancelOrderMutationOptions(options));
+};
+
+/**
  * @summary List all main categories
  */
 export const getListCategoriesUrl = () => {
@@ -329,7 +910,7 @@ export const getListCategoriesUrl = () => {
 };
 
 export const listCategories = async (
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Category[]> => {
   return customFetch<Category[]>(getListCategoriesUrl(), {
     ...options,
@@ -402,7 +983,7 @@ export const getListSubcategoriesUrl = (categoryId: number) => {
 
 export const listSubcategories = async (
   categoryId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Subcategory[]> => {
   return customFetch<Subcategory[]>(getListSubcategoriesUrl(categoryId), {
     ...options,
@@ -426,7 +1007,7 @@ export const getListSubcategoriesQueryOptions = <
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
@@ -467,7 +1048,7 @@ export function useListSubcategories<
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListSubcategoriesQueryOptions(categoryId, options);
 
@@ -499,7 +1080,7 @@ export const getListAdsUrl = (params?: ListAdsParams) => {
 
 export const listAds = async (
   params?: ListAdsParams,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Ad[]> => {
   return customFetch<Ad[]>(getListAdsUrl(params), {
     ...options,
@@ -519,7 +1100,7 @@ export const getListAdsQueryOptions = <
   options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof listAds>>, TError, TData>;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
@@ -553,7 +1134,7 @@ export function useListAds<
   options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof listAds>>, TError, TData>;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListAdsQueryOptions(params, options);
 
@@ -570,7 +1151,7 @@ export const getCreateAdUrl = () => {
 
 export const createAd = async (
   createAdInput: CreateAdInput,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Ad> => {
   return customFetch<Ad>(getCreateAdUrl(), {
     ...options,
@@ -609,7 +1190,7 @@ export const getCreateAdMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof createAd>>,
     { data: BodyType<CreateAdInput> }
-  > = props => {
+  > = (props) => {
     const { data } = props ?? {};
 
     return createAd(data, requestOptions);
@@ -725,7 +1306,7 @@ export const getListRecommendedAdsUrl = () => {
 };
 
 export const listRecommendedAds = async (
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Ad[]> => {
   return customFetch<Ad[]>(getListRecommendedAdsUrl(), {
     ...options,
@@ -1009,7 +1590,7 @@ export const getGetAdUrl = (adId: number) => {
 
 export const getAd = async (
   adId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Ad> => {
   return customFetch<Ad>(getGetAdUrl(adId), {
     ...options,
@@ -1029,7 +1610,7 @@ export const getGetAdQueryOptions = <
   options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getAd>>, TError, TData>;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
@@ -1060,7 +1641,7 @@ export function useGetAd<
   options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getAd>>, TError, TData>;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetAdQueryOptions(adId, options);
 
@@ -1078,7 +1659,7 @@ export const getUpdateAdUrl = (adId: number) => {
 export const updateAd = async (
   adId: number,
   createAdInput: CreateAdInput,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Ad> => {
   return customFetch<Ad>(getUpdateAdUrl(adId), {
     ...options,
@@ -1117,7 +1698,7 @@ export const getUpdateAdMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof updateAd>>,
     { adId: number; data: BodyType<CreateAdInput> }
-  > = props => {
+  > = (props) => {
     const { adId, data } = props ?? {};
 
     return updateAd(adId, data, requestOptions);
@@ -1158,7 +1739,7 @@ export const getDeleteAdUrl = (adId: number) => {
 
 export const deleteAd = async (
   adId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<void> => {
   return customFetch<void>(getDeleteAdUrl(adId), {
     ...options,
@@ -1195,7 +1776,7 @@ export const getDeleteAdMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof deleteAd>>,
     { adId: number }
-  > = props => {
+  > = (props) => {
     const { adId } = props ?? {};
 
     return deleteAd(adId, requestOptions);
@@ -1236,7 +1817,7 @@ export const getAuthSignupUrl = () => {
 
 export const authSignup = async (
   signupInput: SignupInput,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<AuthUser> => {
   return customFetch<AuthUser>(getAuthSignupUrl(), {
     ...options,
@@ -1275,7 +1856,7 @@ export const getAuthSignupMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof authSignup>>,
     { data: BodyType<SignupInput> }
-  > = props => {
+  > = (props) => {
     const { data } = props ?? {};
 
     return authSignup(data, requestOptions);
@@ -1316,7 +1897,7 @@ export const getAuthLoginUrl = () => {
 
 export const authLogin = async (
   loginInput: LoginInput,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<AuthUser> => {
   return customFetch<AuthUser>(getAuthLoginUrl(), {
     ...options,
@@ -1355,7 +1936,7 @@ export const getAuthLoginMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof authLogin>>,
     { data: BodyType<LoginInput> }
-  > = props => {
+  > = (props) => {
     const { data } = props ?? {};
 
     return authLogin(data, requestOptions);
@@ -1525,7 +2106,7 @@ export const getAuthUpdateProfileUrl = () => {
 
 export const authUpdateProfile = async (
   updateProfileInput: UpdateProfileInput,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<AuthUser> => {
   return customFetch<AuthUser>(getAuthUpdateProfileUrl(), {
     ...options,
@@ -1564,7 +2145,7 @@ export const getAuthUpdateProfileMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof authUpdateProfile>>,
     { data: BodyType<UpdateProfileInput> }
-  > = props => {
+  > = (props) => {
     const { data } = props ?? {};
 
     return authUpdateProfile(data, requestOptions);
@@ -1605,7 +2186,7 @@ export const getAuthVerifyEmailUrl = () => {
 
 export const authVerifyEmail = async (
   verifyEmailInput: VerifyEmailInput,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<AuthUser> => {
   return customFetch<AuthUser>(getAuthVerifyEmailUrl(), {
     ...options,
@@ -1644,7 +2225,7 @@ export const getAuthVerifyEmailMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof authVerifyEmail>>,
     { data: BodyType<VerifyEmailInput> }
-  > = props => {
+  > = (props) => {
     const { data } = props ?? {};
 
     return authVerifyEmail(data, requestOptions);
@@ -1685,7 +2266,7 @@ export const getAuthForgotPasswordUrl = () => {
 
 export const authForgotPassword = async (
   forgotPasswordInput: ForgotPasswordInput,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ForgotPasswordResponse> => {
   return customFetch<ForgotPasswordResponse>(getAuthForgotPasswordUrl(), {
     ...options,
@@ -1724,7 +2305,7 @@ export const getAuthForgotPasswordMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof authForgotPassword>>,
     { data: BodyType<ForgotPasswordInput> }
-  > = props => {
+  > = (props) => {
     const { data } = props ?? {};
 
     return authForgotPassword(data, requestOptions);
@@ -1765,7 +2346,7 @@ export const getAuthResetPasswordUrl = () => {
 
 export const authResetPassword = async (
   resetPasswordInput: ResetPasswordInput,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<OkResponse> => {
   return customFetch<OkResponse>(getAuthResetPasswordUrl(), {
     ...options,
@@ -1804,7 +2385,7 @@ export const getAuthResetPasswordMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof authResetPassword>>,
     { data: BodyType<ResetPasswordInput> }
-  > = props => {
+  > = (props) => {
     const { data } = props ?? {};
 
     return authResetPassword(data, requestOptions);
@@ -1845,7 +2426,7 @@ export const getGetUserProfileUrl = (userId: number) => {
 
 export const getUserProfile = async (
   userId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<PublicUserProfile> => {
   return customFetch<PublicUserProfile>(getGetUserProfileUrl(userId), {
     ...options,
@@ -1869,7 +2450,7 @@ export const getGetUserProfileQueryOptions = <
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
@@ -1908,7 +2489,7 @@ export function useGetUserProfile<
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetUserProfileQueryOptions(userId, options);
 
@@ -1928,7 +2509,7 @@ export const getGetUserFollowersUrl = (userId: number) => {
 
 export const getUserFollowers = async (
   userId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ProfileFollowUser[]> => {
   return customFetch<ProfileFollowUser[]>(getGetUserFollowersUrl(userId), {
     ...options,
@@ -1952,7 +2533,7 @@ export const getGetUserFollowersQueryOptions = <
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
@@ -1996,7 +2577,7 @@ export function useGetUserFollowers<
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetUserFollowersQueryOptions(userId, options);
 
@@ -2016,7 +2597,7 @@ export const getGetUserFollowingUrl = (userId: number) => {
 
 export const getUserFollowing = async (
   userId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ProfileFollowUser[]> => {
   return customFetch<ProfileFollowUser[]>(getGetUserFollowingUrl(userId), {
     ...options,
@@ -2040,7 +2621,7 @@ export const getGetUserFollowingQueryOptions = <
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
@@ -2084,7 +2665,7 @@ export function useGetUserFollowing<
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetUserFollowingQueryOptions(userId, options);
 
@@ -2104,14 +2685,14 @@ export const getGetUserProfileViewersUrl = (userId: number) => {
 
 export const getUserProfileViewers = async (
   userId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ProfileViewersResponse> => {
   return customFetch<ProfileViewersResponse>(
     getGetUserProfileViewersUrl(userId),
     {
       ...options,
       method: "GET",
-    }
+    },
   );
 };
 
@@ -2131,7 +2712,7 @@ export const getGetUserProfileViewersQueryOptions = <
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
@@ -2176,7 +2757,7 @@ export function useGetUserProfileViewers<
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetUserProfileViewersQueryOptions(userId, options);
 
@@ -2193,7 +2774,7 @@ export const getRecordProfileViewUrl = (userId: number) => {
 
 export const recordProfileView = async (
   userId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ProfileViewResponse> => {
   return customFetch<ProfileViewResponse>(getRecordProfileViewUrl(userId), {
     ...options,
@@ -2230,7 +2811,7 @@ export const getRecordProfileViewMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof recordProfileView>>,
     { userId: number }
-  > = props => {
+  > = (props) => {
     const { userId } = props ?? {};
 
     return recordProfileView(userId, requestOptions);
@@ -2271,7 +2852,7 @@ export const getFollowUserUrl = (userId: number) => {
 
 export const followUser = async (
   userId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<FollowResponse> => {
   return customFetch<FollowResponse>(getFollowUserUrl(userId), {
     ...options,
@@ -2308,7 +2889,7 @@ export const getFollowUserMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof followUser>>,
     { userId: number }
-  > = props => {
+  > = (props) => {
     const { userId } = props ?? {};
 
     return followUser(userId, requestOptions);
@@ -2349,7 +2930,7 @@ export const getUnfollowUserUrl = (userId: number) => {
 
 export const unfollowUser = async (
   userId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<FollowResponse> => {
   return customFetch<FollowResponse>(getUnfollowUserUrl(userId), {
     ...options,
@@ -2386,7 +2967,7 @@ export const getUnfollowUserMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof unfollowUser>>,
     { userId: number }
-  > = props => {
+  > = (props) => {
     const { userId } = props ?? {};
 
     return unfollowUser(userId, requestOptions);
@@ -2427,7 +3008,7 @@ export const getAuthResendVerificationUrl = () => {
 
 export const authResendVerification = async (
   resendVerificationInput: ResendVerificationInput,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ResendVerificationResponse> => {
   return customFetch<ResendVerificationResponse>(
     getAuthResendVerificationUrl(),
@@ -2436,7 +3017,7 @@ export const authResendVerification = async (
       method: "POST",
       headers: { "Content-Type": "application/json", ...options?.headers },
       body: JSON.stringify(resendVerificationInput),
-    }
+    },
   );
 };
 
@@ -2469,7 +3050,7 @@ export const getAuthResendVerificationMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof authResendVerification>>,
     { data: BodyType<ResendVerificationInput> }
-  > = props => {
+  > = (props) => {
     const { data } = props ?? {};
 
     return authResendVerification(data, requestOptions);
@@ -2514,7 +3095,7 @@ export const getLikeAdUrl = (adId: number) => {
 
 export const likeAd = async (
   adId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ReactionResponse> => {
   return customFetch<ReactionResponse>(getLikeAdUrl(adId), {
     ...options,
@@ -2551,7 +3132,7 @@ export const getLikeAdMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof likeAd>>,
     { adId: number }
-  > = props => {
+  > = (props) => {
     const { adId } = props ?? {};
 
     return likeAd(adId, requestOptions);
@@ -2598,7 +3179,7 @@ export const getUnlikeAdUrl = (adId: number) => {
 
 export const unlikeAd = async (
   adId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ReactionResponse> => {
   return customFetch<ReactionResponse>(getUnlikeAdUrl(adId), {
     ...options,
@@ -2635,7 +3216,7 @@ export const getUnlikeAdMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof unlikeAd>>,
     { adId: number }
-  > = props => {
+  > = (props) => {
     const { adId } = props ?? {};
 
     return unlikeAd(adId, requestOptions);
@@ -2682,7 +3263,7 @@ export const getFavoriteAdUrl = (adId: number) => {
 
 export const favoriteAd = async (
   adId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ReactionResponse> => {
   return customFetch<ReactionResponse>(getFavoriteAdUrl(adId), {
     ...options,
@@ -2719,7 +3300,7 @@ export const getFavoriteAdMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof favoriteAd>>,
     { adId: number }
-  > = props => {
+  > = (props) => {
     const { adId } = props ?? {};
 
     return favoriteAd(adId, requestOptions);
@@ -2766,7 +3347,7 @@ export const getUnfavoriteAdUrl = (adId: number) => {
 
 export const unfavoriteAd = async (
   adId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ReactionResponse> => {
   return customFetch<ReactionResponse>(getUnfavoriteAdUrl(adId), {
     ...options,
@@ -2803,7 +3384,7 @@ export const getUnfavoriteAdMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof unfavoriteAd>>,
     { adId: number }
-  > = props => {
+  > = (props) => {
     const { adId } = props ?? {};
 
     return unfavoriteAd(adId, requestOptions);
@@ -2850,7 +3431,7 @@ export const getRecordAdViewUrl = (adId: number) => {
 
 export const recordAdView = async (
   adId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<AdViewResponse> => {
   return customFetch<AdViewResponse>(getRecordAdViewUrl(adId), {
     ...options,
@@ -2887,7 +3468,7 @@ export const getRecordAdViewMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof recordAdView>>,
     { adId: number }
-  > = props => {
+  > = (props) => {
     const { adId } = props ?? {};
 
     return recordAdView(adId, requestOptions);
@@ -2933,7 +3514,7 @@ export const getListConversationsUrl = () => {
 };
 
 export const listConversations = async (
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ConversationListItem[]> => {
   return customFetch<ConversationListItem[]>(getListConversationsUrl(), {
     ...options,
@@ -3009,7 +3590,7 @@ export const getStartConversationUrl = () => {
 
 export const startConversation = async (
   startConversationBody: StartConversationBody,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ConversationRef> => {
   return customFetch<ConversationRef>(getStartConversationUrl(), {
     ...options,
@@ -3048,7 +3629,7 @@ export const getStartConversationMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof startConversation>>,
     { data: BodyType<StartConversationBody> }
-  > = props => {
+  > = (props) => {
     const { data } = props ?? {};
 
     return startConversation(data, requestOptions);
@@ -3092,7 +3673,7 @@ export const getGetConversationUrl = (convId: number) => {
 
 export const getConversation = async (
   convId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ConversationDetail> => {
   return customFetch<ConversationDetail>(getGetConversationUrl(convId), {
     ...options,
@@ -3116,7 +3697,7 @@ export const getGetConversationQueryOptions = <
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
@@ -3155,7 +3736,7 @@ export function useGetConversation<
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetConversationQueryOptions(convId, options);
 
@@ -3172,7 +3753,7 @@ export const getListMessagesUrl = (convId: number) => {
 
 export const listMessages = async (
   convId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Message[]> => {
   return customFetch<Message[]>(getListMessagesUrl(convId), {
     ...options,
@@ -3196,7 +3777,7 @@ export const getListMessagesQueryOptions = <
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
@@ -3235,7 +3816,7 @@ export function useListMessages<
       TData
     >;
     request?: SecondParameter<typeof customFetch>;
-  }
+  },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListMessagesQueryOptions(convId, options);
 
@@ -3253,7 +3834,7 @@ export const getSendMessageUrl = (convId: number) => {
 export const sendMessage = async (
   convId: number,
   sendMessageBody: SendMessageBody,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Message> => {
   return customFetch<Message>(getSendMessageUrl(convId), {
     ...options,
@@ -3292,7 +3873,7 @@ export const getSendMessageMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof sendMessage>>,
     { convId: number; data: BodyType<SendMessageBody> }
-  > = props => {
+  > = (props) => {
     const { convId, data } = props ?? {};
 
     return sendMessage(convId, data, requestOptions);
@@ -3333,7 +3914,7 @@ export const getMarkConversationReadUrl = (convId: number) => {
 
 export const markConversationRead = async (
   convId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<void> => {
   return customFetch<void>(getMarkConversationReadUrl(convId), {
     ...options,
@@ -3370,7 +3951,7 @@ export const getMarkConversationReadMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof markConversationRead>>,
     { convId: number }
-  > = props => {
+  > = (props) => {
     const { convId } = props ?? {};
 
     return markConversationRead(convId, requestOptions);
@@ -3414,14 +3995,14 @@ export const getHideConversationForMeUrl = (convId: number) => {
 
 export const hideConversationForMe = async (
   convId: number,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<HideConversationForMe200> => {
   return customFetch<HideConversationForMe200>(
     getHideConversationForMeUrl(convId),
     {
       ...options,
       method: "POST",
-    }
+    },
   );
 };
 
@@ -3454,7 +4035,7 @@ export const getHideConversationForMeMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof hideConversationForMe>>,
     { convId: number }
-  > = props => {
+  > = (props) => {
     const { convId } = props ?? {};
 
     return hideConversationForMe(convId, requestOptions);
@@ -3493,6 +4074,109 @@ export const useHideConversationForMe = <
 };
 
 /**
+ * @summary Set, replace, or toggle off the current user's reaction on a message
+ */
+export const getSetMessageReactionUrl = (convId: number, messageId: number) => {
+  return `/api/conversations/${convId}/messages/${messageId}/reaction`;
+};
+
+export const setMessageReaction = async (
+  convId: number,
+  messageId: number,
+  setMessageReactionBody: SetMessageReactionBody,
+  options?: RequestInit,
+): Promise<SetMessageReaction200> => {
+  return customFetch<SetMessageReaction200>(
+    getSetMessageReactionUrl(convId, messageId),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(setMessageReactionBody),
+    },
+  );
+};
+
+export const getSetMessageReactionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setMessageReaction>>,
+    TError,
+    {
+      convId: number;
+      messageId: number;
+      data: BodyType<SetMessageReactionBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setMessageReaction>>,
+  TError,
+  { convId: number; messageId: number; data: BodyType<SetMessageReactionBody> },
+  TContext
+> => {
+  const mutationKey = ["setMessageReaction"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setMessageReaction>>,
+    {
+      convId: number;
+      messageId: number;
+      data: BodyType<SetMessageReactionBody>;
+    }
+  > = (props) => {
+    const { convId, messageId, data } = props ?? {};
+
+    return setMessageReaction(convId, messageId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetMessageReactionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setMessageReaction>>
+>;
+export type SetMessageReactionMutationBody = BodyType<SetMessageReactionBody>;
+export type SetMessageReactionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Set, replace, or toggle off the current user's reaction on a message
+ */
+export const useSetMessageReaction = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setMessageReaction>>,
+    TError,
+    {
+      convId: number;
+      messageId: number;
+      data: BodyType<SetMessageReactionBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setMessageReaction>>,
+  TError,
+  { convId: number; messageId: number; data: BodyType<SetMessageReactionBody> },
+  TContext
+> => {
+  return useMutation(getSetMessageReactionMutationOptions(options));
+};
+
+/**
  * @summary Hide messages in this thread for the current user only (other party still sees them)
  */
 export const getHideMessagesForMeUrl = (convId: number) => {
@@ -3502,7 +4186,7 @@ export const getHideMessagesForMeUrl = (convId: number) => {
 export const hideMessagesForMe = async (
   convId: number,
   hideMessagesForMeBody: HideMessagesForMeBody,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<HideMessagesForMe200> => {
   return customFetch<HideMessagesForMe200>(getHideMessagesForMeUrl(convId), {
     ...options,
@@ -3541,7 +4225,7 @@ export const getHideMessagesForMeMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof hideMessagesForMe>>,
     { convId: number; data: BodyType<HideMessagesForMeBody> }
-  > = props => {
+  > = (props) => {
     const { convId, data } = props ?? {};
 
     return hideMessagesForMe(convId, data, requestOptions);
@@ -3585,7 +4269,7 @@ export const getAuthChangePasswordUrl = () => {
 
 export const authChangePassword = async (
   changePasswordInput: ChangePasswordInput,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<AuthChangePassword200> => {
   return customFetch<AuthChangePassword200>(getAuthChangePasswordUrl(), {
     ...options,
@@ -3624,7 +4308,7 @@ export const getAuthChangePasswordMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof authChangePassword>>,
     { data: BodyType<ChangePasswordInput> }
-  > = props => {
+  > = (props) => {
     const { data } = props ?? {};
 
     return authChangePassword(data, requestOptions);
@@ -3668,7 +4352,7 @@ export const getImproveDescriptionUrl = () => {
 
 export const improveDescription = async (
   improveDescriptionBody: ImproveDescriptionBody,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ImproveDescription200> => {
   return customFetch<ImproveDescription200>(getImproveDescriptionUrl(), {
     ...options,
@@ -3707,7 +4391,7 @@ export const getImproveDescriptionMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof improveDescription>>,
     { data: BodyType<ImproveDescriptionBody> }
-  > = props => {
+  > = (props) => {
     const { data } = props ?? {};
 
     return improveDescription(data, requestOptions);
@@ -3754,7 +4438,7 @@ export const getSuggestPriceUrl = () => {
 
 export const suggestPrice = async (
   suggestPriceBody: SuggestPriceBody,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<SuggestPrice200> => {
   return customFetch<SuggestPrice200>(getSuggestPriceUrl(), {
     ...options,
@@ -3793,7 +4477,7 @@ export const getSuggestPriceMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof suggestPrice>>,
     { data: BodyType<SuggestPriceBody> }
-  > = props => {
+  > = (props) => {
     const { data } = props ?? {};
 
     return suggestPrice(data, requestOptions);

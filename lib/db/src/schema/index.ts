@@ -6,6 +6,7 @@ export * from "./ad-reaction-counts";
 export * from "./cities";
 export * from "./admin-activity-logs";
 export * from "./messages";
+export * from "./message-reactions";
 export * from "./chat-privacy";
 export * from "./reports";
 export * from "./user-sessions";

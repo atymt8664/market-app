@@ -5,6 +5,7 @@ import { ensureAppSettingsTable } from "./ensure-app-settings-table";
 import { ensureStaffManagementSchema } from "./admin-staff-management";
 import { ensureVerificationSchema } from "./admin-verification-workflow";
 import { ensureOpsQueueSchema } from "./admin-operations-queue";
+import { ensureMessageReactionsSchema } from "./ensure-message-reactions-schema";
 
 const POST_CORE_SCHEMA_SQL = `
     ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT false;
@@ -218,5 +219,6 @@ export async function prepareDatabase(): Promise<void> {
   await ensureStaffManagementSchema();
   await ensureVerificationSchema();
   await ensureOpsQueueSchema();
+  await ensureMessageReactionsSchema();
   logger.info("Database schema ready");
 }

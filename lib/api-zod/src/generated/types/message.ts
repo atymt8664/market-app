@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MessageMessageType } from "./messageMessageType";
+import type { QuotedMessage } from "./quotedMessage";
 
 export interface Message {
   id: number;
@@ -16,5 +17,10 @@ export interface Message {
   imageUrl?: string | null;
   deliveredAt?: Date | null;
   readAt?: Date | null;
+  deletedForEveryoneAt?: Date | null;
+  replyToMessageId?: number | null;
+  quotedMessage?: QuotedMessage | null;
+  /** Current viewer's reaction emoji on this message */
+  myReaction?: string | null;
   createdAt: Date;
 }

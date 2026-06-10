@@ -239,7 +239,26 @@ export interface ConversationDetail {
   adPriceType?: string | null;
   otherId: number;
   otherName: string;
+  otherAvatarUrl?: string | null;
   isSeller: boolean;
+}
+
+export type QuotedMessageMessageType =
+  (typeof QuotedMessageMessageType)[keyof typeof QuotedMessageMessageType];
+
+export const QuotedMessageMessageType = {
+  text: "text",
+  image: "image",
+  location: "location",
+} as const;
+
+export interface QuotedMessage {
+  id: number;
+  senderId: number;
+  body: string;
+  messageType: QuotedMessageMessageType;
+  imageUrl?: string | null;
+  deletedForEveryoneAt?: string | null;
 }
 
 export type MessageMessageType =
@@ -261,6 +280,10 @@ export interface Message {
   deliveredAt?: string | null;
   readAt?: string | null;
   deletedForEveryoneAt?: string | null;
+  replyToMessageId?: number | null;
+  quotedMessage?: QuotedMessage | null;
+  /** Current viewer's reaction emoji on this message */
+  myReaction?: string | null;
   createdAt: string;
 }
 
@@ -306,6 +329,84 @@ export interface CreateAdInput {
 
 export interface ErrorEnvelope {
   error: string;
+  code?: string;
+}
+
+export type CreateOrderBodyFulfillmentMode =
+  (typeof CreateOrderBodyFulfillmentMode)[keyof typeof CreateOrderBodyFulfillmentMode];
+
+export const CreateOrderBodyFulfillmentMode = {
+  shipping: "shipping",
+  pickup: "pickup",
+} as const;
+
+export type CreateOrderBodyBuyerAddress = {
+  label?: string;
+  city?: string;
+  countryCode?: string;
+  postalCode?: string;
+  line1?: string;
+  line2?: string;
+  recipientName?: string;
+  phone?: string;
+};
+
+export interface CreateOrderBody {
+  adId: number;
+  fulfillmentMode: CreateOrderBodyFulfillmentMode;
+  /**
+   * @minLength 3
+   * @maxLength 3
+   */
+  currency?: string;
+  shippingAmount?: string;
+  shippingMethodLabel?: string;
+  idempotencyKey?: string;
+  buyerAddress?: CreateOrderBodyBuyerAddress;
+}
+
+export interface OrderListItem {
+  /** Equals orderNumber (P17-4-NAV) */
+  id: string;
+  orderNumber: string;
+  status: string;
+  statusLabelAr: string;
+  title: string;
+  totalAmount: string;
+  currency: string;
+  updatedAt: string;
+  updatedAtRelativeAr: string;
+}
+
+export type OrderDetailFulfillmentMode =
+  (typeof OrderDetailFulfillmentMode)[keyof typeof OrderDetailFulfillmentMode];
+
+export const OrderDetailFulfillmentMode = {
+  shipping: "shipping",
+  pickup: "pickup",
+} as const;
+
+export type OrderDetail = OrderListItem & {
+  fulfillmentMode: OrderDetailFulfillmentMode;
+  buyerUserId: number;
+  sellerUserId: number;
+  adId: number;
+  subtotalAmount: string;
+  shippingAmount: string;
+  createdAt: string;
+  issueFlag: boolean;
+  version?: number;
+};
+
+export interface OrdersListResponse {
+  items: OrderListItem[];
+  total: number;
+  mock: boolean;
+}
+
+export interface OrderDetailResponse {
+  order: OrderDetail;
+  mock: boolean;
 }
 
 export type AdsStatsByCategoryItem = {
@@ -338,7 +439,15 @@ export type ListAdsParams = {
    * When set, return only ads owned by this user (public approved statuses).
    */
   userId?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
   limit?: number;
+  /**
+   * Opaque keyset cursor from X-Pagination-Next-Cursor response header.
+   */
+  cursor?: string;
 };
 
 export type ListAdsType = (typeof ListAdsType)[keyof typeof ListAdsType];
@@ -353,19 +462,39 @@ export type StartConversationBody = {
 };
 
 /**
- * Send either a text message (`body` non-empty) or an image message (`imageUrl` set to a URL returned from POST /conversations/{convId}/messages/upload-image). Optional caption with image.
+ * Send a text message (`body`), an image (`imageUrl` from upload-image), or a location (`latitude` + `longitude`, no body/image). Types are mutually exclusive.
 
  */
 export type SendMessageBody = {
   /** @maxLength 2000 */
   body?: string;
   imageUrl?: string | null;
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
   latitude?: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
   longitude?: number;
+  /** Reply target message id within the same conversation */
+  replyToMessageId?: number | null;
 };
 
 export type HideConversationForMe200 = {
   ok: boolean;
+};
+
+export type SetMessageReactionBody = {
+  /** @maxLength 32 */
+  emoji: string;
+};
+
+export type SetMessageReaction200 = {
+  messageId: number;
+  myReaction: string | null;
 };
 
 export type HideMessagesForMeBody = {

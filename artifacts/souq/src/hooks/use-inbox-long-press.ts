@@ -9,7 +9,7 @@ export function useInboxLongPress({
   selectMode: boolean;
   onLongPress: (conversationId: number) => void;
 }) {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef = useRef<number | null>(null);
   const consumedRef = useRef(false);
 
   const clearTimer = useCallback(() => {

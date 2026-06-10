@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# P5 Inbox (1A–1D) — Production API deploy. Run on VPS with sudo.
+# P5 Messaging & Chat — Production API deploy. Run on VPS with sudo.
 set -euo pipefail
 
 PROD_REF="nptfxtkedqndkgmrcntn"
@@ -10,7 +10,7 @@ CTX="${BASE}/build-context"
 GIT_DIR="${BASE}/src/market-app"
 REPO_URL="https://github.com/atymt8664/market-app.git"
 LOG="/var/log/souq-arab/p5-inbox-prod.log"
-TAG="${SOUQ_P5_IMAGE:-souq-api:p5-inbox-$(date -u +%Y%m%d)}"
+TAG="${SOUQ_P5_IMAGE:-souq-api:p5-messaging-$(date -u +%Y%m%d)}"
 
 log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$LOG"; }
 halt() { log "HALT: $*"; exit 2; }
@@ -33,6 +33,10 @@ grep -q listBlockedUsersForMe "${GIT_DIR}/artifacts/api-server/src/lib/list-bloc
   || halt "P5 list-blocked-users missing"
 grep -q '"/account/blocked-users"' "${GIT_DIR}/artifacts/api-server/src/routes/account.ts" \
   || halt "P5 account blocked-users route missing"
+grep -q setMessageReaction "${GIT_DIR}/artifacts/api-server/src/routes/conversations.ts" \
+  || halt "P5 message reaction route missing"
+grep -q replyToMessageId "${GIT_DIR}/artifacts/api-server/src/routes/conversations.ts" \
+  || halt "P5 quoted reply route missing"
 
 log ">> sync build-context"
 rsync -a --delete "${GIT_DIR}/" "${CTX}/"
@@ -45,6 +49,12 @@ docker run --rm "$TAG" sh -c 'grep -q blocked-users /app/artifacts/api-server/di
 
 log ">> deploy-api.sh"
 bash "${BASE}/scripts/deploy-api.sh" --image "$TAG" --skip-pull >>"$LOG" 2>&1
+
+log ">> prod-shadow sync (nginx public upstream :3002)"
+export SOUQ_PROD_IMAGE="$TAG"
+bash "${BASE}/scripts/phase8-release-deploy-prod-shadow.sh" >>"$LOG" 2>&1 || true
+docker compose -f "${BASE}/phase7/docker-compose.production-shadow.yml" up -d --force-recreate api-prod-shadow >>"$LOG" 2>&1
+echo "$TAG" >"${BASE}/releases/CURRENT_PROD_SHADOW_IMAGE"
 
 for path in /api/healthz /api/readyz; do
   code="$(curl -sS -o /dev/null -w '%{http_code}' "https://api.souq-arab.com${path}")"

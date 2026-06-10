@@ -153,13 +153,15 @@ function AdImagesPublicInner({ images, title }: AdImagesPublicProps) {
 
   return (
     <>
-      <div className="space-y-2.5">
+      <div className={cn("space-y-2", count > 1 && "space-y-1.5")}>
         <button
           type="button"
           onClick={() => openViewer(heroIndex)}
           className={cn(
             "relative w-full overflow-hidden rounded-2xl border border-border/80 bg-muted/30",
-            "aspect-[4/3] sm:aspect-[16/10] max-h-[min(380px,70vh)] sm:max-h-[380px]",
+            count <= 1
+              ? "aspect-[4/3] sm:aspect-[16/10] max-h-[min(340px,62vh)] sm:max-h-[360px]"
+              : "aspect-[4/3] sm:aspect-[16/10] max-h-[min(320px,58vh)] sm:max-h-[340px]",
             "shadow-sm transition-[box-shadow,transform] duration-200",
             "hover:shadow-md active:scale-[0.998] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
             "touch-manipulation [contain:layout_paint]",
@@ -196,7 +198,7 @@ function AdImagesPublicInner({ images, title }: AdImagesPublicProps) {
 
         {count > 1 && (
           <div
-            className="flex gap-2 overflow-x-auto pb-1 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex gap-1.5 overflow-x-auto pb-0.5 pt-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             dir={isAr ? "rtl" : "ltr"}
           >
             {images.map((src, i) => (
@@ -205,7 +207,7 @@ function AdImagesPublicInner({ images, title }: AdImagesPublicProps) {
                 type="button"
                 onClick={(e) => handleThumbClick(i, e)}
                 className={cn(
-                  "relative h-[4.25rem] w-[4.25rem] shrink-0 overflow-hidden rounded-xl border-2 transition-[border-color,transform] duration-150",
+                  "relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 transition-[border-color,transform] duration-150",
                   "touch-manipulation active:scale-[0.98]",
                   i === heroIndex
                     ? "border-primary ring-2 ring-primary/35 ring-offset-2 ring-offset-background"
@@ -309,7 +311,7 @@ function AdImagesPublicInner({ images, title }: AdImagesPublicProps) {
 
 function motionlessEmpty() {
   return (
-    <AdNoImagePlaceholderBlock className="aspect-[4/3] max-h-[380px] w-full sm:aspect-[16/10]" />
+    <AdNoImagePlaceholderBlock className="h-[6.5rem] max-h-[7rem] w-full sm:h-[7rem]" />
   );
 }
 

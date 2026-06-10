@@ -33,8 +33,8 @@ function AdDetailHeroSectionInner({
   onToggleFavorite,
 }: AdDetailHeroSectionProps) {
   return (
-    <div className={`${pageMax} pb-2 space-y-2`}>
-      <div className="flex items-center justify-between gap-3 py-3 md:py-4">
+    <div className={`${pageMax} pb-1 space-y-1`}>
+      <div className="flex items-center justify-between gap-3 py-1.5 md:py-2.5">
         <Link href="/" className="shrink-0">
           <button
             type="button"

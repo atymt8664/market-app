@@ -53,7 +53,7 @@ export function AdDetailCommerceActions({
         dir="rtl"
         data-testid="p17-ad-detail-buy-now"
         aria-label={t("p17.commerce.ad_detail.buy_now_aria")}
-        className={cn(P17_BUY_NOW_BTN, "h-[3.25rem]")}
+        className={cn(P17_BUY_NOW_BTN, "h-12")}
         onClick={handleBuyNow}
       >
         {t("p17.commerce.ad_detail.buy_now")}

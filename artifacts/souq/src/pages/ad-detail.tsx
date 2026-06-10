@@ -25,7 +25,6 @@ import {
   ThumbsUp,
   Star,
   Flag,
-  MapPin,
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { useAuth } from "@/hooks/use-auth";
@@ -56,6 +55,7 @@ import { ProfileAvatarRing } from "@/components/profile-avatar-ring";
 import { t, type Locale } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
+import { lookupMarketplaceCountry } from "@/lib/locations/manifest-data";
 import { useQueryClient } from "@tanstack/react-query";
 import { STALE_AD_DETAIL_MS } from "@/lib/query-stale-times";
 import { createFavoriteToggleHandlers } from "@/lib/invalidate-ad-queries";
@@ -639,13 +639,13 @@ export default function AdDetail() {
   );
   /** كرت العنوان/السعر/الموقع — نفس روح الإحصائيات ومعلومات الجهاز (lime + glow) */
   const heroTitlePriceSurface =
-    "rounded-2xl border border-primary/40 bg-[#0A0A0A]/80 p-4 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 bg-[#0A0A0A]/70 md:p-5";
+    "rounded-2xl border border-primary/40 bg-[#0A0A0A]/80 p-2.5 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 bg-[#0A0A0A]/70 md:p-3";
   /** شريط إحصائيات: حدود lime خفيفة + خلفية داكنة (متناسق مع مرجع الصفحة) */
   const statsStripSurface =
-    "rounded-2xl border border-primary/40 bg-muted/25 p-1 shadow-[0_0_28px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 bg-[#0A0A0A]/70";
+    "rounded-2xl border border-primary/40 bg-muted/25 px-1 py-0.5 shadow-[0_0_28px_-10px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 bg-[#0A0A0A]/70";
   /** كروت أقسام المحتوى — مدمجة */
   const deviceInfoShell =
-    "rounded-2xl border border-primary/40 bg-[#0A0A0A]/80 p-3 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/15 bg-[#0A0A0A]/70";
+    "rounded-2xl border border-primary/40 bg-[#0A0A0A]/80 p-2.5 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/15 bg-[#0A0A0A]/70 md:p-3";
   /** بطاقة مواصفة داخل الشبكة */
   const deviceSpecTile =
     "flex min-h-[3.75rem] flex-col justify-start gap-0.5 rounded-xl border border-primary/30 bg-muted/20 p-2.5 text-right shadow-[0_0_14px_-12px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10 dark:bg-black/40";
@@ -679,6 +679,30 @@ export default function AdDetail() {
   const descNeedsToggle =
     descRaw.length > 100 || descRaw.split("\n").length > 2;
 
+  const detailsRecord =
+    detailsRaw && typeof detailsRaw === "object" && !Array.isArray(detailsRaw)
+      ? (detailsRaw as Record<string, unknown>)
+      : null;
+  const adCountryCode =
+    typeof detailsRecord?.countryCode === "string"
+      ? detailsRecord.countryCode.trim().toUpperCase()
+      : typeof detailsRecord?.locationCountryCode === "string"
+        ? detailsRecord.locationCountryCode.trim().toUpperCase()
+        : ad.city?.trim()
+          ? "DE"
+          : "";
+  const adCountryRow = adCountryCode ? lookupMarketplaceCountry(adCountryCode) : undefined;
+  const adCountryLabel = adCountryRow
+    ? locale === "ar"
+      ? adCountryRow.nameAr
+      : adCountryRow.nameEn
+    : adCountryCode || null;
+  const cityTrim = ad.city?.trim() ?? "";
+  const locationLine =
+    cityTrim && adCountryLabel
+      ? `${cityTrim}، ${adCountryLabel}`
+      : cityTrim || adCountryLabel;
+
   return (
     <div
       dir="rtl"
@@ -694,44 +718,37 @@ export default function AdDetail() {
         onToggleFavorite={handleToggleFavorite}
       />
 
-      <div className={`${pageMax} py-2 md:py-4`}>
-        <div className="flex flex-col gap-4 min-w-0">
+      <div className={`${pageMax} py-1.5 md:py-3`}>
+        <div className="flex flex-col gap-3 min-w-0">
           {/* كرت العنوان والسعر والموقع */}
           <div className={heroTitlePriceSurface}>
-            <h1 className="text-xl md:text-2xl font-bold leading-tight mb-2 text-foreground text-right">
-              {ad.title}
-            </h1>
-            {isFree ? (
-              <div className="text-2xl font-bold text-primary">
-                {t("ad-card.free")}
-              </div>
-            ) : (
-              <div className="text-2xl md:text-[1.65rem] font-bold text-primary text-right">
-                {formatPrice(ad.price, ad.priceType)}
-              </div>
-            )}
-            {!isFree && ad.priceType === "negotiable" && (
-              <div className="mt-3 flex justify-end">
-                <span className="inline-flex rounded-full border border-primary/50 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                  {t("ad-card.negotiable")}
-                </span>
-              </div>
-            )}
-            <div className="mt-3 space-y-1.5">
-              {ad.city?.trim() ? (
-                <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground">
-                  <MapPin
-                    className="h-4 w-4 shrink-0 text-primary/90"
-                    strokeWidth={2.25}
-                  />
-                  <span className="font-medium text-foreground/90">
-                    {ad.city.trim()}
+            <div className="flex flex-col gap-1 text-right">
+              <h1 className="text-xl md:text-2xl font-bold leading-snug text-foreground">
+                {ad.title}
+              </h1>
+              <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5">
+                {isFree ? (
+                  <span className="text-[1.75rem] md:text-[1.85rem] font-extrabold leading-none text-primary">
+                    {t("ad-card.free")}
                   </span>
-                </div>
-              ) : null}
-              <div className="flex justify-end text-sm text-muted-foreground">
-                {formatRelativeTime(ad.createdAt)}
+                ) : (
+                  <span className="text-[1.75rem] md:text-[1.85rem] font-extrabold leading-none text-primary tabular-nums">
+                    {formatPrice(ad.price, ad.priceType)}
+                  </span>
+                )}
+                {!isFree && ad.priceType === "negotiable" && (
+                  <span className="inline-flex rounded-full border border-primary/50 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    {t("ad-card.negotiable")}
+                  </span>
+                )}
               </div>
+              {(locationLine || ad.createdAt) && (
+                <p className="text-[11px] leading-snug text-muted-foreground/75">
+                  {locationLine}
+                  {locationLine && ad.createdAt ? " · " : ""}
+                  <span className="tabular-nums">{formatRelativeTime(ad.createdAt)}</span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -739,17 +756,17 @@ export default function AdDetail() {
           <div
             className={cn(
               statsStripSurface,
-              "flex min-h-[5.25rem] items-stretch py-3.5",
+              "flex min-h-[4rem] items-stretch py-2",
             )}
           >
-            <div className="flex flex-1 flex-col items-center justify-center gap-1.5 px-2">
-              <div className="flex items-center gap-1.5 text-primary">
-                <span className="text-lg font-bold tabular-nums leading-none text-foreground">
+            <div className="flex flex-1 flex-col items-center justify-center gap-1 px-2">
+              <div className="flex items-center gap-1 text-primary">
+                <span className="text-base font-bold tabular-nums leading-none text-foreground">
                   {(viewCount ?? ad.views ?? 0).toLocaleString("ar")}
                 </span>
-                <Eye className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} />
+                <Eye className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
               </div>
-              <span className="text-[11px] font-medium text-primary/90">
+              <span className="text-[10px] font-medium text-primary/90">
                 {t("ad_detail.views")}
               </span>
             </div>
@@ -762,21 +779,21 @@ export default function AdDetail() {
               onClick={handleToggleLike}
               aria-label={t("ad_detail.likes")}
               disabled={likeMut.isPending || unlikeMut.isPending}
-              className="flex flex-1 flex-col items-center justify-center gap-1.5 px-2 touch-manipulation active:scale-[0.98] transition-transform duration-150 disabled:opacity-60"
+              className="flex flex-1 flex-col items-center justify-center gap-1 px-2 touch-manipulation active:scale-[0.98] transition-transform duration-150 disabled:opacity-60"
             >
-              <div className="flex items-center gap-1.5 text-primary">
-                <span className="text-lg font-bold tabular-nums leading-none text-foreground">
+              <div className="flex items-center gap-1 text-primary">
+                <span className="text-base font-bold tabular-nums leading-none text-foreground">
                   {(ad.likeCount ?? 0).toLocaleString("ar")}
                 </span>
                 <ThumbsUp
                   className={cn(
-                    "h-4 w-4 shrink-0 text-primary",
+                    "h-3.5 w-3.5 shrink-0 text-primary",
                     ad.isLiked && "fill-primary",
                   )}
                   strokeWidth={2.25}
                 />
               </div>
-              <span className="text-[11px] font-medium text-primary/90">
+              <span className="text-[10px] font-medium text-primary/90">
                 {t("ad_detail.likes")}
               </span>
             </button>
@@ -789,21 +806,21 @@ export default function AdDetail() {
               onClick={handleToggleFavorite}
               aria-label={t("ad_detail.favorites")}
               disabled={favMut.isPending || unfavMut.isPending}
-              className="flex flex-1 flex-col items-center justify-center gap-1.5 px-2 touch-manipulation active:scale-[0.98] transition-transform duration-150 disabled:opacity-60"
+              className="flex flex-1 flex-col items-center justify-center gap-1 px-2 touch-manipulation active:scale-[0.98] transition-transform duration-150 disabled:opacity-60"
             >
-              <div className="flex items-center gap-1.5 text-primary">
-                <span className="text-lg font-bold tabular-nums leading-none text-foreground">
+              <div className="flex items-center gap-1 text-primary">
+                <span className="text-base font-bold tabular-nums leading-none text-foreground">
                   {(ad.favoriteCount ?? 0).toLocaleString("ar")}
                 </span>
                 <Star
                   className={cn(
-                    "h-4 w-4 shrink-0 text-primary",
+                    "h-3.5 w-3.5 shrink-0 text-primary",
                     ad.isFavorited && "fill-primary",
                   )}
                   strokeWidth={2.25}
                 />
               </div>
-              <span className="text-[11px] font-medium text-primary/90">
+              <span className="text-[10px] font-medium text-primary/90">
                 {t("ad_detail.favorites")}
               </span>
             </button>
@@ -813,7 +830,7 @@ export default function AdDetail() {
           {deviceInfoRows.length > 0 ? (
             <div
               data-testid="ad-device-info-section"
-              className={cn(deviceInfoShell, "space-y-2 text-sm")}
+              className={cn(deviceInfoShell, "space-y-1.5 text-sm")}
             >
               <span className={cn(adDetailSectionHeading, "mb-0")}>
                 {t("ad_detail.device_info")}
@@ -834,7 +851,7 @@ export default function AdDetail() {
           ) : null}
 
           {/* 2 — الوصف */}
-          <div className={cn(deviceInfoShell, "space-y-2 text-sm")}>
+          <div className={cn(deviceInfoShell, "space-y-1.5 text-sm")}>
             <span className={cn(adDetailSectionHeading, "mb-0")}>
               {t("ad_detail.description")}
             </span>
@@ -868,7 +885,7 @@ export default function AdDetail() {
           </div>
 
           {/* 3 — الشحن والتسليم */}
-          <div className={cn(deviceInfoShell, "space-y-2 text-sm")}>
+          <div className={cn(deviceInfoShell, "space-y-1.5 text-sm")}>
             <span className={cn(adDetailSectionHeading, "mb-0")}>
               {t("ad_detail.shipping_delivery")}
             </span>

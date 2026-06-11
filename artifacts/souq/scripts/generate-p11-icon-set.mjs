@@ -153,6 +153,16 @@ function main() {
   generatePlayStore();
   generatePromoVideoLogo();
   writeFaviconSvg();
+  const badgeScript = path.join(__dirname, "generate-notification-badge.mjs");
+  if (fs.existsSync(badgeScript)) {
+    const badgeRun = spawnSync(process.execPath, [badgeScript], {
+      stdio: "inherit",
+      encoding: "utf8",
+    });
+    if (badgeRun.status !== 0) {
+      throw new Error("generate-notification-badge.mjs failed");
+    }
+  }
   console.log("[P11] Icon set generated from logo-master.png");
 }
 

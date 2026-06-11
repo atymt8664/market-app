@@ -1,0 +1,80 @@
+{
+  "_instructions": "Copy to p17-9-13-device-matrix.json, fill after real-device testing. Set P17_9_13_DEVICE_MATRIX to this file path when running prod-verify.",
+  "tester": "",
+  "deviceModel": "",
+  "androidVersion": "",
+  "testedAt": "",
+  "environment": "production",
+  "webBase": "https://www.souq-arab.com",
+  "pushSubscribed": true,
+  "scenarios": {
+    "app_foreground": {
+      "osNotification": "SKIP_EXPECTED",
+      "inAppRealtime": "PASS|FAIL",
+      "counters": "PASS|FAIL",
+      "deepLink": "PASS|FAIL|N/A",
+      "duplicate": "PASS|FAIL|N/A",
+      "notes": "WS-connected users skip OS push by design"
+    },
+    "app_background": {
+      "osNotification": "PASS|FAIL",
+      "lockScreen": "PASS|FAIL|N/A",
+      "deepLink": "PASS|FAIL",
+      "duplicate": "PASS|FAIL",
+      "notes": ""
+    },
+    "app_killed": {
+      "osNotification": "PASS|FAIL",
+      "lockScreen": "PASS|FAIL",
+      "deepLink": "PASS|FAIL",
+      "duplicate": "PASS|FAIL",
+      "notes": "Force-stop or swipe away from recents"
+    },
+    "chrome_foreground": {
+      "osNotification": "SKIP_EXPECTED",
+      "inAppRealtime": "PASS|FAIL",
+      "notes": "Chrome tab active"
+    },
+    "chrome_background": {
+      "osNotification": "PASS|FAIL",
+      "deepLink": "PASS|FAIL",
+      "notes": "Chrome tab in background, app not installed"
+    },
+    "chrome_closed": {
+      "osNotification": "PASS|FAIL",
+      "deepLink": "PASS|FAIL",
+      "notes": "Chrome fully closed; SW must stay registered"
+    },
+    "twa_foreground": {
+      "osNotification": "SKIP_EXPECTED",
+      "inAppRealtime": "PASS|FAIL|N/A",
+      "notes": "Skip if TWA APK not installed yet"
+    },
+    "twa_background": {
+      "osNotification": "PASS|FAIL|N/A",
+      "deepLink": "PASS|FAIL|N/A",
+      "notes": ""
+    },
+    "twa_killed": {
+      "osNotification": "PASS|FAIL|N/A",
+      "lockScreen": "PASS|FAIL|N/A",
+      "deepLink": "PASS|FAIL|N/A",
+      "notes": ""
+    },
+    "lock_screen": {
+      "osNotification": "PASS|FAIL",
+      "deepLink": "PASS|FAIL",
+      "notes": "Phone locked when notification arrives"
+    }
+  },
+  "quietHours": {
+    "pushSuppressed": "PASS|FAIL",
+    "inAppStillDelivered": "PASS|FAIL",
+    "notes": "Enable quiet hours covering test window; trigger broadcast"
+  },
+  "preferences": {
+    "announcementsOffBlocks": "PASS|FAIL",
+    "announcementsOnDelivers": "PASS|FAIL",
+    "notes": "Toggle notifyAnnouncements on /account/notifications"
+  }
+}

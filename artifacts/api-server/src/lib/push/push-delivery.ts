@@ -42,7 +42,18 @@ export async function deliverPushJob(job: PushDeliveryJob): Promise<void> {
   }
 
   const allowed = await shouldDeliverPushNotification(job.userId, job.type);
-  if (!allowed) return;
+  if (!allowed) {
+    logger.info(
+      {
+        kind: "push_skipped_preferences",
+        userId: job.userId,
+        notificationId: job.notificationId,
+        type: job.type,
+      },
+      "push skipped: user preferences",
+    );
+    return;
+  }
 
   const [prefRow] = await db
     .select({
@@ -64,11 +75,30 @@ export async function deliverPushJob(job: PushDeliveryJob): Promise<void> {
       prefRow.quietHoursTimezone,
     )
   ) {
+    logger.info(
+      {
+        kind: "push_skipped_quiet_hours",
+        userId: job.userId,
+        notificationId: job.notificationId,
+      },
+      "push skipped: quiet hours",
+    );
     return;
   }
 
   const subs = await listActivePushSubscriptions(job.userId);
-  if (!subs.length) return;
+  if (!subs.length) {
+    logger.info(
+      {
+        kind: "push_skipped_no_subscription",
+        userId: job.userId,
+        notificationId: job.notificationId,
+        type: job.type,
+      },
+      "push skipped: no active push subscription",
+    );
+    return;
+  }
 
   const payload = JSON.stringify(buildPushNotificationPayload(job));
 
@@ -82,6 +112,15 @@ export async function deliverPushJob(job: PushDeliveryJob): Promise<void> {
           },
           payload,
           { TTL: 60 * 60 * 24 },
+        );
+        logger.info(
+          {
+            kind: "push_delivered",
+            userId: job.userId,
+            notificationId: job.notificationId,
+            subscriptionId: sub.id,
+          },
+          "push sent via web-push",
         );
       } catch (err: unknown) {
         const status = (err as { statusCode?: number })?.statusCode;

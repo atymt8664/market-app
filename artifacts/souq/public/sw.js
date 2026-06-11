@@ -1,14 +1,23 @@
 /**
- * Souq Arab EU — PWA shell + Web Push (P11).
+ * Souq Arab EU — PWA shell + Web Push (P11 / P17-9-13).
  * P9 deploy stability: never precache or serve stale HTML/JS/CSS (prevents mixed bundles).
  */
-const CACHE_VERSION = "souq-arab-eu-v5-p7-pr-9";
+const CACHE_VERSION = "souq-arab-eu-v7-p17-9-13-branding";
+
+/** Android status bar: monochrome white silhouette. Drawer: brand large icon. */
+const NOTIFICATION_BADGE = "/icons/notification-badge-96.png";
+const NOTIFICATION_LARGE_ICON = "/icons/notification-large-192.png";
+const NOTIFICATION_FALLBACK_ICON = "/icons/pwa-icon-192.png";
+/** Heads-up friendly pattern (Android Web Push). */
+const NOTIFICATION_VIBRATE = [120, 60, 120];
 
 /** Static install assets only — no index.html or hashed /assets/* bundles. */
 const PRECACHE_URLS = [
   "/manifest.webmanifest",
   "/icons/pwa-icon-192.png",
   "/icons/pwa-icon-512.png",
+  NOTIFICATION_BADGE,
+  NOTIFICATION_LARGE_ICON,
 ];
 
 function isHtmlNavigation(request) {
@@ -25,6 +34,10 @@ function shouldBypassServiceWorker(pathname) {
   );
 }
 
+function assetUrl(path) {
+  return new URL(path, self.location.origin).href;
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
@@ -34,7 +47,7 @@ self.addEventListener("install", (event) => {
   );
 });
 
-/** Purges v1/v2-push buckets that stored stale index.html — keeps only the current shell cache. */
+/** Purges stale buckets — keeps only the current shell cache. */
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
@@ -58,18 +71,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  /** Hashed bundles + SW script: browser/CDN immutable cache — do not intercept. */
   if (shouldBypassServiceWorker(url.pathname)) {
     return;
   }
 
-  /** App shell HTML: network-only — never cache (avoids old index.html + new CSS/JS mix). */
   if (isHtmlNavigation(req)) {
     event.respondWith(fetch(req));
     return;
   }
 
-  /** Precached PWA install assets (manifest/icons) — cache-first fallback. */
   event.respondWith(
     caches.match(req).then((hit) => {
       if (hit) return hit;
@@ -83,6 +93,30 @@ function resolveNotificationUrl(data) {
     return data.url;
   }
   return "/notifications";
+}
+
+async function showOsNotification(title, body, data, tag) {
+  const options = {
+    body,
+    data,
+    icon: assetUrl(NOTIFICATION_LARGE_ICON),
+    badge: assetUrl(NOTIFICATION_BADGE),
+    tag,
+    vibrate: NOTIFICATION_VIBRATE,
+    renotify: true,
+    silent: false,
+    timestamp: Date.now(),
+  };
+
+  try {
+    await self.registration.showNotification(title, options);
+  } catch {
+    await self.registration.showNotification(title, {
+      ...options,
+      icon: assetUrl(NOTIFICATION_FALLBACK_ICON),
+      vibrate: NOTIFICATION_VIBRATE,
+    });
+  }
 }
 
 self.addEventListener("push", (event) => {
@@ -106,16 +140,16 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil(
     (async () => {
-      await self.registration.showNotification(title, {
-        body,
-        data,
-        icon: "/icons/pwa-icon-192.png",
-        badge: "/icons/pwa-icon-192.png",
-        tag,
-      });
       const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const appVisible = clients.some((client) => client.visibilityState === "visible");
+
       for (const client of clients) {
         client.postMessage({ type: "souq:push-received", data });
+      }
+
+      /** OS tray when background / lock / killed — not when app is focused. */
+      if (!appVisible) {
+        await showOsNotification(title, body, data, tag);
       }
     })(),
   );

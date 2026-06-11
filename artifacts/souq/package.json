@@ -30,6 +30,7 @@
     "p8-1h:prod": "node scripts/validate-p8-1h-prod.mjs",
     "p8-1i:prod": "node scripts/validate-p8-1i-prod.mjs",
     "icons:p11": "node scripts/generate-p11-icon-set.mjs",
+    "icons:notification": "node scripts/generate-notification-badge.mjs",
     "seo:p11:validate": "node scripts/validate-p11-seo-foundation.mjs",
     "social:p11:validate": "node scripts/validate-p11-5-social-meta.mjs",
     "structured:p3:validate": "node scripts/validate-p3-5-structured-data.mjs",

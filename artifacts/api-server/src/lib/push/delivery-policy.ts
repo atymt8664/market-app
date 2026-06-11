@@ -1,4 +1,7 @@
-/** P17-9-4: realtime-connected users get WS — skip duplicate push. */
-export function shouldSkipPushForConnectedUser(isSocketConnected: boolean): boolean {
-  return isSocketConnected;
+/**
+ * P17-9-13: never skip push at the server — Android keeps WS open in background/lock,
+ * which blocked all OS notifications. SW shows notification only when no visible client.
+ */
+export function shouldSkipPushForConnectedUser(_isSocketConnected: boolean): boolean {
+  return false;
 }

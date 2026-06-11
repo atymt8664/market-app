@@ -73,7 +73,7 @@ assert.equal(
   "/orders/SOUQ-2026-000001",
 );
 
-assert.equal(shouldSkipPushForConnectedUser(true), true);
+assert.equal(shouldSkipPushForConnectedUser(true), false);
 assert.equal(shouldSkipPushForConnectedUser(false), false);
 
 const serialized = JSON.stringify(payload);

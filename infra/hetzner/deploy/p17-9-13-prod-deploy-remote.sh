@@ -32,7 +32,8 @@ git clone --depth 1 "$REPO_URL" "$GIT_DIR" >>"$LOG" 2>&1
 for needle in \
   "P17-9-13: never skip push at the server" \
   "push_skipped_no_subscription" \
-  "shouldSkipPushForConnectedUser"; do
+  "notifyMessageReceived" \
+  "message.received"; do
   grep -rq "$needle" "${GIT_DIR}/artifacts/api-server/" || halt "P17-9-13 source missing: ${needle}"
 done
 log "SOURCE_OK P17-9-13 markers present"
@@ -44,7 +45,7 @@ log ">> docker build ${TAG}"
 cd "$CTX"
 docker build -f infra/hetzner/api-readiness/docker/Dockerfile -t "$TAG" . >>"$LOG" 2>&1
 
-docker run --rm "$TAG" sh -c 'grep -q "return false" /app/artifacts/api-server/dist/lib/push/delivery-policy.mjs' \
+docker run --rm "$TAG" sh -c 'grep -q "function shouldSkipPushForConnectedUser" /app/artifacts/api-server/dist/worker/push-worker.mjs && grep -A1 "function shouldSkipPushForConnectedUser" /app/artifacts/api-server/dist/worker/push-worker.mjs | grep -q "return false"' \
   >>"$LOG" 2>&1 || halt "built image missing P17-9-13 delivery-policy fix"
 
 log ">> deploy-api.sh"

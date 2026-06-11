@@ -45,6 +45,7 @@ import {
   stringifyChatLocationBody,
 } from "../lib/chat-location-message";
 import { isValidChatReactionEmoji } from "../lib/chat-message-reaction";
+import { notifyMessageReceived } from "../lib/message-notifications";
 
 const router: IRouter = Router();
 
@@ -990,6 +991,15 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
   // Echo to sender's other devices too.
   broadcastToUser(userId, payload);
   broadcastTypingStoppedForSender(convId, userId);
+
+  if (!isUserFocusedOnConversation(recipient, convId)) {
+    void notifyMessageReceived({
+      recipientUserId: recipient,
+      senderUserId: userId,
+      conversationId: convId,
+      messageId: created!.id,
+    });
+  }
 
   res.status(201).json(serialized);
 });

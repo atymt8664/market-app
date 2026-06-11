@@ -2,7 +2,7 @@
  * Souq Arab EU — PWA shell + Web Push (P11 / P17-9-13).
  * P9 deploy stability: never precache or serve stale HTML/JS/CSS (prevents mixed bundles).
  */
-const CACHE_VERSION = "souq-arab-eu-v7-p17-9-13-branding";
+const CACHE_VERSION = "souq-arab-eu-v8-p17-9-13-msg-badge";
 
 /** Android status bar: monochrome white silhouette. Drawer: brand large icon. */
 const NOTIFICATION_BADGE = "/icons/notification-badge-96.png";

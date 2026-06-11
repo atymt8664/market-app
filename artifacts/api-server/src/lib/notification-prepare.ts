@@ -1,6 +1,7 @@
 import type { CreateNotificationInput } from "./jobs/notification-types";
 import { shouldDeliverInAppNotification } from "./notification-preference-gate";
 import type { PreparedInAppNotification } from "./jobs/notification-types";
+import { resolveNotificationFoundation } from "./notifications/foundation";
 
 function sanitizeMetadata(
   meta: Record<string, unknown> | null | undefined,
@@ -47,6 +48,15 @@ export async function prepareInAppNotification(
 
   const metadata = sanitizeMetadata(input.metadata ?? null);
 
+  const foundation = resolveNotificationFoundation({
+    userId,
+    type,
+    entityType,
+    entityId,
+    metadata: input.metadata ?? null,
+    dedupKey: input.dedupKey,
+  });
+
   return {
     userId,
     type,
@@ -55,5 +65,6 @@ export async function prepareInAppNotification(
     entityType,
     entityId,
     metadata,
+    foundation,
   };
 }

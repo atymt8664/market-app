@@ -63,6 +63,7 @@ async function handleInAppNotification(jobs: Job[]): Promise<void> {
         entityType: payload.entityType,
         entityId: payload.entityId,
         metadata: payload.metadata,
+        foundation: payload.foundation,
       });
       incrementNotificationJobMetric("processed");
       logger.info(

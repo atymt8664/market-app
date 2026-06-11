@@ -1,3 +1,5 @@
+import { officialNotificationContent } from "../communications";
+
 export const REPORT_STATUSES = [
   "open",
   "under_review",
@@ -28,30 +30,26 @@ export function isAllowedReportStatus(status: string): status is ReportStatus {
   return normalizeReportStatus(status) !== null;
 }
 
+function officialReportPayload(
+  type: "report.reviewing" | "report.resolved" | "report.rejected",
+): { type: string; title: string; body: string } | null {
+  const copy = officialNotificationContent({ type });
+  if (!copy) return null;
+  return { type, ...copy };
+}
+
 export function reportStatusNotificationPayload(
   status: string,
 ): { type: string; title: string; body: string } | null {
   const normalized = normalizeReportStatus(status);
   if (normalized === "under_review") {
-    return {
-      type: "report.reviewing",
-      title: "تحديث حالة البلاغ",
-      body: "بلاغك قيد المراجعة",
-    };
+    return officialReportPayload("report.reviewing");
   }
   if (normalized === "resolved") {
-    return {
-      type: "report.resolved",
-      title: "تحديث حالة البلاغ",
-      body: "تم حل بلاغك",
-    };
+    return officialReportPayload("report.resolved");
   }
   if (normalized === "rejected") {
-    return {
-      type: "report.rejected",
-      title: "تحديث حالة البلاغ",
-      body: "تمت مراجعة بلاغك ولم يتم اتخاذ إجراء إضافي",
-    };
+    return officialReportPayload("report.rejected");
   }
   return null;
 }

@@ -49,6 +49,7 @@ import {
   requireAdminCsrf,
 } from "../middlewares/require-admin";
 import { PUBLIC_AD_STATUSES, isPublicAdStatus } from "../lib/ad-visibility";
+import { officialNotificationContent } from "../lib/communications";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 import { requireAuth } from "../middlewares/require-auth";
@@ -314,15 +315,18 @@ router.delete("/admin/ads/:id", requireAdminAccessGrant, requireAdmin, requireAd
 
   if (existing.userId != null) {
     try {
-      await createNotification({
-        userId: existing.userId,
-        type: "ad.deleted",
-        title: "تم حذف إعلانك",
-        body: "تم حذف إعلانك من الإدارة",
-        entityType: null,
-        entityId: null,
-        metadata: { adId: id, source: "admin.ads.delete" },
-      });
+      const copy = officialNotificationContent({ type: "ad.deleted" });
+      if (copy) {
+        await createNotification({
+          userId: existing.userId,
+          type: "ad.deleted",
+          title: copy.title,
+          body: copy.body,
+          entityType: null,
+          entityId: null,
+          metadata: { adId: id, source: "admin.ads.delete" },
+        });
+      }
     } catch (err) {
       logger.warn({ err, adId: id }, "createNotification failed (ad.delete)");
     }
@@ -694,15 +698,18 @@ router.post("/ads/:adId/favorite", requireAuth, requireUserCsrf, async (req, res
     if (result.active && !existingFav && adRow.userId != null && adRow.userId !== userId) {
       try {
         const shortTitle = adRow.title.trim().slice(0, 120) || "إعلانك";
-        await createNotification({
-          userId: adRow.userId,
-          type: "ad.favorited",
-          title: "إضافة إلى المفضلة",
-          body: `أُضيف إعلانك إلى المفضلة: ${shortTitle}`,
-          entityType: "ad",
-          entityId: adId,
-          metadata: { adTitle: shortTitle },
-        });
+        const copy = officialNotificationContent({ type: "ad.favorited" });
+        if (copy) {
+          await createNotification({
+            userId: adRow.userId,
+            type: "ad.favorited",
+            title: copy.title,
+            body: copy.body,
+            entityType: "ad",
+            entityId: adId,
+            metadata: { adTitle: shortTitle },
+          });
+        }
       } catch (err) {
         logger.warn({ err, adId }, "createNotification failed (ad.favorited)");
       }
@@ -720,15 +727,18 @@ router.post("/ads/:adId/favorite", requireAuth, requireUserCsrf, async (req, res
   if (inserted.length > 0 && adRow.userId != null && adRow.userId !== userId) {
     try {
       const shortTitle = adRow.title.trim().slice(0, 120) || "إعلانك";
-      await createNotification({
-        userId: adRow.userId,
-        type: "ad.favorited",
-        title: "إضافة إلى المفضلة",
-        body: `أُضيف إعلانك إلى المفضلة: ${shortTitle}`,
-        entityType: "ad",
-        entityId: adId,
-        metadata: { adTitle: shortTitle },
-      });
+      const copy = officialNotificationContent({ type: "ad.favorited" });
+      if (copy) {
+        await createNotification({
+          userId: adRow.userId,
+          type: "ad.favorited",
+          title: copy.title,
+          body: copy.body,
+          entityType: "ad",
+          entityId: adId,
+          metadata: { adTitle: shortTitle },
+        });
+      }
     } catch (err) {
       logger.warn({ err, adId }, "createNotification failed (ad.favorited)");
     }
@@ -807,6 +817,26 @@ router.post("/ads", requireAuth, requireUserCsrf, createAdLimiter, async (req, r
   const id = inserted[0]!.id;
   if (useDenormalizedReactionCounters()) {
     await ensureCounterRow(id);
+  }
+  try {
+    const shortTitle = body.title.trim().slice(0, 120) || "إعلانك";
+    const copy = officialNotificationContent({
+      type: "ad.pending_review",
+      slaContext: { ad: { status: "pending", createdAt: new Date(), updatedAt: null } },
+    });
+    if (copy) {
+      await createNotification({
+        userId: req.session.userId!,
+        type: "ad.pending_review",
+        title: copy.title,
+        body: copy.body,
+        entityType: "ad",
+        entityId: id,
+        metadata: { adId: id, toStatus: "pending", adTitle: shortTitle },
+      });
+    }
+  } catch (err) {
+    logger.warn({ err, adId: id }, "createNotification failed (ad.pending_review create)");
   }
   const rows = await fetchAdsList({
     currentUserId: null,
@@ -923,15 +953,27 @@ router.patch("/ads/:adId", requireAuth, requireUserCsrf, async (req, res) => {
     prevRow.userId != null
   ) {
     try {
-      await createNotification({
-        userId: prevRow.userId,
+      const copy = officialNotificationContent({
         type: "ad.pending_review",
-        title: "إعلانك قيد المراجعة",
-        body: "تم تعديل إعلانك وسيُراجع من الإدارة قبل إعادة النشر",
-        entityType: "ad",
-        entityId: adId,
-        metadata: { adId, fromStatus: prevRow.status, toStatus: nextStatus },
+        slaContext: {
+          ad: {
+            status: "pending",
+            createdAt: prevRow.createdAt ?? new Date(),
+            updatedAt: new Date(),
+          },
+        },
       });
+      if (copy) {
+        await createNotification({
+          userId: prevRow.userId,
+          type: "ad.pending_review",
+          title: copy.title,
+          body: copy.body,
+          entityType: "ad",
+          entityId: adId,
+          metadata: { adId, fromStatus: prevRow.status, toStatus: nextStatus },
+        });
+      }
     } catch (err) {
       logger.warn({ err, adId }, "createNotification failed (ad.pending_review)");
     }
@@ -1069,35 +1111,18 @@ router.patch("/admin/ads/:id/status", requireAdminAccessGrant, requireAdmin, req
   if (before.userId != null) {
     try {
       const shortTitle = before.title.trim().slice(0, 120) || "إعلانك";
-      if (status === "approved") {
+      const typeKey =
+        status === "approved" ? "ad.approved" : status === "rejected" ? "ad.rejected" : "ad.hidden";
+      const copy = officialNotificationContent({ type: typeKey });
+      if (copy) {
         await createNotification({
           userId: before.userId,
-          type: "ad.approved",
-          title: "تم قبول إعلانك",
-          body: `تم اعتماد الإعلان: ${shortTitle}`,
+          type: typeKey,
+          title: copy.title,
+          body: copy.body,
           entityType: "ad",
           entityId: id,
-          metadata: { adTitle: shortTitle },
-        });
-      } else if (status === "rejected") {
-        await createNotification({
-          userId: before.userId,
-          type: "ad.rejected",
-          title: "تم رفض إعلانك",
-          body: moderationReason || `لم يُعتمد الإعلان: ${shortTitle}`,
-          entityType: "ad",
-          entityId: id,
-          metadata: { adTitle: shortTitle, reason: moderationReason },
-        });
-      } else if (status === "hidden") {
-        await createNotification({
-          userId: before.userId,
-          type: "ad.hidden",
-          title: "تم إخفاء إعلانك",
-          body: "تم إخفاء إعلانك من الإدارة ولن يظهر للمستخدمين حاليًا",
-          entityType: "ad",
-          entityId: id,
-          metadata: { adTitle: shortTitle },
+          metadata: { adTitle: shortTitle, reason: moderationReason || null },
         });
       }
     } catch (err) {
@@ -1294,17 +1319,19 @@ router.patch("/admin/ads/:id/featured", requireAdminAccessGrant, requireAdmin, r
   if (before.userId != null) {
     try {
       const shortTitle = before.title.trim().slice(0, 120) || "إعلانك";
-      await createNotification({
-        userId: before.userId,
-        type: featured ? "ad.featured" : "ad.unfeatured",
-        title: featured ? "تم تمييز إعلانك" : "تمت إزالة التمييز",
-        body: featured
-          ? `أصبح إعلانك ضمن المميزة (إن كان معتمدًا): ${shortTitle}`
-          : `أُزيل التمييز عن الإعلان: ${shortTitle}`,
-        entityType: "ad",
-        entityId: id,
-        metadata: { adTitle: shortTitle, featured },
-      });
+      const typeKey = featured ? "ad.featured" : "ad.unfeatured";
+      const copy = officialNotificationContent({ type: typeKey });
+      if (copy) {
+        await createNotification({
+          userId: before.userId,
+          type: typeKey,
+          title: copy.title,
+          body: copy.body,
+          entityType: "ad",
+          entityId: id,
+          metadata: { adTitle: shortTitle, featured },
+        });
+      }
     } catch (err) {
       logger.warn({ err, adId: id }, "createNotification failed (ad featured)");
     }

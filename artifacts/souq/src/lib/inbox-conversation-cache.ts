@@ -1,6 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { ConversationListItem } from "@workspace/api-client-react";
 import { getListConversationsQueryKey } from "@workspace/api-client-react";
+import {
+  bumpMessagesUnreadCount,
+  invalidateUnreadCounters,
+} from "@/lib/unread-counters-cache";
 
 /** Fields needed to patch inbox list; matches WS payload where `messageType` may be omitted. */
 export type InboxRealtimeMessageFields = {
@@ -80,6 +84,7 @@ export function applyIncomingMessageToInboxCache(
 
   if (needsInvalidate) {
     void queryClient.invalidateQueries({ queryKey: key });
+    invalidateUnreadCounters(queryClient);
   }
 }
 
@@ -90,14 +95,19 @@ export function clearConversationUnreadInInboxCache(
 ): void {
   if (!Number.isInteger(conversationId) || conversationId <= 0) return;
 
+  let cleared = 0;
   queryClient.setQueryData<ConversationListItem[]>(getListConversationsQueryKey(), (old) => {
     if (!old || !Array.isArray(old)) return old;
     const idx = old.findIndex((c) => c.id === conversationId);
     if (idx < 0 || old[idx]!.unreadCount === 0) return old;
+    cleared = old[idx]!.unreadCount;
     const next = [...old];
     next[idx] = { ...next[idx]!, unreadCount: 0 };
     return next;
   });
+  if (cleared > 0) {
+    bumpMessagesUnreadCount(queryClient, -cleared);
+  }
 }
 
 /** Optimistic removal after hide/delete — keeps user on inbox without full refetch. */

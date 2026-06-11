@@ -1,12 +1,12 @@
-export const MODERATION_REASON_PRESET_KEYS = [
-  "p8.admin.moderation.preset.duplicate",
-  "p8.admin.moderation.preset.inappropriate_images",
-  "p8.admin.moderation.preset.misleading_info",
-  "p8.admin.moderation.preset.violating_content",
-  "p8.admin.moderation.preset.terms_violation",
-  "p8.admin.moderation.preset.false_report",
-  "p8.admin.moderation.preset.resolved",
-] as const;
+import { getAdminPresetI18nKeys, type AdminPresetContext } from "./admin-preset-keys";
+
+export const MODERATION_REASON_PRESET_KEYS = getAdminPresetI18nKeys("ads");
+
+export function moderationPresetKeysForContext(
+  context: AdminPresetContext,
+): readonly string[] {
+  return getAdminPresetI18nKeys(context);
+}
 
 export type StaffAssignment = {
   staffId: number | null;

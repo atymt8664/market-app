@@ -661,7 +661,7 @@ export async function getVerificationRequestDetail(params: {
       kind: doc.kind,
       url: doc.url,
       label: doc.label,
-      createdAt: doc.created_at.toISOString(),
+      createdAt: new Date(doc.created_at).toISOString(),
     })),
     activity: activity.map((item) => ({
       id: item.id,
@@ -669,7 +669,7 @@ export async function getVerificationRequestDetail(params: {
       actorName: item.actorName,
       action: item.action,
       details: item.details,
-      createdAt: item.createdAt.toISOString(),
+      createdAt: new Date(item.createdAt).toISOString(),
     })),
   };
 }

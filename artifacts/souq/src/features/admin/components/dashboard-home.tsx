@@ -29,7 +29,7 @@ import {
   CARD_SHELL,
   SUB_CARD,
 } from "@/features/admin/admin-interaction-classes";
-import { NotificationCenterFoundation } from "@/features/admin/components/notification-center-foundation";
+import { AdminNotificationCenterWidget } from "@/features/admin/components/admin-notification-center-widget";
 import { RolesPermissionsFoundation } from "@/features/admin/components/roles-permissions-foundation";
 import { adminIntlLocale } from "@/features/admin/admin-locale";
 import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
@@ -616,6 +616,8 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
         <PrioritySection level="normal" items={normalItems} onNavigate={navigate} />
       </section>
 
+      <AdminNotificationCenterWidget />
+
       <section className="space-y-3">
         <div className="flex items-center gap-2 text-right">
           <ShieldAlert className="h-5 w-5 text-amber-400" aria-hidden />
@@ -813,10 +815,7 @@ export function DashboardHome({ data, isRefreshing = false }: DashboardHomeProps
           <span className="text-sm font-semibold text-foreground">{t("p8.admin.noc.link_monitoring")}</span>
           <Activity className="h-5 w-5 text-primary" aria-hidden />
         </a>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <NotificationCenterFoundation />
-        <RolesPermissionsFoundation />
-      </div>
+      <RolesPermissionsFoundation />
       </div>
       ) : null}
     </div>

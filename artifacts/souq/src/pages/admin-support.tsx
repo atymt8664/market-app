@@ -833,6 +833,7 @@ export default function AdminSupportPage() {
       <ModerationReasonDialog
         open={pendingCloseConfirm}
         onOpenChange={setPendingCloseConfirm}
+        presetContext="support"
         title={t("p8.admin.support.close_reason_title")}
         description={t("p8.admin.moderation.reason_hint")}
         confirmLabel={t("p8.admin.support.close_confirm_label")}

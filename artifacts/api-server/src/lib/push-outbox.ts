@@ -9,6 +9,7 @@ import { startQueueModule } from "./jobs/queue-module";
 import { incrementPushJobMetric } from "./jobs/job-queue-metrics";
 import type { PushDeliveryJob } from "./push/push-queue";
 import { schedulePushDelivery } from "./push/schedule-push-delivery";
+import { buildPushJobIdempotencyKey } from "./push/idempotency";
 
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 
@@ -27,7 +28,7 @@ export function isPushOutboxEnabled(): boolean {
 }
 
 function buildIdempotencyKey(job: PushDeliveryJob): string {
-  return `push.deliver:${job.userId}:${job.notificationId}`;
+  return buildPushJobIdempotencyKey(job);
 }
 
 /** Enqueue push.deliver — caller must have notificationId from insert. */

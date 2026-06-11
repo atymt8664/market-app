@@ -5,10 +5,8 @@ import {
   getListFavoriteAdsQueryKey,
   getListMyAdsQueryKey,
 } from "@workspace/api-client-react";
-import {
-  notificationsQueryKey,
-  unreadCountQueryKey,
-} from "@/hooks/use-notifications";
+import { notificationsQueryKey } from "@/hooks/use-notifications";
+import { unreadCountersQueryKey } from "@/lib/unread-counters-cache";
 import { P17_ORDERS_QUERY_ROOT } from "@/features/p17-commerce/orders-api.types";
 
 /**
@@ -29,7 +27,7 @@ export async function clearUserSessionQueries(
     ["/api/ads/mine"],
     ["/api/ads/favorites"],
     notificationsQueryKey,
-    unreadCountQueryKey,
+    unreadCountersQueryKey,
     ["userBlockStatus"],
     ["userPresence"],
   ] as const;

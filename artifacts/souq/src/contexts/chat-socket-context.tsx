@@ -7,7 +7,6 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { useLocation } from "wouter";
 import { buildWsUrlFromBrowser } from "@/lib/build-ws-url";
 
 export type ChatSocketEvent =
@@ -39,7 +38,27 @@ export type ChatSocketEvent =
       /** Present when delete-for-everyone (tombstone); omit for legacy hide-only flows. */
       deletedForEveryoneAt?: string;
     }
-  | { type: "pong" };
+  | { type: "pong" }
+  | {
+      type: "notification.created";
+      notification: {
+        id: number;
+        type: string;
+        title: string;
+        body: string;
+        entityType: string | null;
+        entityId: number | null;
+        metadata: Record<string, unknown> | null;
+        category?: string;
+        domain?: string;
+        priority?: number;
+        dedupKey?: string | null;
+        aggregationKey?: string | null;
+        deepLinkPath?: string;
+        readAt: string | null;
+        createdAt: string;
+      };
+    };
 
 export { buildWsUrlFromBrowser as buildWsUrl } from "@/lib/build-ws-url";
 
@@ -52,15 +71,14 @@ type ChatSocketContextValue = {
 
 const ChatSocketContext = createContext<ChatSocketContextValue | null>(null);
 
-function isMessagesFlowPath(loc: string): boolean {
-  const normalized = loc.replace(/\/+$/, "") || "/";
-  if (normalized === "/messages") return true;
-  return /^\/messages\/[^/]+$/.test(normalized);
-}
-
-export function ChatSocketProvider({ children }: { children: ReactNode }) {
-  const [loc] = useLocation();
-  const inMessagesFlow = isMessagesFlowPath(loc);
+export function ChatSocketProvider({
+  children,
+  enabled = false,
+}: {
+  children: ReactNode;
+  /** P17-9-3: connect when signed-in for notification realtime (+ chat on message routes). */
+  enabled?: boolean;
+}) {
 
   const listenersRef = useRef(new Set<Listener>());
   const wsRef = useRef<WebSocket | null>(null);
@@ -83,7 +101,7 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!inMessagesFlow) {
+    if (!enabled) {
       if (wsRef.current) {
         try {
           wsRef.current.close();
@@ -155,7 +173,7 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
         wsRef.current = null;
       }
     };
-  }, [inMessagesFlow, emit]);
+  }, [enabled, emit]);
 
   const send = useCallback((data: unknown) => {
     const ws = wsRef.current;

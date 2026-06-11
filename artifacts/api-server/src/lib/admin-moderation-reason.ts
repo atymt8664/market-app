@@ -1,12 +1,15 @@
-export const MODERATION_REASON_PRESETS = [
-  "محتوى مكرر",
-  "صور غير مناسبة",
-  "معلومات مضللة",
-  "محتوى مخالف",
-  "انتهاك شروط الاستخدام",
-  "بلاغ غير صحيح",
-  "تم حل المشكلة",
-] as const;
+import {
+  getAdminPresetsForContext,
+  type AdminPresetContext,
+} from "./communications";
+
+export const MODERATION_REASON_PRESETS = getAdminPresetsForContext("ads");
+
+export function moderationPresetsForContext(
+  context: AdminPresetContext,
+): readonly string[] {
+  return getAdminPresetsForContext(context);
+}
 
 export type ModerationReasonContext =
   | "ad_reject"

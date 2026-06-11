@@ -47,6 +47,7 @@ export type AdminMeResponse = {
 
 export type AdminNavKey =
   | "dashboard"
+  | "notifications"
   | "ads"
   | "reports"
   | "support"
@@ -65,6 +66,7 @@ export type AdminNavKey =
 
 const NAV_PERMISSIONS: Record<AdminNavKey, AdminPermissionArea[]> = {
   dashboard: ["dashboard.operations", "dashboard.moderation"],
+  notifications: [],
   ads: ["ads"],
   reports: ["reports"],
   support: ["support"],
@@ -84,6 +86,7 @@ const NAV_PERMISSIONS: Record<AdminNavKey, AdminPermissionArea[]> = {
 
 const ROUTE_PERMISSIONS: Record<string, AdminPermissionArea[]> = {
   "/admin": ["dashboard.operations", "dashboard.moderation"],
+  "/admin/notifications": [],
   "/admin/ads": ["ads"],
   "/admin/reports": ["reports"],
   "/admin/support": ["support"],
@@ -107,6 +110,7 @@ export function canAccessNav(
   navKey: AdminNavKey,
 ): boolean {
   if (!permissions?.length) return false;
+  if (navKey === "notifications") return true;
   const required = NAV_PERMISSIONS[navKey];
   return required.some((area) => permissions.includes(area));
 }
@@ -119,6 +123,7 @@ export function canAccessRoute(
   if (isFounder) return true;
   if (!permissions?.length) return false;
   const base = path.split("?")[0]?.replace(/\/+$/, "") || "/admin";
+  if (base === "/admin/notifications") return true;
   if (base === "/admin/operations" || base === "/admin/monitoring") return false;
   if (base.startsWith("/admin/users/")) {
     return permissions.includes("users");

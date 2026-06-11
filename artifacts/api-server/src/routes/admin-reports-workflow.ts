@@ -19,6 +19,7 @@ import { ensureSlaEscalationBeforeAdminRead } from "../lib/ops-cron";
 import { isOpsQueueKey } from "../lib/admin-operations-sla";
 import { loadAdminStaffContext } from "../lib/admin-rbac";
 import { FounderProtectedError } from "../lib/admin-staff";
+import { officialNotificationContent } from "../lib/communications";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 import { requireAdminPermission } from "../middlewares/require-admin-permission";
@@ -253,15 +254,19 @@ router.patch("/admin/reports/:id/status", requireAdminPermission("reports"), req
   const payload = reportStatusNotificationPayload(status);
   if (before.reporterId) {
     try {
-      const body =
-        moderationReason && (status === "rejected" || status === "resolved")
-          ? `${payload?.body ?? "تحديث على بلاغك"} — ${moderationReason}`
-          : payload?.body ?? "تحديث على بلاغك";
+      const typeKey = payload?.type ?? "report.updated";
+      const copy =
+        payload ??
+        officialNotificationContent({ type: "report.updated" }) ?? {
+          type: "report.updated",
+          title: "تحديث حالة البلاغ",
+          body: "تحديث على بلاغك",
+        };
       await createNotification({
         userId: before.reporterId,
-        type: payload?.type ?? "report.updated",
-        title: payload?.title ?? "تحديث حالة البلاغ",
-        body,
+        type: typeKey,
+        title: copy.title,
+        body: copy.body,
         entityType: "report",
         entityId: id,
         metadata: {
@@ -325,15 +330,18 @@ router.post("/admin/reports/:id/ad-action", requireAdminPermission("reports"), r
     await db.update(adsTable).set({ status: "hidden" }).where(eq(adsTable.id, report.targetAdId));
     if (targetAd?.userId) {
       try {
-        await createNotification({
-          userId: targetAd.userId,
-          type: "ad.hidden",
-          title: "تم إخفاء إعلانك",
-          body: `تم إخفاء إعلانك — ${parsed.reason}`,
-          entityType: "ad",
-          entityId: targetAd.id,
-          metadata: { adId: targetAd.id, reason: parsed.reason },
-        });
+        const hiddenCopy = officialNotificationContent({ type: "ad.hidden" });
+        if (hiddenCopy) {
+          await createNotification({
+            userId: targetAd.userId,
+            type: "ad.hidden",
+            title: hiddenCopy.title,
+            body: hiddenCopy.body,
+            entityType: "ad",
+            entityId: targetAd.id,
+            metadata: { adId: targetAd.id, reason: parsed.reason },
+          });
+        }
       } catch (err) {
         logger.warn({ err, adId: targetAd.id }, "createNotification failed (ad.hidden from report)");
       }
@@ -353,15 +361,18 @@ router.post("/admin/reports/:id/ad-action", requireAdminPermission("reports"), r
     await db.delete(adsTable).where(eq(adsTable.id, report.targetAdId));
     if (targetAd?.userId) {
       try {
-        await createNotification({
-          userId: targetAd.userId,
-          type: "ad.deleted",
-          title: "تم حذف إعلانك",
-          body: `تم حذف إعلانك — ${parsed.reason}`,
-          entityType: null,
-          entityId: null,
-          metadata: { adId: targetAd.id, reason: parsed.reason },
-        });
+        const deletedCopy = officialNotificationContent({ type: "ad.deleted" });
+        if (deletedCopy) {
+          await createNotification({
+            userId: targetAd.userId,
+            type: "ad.deleted",
+            title: deletedCopy.title,
+            body: deletedCopy.body,
+            entityType: null,
+            entityId: null,
+            metadata: { adId: targetAd.id, reason: parsed.reason },
+          });
+        }
       } catch (err) {
         logger.warn({ err, adId: targetAd.id }, "createNotification failed (ad.deleted from report)");
       }
@@ -395,15 +406,18 @@ router.post("/admin/reports/:id/ad-action", requireAdminPermission("reports"), r
 
   if (report.reporterId) {
     try {
-      await createNotification({
-        userId: report.reporterId,
-        type: "report.resolved",
-        title: "تحديث حالة البلاغ",
-        body: `تم حل بلاغك — ${parsed.reason}`,
-        entityType: "report",
-        entityId: id,
-        metadata: { reportId: id, reason: parsed.reason },
-      });
+      const resolvedCopy = officialNotificationContent({ type: "report.resolved" });
+      if (resolvedCopy) {
+        await createNotification({
+          userId: report.reporterId,
+          type: "report.resolved",
+          title: resolvedCopy.title,
+          body: resolvedCopy.body,
+          entityType: "report",
+          entityId: id,
+          metadata: { reportId: id, reason: parsed.reason },
+        });
+      }
     } catch (err) {
       logger.warn({ err, reportId: id }, "createNotification failed (report resolved from ad action)");
     }

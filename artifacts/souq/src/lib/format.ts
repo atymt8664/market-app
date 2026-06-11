@@ -2,6 +2,8 @@ import {
   format,
   formatDistanceToNow,
   isToday,
+  isYesterday,
+  isThisWeek,
   parseISO,
 } from "date-fns";
 import { ar, de, enUS } from "date-fns/locale";
@@ -21,6 +23,26 @@ export function formatRelativeTime(dateString: string) {
       locale: getDateFnsLocale(),
     });
   } catch (e) {
+    return "";
+  }
+}
+
+/** Notification Center — fast-scan time hierarchy (today → week → older). */
+export function formatNotificationTime(dateString: string) {
+  const loc = getDateFnsLocale();
+  try {
+    const d = parseISO(dateString);
+    const time = format(d, "p", { locale: loc });
+    if (isToday(d)) return time;
+    if (isYesterday(d)) {
+      const y = t("notifications.time.yesterday");
+      return `${y} · ${time}`;
+    }
+    if (isThisWeek(d, { weekStartsOn: 1 })) {
+      return `${format(d, "EEE", { locale: loc })} · ${time}`;
+    }
+    return `${format(d, "d MMM", { locale: loc })} · ${time}`;
+  } catch {
     return "";
   }
 }

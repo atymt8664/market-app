@@ -9,3 +9,4 @@ export * from "./verification";
 export * from "./staff";
 export * from "./taxonomy";
 export * from "./logs";
+export * from "./notifications";

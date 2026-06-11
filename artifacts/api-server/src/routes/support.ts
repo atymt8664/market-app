@@ -28,6 +28,7 @@ import { buildQueueSql, getDomainQueueCounts, mapSlaFields, assertStaffCanClaim 
 import { ensureSlaEscalationBeforeAdminRead } from "../lib/ops-cron";
 import { isOpsQueueKey } from "../lib/admin-operations-sla";
 import { loadAdminStaffContext } from "../lib/admin-rbac";
+import { officialNotificationContent } from "../lib/communications";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 import {
@@ -190,6 +191,27 @@ router.post("/support/tickets", requireAuth, requireUserCsrf, createSupportTicke
       userId,
       message: messageText,
     });
+
+    try {
+      const subj = subjectText.slice(0, 80);
+      const copy = officialNotificationContent({
+        type: "support.ticket.created",
+        slaContext: { support: { category: categoryText, priority: "normal" } },
+      });
+      if (copy) {
+        await createNotification({
+          userId,
+          type: "support.ticket.created",
+          title: copy.title,
+          body: copy.body,
+          entityType: "support_ticket",
+          entityId: ticket.id,
+          metadata: { ticketId: ticket.id, subject: subj },
+        });
+      }
+    } catch (err) {
+      logger.warn({ err, ticketId: ticket.id }, "createNotification failed (support.ticket.created)");
+    }
 
     return res.status(201).json({
       ...ticket,
@@ -571,23 +593,18 @@ router.patch("/admin/support/tickets/:id", requireAdminAccessGrant, requireAdmin
   if (before.userId != null && (statusChanged || priorityChanged)) {
     try {
       const subj = before.subject.trim().slice(0, 100) || "تذكرة الدعم";
-      const newStatus = updated?.status ?? before.status;
-      const newPriority = updated?.priority ?? before.priority;
-      const parts: string[] = [];
-      if (statusChanged) parts.push(`الحالة: ${newStatus}`);
-      if (priorityChanged) parts.push(`الأولوية: ${newPriority}`);
-      await createNotification({
-        userId: before.userId,
-        type: "support.ticket.updated",
-        title: "تحديث على تذكرة الدعم",
-        body:
-          moderationReason && effectiveStatus === "closed"
-            ? `«${subj}» — ${moderationReason}`
-            : `«${subj}» — ${parts.join(" • ")}`,
-        entityType: "support_ticket",
-        entityId: id,
-        metadata: { ticketId: id, reason: moderationReason || null },
-      });
+      const copy = officialNotificationContent({ type: "support.ticket.updated" });
+      if (copy) {
+        await createNotification({
+          userId: before.userId,
+          type: "support.ticket.updated",
+          title: copy.title,
+          body: copy.body,
+          entityType: "support_ticket",
+          entityId: id,
+          metadata: { ticketId: id, subject: subj, reason: moderationReason || null },
+        });
+      }
     } catch (err) {
       logger.warn({ err, ticketId: id }, "createNotification failed (support ticket update)");
     }
@@ -662,15 +679,18 @@ router.post("/admin/support/tickets/:id/reply", requireAdminAccessGrant, require
     try {
       const subj = ticket.subject.trim().slice(0, 100) || "تذكرة الدعم";
       const preview = message.slice(0, 200);
-      await createNotification({
-        userId: ticket.userId,
-        type: "support.reply",
-        title: "رد من فريق الدعم",
-        body: `«${subj}» — ${preview}`,
-        entityType: "support_ticket",
-        entityId: id,
-        metadata: { previewSlice: preview },
-      });
+      const copy = officialNotificationContent({ type: "support.reply" });
+      if (copy) {
+        await createNotification({
+          userId: ticket.userId,
+          type: "support.reply",
+          title: copy.title,
+          body: copy.body,
+          entityType: "support_ticket",
+          entityId: id,
+          metadata: { previewSlice: preview, subject: subj },
+        });
+      }
     } catch (err) {
       logger.warn({ err, ticketId: id }, "createNotification failed (support reply)");
     }

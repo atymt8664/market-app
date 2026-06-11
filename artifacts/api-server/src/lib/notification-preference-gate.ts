@@ -1,24 +1,11 @@
 import { eq } from "drizzle-orm";
 import { db, notificationPreferencesTable } from "@workspace/db";
+import {
+  resolvePreferenceColumnForType,
+  type NotificationPreferenceColumn,
+} from "./notifications/catalog";
 
-type PrefColumn =
-  | "notifyMessages"
-  | "notifyAdModeration"
-  | "notifySupport"
-  | "notifyReports"
-  | "notifyAnnouncements"
-  | "notifyFavorites";
-
-function preferenceColumnForType(notificationType: string): PrefColumn | null {
-  const n = notificationType.trim().toLowerCase();
-  if (n.startsWith("ad.favorited") || n.startsWith("favorite.")) return "notifyFavorites";
-  if (n.startsWith("ad.")) return "notifyAdModeration";
-  if (n.startsWith("support.")) return "notifySupport";
-  if (n.startsWith("report.")) return "notifyReports";
-  if (n.startsWith("message.") || n.startsWith("chat.")) return "notifyMessages";
-  if (n.startsWith("announcement.") || n.startsWith("admin.")) return "notifyAnnouncements";
-  return null;
-}
+type PrefColumn = Exclude<NotificationPreferenceColumn, null>;
 
 type PrefRow = {
   notifyMessages: boolean;
@@ -76,7 +63,7 @@ export async function shouldDeliverInAppNotification(
   notificationType: string,
 ): Promise<boolean> {
   if (!Number.isInteger(userId) || userId <= 0) return false;
-  const col = preferenceColumnForType(notificationType);
+  const col = resolvePreferenceColumnForType(notificationType);
   const row = await loadPreferenceRow(userId);
   return categoryAllowed(row, col);
 }
@@ -89,6 +76,6 @@ export async function shouldDeliverPushNotification(
   if (!Number.isInteger(userId) || userId <= 0) return false;
   const row = await loadPreferenceRow(userId);
   if (row && !row.pushEnabled) return false;
-  const col = preferenceColumnForType(notificationType);
+  const col = resolvePreferenceColumnForType(notificationType);
   return categoryAllowed(row, col);
 }

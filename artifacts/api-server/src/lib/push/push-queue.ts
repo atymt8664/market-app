@@ -11,6 +11,13 @@ export type PushDeliveryJob = {
   entityType?: string | null;
   entityId?: number | null;
   metadata?: Record<string, unknown> | null;
+  /** P17-9-4 — aligned with notification contract. */
+  dedupKey?: string | null;
+  aggregationKey?: string | null;
+  category?: string;
+  domain?: string;
+  priority?: number;
+  deepLinkPath?: string;
 };
 
 let redisClient: RedisClientType | null = null;

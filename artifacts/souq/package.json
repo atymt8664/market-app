@@ -18,6 +18,8 @@
     "p7-pr-14:visual": "node scripts/visual/p7-pr-14-lcp-supersession-check.mjs",
     "build:analyze": "set BUNDLE_ANALYZE=1&& vite build",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
+    "p17-9-6:visual": "node scripts/visual/p17-9-6-notification-center-visual.mjs",
+    "p17-9-7:visual": "node scripts/visual/p17-9-7-admin-notification-center-visual.mjs",
     "p8-1f:validate": "node --experimental-strip-types scripts/validate-p8-1f-dashboard-contracts.mjs",
     "p8-1f:prod": "node scripts/validate-p8-1f-prod.mjs",
     "p8-1g:validate": "node --experimental-strip-types scripts/validate-p8-1g-monetization-boundary.mjs",

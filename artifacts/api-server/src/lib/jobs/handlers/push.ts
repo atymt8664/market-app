@@ -57,16 +57,8 @@ async function handlePushDeliver(jobs: Job[]): Promise<void> {
     }
 
     try {
-      await executePushDelivery({
-        userId: payload.userId,
-        notificationId: payload.notificationId,
-        type: payload.type,
-        title: payload.title,
-        body: payload.body,
-        entityType: payload.entityType,
-        entityId: payload.entityId,
-        metadata: payload.metadata,
-      });
+      const { dryRun: _dryRun, ...deliveryJob } = payload;
+      await executePushDelivery(deliveryJob);
       incrementPushJobMetric("processed");
       logger.info(
         {

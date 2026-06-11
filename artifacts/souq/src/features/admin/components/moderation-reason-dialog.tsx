@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { MODERATION_REASON_PRESET_KEYS } from "@/features/admin/staff-workflow-types";
+import {
+  MODERATION_REASON_PRESET_KEYS,
+  moderationPresetKeysForContext,
+} from "@/features/admin/staff-workflow-types";
+import type { AdminPresetContext } from "@/features/admin/admin-preset-keys";
 import { BTN_FIX, DIALOG_SURFACE } from "@/features/admin/admin-interaction-classes";
 import { t } from "@/i18n";
 import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
@@ -20,6 +24,7 @@ type ModerationReasonDialogProps = {
   title: string;
   description?: string;
   confirmLabel?: string;
+  presetContext?: AdminPresetContext;
   onConfirm: (reason: string) => void;
   onOpenChange: (open: boolean) => void;
 };
@@ -29,12 +34,16 @@ export function ModerationReasonDialog({
   title,
   description,
   confirmLabel = t("p8.admin.common.confirm"),
+  presetContext,
   onConfirm,
   onOpenChange,
 }: ModerationReasonDialogProps) {
   const { dir } = useAdminLocale();
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
+  const presetKeys = presetContext
+    ? moderationPresetKeysForContext(presetContext)
+    : MODERATION_REASON_PRESET_KEYS;
 
   const handleConfirm = () => {
     const trimmed = reason.trim();
@@ -56,7 +65,7 @@ export function ModerationReasonDialog({
         </AlertDialogHeader>
         <div className="space-y-3 py-2">
           <div className="flex flex-wrap gap-2">
-            {MODERATION_REASON_PRESET_KEYS.map((presetKey) => {
+            {presetKeys.map((presetKey) => {
               const preset = t(presetKey);
               return (
                 <button

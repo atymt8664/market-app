@@ -1,17 +1,31 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import type { ProxyOptions } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
+import { assertSafeLocalFrontendApiEnv } from "./scripts/assert-safe-frontend-api-env.mjs";
 
 const rawPort = process.env.PORT ?? "5173";
 const port = Number(rawPort) || 5173;
 
 const basePath = process.env.BASE_PATH ?? "/";
 
+const isProductionBuild =
+  process.argv.includes("build") ||
+  (process.env.npm_lifecycle_script ?? "").includes("vite build");
+
 const apiProxyTarget =
   process.env.API_PROXY_TARGET?.trim() || "http://localhost:3001";
+
+/** Constitution: block Local dev/preview → Production API (see PROJECT_CONSTITUTION.md). */
+if (!isProductionBuild) {
+  const loadedEnv = loadEnv("development", import.meta.dirname, "");
+  assertSafeLocalFrontendApiEnv({
+    apiProxyTarget,
+    viteApiBaseUrl: loadedEnv.VITE_API_BASE_URL,
+  });
+}
 
 /**
  * Stable vendor splits for production — reduces entry parse cost and improves HTTP cache.

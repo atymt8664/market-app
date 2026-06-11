@@ -21,7 +21,6 @@ import {
 } from "@/lib/auth-page-styles";
 import { cn } from "@/lib/utils";
 import NotFound from "@/pages/not-found";
-import { ChatSocketProvider } from "@/contexts/chat-socket-context";
 import { SeoRouteSync } from "@/components/seo-route-sync";
 import { resolveSeoForPath } from "@/lib/seo-foundation";
 import { applyPublicPageMeta } from "@/lib/public-page-meta";
@@ -55,6 +54,7 @@ const AdminVerificationPage = lazy(() => import("@/pages/admin-verification"));
 const AdminPlansPage = lazy(() => import("@/pages/admin-plans"));
 const AdminSettingsPage = lazy(() => import("@/pages/admin-settings"));
 const AdminOperationsPage = lazy(() => import("@/pages/admin-operations"));
+const AdminNotificationsPage = lazy(() => import("@/pages/admin-notifications"));
 const AdminMonitoringPage = lazy(() => import("@/pages/admin-monitoring"));
 const AdminStaffPage = lazy(() => import("@/pages/admin-staff"));
 const AdminForcePasswordChangePage = lazy(() => import("@/pages/admin-force-password-change"));
@@ -96,23 +96,6 @@ function SeoHomeBootstrap() {
   return null;
 }
 
-/** P7-PR-8: WebSocket provider only on messaging routes — not Home cold path. */
-function MessagesRoute() {
-  return (
-    <ChatSocketProvider>
-      <Messages />
-    </ChatSocketProvider>
-  );
-}
-
-function MessageThreadRoute() {
-  return (
-    <ChatSocketProvider>
-      <MessageThread />
-    </ChatSocketProvider>
-  );
-}
-
 function Router() {
   const [pathname] = useLocation();
 
@@ -142,6 +125,7 @@ function Router() {
           <Route path="/login" component={Login} />
           <Route path="/admin-login" component={AdminLogin} />
           <Route path="/admin" component={AdminPage} />
+          <Route path="/admin/notifications" component={AdminNotificationsPage} />
           <Route path="/admin/ads" component={AdminAdsPage} />
           <Route path="/admin/reports" component={AdminReportsPage} />
           <Route path="/admin/support" component={AdminSupportPage} />
@@ -195,8 +179,8 @@ function Router() {
           <Route path="/seller-orders" component={SellerOrdersPage} />
           <Route path="/favorites" component={Favorites} />
           <Route path="/stats" component={Stats} />
-          <Route path="/messages" component={MessagesRoute} />
-          <Route path="/messages/:id" component={MessageThreadRoute} />
+          <Route path="/messages" component={Messages} />
+          <Route path="/messages/:id" component={MessageThread} />
           <Route component={NotFound} />
           </Switch>
         </Suspense>

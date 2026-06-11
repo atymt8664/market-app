@@ -2,21 +2,19 @@
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { useUnreadNotificationsCountQuery } from "@/hooks/use-notifications";
+import { useNotificationsUnreadCount } from "@/hooks/use-unread-counters";
+import { formatBadgeCount } from "@/lib/app-badge-counters";
 import { t } from "@/i18n";
 import { useAfterFirstPaint } from "@/lib/after-first-paint";
 
 export function NotificationBell({ className }: { className?: string } = {}) {
   const { user, isLoading: authLoading } = useAuth();
   const secondaryQueriesReady = useAfterFirstPaint();
-  const { data } = useUnreadNotificationsCountQuery({
+  const count = useNotificationsUnreadCount({
     enabled: !!user && !authLoading && secondaryQueriesReady,
-    retry: false,
   });
 
   if (!user || authLoading) return null;
-
-  const count = typeof data?.count === "number" ? data.count : 0;
 
   return (
     <Link
@@ -33,7 +31,7 @@ export function NotificationBell({ className }: { className?: string } = {}) {
           dir="ltr"
           className="absolute -top-1 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-[#0A0A0A] bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
         >
-          {count > 99 ? "99+" : count}
+          {formatBadgeCount(count)}
         </span>
       ) : null}
     </Link>

@@ -1,5 +1,5 @@
-import crypto from "node:crypto";
 import { logger } from "./logger";
+import { buildInAppJobIdempotencyKey } from "./notifications/idempotency";
 import {
   detectSupabaseProjectRef,
   isJobQueueEnabled,
@@ -26,17 +26,6 @@ export function isNotificationOutboxEnabled(): boolean {
   return detectSupabaseProjectRef() === STAGING_SUPABASE_REF;
 }
 
-function idempotencyHash(input: string): string {
-  return crypto.createHash("sha256").update(input).digest("hex").slice(0, 24);
-}
-
-function buildIdempotencyKey(input: PreparedInAppNotification): string {
-  const entityPart =
-    input.entityId != null ? String(input.entityId) : "none";
-  const metaPart = input.metadata ? JSON.stringify(input.metadata) : "";
-  return `notify.in_app:${input.userId}:${input.type}:${entityPart}:${idempotencyHash(`${input.title}|${input.body}|${metaPart}`)}`;
-}
-
 /** Enqueue or reject — caller validates input and preferences first. */
 export async function dispatchInAppNotification(
   input: PreparedInAppNotification,
@@ -48,7 +37,7 @@ export async function dispatchInAppNotification(
   }
 
   const boss = await startQueueModule();
-  const idempotencyKey = buildIdempotencyKey(input);
+  const idempotencyKey = buildInAppJobIdempotencyKey(input);
   const jobId = await enqueueInAppNotification(boss, input, { idempotencyKey });
   if (!jobId) {
     throw new Error("Failed to enqueue notify.in_app job");

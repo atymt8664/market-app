@@ -8,7 +8,7 @@ import {
   unsubscribeFromPushNotifications,
   type PushSupportState,
 } from "@/lib/push-notifications";
-import { unreadCountQueryKey } from "@/hooks/use-notifications";
+import { invalidateUnreadCounters } from "@/lib/unread-counters-cache";
 import { useLocation } from "wouter";
 
 const pushStatusQueryKey = ["push", "status"] as const;
@@ -27,7 +27,7 @@ export function usePushNotifications(enabled: boolean) {
   });
 
   const refreshBadge = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: unreadCountQueryKey });
+    invalidateUnreadCounters(queryClient);
   }, [queryClient]);
 
   useEffect(() => {

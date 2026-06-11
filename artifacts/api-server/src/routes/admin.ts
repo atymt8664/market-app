@@ -30,6 +30,7 @@ import { requireAdminPermission } from "../middlewares/require-admin-permission"
 import { loadAdminStaffContext } from "../lib/admin-rbac";
 import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import { getSessionClearCookieOptions, SESSION_COOKIE_NAME } from "../lib/session-cookie";
+import { officialNotificationContent } from "../lib/communications";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 import { invalidateTaxonomyPublicCache } from "../lib/taxonomy-public-cache";
@@ -746,15 +747,18 @@ router.patch("/admin/users/:id/avatar-review", requireAdminPermission("users"), 
 
   if (decision === "reject" && moderationReason) {
     try {
-      await createNotification({
-        userId: id,
-        type: "user.avatar_rejected",
-        title: "تم رفض صورتك الشخصية",
-        body: moderationReason,
-        entityType: "user",
-        entityId: id,
-        metadata: { reason: moderationReason },
-      });
+      const copy = officialNotificationContent({ type: "user.avatar_rejected" });
+      if (copy) {
+        await createNotification({
+          userId: id,
+          type: "user.avatar_rejected",
+          title: copy.title,
+          body: copy.body,
+          entityType: "user",
+          entityId: id,
+          metadata: { reason: moderationReason },
+        });
+      }
     } catch (err) {
       logger.warn({ err, userId: id }, "createNotification failed (avatar reject)");
     }
@@ -1013,6 +1017,27 @@ router.patch("/admin/users/:id", requireAdminPermission("users"), requireAdminCs
       isBanned: usersTable.isBanned,
       createdAt: usersTable.createdAt,
     });
+
+  const banChanged = before.isBanned !== (status === "banned");
+  if (banChanged) {
+    const notifType = status === "banned" ? "user.block" : "user.unblock";
+    try {
+      const copy = officialNotificationContent({ type: notifType });
+      if (copy) {
+        await createNotification({
+          userId: id,
+          type: notifType,
+          title: copy.title,
+          body: copy.body,
+          entityType: "user",
+          entityId: id,
+          metadata: { fromStatus: before.isBanned ? "banned" : "active", toStatus: status },
+        });
+      }
+    } catch (err) {
+      logger.warn({ err, userId: id, type: notifType }, "createNotification failed (user ban status)");
+    }
+  }
 
   if (status === "banned") {
     await db.execute(sql`delete from user_sessions where sess::jsonb->>'userId' = ${String(id)}`);

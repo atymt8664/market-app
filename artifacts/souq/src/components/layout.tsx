@@ -6,19 +6,17 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { t } from "@/i18n";
-import {
-  useListFavoriteAds,
-  useListConversations,
-  getListConversationsQueryKey,
-} from "@workspace/api-client-react";
+import { useListFavoriteAds } from "@workspace/api-client-react";
 import { scrollPopstateGuard } from "@/components/scroll-restoration-guard";
 import { useAfterFirstPaint } from "@/lib/after-first-paint";
-import {
-  STALE_CONVERSATIONS_MS,
-  STALE_USER_ADS_MS,
-} from "@/lib/query-stale-times";
+import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
 import { PushNotificationsRegistrar } from "@/components/push-notifications-registrar";
+import { ChatSocketProvider } from "@/contexts/chat-socket-context";
+import { AppBadgeSync } from "@/components/app-badge-sync";
+import { AppCountersRealtimeSync } from "@/components/app-counters-realtime-sync";
+import { useMessagesUnreadCount } from "@/hooks/use-unread-counters";
+import { formatBadgeCount } from "@/lib/app-badge-counters";
 import {
   BOTTOM_NAV_FIXED_SHELL_CLASS,
   BOTTOM_NAV_BUTTONS_ROW_CLASS,
@@ -72,10 +70,21 @@ export function Layout({ children }: LayoutProps) {
     isP17CheckoutFlowRoute;
 
   const afterFirstPaint = useAfterFirstPaint();
+  const { isAuthenticated, isLoading } = useAuth({
+    queryEnabled: afterFirstPaint,
+  });
+  const realtimeEnabled = afterFirstPaint && isAuthenticated && !isLoading;
 
   const showBottomNav = !isAdminPage && !hideBottomNav;
 
   return (
+    <ChatSocketProvider enabled={realtimeEnabled}>
+      {realtimeEnabled ? (
+        <>
+          <AppCountersRealtimeSync />
+          <AppBadgeSync />
+        </>
+      ) : null}
     <div className="flex w-full flex-1 flex-col min-h-0 bg-[#0A0A0A]">
       {afterFirstPaint ? <PushNotificationsRegistrar /> : null}
       {/*
@@ -88,6 +97,7 @@ export function Layout({ children }: LayoutProps) {
         ? createPortal(<BottomNav />, document.body)
         : null}
     </div>
+    </ChatSocketProvider>
   );
 }
 
@@ -108,17 +118,9 @@ const BottomNav = memo(function BottomNav() {
   });
   const favCount = Array.isArray(favoriteAds) ? favoriteAds.length : 0;
 
-  const { data: conversations } = useListConversations({
-    query: {
-      queryKey: getListConversationsQueryKey(),
-      enabled: isAuthenticated && !isLoading && secondaryQueriesReady,
-      staleTime: STALE_CONVERSATIONS_MS,
-      retry: false,
-    },
+  const messagesUnread = useMessagesUnreadCount({
+    enabled: isAuthenticated && !isLoading && secondaryQueriesReady,
   });
-  const unreadTotal = Array.isArray(conversations)
-    ? conversations.reduce((acc, c) => acc + (c.unreadCount ?? 0), 0)
-    : 0;
   const showGuestToast = (nextTarget: string) => {
     const title = t("bottom_nav.login_required_title");
     const descriptionMap: Record<string, string> = {
@@ -284,12 +286,12 @@ const BottomNav = memo(function BottomNav() {
             <BottomNavSlot isActive={isMessagesActive}>
               <div className="relative">
                 <MessageCircle className="h-[1.125rem] w-[1.125rem] md:h-5 md:w-5" />
-                {isAuthenticated && unreadTotal > 0 && (
+                {isAuthenticated && messagesUnread > 0 && (
                   <span
                     dir="ltr"
                     className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-[#0A0A0A] bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_5px_-1px_hsl(var(--primary)/0.32)] md:shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
                   >
-                    {unreadTotal > 99 ? "99+" : unreadTotal}
+                    {formatBadgeCount(messagesUnread)}
                   </span>
                 )}
               </div>

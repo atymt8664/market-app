@@ -3,6 +3,7 @@ import { db, reportsTable, usersTable, adsTable, conversationsTable } from "@wor
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireUserCsrf } from "../middlewares/require-user-csrf";
+import { officialNotificationContent } from "../lib/communications";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 import { findDuplicateReport } from "../lib/trust-safety/abuse-checks";
@@ -86,19 +87,25 @@ router.post("/", requireAuth, requireUserCsrf, createReportLimiter, async (req, 
         .returning();
 
       try {
-        await createNotification({
-          userId: reporterId,
+        const copy = officialNotificationContent({
           type: "report.received",
-          title: "تم استلام البلاغ",
-          body: "تم استلام بلاغك وسيتم مراجعته",
-          entityType: "report",
-          entityId: report[0]?.id ?? null,
-          metadata: {
-            reportId: report[0]?.id ?? null,
-            targetType: "conversation",
-            relatedConversationId: cid,
-          },
+          slaContext: { reportReason: reason },
         });
+        if (copy) {
+          await createNotification({
+            userId: reporterId,
+            type: "report.received",
+            title: copy.title,
+            body: copy.body,
+            entityType: "report",
+            entityId: report[0]?.id ?? null,
+            metadata: {
+              reportId: report[0]?.id ?? null,
+              targetType: "conversation",
+              relatedConversationId: cid,
+            },
+          });
+        }
       } catch (err) {
         logger.warn(
           { err, reporterId, reportId: report[0]?.id },
@@ -177,20 +184,26 @@ router.post("/", requireAuth, requireUserCsrf, createReportLimiter, async (req, 
       .returning();
 
     try {
-      await createNotification({
-        userId: reporterId,
+      const copy = officialNotificationContent({
         type: "report.received",
-        title: "تم استلام البلاغ",
-        body: "تم استلام بلاغك وسيتم مراجعته",
-        entityType: "report",
-        entityId: report[0]?.id ?? null,
-        metadata: {
-          reportId: report[0]?.id ?? null,
-          targetType: hasAdTarget ? "ad" : hasUserTarget ? "user" : "conversation",
-          targetAdId: hasAdTarget ? Number(targetAdId) : null,
-          targetUserId: hasUserTarget ? Number(targetUserId) : null,
-        },
+        slaContext: { reportReason: String(reason) },
       });
+      if (copy) {
+        await createNotification({
+          userId: reporterId,
+          type: "report.received",
+          title: copy.title,
+          body: copy.body,
+          entityType: "report",
+          entityId: report[0]?.id ?? null,
+          metadata: {
+            reportId: report[0]?.id ?? null,
+            targetType: hasAdTarget ? "ad" : hasUserTarget ? "user" : "conversation",
+            targetAdId: hasAdTarget ? Number(targetAdId) : null,
+            targetUserId: hasUserTarget ? Number(targetUserId) : null,
+          },
+        });
+      }
     } catch (err) {
       logger.warn({ err, reporterId, reportId: report[0]?.id }, "createNotification failed (report.received)");
     }

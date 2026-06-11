@@ -14,6 +14,7 @@ import { routeAccountDeletionStoragePurge } from "../lib/purge-outbox";
 import { getSessionClearCookieOptions, SESSION_COOKIE_NAME } from "../lib/session-cookie";
 import { logger } from "../lib/logger";
 import { listBlockedUsersForMe } from "../lib/list-blocked-users";
+import { getUnreadCounters } from "../lib/notifications/counters";
 
 const router: IRouter = Router();
 
@@ -99,6 +100,12 @@ function isPgUndefinedTableError(err: unknown): boolean {
     (err as { code: string }).code === "42P01"
   );
 }
+
+router.get("/account/unread-counters", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const counters = await getUnreadCounters(userId);
+  res.json(counters);
+});
 
 router.get("/account/blocked-users", requireAuth, async (req, res) => {
   await listBlockedUsersForMe(req.session.userId!, req.query as Record<string, unknown>, res);

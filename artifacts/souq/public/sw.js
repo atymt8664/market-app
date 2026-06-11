@@ -97,6 +97,13 @@ self.addEventListener("push", (event) => {
   const body = String(payload.body || "").slice(0, 240);
   const data = payload.data && typeof payload.data === "object" ? payload.data : {};
 
+  const tag =
+    typeof data.dedupKey === "string" && data.dedupKey.trim()
+      ? `d:${String(data.dedupKey).trim()}`.slice(0, 128)
+      : data.notificationId
+        ? `n-${data.notificationId}`
+        : undefined;
+
   event.waitUntil(
     (async () => {
       await self.registration.showNotification(title, {
@@ -104,7 +111,7 @@ self.addEventListener("push", (event) => {
         data,
         icon: "/icons/pwa-icon-192.png",
         badge: "/icons/pwa-icon-192.png",
-        tag: data.notificationId ? `n-${data.notificationId}` : undefined,
+        tag,
       });
       const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       for (const client of clients) {

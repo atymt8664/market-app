@@ -648,6 +648,7 @@ export default function AdminUserDetailsPage() {
       <ModerationReasonDialog
         open={pendingAvatarReject}
         onOpenChange={setPendingAvatarReject}
+        presetContext="avatar"
         title={t("p8.admin.user_details.avatar_reject_title")}
         description={t("p8.admin.user_details.avatar_review_hint")}
         confirmLabel={t("p8.admin.user_details.confirm_avatar_reject")}

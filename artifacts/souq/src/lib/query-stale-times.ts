@@ -21,6 +21,9 @@ export const STALE_CONVERSATIONS_MS = 20 * 1000;
 /** Notification unread badge. */
 export const STALE_UNREAD_NOTIFICATIONS_MS = 30 * 1000;
 
+/** Unified unread counters (messages + notifications + app badge). */
+export const STALE_UNREAD_COUNTERS_MS = 30 * 1000;
+
 /** Peer block / moderation status in chat. */
 export const STALE_PEER_BLOCK_MS = 30 * 1000;
 

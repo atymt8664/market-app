@@ -16,6 +16,7 @@ import {
   updateVerificationRequestStatus,
 } from "../lib/admin-verification-workflow";
 import { loadAdminStaffContext } from "../lib/admin-rbac";
+import { officialNotificationContent } from "../lib/communications";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 import { requireAdmin, requireAdminAccessGrant, requireAdminCsrf } from "../middlewares/require-admin";
@@ -279,27 +280,22 @@ router.patch("/admin/verification/requests/:id/status", requireVerificationArea,
 
     if (statusRaw === "approved" || statusRaw === "rejected" || statusRaw === "needs_info") {
       try {
-        const titles: Record<string, string> = {
-          approved: "تم قبول طلب التوثيق",
-          rejected: "تم رفض طلب التوثيق",
-          needs_info: "مطلوب معلومات إضافية للتوثيق",
-        };
-        const bodies: Record<string, string> = {
-          approved: "تم قبول طلب توثيق حسابك.",
-          rejected: reason ? `تم رفض طلب التوثيق — ${reason}` : "تم رفض طلب التوثيق.",
-          needs_info: notes?.trim()
-            ? `نحتاج معلومات إضافية — ${notes.trim()}`
-            : "نحتاج معلومات إضافية لإكمال التوثيق.",
-        };
-        await createNotification({
-          userId: updated.userId,
-          type: `verification.${statusRaw}`,
-          title: titles[statusRaw] ?? "تحديث التوثيق",
-          body: bodies[statusRaw] ?? "تحديث على طلب التوثيق",
-          entityType: "verification_request",
-          entityId: id,
-          metadata: { requestId: id, status: statusRaw, reason: reason ?? null },
+        const typeKey = `verification.${statusRaw}` as const;
+        const copy = officialNotificationContent({
+          type: typeKey,
+          slaContext: statusRaw === "needs_info" ? { isUrgent: false } : undefined,
         });
+        if (copy) {
+          await createNotification({
+            userId: updated.userId,
+            type: typeKey,
+            title: copy.title,
+            body: copy.body,
+            entityType: "verification_request",
+            entityId: id,
+            metadata: { requestId: id, status: statusRaw, reason: reason ?? null, notes: notes ?? null },
+          });
+        }
       } catch (err) {
         logger.warn({ err, requestId: id, status: statusRaw }, "createNotification failed (verification status)");
       }

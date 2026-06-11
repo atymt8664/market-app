@@ -865,6 +865,7 @@ export default function AdminReportsPage() {
         onOpenChange={(open) => {
           if (!open) setReasonDialog(null);
         }}
+        presetContext="reports"
         title={
           reasonDialog?.kind === "ad"
             ? t("p8.admin.reports.moderation_ad_reason_title")

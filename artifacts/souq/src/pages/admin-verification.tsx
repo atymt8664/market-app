@@ -697,6 +697,7 @@ export default function AdminVerificationPage() {
         <ModerationReasonDialog
           open={reasonDialog?.kind === "reject"}
           onOpenChange={(open) => !open && setReasonDialog(null)}
+          presetContext="verification"
           title={t("p8.admin.verification.reject_reason_title")}
           description={t("p8.admin.verification.reject_description")}
           confirmLabel={t("p8.admin.verification.reject_confirm")}

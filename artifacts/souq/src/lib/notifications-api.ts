@@ -9,6 +9,12 @@ export type AppNotification = {
   entityType: string | null;
   entityId: number | null;
   metadata: Record<string, unknown> | null;
+  category?: string;
+  domain?: string;
+  priority?: number;
+  dedupKey?: string | null;
+  aggregationKey?: string | null;
+  deepLinkPath?: string;
   readAt: string | null;
   createdAt: string;
 };

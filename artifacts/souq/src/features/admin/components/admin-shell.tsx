@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "wouter";
 import {
   ShieldCheck,
+  Bell,
   LayoutGrid,
   Megaphone,
   Flag,
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import { useAdminAccess } from "@/features/admin/access";
 import { useAdminNavBadges } from "@/features/admin/use-admin-nav-badges";
+import { useAdminNotificationUnreadQuery } from "@/features/admin/hooks/use-admin-notifications";
 import type { AdminNavKey } from "@/features/admin/rbac";
 import { canAccessNav } from "@/features/admin/rbac";
 import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
@@ -36,6 +38,7 @@ const NAV_ITEMS: Array<{
   icon: typeof LayoutGrid;
 }> = [
   { key: "dashboard", href: "/admin", labelKey: "p8.admin.nav.dashboard", icon: LayoutGrid },
+  { key: "notifications", href: "/admin/notifications", labelKey: "p8.admin.nav.notifications", icon: Bell },
   { key: "ads", href: "/admin/ads", labelKey: "p8.admin.nav.ads", icon: Megaphone },
   { key: "reports", href: "/admin/reports", labelKey: "p8.admin.nav.reports", icon: Flag },
   { key: "support", href: "/admin/support", labelKey: "p8.admin.nav.support", icon: LifeBuoy },
@@ -64,6 +67,7 @@ export function AdminShell({ activeKey, onLogout, children }: AdminShellProps) {
   const access = useAdminAccess();
   const badgesQuery = useAdminNavBadges(!access.isLoading);
   const badges = badgesQuery.data;
+  const adminNotifUnread = useAdminNotificationUnreadQuery(!access.isLoading);
 
   const visibleNav = NAV_ITEMS.filter((item) => {
     if ((item.key === "operations" || item.key === "monitoring") && !access.isFounder) {
@@ -73,6 +77,7 @@ export function AdminShell({ activeKey, onLogout, children }: AdminShellProps) {
   });
 
   const getBadge = (key: string): number => {
+    if (key === "notifications") return adminNotifUnread.data?.unread ?? 0;
     if (!badges) return 0;
     if (key === "ads") return badges.adsPendingReview;
     if (key === "reports") return badges.reportsOpen;

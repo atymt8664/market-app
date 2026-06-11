@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, notificationsTable } from "@workspace/db";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import {
@@ -11,21 +11,15 @@ import {
   parsePaginationQuery,
   sendJsonArrayPage,
 } from "../lib/pagination";
+import { toNotificationApiRow } from "../lib/notifications/contract";
+import { getUnreadNotificationsCount } from "../lib/notifications/counters";
 
 const router: IRouter = Router();
 
 router.get("/notifications/unread-count", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
-  const [row] = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(notificationsTable)
-    .where(
-      and(
-        eq(notificationsTable.userId, userId),
-        isNull(notificationsTable.readAt),
-      ),
-    );
-  res.json({ count: Number(row?.c ?? 0) });
+  const count = await getUnreadNotificationsCount(userId);
+  res.json({ count });
 });
 
 router.patch("/notifications/read-all", requireAuth, requireUserCsrf, async (req, res) => {
@@ -91,21 +85,7 @@ router.get("/notifications", requireAuth, async (req, res) => {
       at: n.createdAt,
       id: n.id,
     }));
-    sendJsonArrayPage(
-      res,
-      items.map((n) => ({
-        id: n.id,
-        type: n.type,
-        title: n.title,
-        body: n.body,
-        entityType: n.entityType ?? null,
-        entityId: n.entityId ?? null,
-        metadata: n.metadata ?? null,
-        readAt: n.readAt ? n.readAt.toISOString() : null,
-        createdAt: n.createdAt.toISOString(),
-      })),
-      meta,
-    );
+    sendJsonArrayPage(res, items.map(toNotificationApiRow), meta);
   } catch (err) {
     if (handlePaginationError(err, res)) return;
     throw err;

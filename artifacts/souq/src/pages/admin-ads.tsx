@@ -818,6 +818,7 @@ export default function AdminAdsPage() {
         onOpenChange={(open) => {
           if (!open) setPendingReject(null);
         }}
+        presetContext="ads"
         title={t("p8.admin.ads.reject_reason_title")}
         description={t("p8.admin.moderation.reason_hint")}
         confirmLabel={t("p8.admin.ads.reject_confirm_label")}

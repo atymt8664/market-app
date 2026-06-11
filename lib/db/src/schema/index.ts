@@ -13,6 +13,7 @@ export * from "./user-sessions";
 export * from "./support";
 export * from "./app-settings";
 export * from "./notifications";
+export * from "./admin-notifications";
 export * from "./notification-preferences";
 export * from "./push-subscriptions";
 export * from "./verification-requests";

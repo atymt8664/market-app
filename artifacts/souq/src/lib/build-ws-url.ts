@@ -1,12 +1,12 @@
+import { getApiBaseUrl } from "@/lib/api-url";
+
 /**
  * Resolve WebSocket URL for chat realtime.
  *
  * Priority:
- * 1. VITE_API_BASE_URL (explicit API host)
- * 2. VITE_WS_HTTP_ORIGIN (optional override when API is same-origin via rewrite)
- * 3. Same-origin window host (production default — Vercel /api rewrite → VPS)
- *
- * No hardcoded third-party host fallbacks (Railway, etc.).
+ * 1. getApiBaseUrl() (VITE_API_BASE_URL or production www fallback)
+ * 2. VITE_WS_HTTP_ORIGIN (optional override)
+ * 3. Same-origin window host (local dev proxy)
  */
 export type BuildWsUrlInput = {
   apiBaseUrl: string;
@@ -45,10 +45,7 @@ export function buildWsUrl(input: BuildWsUrlInput): string {
 
 /** Browser entry — reads Vite env + window location. */
 export function buildWsUrlFromBrowser(): string {
-  const apiBase =
-    typeof import.meta.env.VITE_API_BASE_URL === "string"
-      ? import.meta.env.VITE_API_BASE_URL
-      : "";
+  const apiBase = getApiBaseUrl();
   const wsOverride =
     typeof import.meta.env.VITE_WS_HTTP_ORIGIN === "string"
       ? import.meta.env.VITE_WS_HTTP_ORIGIN

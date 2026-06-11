@@ -1,6 +1,7 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, not, sql } from "drizzle-orm";
 import { db, notificationsTable } from "@workspace/db";
 import { computeAppBadgeTotal } from "./badge-counters";
+import { isExcludedFromNotificationCenter } from "./notification-center-filter";
 
 export type UnreadCounters = {
   messages: number;
@@ -15,13 +16,25 @@ export {
   formatBadgeCount,
 } from "./badge-counters";
 
+/** Chat types remain in DB but are excluded from Notification Center counters. */
+function notificationCenterTypeSqlExclude() {
+  return and(
+    not(sql`${notificationsTable.type} LIKE 'message.%'`),
+    not(sql`${notificationsTable.type} LIKE 'chat.%'`),
+  );
+}
+
 export async function getUnreadNotificationsCount(userId: number): Promise<number> {
   if (!Number.isInteger(userId) || userId <= 0) return 0;
   const [row] = await db
     .select({ c: sql<number>`count(*)::int` })
     .from(notificationsTable)
     .where(
-      and(eq(notificationsTable.userId, userId), isNull(notificationsTable.readAt)),
+      and(
+        eq(notificationsTable.userId, userId),
+        isNull(notificationsTable.readAt),
+        notificationCenterTypeSqlExclude(),
+      ),
     );
   return Number(row?.c ?? 0);
 }

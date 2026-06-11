@@ -17,6 +17,7 @@ import { AppBadgeSync } from "@/components/app-badge-sync";
 import { AppCountersRealtimeSync } from "@/components/app-counters-realtime-sync";
 import { useMessagesUnreadCount } from "@/hooks/use-unread-counters";
 import { formatBadgeCount } from "@/lib/app-badge-counters";
+import { MESSAGES_UNREAD_BADGE_CLASS } from "@/lib/messages-badge-styles";
 import {
   BOTTOM_NAV_FIXED_SHELL_CLASS,
   BOTTOM_NAV_BUTTONS_ROW_CLASS,
@@ -287,10 +288,7 @@ const BottomNav = memo(function BottomNav() {
               <div className="relative">
                 <MessageCircle className="h-[1.125rem] w-[1.125rem] md:h-5 md:w-5" />
                 {isAuthenticated && messagesUnread > 0 && (
-                  <span
-                    dir="ltr"
-                    className="absolute -top-1.5 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-[#0A0A0A] bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_5px_-1px_hsl(var(--primary)/0.32)] md:shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
-                  >
+                  <span dir="ltr" className={cn("absolute -top-1.5 -end-1", MESSAGES_UNREAD_BADGE_CLASS)}>
                     {formatBadgeCount(messagesUnread)}
                   </span>
                 )}

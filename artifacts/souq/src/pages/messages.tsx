@@ -32,6 +32,7 @@ import { useChatSocket, type ChatSocketEvent } from "@/hooks/use-chat-socket";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { MESSAGES_CONVERSATION_BADGE_CLASS } from "@/lib/messages-badge-styles";
 import {
   BOTTOM_NAV_PAGE_SHELL_CLASS,
   BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
@@ -174,7 +175,7 @@ function InboxRowBody({
             {c.lastMessagePreview || t("messages.start_chat")}
           </span>
           {c.unreadCount > 0 && (
-            <span className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none tabular-nums text-primary-foreground shadow-[0_0_8px_-4px_hsl(var(--primary)/0.35)]">
+            <span className={MESSAGES_CONVERSATION_BADGE_CLASS}>
               {c.unreadCount > 99 ? "99+" : c.unreadCount}
             </span>
           )}

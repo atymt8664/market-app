@@ -10,8 +10,12 @@
   getAuthProfileCsrfTokenForRequest,
   useUserPresenceBatch,
   useGetUserProfile,
-  ApiError,
 } from "@workspace/api-client-react";
+import {
+  parseUserApiErrorResponse,
+  resolveUserApiToastFromError,
+  showUserApiErrorToast,
+} from "@/lib/user-api-errors";
 import { apiUrl } from "@/lib/api-url";
 import { Link, useLocation, useParams } from "wouter";
 import {
@@ -400,12 +404,8 @@ export default function AdDetail() {
       });
 
       if (!res.ok) {
-        const errText = await res.text().catch(() => "");
-        toast({
-          title: t("ad_detail.report.failed"),
-          description: errText || t("ad_detail.http_status", { status: res.status }),
-          variant: "destructive",
-        });
+        const parsed = await parseUserApiErrorResponse(res);
+        showUserApiErrorToast(toast, parsed);
         return;
       }
 
@@ -507,19 +507,11 @@ export default function AdDetail() {
           );
         },
         onError: (err: unknown) => {
-          if (err instanceof ApiError && err.status === 403) {
-            toast({
-              title: t("ad_detail.chat.open_failed"),
-              description: err.message || t("message_thread.chat_send_blocked_toast_body"),
-              variant: "destructive",
-            });
-            return;
-          }
-          const e = err as { data?: { error?: string } };
+          const payload = resolveUserApiToastFromError(err);
           toast({
-            title: t("ad_detail.chat.open_failed"),
-            description: e?.data?.error || t("common.try_again"),
-            variant: "destructive",
+            title: payload.title,
+            description: payload.description,
+            variant: payload.variant,
           });
         },
       },

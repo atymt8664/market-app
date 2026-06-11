@@ -266,7 +266,7 @@ export default function Signup() {
       navigate(`/verify-email?${params.toString()}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "auth.signup.failed";
-      setError(message.startsWith("auth.") ? t(message) : message);
+      setError(message.startsWith("auth.") ? t(message) : t("auth.signup.failed"));
     } finally {
       setIsSubmitting(false);
     }

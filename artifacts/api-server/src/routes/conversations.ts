@@ -18,7 +18,6 @@ import {
   broadcastTypingStoppedForSender,
   isUserFocusedOnConversation,
 } from "../lib/realtime";
-import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
 import { isPublicAdStatus } from "../lib/ad-visibility";
 import { eitherUserBlocksTheOther } from "../lib/user-blocks";
@@ -991,22 +990,6 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
   // Echo to sender's other devices too.
   broadcastToUser(userId, payload);
   broadcastTypingStoppedForSender(convId, userId);
-
-  if (!deliverToRecipient) {
-    try {
-      await createNotification({
-        userId: recipient,
-        type: "message.received",
-        title: "رسالة جديدة",
-        body: lastPreview.slice(0, 200),
-        entityType: "conversation",
-        entityId: convId,
-        metadata: { conversationId: convId, adId: conv.adId },
-      });
-    } catch (err) {
-      logger.warn({ err, convId, recipient }, "createNotification failed (message.received)");
-    }
-  }
 
   res.status(201).json(serialized);
 });

@@ -27,6 +27,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { t } from "@/i18n";
 import { apiUrl } from "@/lib/api-url";
+import {
+  parseUserApiErrorResponse,
+  showUserApiErrorToast,
+} from "@/lib/user-api-errors";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -283,12 +287,8 @@ export function ChatThreadOverflowMenu({
       });
 
       if (!res.ok) {
-        const errText = await res.text().catch(() => "");
-        toast({
-          title: t("ad_detail.report.failed"),
-          description: errText || `HTTP ${res.status}`,
-          variant: "destructive",
-        });
+        const parsed = await parseUserApiErrorResponse(res);
+        showUserApiErrorToast(toast, parsed);
         return;
       }
 

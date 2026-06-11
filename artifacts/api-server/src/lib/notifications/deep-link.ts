@@ -38,7 +38,7 @@ export function notificationDeepLinkPath(input: NotificationDeepLinkInput): stri
     return "/messages";
   }
 
-  if (entityType === "order" || type.startsWith("order.")) {
+  if (entityType === "order" || type.startsWith("order.") || type.startsWith("shipping.") || type.startsWith("seller.order.")) {
     const orderPath = orderDetailPath(metadata);
     if (orderPath) return orderPath;
     const role = String(metadata?.role ?? "").trim().toLowerCase();

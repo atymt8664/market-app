@@ -7,7 +7,7 @@ import { prefetchConversationThread } from "@/lib/prefetch-conversation-thread";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { t } from "@/i18n";
-import { ApiError } from "@workspace/api-client-react";
+import { resolveUserApiToastFromError } from "@/lib/user-api-errors";
 import { useCallback, useState } from "react";
 import {
   findConversationIdForAd,
@@ -64,18 +64,11 @@ export function useOpenOrderChat() {
           await prefetchConversationThread(queryClient, conversationId);
           navigate(orderChatHref(conversationId, orderNumber, orderRole, draft));
         } catch (err: unknown) {
-          if (err instanceof ApiError && err.status === 403) {
-            toast({
-              title: t("p17.commerce.chat.open_failed"),
-              description: err.message || t("message_thread.chat_send_blocked_toast_body"),
-              variant: "destructive",
-            });
-            return;
-          }
+          const payload = resolveUserApiToastFromError(err);
           toast({
             title: t("p17.commerce.chat.open_failed"),
-            description: t("common.try_again"),
-            variant: "destructive",
+            description: payload.description,
+            variant: payload.variant,
           });
         } finally {
           setIsOpening(false);

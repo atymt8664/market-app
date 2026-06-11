@@ -15,6 +15,17 @@ import {
   type OrderTransitionAction,
 } from "./order-state-machine";
 import {
+  notifyBuyerOrderCancelled,
+  notifyBuyerOrderConfirmed,
+  notifyBuyerOrderCreated,
+  notifyBuyerOrderPreparing,
+  notifyBuyerOrderShipped,
+  notifyBuyerTrackingAdded,
+  notifySellerOrderCancelled,
+  notifySellerOrderCreated,
+  orderNotificationContext,
+} from "./order-notifications";
+import {
   MarkShippedBodySchema,
   ShippingBuyerAddressInputSchema,
   type OrderDetail,
@@ -367,6 +378,7 @@ export class OrdersService {
     });
 
     const item = await getPrimaryOrderItem(order.id);
+    void this.dispatchCreateOrderNotifications(order);
     return mapDetail(order, item?.title ?? null, "buyer");
   }
 
@@ -432,6 +444,7 @@ export class OrdersService {
         },
       });
       const item = await getPrimaryOrderItem(updated.id);
+      void this.dispatchTransitionNotifications(updated, "mark_shipped");
       return enrichOrderDetail(updated, item?.title ?? null, "seller");
     } catch (e) {
       if (e instanceof Error && e.message === "ORDER_VERSION_CONFLICT") {
@@ -482,12 +495,54 @@ export class OrdersService {
         expectedVersion: row.version,
       });
       const item = await getPrimaryOrderItem(updated.id);
+      void this.dispatchTransitionNotifications(updated, action);
       return enrichOrderDetail(updated, item?.title ?? null, requiredRole);
     } catch (e) {
       if (e instanceof Error && e.message === "ORDER_VERSION_CONFLICT") {
         throw new OrdersApiError(409, OrdersErrorCodes.CONFLICT, "تم تحديث الطلب — يرجى المحاولة مجددًا");
       }
       throw e;
+    }
+  }
+
+  private async dispatchCreateOrderNotifications(order: OrderRow): Promise<void> {
+    const ctxBuyer = orderNotificationContext(order, "buyer");
+    const ctxSeller = orderNotificationContext(order, "seller");
+    await Promise.all([
+      notifyBuyerOrderCreated(order.buyerUserId, ctxBuyer),
+      notifySellerOrderCreated(order.sellerUserId, ctxSeller),
+    ]);
+  }
+
+  private async dispatchTransitionNotifications(
+    order: OrderRow,
+    action: OrderTransitionAction,
+  ): Promise<void> {
+    const ctxBuyer = orderNotificationContext(order, "buyer");
+    const ctxSeller = orderNotificationContext(order, "seller");
+
+    switch (action) {
+      case "accept":
+        await notifyBuyerOrderConfirmed(order.buyerUserId, ctxBuyer);
+        break;
+      case "start_preparing":
+        await notifyBuyerOrderPreparing(order.buyerUserId, ctxBuyer);
+        break;
+      case "mark_shipped":
+        await Promise.all([
+          notifyBuyerTrackingAdded(order.buyerUserId, ctxBuyer),
+          notifyBuyerOrderShipped(order.buyerUserId, ctxBuyer),
+        ]);
+        break;
+      case "reject":
+      case "cancel_seller":
+        await notifyBuyerOrderCancelled(order.buyerUserId, ctxBuyer);
+        break;
+      case "cancel_buyer":
+        await notifySellerOrderCancelled(order.sellerUserId, ctxSeller);
+        break;
+      default:
+        break;
     }
   }
 

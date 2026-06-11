@@ -1,4 +1,8 @@
 import type { AppNotification } from "@/lib/notifications-api";
+import {
+  filterNotificationCenterItems,
+  isExcludedFromNotificationCenter,
+} from "@/lib/notification-center-filter";
 
 /** User-facing tabs — maps Architecture Lock categories (P17-9-2 contract). */
 export const NOTIFICATION_CENTER_TAB_IDS = [
@@ -62,7 +66,7 @@ export function normalizeNotificationCategory(
   if (raw in CATEGORY_ALIASES) return CATEGORY_ALIASES[raw]!;
   const type = (n.type ?? "").trim().toLowerCase();
   if (type.startsWith("message.") || type.startsWith("chat.")) return "messages";
-  if (type.startsWith("order.")) return "orders";
+  if (type.startsWith("order.") || type.startsWith("shipping.") || type.startsWith("seller.order.")) return "orders";
   if (type.startsWith("ad.")) return "marketplace";
   if (type.startsWith("support.")) return "support";
   if (type.startsWith("report.")) return "reports";
@@ -76,10 +80,11 @@ export function filterNotificationsByTab(
   items: AppNotification[],
   tab: NotificationCenterTabId,
 ): AppNotification[] {
-  if (tab === "all") return items;
-  if (tab === "unread") return items.filter((n) => !n.readAt);
+  const visible = filterNotificationCenterItems(items);
+  if (tab === "all") return visible;
+  if (tab === "unread") return visible.filter((n) => !n.readAt);
   const categories = TAB_CATEGORY_MAP[tab];
-  return items.filter((n) => categories.includes(normalizeNotificationCategory(n)));
+  return visible.filter((n) => categories.includes(normalizeNotificationCategory(n)));
 }
 
 export function countUnreadInTab(
@@ -92,13 +97,16 @@ export function countUnreadInTab(
 export function visibleNotificationTabs(
   items: AppNotification[],
 ): NotificationCenterTabId[] {
+  const visible = filterNotificationCenterItems(items);
   const tabs: NotificationCenterTabId[] = ["all", "unread"];
   for (const tab of NOTIFICATION_CENTER_TAB_IDS) {
-    if (tab === "all" || tab === "unread") continue;
-    if (filterNotificationsByTab(items, tab).length > 0) tabs.push(tab);
+    if (tab === "all" || tab === "unread" || tab === "messages") continue;
+    if (filterNotificationsByTab(visible, tab).length > 0) tabs.push(tab);
   }
   return tabs;
 }
+
+export { isExcludedFromNotificationCenter };
 
 /** Prefer server-resolved deep link (P17-9 foundation); fallback for legacy rows. */
 export function resolveNotificationHref(n: AppNotification): string | null {

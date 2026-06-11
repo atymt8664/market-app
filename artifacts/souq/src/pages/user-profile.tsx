@@ -15,6 +15,10 @@ import {
   Megaphone,
 } from "lucide-react";
 import { AvatarCircle } from "@/components/avatar-circle";
+import {
+  parseUserApiErrorResponse,
+  showUserApiErrorToast,
+} from "@/lib/user-api-errors";
 import { cn } from "@/lib/utils";
 import { STALE_AD_LIST_MS, STALE_PEER_BLOCK_MS } from "@/lib/query-stale-times";
 import {
@@ -352,12 +356,8 @@ export default function UserProfile() {
         }),
       });
       if (!res.ok) {
-        const errBody = await res.text().catch(() => "");
-        toast({
-          title: t("user_profile.report.failed"),
-          description: errBody || t("ad_detail.http_status", { status: res.status }),
-          variant: "destructive",
-        });
+        const parsed = await parseUserApiErrorResponse(res);
+        showUserApiErrorToast(toast, parsed);
         return;
       }
       toast({

@@ -7,6 +7,7 @@ import {
   getMySupportTicketMessages,
   getMySupportTickets,
 } from "@/features/admin/api";
+import { showUserApiErrorToast } from "@/lib/user-api-errors";
 import { useToast } from "@/hooks/use-toast";
 import {
   SETTINGS_ACTION_PANEL,
@@ -112,11 +113,7 @@ export default function SupportHelpPage() {
       await myTicketsQuery.refetch();
     },
     onError: (error) => {
-      toast({
-        title: "فشل إرسال التذكرة",
-        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
-        variant: "destructive",
-      });
+      showUserApiErrorToast(toast, { status: 0, error });
     },
   });
 

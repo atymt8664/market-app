@@ -64,6 +64,20 @@ export function buildNotificationDedupKey(input: DedupKeyInput): string | null {
     return null;
   }
 
+  if (type.startsWith("shipping.")) {
+    const orderNumber = readNonEmptyString(input.metadata?.order_number, 32);
+    if (orderNumber) return `order:${userId}:${orderNumber}:${type}`;
+    if (entityType === "order" && entityId != null) return `order:${userId}:${entityId}:${type}`;
+    return null;
+  }
+
+  if (type.startsWith("seller.order.")) {
+    const orderNumber = readNonEmptyString(input.metadata?.order_number, 32);
+    if (orderNumber) return `order:${userId}:${orderNumber}:${type}`;
+    if (entityType === "order" && entityId != null) return `order:${userId}:${entityId}:${type}`;
+    return null;
+  }
+
   if (type.startsWith("ad.favorited") || type.startsWith("social.favorited")) {
     const actorId = readPositiveInt(input.metadata?.actorUserId);
     const adId = entityType === "ad" ? entityId : readPositiveInt(input.metadata?.adId);

@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useChatSocket, type ChatSocketEvent } from "@/hooks/use-chat-socket";
 import { isNotificationCreatedEvent } from "@/lib/notification-realtime";
+import { isExcludedFromNotificationCenter } from "@/lib/notification-center-filter";
 import {
   bumpMessagesUnreadCount,
   bumpNotificationsUnreadCount,
@@ -37,6 +38,8 @@ export function AppCountersRealtimeSync() {
       }
 
       if (!isNotificationCreatedEvent(event)) return;
+
+      if (isExcludedFromNotificationCenter(event.notification.type)) return;
 
       const id = event.notification.id;
       if (seenNotificationIdsRef.current.has(id)) return;

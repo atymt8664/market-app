@@ -103,6 +103,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { formatMessageTimestamp } from "@/lib/format";
+import { userSafeToastDescription } from "@/lib/user-api-errors";
 import { cn } from "@/lib/utils";
 import {
   GC_THREAD_MESSAGES_MS,
@@ -1645,7 +1646,7 @@ export default function MessageThread() {
     } catch (err: unknown) {
       toast({
         title: t("message_thread.delete_for_everyone_failed"),
-        description: err instanceof Error && err.message ? err.message : undefined,
+        description: userSafeToastDescription(err),
         variant: "destructive",
       });
     } finally {
@@ -1746,7 +1747,7 @@ export default function MessageThread() {
         onError: (err: unknown) => {
           toast({
             title: t("message_thread.delete_for_me_failed"),
-            description: err instanceof Error && err.message ? err.message : undefined,
+            description: userSafeToastDescription(err),
             variant: "destructive",
           });
         },
@@ -1789,7 +1790,7 @@ export default function MessageThread() {
     } catch (err: unknown) {
       toast({
         title: t("message_thread.delete_for_everyone_failed"),
-        description: err instanceof Error && err.message ? err.message : undefined,
+        description: userSafeToastDescription(err),
         variant: "destructive",
       });
     } finally {
@@ -1825,7 +1826,7 @@ export default function MessageThread() {
           patchMessageReactionInCache(messageId, prevReaction);
           toast({
             title: t("message_thread.reaction_save_failed"),
-            description: err instanceof Error && err.message ? err.message : undefined,
+            description: userSafeToastDescription(err),
             variant: "destructive",
           });
         }
@@ -1864,7 +1865,7 @@ export default function MessageThread() {
         onError: (err: unknown) => {
           toast({
             title: t("message_thread.delete_for_me_failed"),
-            description: err instanceof Error && err.message ? err.message : undefined,
+            description: userSafeToastDescription(err),
             variant: "destructive",
           });
         },
@@ -2029,14 +2030,14 @@ export default function MessageThread() {
         void invalidateUserPresenceBatchQueries(queryClient, peerPresenceTargets);
         toast({
           title: t("message_thread.chat_send_blocked_toast_title"),
-          description: err.message || t("message_thread.chat_send_blocked_toast_body"),
+          description: userSafeToastDescription(err) ?? t("message_thread.chat_send_blocked_toast_body"),
           variant: "destructive",
         });
         return;
       }
       toast({
         title: t("ad_detail.error"),
-        description: err instanceof Error && err.message ? err.message : undefined,
+        description: userSafeToastDescription(err),
         variant: "destructive",
       });
     };
@@ -2064,16 +2065,14 @@ export default function MessageThread() {
                   void invalidateUserPresenceBatchQueries(queryClient, peerPresenceTargets);
                   toast({
                     title: t("message_thread.chat_send_blocked_toast_title"),
-                    description: err.message || t("message_thread.chat_send_blocked_toast_body"),
+                    description: userSafeToastDescription(err) ?? t("message_thread.chat_send_blocked_toast_body"),
                     variant: "destructive",
                   });
                   return;
                 }
                 toast({
-                  title:
-                    err instanceof Error && err.message
-                      ? err.message
-                      : t("message_thread.image_upload_failed"),
+                  title: t("message_thread.image_upload_failed"),
+                  description: userSafeToastDescription(err),
                   variant: "destructive",
                 });
               },
@@ -2084,10 +2083,8 @@ export default function MessageThread() {
           composerSendingRef.current = false;
           setUploadBusy(false);
           toast({
-            title:
-              err instanceof Error && err.message
-                ? err.message
-                : t("message_thread.image_upload_failed"),
+            title: t("message_thread.image_upload_failed"),
+            description: userSafeToastDescription(err),
             variant: "destructive",
           });
         }

@@ -12,6 +12,7 @@ import {
   sendJsonArrayPage,
 } from "../lib/pagination";
 import { toNotificationApiRow } from "../lib/notifications/contract";
+import { filterNotificationCenterRows } from "../lib/notifications/notification-center-filter";
 import { getUnreadNotificationsCount } from "../lib/notifications/counters";
 
 const router: IRouter = Router();
@@ -85,7 +86,11 @@ router.get("/notifications", requireAuth, async (req, res) => {
       at: n.createdAt,
       id: n.id,
     }));
-    sendJsonArrayPage(res, items.map(toNotificationApiRow), meta);
+    sendJsonArrayPage(
+      res,
+      filterNotificationCenterRows(items).map(toNotificationApiRow),
+      meta,
+    );
   } catch (err) {
     if (handlePaginationError(err, res)) return;
     throw err;

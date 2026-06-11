@@ -1,5 +1,6 @@
 import { apiUrl } from "@/lib/api-url";
 import { getAuthProfileCsrfTokenForRequest } from "@workspace/api-client-react";
+import { parseUserApiErrorBody, resolveUserApiToast } from "@/lib/user-api-errors";
 
 export type AppNotification = {
   id: number;
@@ -72,8 +73,9 @@ async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     const kind = classifyError(res.status, text);
+    const payload = resolveUserApiToast(res.status, parseUserApiErrorBody(text));
     throw new NotificationsApiError(
-      text.slice(0, 300) || `HTTP ${res.status}`,
+      payload.description ?? payload.title,
       kind,
       res.status,
     );
@@ -105,7 +107,12 @@ async function apiPatchJson<T>(path: string): Promise<T> {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     const kind = classifyError(res.status, text);
-    throw new NotificationsApiError(text.slice(0, 300) || `HTTP ${res.status}`, kind, res.status);
+    const payload = resolveUserApiToast(res.status, parseUserApiErrorBody(text));
+    throw new NotificationsApiError(
+      payload.description ?? payload.title,
+      kind,
+      res.status,
+    );
   }
   return res.json() as Promise<T>;
 }

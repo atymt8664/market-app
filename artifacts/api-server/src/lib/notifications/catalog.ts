@@ -16,6 +16,8 @@ const PREFIX_RULES: Array<{ prefix: string; rule: TypeRule }> = [
   { prefix: "verification.", rule: { domain: "verification", category: "trust_safety", priority: 1 } },
   { prefix: "user.avatar", rule: { domain: "trust", category: "trust_safety", priority: 2 } },
   { prefix: "order.", rule: { domain: "orders", category: "orders", priority: 1 } },
+  { prefix: "shipping.", rule: { domain: "orders", category: "orders", priority: 1 } },
+  { prefix: "seller.order.", rule: { domain: "orders", category: "orders", priority: 1 } },
   { prefix: "message.", rule: { domain: "messages", category: "messages", priority: 1 } },
   { prefix: "chat.", rule: { domain: "messages", category: "messages", priority: 1 } },
   { prefix: "support.", rule: { domain: "support", category: "support", priority: 1 } },

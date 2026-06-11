@@ -23,6 +23,7 @@
 | **Expansion** | **Sub-Phases** (e.g. `P17-7A`, `P9-A-0`) inside a builder P · **Annexes** ([annex/](./architecture/annex/README.md)) — not new P numbers |
 | **Not adopted** | P18–P25 as builder domains |
 | **New features** | [CONSTITUTION A11 + Feature Admission Flow](./architecture/CONSTITUTION.md#11-feature-admission-flow) |
+| **ADRs** | [architecture/adr/](./architecture/adr/README.md) — [ADR-000](./architecture/adr/000-approved-platform-stack.md) approved stack |
 
 ---
 
@@ -134,6 +135,25 @@ Only **one open builder phase** at a time. Sequence:
 | **P17-8 Package 2** Tracking enrichment (ETA · events · details · carrier readiness) | ✅ **Closed — Production verified** | [P17-8-pkg2-closure.md](./architecture/P17-8-pkg2-closure.md) · last updated · date chips · shipment events · tracking details · static carrier URLs · Mohamed visual **APPROVED** · commit `bb6070a` · Vercel `dpl_8TNVeqkxcELqQoXxcEUsWyEN3BWU` · `p17-8:pkg2:validate` PASS |
 | **P17-8 Package 3+** Tracking timeline (extended features) | ⏳ **Not opened** | Deferred — pre-launch polish sequence active |
 | **P17-PRELAUNCH-2** Commerce surfaces polish | ✅ **Closed — Production verified** | Order list thumbnails · bottom nav flush · orders refresh · commit `d980862` · Vercel `index-CARgRcHP.js` · prod visual account `atymt8664@gmail.com` (6 orders) · `p17-prelaunch-2-prod-close` PASS |
+| **P17-9-0** Notification Architecture Lock | ✅ **Closed** | Reference + Addendum A + B + C-STACK — docs only · Mohamed approved |
+| **P17-9-0A** ADR Framework | ✅ **Closed** | [adr/README.md](./architecture/adr/README.md) · [ADR-000](./architecture/adr/000-approved-platform-stack.md) · governance docs only — **no notification code** |
+| **P17-9-1** Notification Foundation | ✅ **Closed** | `artifacts/api-server/src/lib/notifications/` — catalog · dedup · aggregation · deep-link · foundation resolver · prepare pipeline wiring · `p17-9-1:validate` PASS · **no DB/UI/push/realtime changes** |
+| **P17-9-2** Notification DB + Contracts + Idempotency Schema | ✅ **Closed** | Migration `023_p17_9_2_notification_idempotency.sql` · drizzle schema · contract + idempotent persist + outbox dedup key · `p17-9-2:validate` PASS · **no realtime/push/UI/deploy** |
+| **P17-9-3** Realtime Notifications | ✅ **Closed** | `notification.created` WS event · persist broadcast · `NotificationRealtimeSync` query invalidation · `p17-9-3:validate` PASS · **no push/UI/counters/deploy** |
+| **P17-9-4** Push Infrastructure | ✅ **Closed** | payload contract v1 · dedup idempotency · WS-connected skip · SW dedup tag · `p17-9-4:validate` PASS · **no counters/UI/deploy** |
+| **P17-9-5** Counters + Badges | ✅ **Closed** | `GET /api/account/unread-counters` · app badge sync · unified realtime counter bumps · `p17-9-5:validate` PASS · **no notification center UI/deploy** |
+| **P17-9-6** Notification Center | ✅ **Closed** | User center + UX polish (summary · visual hierarchy · tab counters) · parity annex · `p17-9-6:validate` + visual PASS · **no admin/deploy** |
+| **P17-9-7** Admin Notification Center | ✅ **Closed** | DB + API + sync from ops queues · RBAC-filtered center UI · categories/priorities · dual fan-out contract · `p17-9-7:validate` + visual PASS · **no P17-9-8/deploy** |
+| **P17-9-8** Verification Notifications | ⏳ Not opened | |
+| **P17-9-9** Trust & Safety Notifications | ⏳ Not opened | |
+| **P17-9-10** Aggregation Logic + Bundling UX | ⏳ Not opened | |
+| **P17-9-11** Digest Foundation | ⏳ Not opened | |
+| **P17-9-12** Monitoring + Metrics + DLQ | ⏳ Not opened | |
+| **P17-9-13** STAGING Verification | ⏳ Not opened | |
+| **P17-9-14** Production Readiness Review | ⏳ Not opened | |
+| **P17-9-15** Production Rollout Plan | ⏳ Not opened | |
+| **P17-9-16** Production Deploy + report resolution notifications | ✅ **Closed — Production verified** | Commit `d071ea3` · API `souq-api:p17-9-16-20260611` · `p17-9-16-report-resolution-prod-verify` PASS (6/6 scenarios · realtime · counters) |
+| **P17-9-17** Platform Broadcasts | 🔄 **Open** | Admin broadcast center · `broadcast.fanout` · STAGING E2E PASS |
 
 ---
 
@@ -145,4 +165,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P17-PRELAUNCH-2 closed (Production verified — orders images, bottom nav flush, refresh). Open builder: **none** — next candidate **P5-PRELAUNCH** (not opened). Production visual verification account: `atymt8664@gmail.com` (env: `PROD_VERIFY_EMAIL` / `PROD_VERIFY_PASSWORD`).
+P17-9-17 open (Platform Broadcasts — admin compose + fan-out to users). P17-9-16 closed. **P17-9-8** deferred until P17-9-17 gate. Production verification account: `PROD_SMOKE_EMAIL` in VPS `api.env.production`.

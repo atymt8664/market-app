@@ -11,6 +11,7 @@ import {
   OPS_JOB_TYPES,
   ANALYTICS_JOB_TYPES,
   MEDIA_JOB_TYPES,
+  BROADCAST_JOB_TYPES,
   type RegisteredJobName,
 } from "./registry";
 import type {
@@ -22,6 +23,7 @@ import type { PushDeliverJobPayload } from "./push-types";
 import type { OpsSlaEscalatePayload } from "./ops-types";
 import type { AnalyticsDailyPayload } from "./analytics-types";
 import type { MediaPurgePayload } from "./media-types";
+import type { BroadcastFanoutJobPayload } from "./broadcast-types";
 
 export function buildJobEnvelope<T>(
   payload: T,
@@ -161,6 +163,18 @@ export async function enqueueMediaPurge(
 ): Promise<string | null> {
   return enqueueJob(boss, MEDIA_JOB_TYPES.PURGE, payload, {
     priority: "normal",
+    ...options,
+  });
+}
+
+export async function enqueueBroadcastFanout(
+  boss: PgBoss,
+  payload: BroadcastFanoutJobPayload,
+  options: EnqueueJobOptions = {},
+): Promise<string | null> {
+  return enqueueJob(boss, BROADCAST_JOB_TYPES.FANOUT, payload, {
+    priority: "normal",
+    idempotencyKey: `broadcast.fanout:${payload.broadcastId}:${payload.cursorUserId}`,
     ...options,
   });
 }

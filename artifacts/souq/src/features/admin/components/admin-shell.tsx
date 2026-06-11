@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import {
   ShieldCheck,
   Bell,
+  Radio,
   LayoutGrid,
   Megaphone,
   Flag,
@@ -39,6 +40,7 @@ const NAV_ITEMS: Array<{
 }> = [
   { key: "dashboard", href: "/admin", labelKey: "p8.admin.nav.dashboard", icon: LayoutGrid },
   { key: "notifications", href: "/admin/notifications", labelKey: "p8.admin.nav.notifications", icon: Bell },
+  { key: "broadcasts", href: "/admin/broadcasts", labelKey: "p8.admin.nav.broadcasts", icon: Radio },
   { key: "ads", href: "/admin/ads", labelKey: "p8.admin.nav.ads", icon: Megaphone },
   { key: "reports", href: "/admin/reports", labelKey: "p8.admin.nav.reports", icon: Flag },
   { key: "support", href: "/admin/support", labelKey: "p8.admin.nav.support", icon: LifeBuoy },
@@ -70,7 +72,12 @@ export function AdminShell({ activeKey, onLogout, children }: AdminShellProps) {
   const adminNotifUnread = useAdminNotificationUnreadQuery(!access.isLoading);
 
   const visibleNav = NAV_ITEMS.filter((item) => {
-    if ((item.key === "operations" || item.key === "monitoring") && !access.isFounder) {
+    if (
+      (item.key === "operations" ||
+        item.key === "monitoring" ||
+        item.key === "broadcasts") &&
+      !access.isFounder
+    ) {
       return false;
     }
     return access.isFounder || canAccessNav(access.permissions, item.key);

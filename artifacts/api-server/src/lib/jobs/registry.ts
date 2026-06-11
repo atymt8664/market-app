@@ -37,6 +37,11 @@ export const MEDIA_JOB_TYPES = {
   PURGE: "media.purge",
 } as const;
 
+/** Platform broadcast fan-out (P17-9-17). */
+export const BROADCAST_JOB_TYPES = {
+  FANOUT: "broadcast.fanout",
+} as const;
+
 export type FoundationJobType =
   (typeof FOUNDATION_JOB_TYPES)[keyof typeof FOUNDATION_JOB_TYPES];
 
@@ -54,6 +59,9 @@ export type AnalyticsJobType =
 
 export type MediaJobType = (typeof MEDIA_JOB_TYPES)[keyof typeof MEDIA_JOB_TYPES];
 
+export type BroadcastJobType =
+  (typeof BROADCAST_JOB_TYPES)[keyof typeof BROADCAST_JOB_TYPES];
+
 /** All job names registered in the worker. */
 export const REGISTERED_JOB_NAMES = [
   FOUNDATION_JOB_TYPES.SYSTEM_PING,
@@ -65,6 +73,7 @@ export const REGISTERED_JOB_NAMES = [
   OPS_JOB_TYPES.SLA_ESCALATE,
   ANALYTICS_JOB_TYPES.DAILY,
   MEDIA_JOB_TYPES.PURGE,
+  BROADCAST_JOB_TYPES.FANOUT,
 ] as const;
 
 export type RegisteredJobName = (typeof REGISTERED_JOB_NAMES)[number];

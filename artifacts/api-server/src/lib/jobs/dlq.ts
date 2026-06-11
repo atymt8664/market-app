@@ -7,6 +7,7 @@ import {
   ANALYTICS_JOB_TYPES,
   PUSH_JOB_TYPES,
   MEDIA_JOB_TYPES,
+  BROADCAST_JOB_TYPES,
 } from "./registry";
 import {
   DLQ_PROBE_RETRY_OPTIONS,
@@ -90,6 +91,13 @@ const REGISTERED_QUEUE_SEEDS: QueueSeed[] = [
   },
   {
     name: MEDIA_JOB_TYPES.PURGE,
+    options: {
+      ...STANDARD_RETRY_OPTIONS,
+      deadLetter: DLQ_QUEUE_NAME,
+    },
+  },
+  {
+    name: BROADCAST_JOB_TYPES.FANOUT,
     options: {
       ...STANDARD_RETRY_OPTIONS,
       deadLetter: DLQ_QUEUE_NAME,

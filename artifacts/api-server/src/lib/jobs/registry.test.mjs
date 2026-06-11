@@ -28,7 +28,7 @@ const { registerMediaJobHandlers } = await import("./handlers/media");
 
 clearJobHandlerRegistryForTests();
 assert.equal(registeredJobHandlerCount(), 0);
-assert.equal(REGISTERED_JOB_NAMES.length, 9);
+assert.equal(REGISTERED_JOB_NAMES.length, 10);
 
 registerFoundationJobHandlers();
 registerEmailJobHandlers();
@@ -37,7 +37,7 @@ registerPushJobHandlers();
 registerOpsJobHandlers();
 registerAnalyticsJobHandlers();
 registerMediaJobHandlers();
-assert.equal(registeredJobHandlerCount(), 9);
+assert.equal(registeredJobHandlerCount(), 10);
 assert.deepEqual(
   listRegisteredJobHandlers().map((h) => h.name).sort(),
   [...REGISTERED_JOB_NAMES].sort(),

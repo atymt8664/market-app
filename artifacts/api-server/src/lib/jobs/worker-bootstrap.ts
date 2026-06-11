@@ -6,6 +6,7 @@ import { registerPushJobHandlers } from "./handlers/push";
 import { registerOpsJobHandlers } from "./handlers/operations";
 import { registerAnalyticsJobHandlers } from "./handlers/analytics";
 import { registerMediaJobHandlers } from "./handlers/media";
+import { registerBroadcastJobHandlers } from "./handlers/broadcast";
 import {
   listRegisteredJobHandlers,
   REGISTERED_JOB_NAMES,
@@ -70,6 +71,7 @@ export async function bootstrapJobWorker(): Promise<JobWorkerRuntime> {
   registerOpsJobHandlers();
   registerAnalyticsJobHandlers();
   registerMediaJobHandlers();
+  registerBroadcastJobHandlers();
 
   const boss = await startQueueModule();
   await bootstrapJobSchedules(boss);

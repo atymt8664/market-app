@@ -55,6 +55,7 @@ const AdminPlansPage = lazy(() => import("@/pages/admin-plans"));
 const AdminSettingsPage = lazy(() => import("@/pages/admin-settings"));
 const AdminOperationsPage = lazy(() => import("@/pages/admin-operations"));
 const AdminNotificationsPage = lazy(() => import("@/pages/admin-notifications"));
+const AdminBroadcastsPage = lazy(() => import("@/pages/admin-broadcasts"));
 const AdminMonitoringPage = lazy(() => import("@/pages/admin-monitoring"));
 const AdminStaffPage = lazy(() => import("@/pages/admin-staff"));
 const AdminForcePasswordChangePage = lazy(() => import("@/pages/admin-force-password-change"));
@@ -126,6 +127,7 @@ function Router() {
           <Route path="/admin-login" component={AdminLogin} />
           <Route path="/admin" component={AdminPage} />
           <Route path="/admin/notifications" component={AdminNotificationsPage} />
+          <Route path="/admin/broadcasts" component={AdminBroadcastsPage} />
           <Route path="/admin/ads" component={AdminAdsPage} />
           <Route path="/admin/reports" component={AdminReportsPage} />
           <Route path="/admin/support" component={AdminSupportPage} />

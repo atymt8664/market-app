@@ -51,6 +51,7 @@ export {
   enqueueAuthResetEmail,
   enqueueInAppNotification,
   enqueuePushDeliver,
+  enqueueBroadcastFanout,
 } from "./enqueue";
 export {
   collectQueueHealthSnapshot,
@@ -75,6 +76,8 @@ export { registerFoundationJobHandlers } from "./handlers/foundation";
 export { registerEmailJobHandlers } from "./handlers/email";
 export { registerNotificationJobHandlers } from "./handlers/notification";
 export { registerPushJobHandlers } from "./handlers/push";
+export { registerBroadcastJobHandlers } from "./handlers/broadcast";
+export { BROADCAST_JOB_TYPES } from "./registry";
 export type {
   AuthOtpEmailPayload,
   AuthResetEmailPayload,

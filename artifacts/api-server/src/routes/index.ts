@@ -23,6 +23,7 @@ import adminMonitoringRouter from "./admin-monitoring";
 import adminJobsRouter from "./admin-jobs";
 import adminStaffRouter from "./admin-staff";
 import adminNotificationsRouter from "./admin-notifications";
+import adminBroadcastsRouter from "./admin-broadcasts";
 import ordersRouter from "./orders";
 
 const router: IRouter = Router();
@@ -46,6 +47,7 @@ router.use(adminMonitoringRouter);
 router.use(adminJobsRouter);
 router.use(adminStaffRouter);
 router.use(adminNotificationsRouter);
+router.use(adminBroadcastsRouter);
 router.use(admin2faRouter);
 router.use(supportRouter);
 router.use(notificationsRouter);

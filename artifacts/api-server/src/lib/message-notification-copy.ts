@@ -12,14 +12,15 @@ export function buildMessageReceivedCopy(senderName: string | null): {
   title: string;
   body: string;
 } {
+  const platform = "Souq Arab EU";
   if (senderName) {
     return {
-      title: `رسالة جديدة من ${senderName}`,
-      body: "افتح المحادثة للرد.",
+      title: platform,
+      body: `رسالة جديدة من ${senderName}`,
     };
   }
   return {
-    title: "رسالة جديدة",
-    body: "لديك رسالة جديدة في Souq Arab EU.",
+    title: platform,
+    body: "رسالة جديدة — افتح المحادثة للرد.",
   };
 }

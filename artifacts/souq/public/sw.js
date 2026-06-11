@@ -2,7 +2,7 @@
  * Souq Arab EU — PWA shell + Web Push (P11 / P17-9-13).
  * P9 deploy stability: never precache or serve stale HTML/JS/CSS (prevents mixed bundles).
  */
-const CACHE_VERSION = "souq-arab-eu-v8-p17-9-13-msg-badge";
+const CACHE_VERSION = "souq-arab-eu-v9-p17-9-13-permission-flow";
 
 /** Android status bar: monochrome white silhouette. Drawer: brand large icon. */
 const NOTIFICATION_BADGE = "/icons/notification-badge-96.png";
@@ -96,11 +96,13 @@ function resolveNotificationUrl(data) {
 }
 
 async function showOsNotification(title, body, data, tag) {
+  const largeIcon = assetUrl(NOTIFICATION_LARGE_ICON);
   const options = {
     body,
     data,
-    icon: assetUrl(NOTIFICATION_LARGE_ICON),
+    icon: largeIcon,
     badge: assetUrl(NOTIFICATION_BADGE),
+    image: largeIcon,
     tag,
     vibrate: NOTIFICATION_VIBRATE,
     renotify: true,

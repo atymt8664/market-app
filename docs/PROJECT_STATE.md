@@ -149,11 +149,11 @@ Only **one open builder phase** at a time. Sequence:
 | **P17-9-10** Aggregation Logic + Bundling UX | ⏳ Not opened | |
 | **P17-9-11** Digest Foundation | ⏳ Not opened | |
 | **P17-9-12** Monitoring + Metrics + DLQ | ⏳ Not opened | |
-| **P17-9-13** STAGING Verification | ⏳ Not opened | |
+| **P17-9-13** Production push verification (unified OS push) | 🔄 **Open** | Delivery-policy + message.received producer + SA badge + permission opt-in · deploy + Android device matrix pending · [closure report](./architecture/P17-9-13-closure-report.md) |
 | **P17-9-14** Production Readiness Review | ⏳ Not opened | |
 | **P17-9-15** Production Rollout Plan | ⏳ Not opened | |
 | **P17-9-16** Production Deploy + report resolution notifications | ✅ **Closed — Production verified** | Commit `d071ea3` · API `souq-api:p17-9-16-20260611` · `p17-9-16-report-resolution-prod-verify` PASS (6/6 scenarios · realtime · counters) |
-| **P17-9-17** Platform Broadcasts | 🔄 **Open** | Admin broadcast center · `broadcast.fanout` · STAGING E2E PASS |
+| **P17-9-17** Platform Broadcasts | ✅ **Closed — Production verified** | Commit `2b20b74` · API `souq-api:p17-9-17-20260611` · Frontend `dpl_GoYkKBcfVa4K5a1np7vg64iuHRZ4` · backend + UI + user prod verify PASS |
 
 ---
 
@@ -165,4 +165,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P17-9-17 open (Platform Broadcasts — admin compose + fan-out to users). P17-9-16 closed. **P17-9-8** deferred until P17-9-17 gate. Production verification account: `PROD_SMOKE_EMAIL` in VPS `api.env.production`.
+P17-9-17 closed (backend + frontend + Production UI/user verification PASS per constitution). Frontend redeploy required `VITE_API_BASE_URL=https://api.souq-arab.com` (prior empty value broke same-origin API POST). **P17-9-8** next when opened. Production verification account: `PROD_SMOKE_EMAIL` in VPS `api.env.production`. **Action:** restore founder admin password (temp reset for E2E).

@@ -84,6 +84,7 @@ async function main() {
   const swHasVisibilityGate =
     swBody.includes("visibilityState") && swBody.includes("appVisible");
   const swHasBranding =
+    swBody.includes("v9-p17-9-13-permission-flow") &&
     swBody.includes("notification-badge-96.png") &&
     swBody.includes("notification-large-192.png") &&
     !swBody.includes('badge: "/icons/pwa-icon-192.png"');

@@ -10,11 +10,11 @@ assert.equal(sanitizeSenderNameForLockScreen("+49123456789"), null);
 assert.equal(sanitizeSenderNameForLockScreen("x"), null);
 
 const generic = buildMessageReceivedCopy(null);
-assert.equal(generic.title, "رسالة جديدة");
-assert.ok(generic.body.includes("Souq Arab EU"));
+assert.equal(generic.title, "Souq Arab EU");
+assert.ok(generic.body.includes("رسالة جديدة"));
 
 const named = buildMessageReceivedCopy("أحمد");
-assert.equal(named.title, "رسالة جديدة من أحمد");
-assert.equal(named.body, "افتح المحادثة للرد.");
+assert.equal(named.title, "Souq Arab EU");
+assert.equal(named.body, "رسالة جديدة من أحمد");
 
 console.log("message-notifications.test.mjs: OK");

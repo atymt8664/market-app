@@ -7,11 +7,12 @@
 ## Root cause (2026-06-11 fix)
 
 1. **Server WS skip** — fixed in `delivery-policy.ts` (server always sends webpush).
-2. **Missing Web Push subscription** — auto-sync in `push-notifications-registrar.tsx` when OS permission granted.
-3. **White status-bar icon** — `badge` used full-color `pwa-icon-192.png`; Android requires monochrome `notification-badge-96.png`.
-4. **Diagnose:** `node infra/hetzner/deploy/p17-9-13-push-chain-diagnose.mjs`
+2. **Missing Web Push subscription** — `NotificationPermissionPrompt` after login + auto-sync in `push-notifications-registrar.tsx` when OS permission already granted.
+3. **White status-bar icon** — `badge` used full-color `pwa-icon-192.png`; Android requires monochrome `notification-badge-96.png` (SA monogram).
+4. **Message push** — `notifyMessageReceived` → `createNotification` → push-worker when recipient not focused on thread.
+5. **Diagnose:** `node infra/hetzner/deploy/p17-9-13-push-chain-diagnose.mjs`
 
-**Deploy required:** API + Frontend (`sw.js` v7 branding, notification icons, registrar).
+**Deploy required:** API (`notifyMessageReceived`, delivery-policy) + Frontend (`sw.js` v9, notification icons, permission prompt).
 
 ## Android Notification Channel (Web Push)
 

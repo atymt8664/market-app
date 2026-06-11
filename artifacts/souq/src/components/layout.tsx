@@ -11,6 +11,7 @@ import { scrollPopstateGuard } from "@/components/scroll-restoration-guard";
 import { useAfterFirstPaint } from "@/lib/after-first-paint";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
+import { NotificationPermissionPrompt } from "@/components/notification-permission-prompt";
 import { PushNotificationsRegistrar } from "@/components/push-notifications-registrar";
 import { ChatSocketProvider } from "@/contexts/chat-socket-context";
 import { AppBadgeSync } from "@/components/app-badge-sync";
@@ -87,7 +88,12 @@ export function Layout({ children }: LayoutProps) {
         </>
       ) : null}
     <div className="flex w-full flex-1 flex-col min-h-0 bg-[#0A0A0A]">
-      {afterFirstPaint ? <PushNotificationsRegistrar /> : null}
+      {afterFirstPaint ? (
+        <>
+          <PushNotificationsRegistrar />
+          <NotificationPermissionPrompt />
+        </>
+      ) : null}
       {/*
         لا نفرض overflow:hidden على html/body من هنا — ذلك يمنع pull-to-refresh.
         تمرير الشات محصور في [data-chat-scroll] (انظر index.css).

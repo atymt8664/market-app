@@ -25,11 +25,17 @@ export function PushNotificationsRegistrar() {
     if (getPushSupportState() !== "granted") return;
 
     syncAttempted.current = true;
-    void push.subscribe();
+    void (async () => {
+      const result = await push.subscribe();
+      if (result === "subscribed" && prefs.prefs?.pushEnabled !== true) {
+        await prefs.saveSilent({ pushEnabled: true });
+      }
+    })();
   }, [
     enabled,
     prefs.isLoading,
     prefs.prefs?.pushEnabled,
+    prefs.saveSilent,
     push.isLoading,
     push.status?.configured,
     push.status?.subscribed,

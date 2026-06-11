@@ -56,7 +56,14 @@ function main() {
     const large = path.join(iconsDir, "notification-large-192.png");
     runSharp(masterPath, large, "resize", "192", "192", "--fit", "contain", "--background", "rgba(0,0,0,0)");
   } else {
-    console.warn("[P17-9-13] logo-master.png missing — skip notification-large-192.png");
+    const pwa192 = path.join(iconsDir, "pwa-icon-192.png");
+    if (fs.existsSync(pwa192)) {
+      const large = path.join(iconsDir, "notification-large-192.png");
+      runSharp(pwa192, large, "resize", "192", "192", "--fit", "contain", "--background", "rgba(0,0,0,0)");
+      console.warn("[P17-9-13] logo-master.png missing — used pwa-icon-192.png for notification-large-192.png");
+    } else {
+      console.warn("[P17-9-13] logo-master.png and pwa-icon-192.png missing — skip notification-large-192.png");
+    }
   }
 
   console.log("[P17-9-13] notification badge + large icons generated");

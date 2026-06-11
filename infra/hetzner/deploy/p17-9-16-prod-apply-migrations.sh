@@ -16,13 +16,22 @@ grep -q "$STAGING_REF" "$ENV_FILE" && { echo "REFUSE staging ref in production e
 DBURL="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
 [[ -n "$DBURL" ]] || { echo "FAIL DATABASE_URL missing"; exit 1; }
 
-has_dedup="$(psql "$DBURL" -tAc "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notifications' AND column_name='dedup_key');" 2>/dev/null || echo f)"
-has_admin="$(psql "$DBURL" -tAc "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='admin_notifications');" 2>/dev/null || echo f)"
+psql_q() {
+  docker run --rm -i -e PGSSLMODE=require postgres:16-alpine psql "$DBURL" -tAc "$1"
+}
+
+psql_f() {
+  docker run --rm -i -e PGSSLMODE=require -v "$(dirname "$1"):/sql:ro" postgres:16-alpine \
+    psql "$DBURL" -v ON_ERROR_STOP=1 -f "/sql/$(basename "$1")"
+}
+
+has_dedup="$(psql_q "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notifications' AND column_name='dedup_key');" 2>/dev/null || echo f)"
+has_admin="$(psql_q "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='admin_notifications');" 2>/dev/null || echo f)"
 
 if [[ "$has_dedup" != "t" ]]; then
   [[ -f "$SQL023" ]] || { echo "FAIL missing $SQL023"; exit 1; }
   echo ">> apply 023_p17_9_2_notification_idempotency.sql"
-  psql "$DBURL" -v ON_ERROR_STOP=1 -f "$SQL023"
+  psql_f "$SQL023"
 else
   echo "OK 023 already applied (dedup_key present)"
 fi
@@ -30,7 +39,7 @@ fi
 if [[ "$has_admin" != "t" ]]; then
   [[ -f "$SQL024" ]] || { echo "FAIL missing $SQL024"; exit 1; }
   echo ">> apply 024_p17_9_7_admin_notifications.sql"
-  psql "$DBURL" -v ON_ERROR_STOP=1 -f "$SQL024"
+  psql_f "$SQL024"
 else
   echo "OK 024 already applied (admin_notifications present)"
 fi

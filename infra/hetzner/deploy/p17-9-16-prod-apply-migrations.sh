@@ -13,8 +13,9 @@ SQL024="${CTX}/lib/db/migrations/024_p17_9_7_admin_notifications.sql"
 grep -q "$PROD_REF" "$ENV_FILE" || { echo "REFUSE production ref missing"; exit 2; }
 grep -q "$STAGING_REF" "$ENV_FILE" && { echo "REFUSE staging ref in production env"; exit 2; }
 
-DBURL="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
-[[ -n "$DBURL" ]] || { echo "FAIL DATABASE_URL missing"; exit 1; }
+DBURL_RAW="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
+[[ -n "$DBURL_RAW" ]] || { echo "FAIL DATABASE_URL missing"; exit 1; }
+DBURL="$(printf '%s' "$DBURL_RAW" | sed -E 's/[?&]uselibpqcompat=[^&]*//g; s/\?&/?/g; s/&$//; s/\?$//')"
 
 psql_q() {
   docker run --rm -i -e PGSSLMODE=require postgres:16-alpine psql "$DBURL" -tAc "$1"

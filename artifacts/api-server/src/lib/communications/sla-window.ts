@@ -23,11 +23,18 @@ export function formatSlaWindow(profile: SlaProfile): string {
 }
 
 const SLA_PLACEHOLDER = "{{sla_window}}";
+const REASON_PLACEHOLDER = "{{reason}}";
 
 export function applySlaWindow(body: string, slaWindow: string | null | undefined): string {
   if (!body.includes(SLA_PLACEHOLDER)) return body;
   const value = slaWindow?.trim() || SLA_PLACEHOLDER;
   return body.split(SLA_PLACEHOLDER).join(value);
+}
+
+export function applyReason(body: string, reason: string | null | undefined): string {
+  if (!body.includes(REASON_PLACEHOLDER)) return body;
+  const value = reason?.trim() || REASON_PLACEHOLDER;
+  return body.split(REASON_PLACEHOLDER).join(value);
 }
 
 export function resolveSlaProfileForNotificationType(

@@ -1,5 +1,5 @@
 import type { OfficialCommunicationOptions } from "./types";
-import { applySlaWindow, formatSlaWindow, resolveSlaProfileForNotificationType } from "./sla-window";
+import { applyReason, applySlaWindow, formatSlaWindow, resolveSlaProfileForNotificationType } from "./sla-window";
 import { hasOfficialTemplate, OFFICIAL_TEMPLATES } from "./templates";
 
 export function resolveOfficialCommunication(
@@ -18,9 +18,10 @@ export function resolveOfficialCommunication(
     if (profile) slaWindow = formatSlaWindow(profile);
   }
 
+  const bodyWithSla = applySlaWindow(template.body, slaWindow);
   return {
     title: template.title.trim().slice(0, 500),
-    body: applySlaWindow(template.body, slaWindow).trim().slice(0, 2000),
+    body: applyReason(bodyWithSla, options.reason).trim().slice(0, 2000),
   };
 }
 

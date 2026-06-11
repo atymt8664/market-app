@@ -251,7 +251,7 @@ router.patch("/admin/reports/:id/status", requireAdminPermission("reports"), req
     deepLink: adminDeepLink(`/admin/reports?reportId=${id}`),
   });
 
-  const payload = reportStatusNotificationPayload(status);
+  const payload = reportStatusNotificationPayload(status, moderationReason);
   if (before.reporterId) {
     try {
       const typeKey = payload?.type ?? "report.updated";
@@ -406,13 +406,13 @@ router.post("/admin/reports/:id/ad-action", requireAdminPermission("reports"), r
 
   if (report.reporterId) {
     try {
-      const resolvedCopy = officialNotificationContent({ type: "report.resolved" });
-      if (resolvedCopy) {
+      const resolvedPayload = reportStatusNotificationPayload("resolved", parsed.reason);
+      if (resolvedPayload) {
         await createNotification({
           userId: report.reporterId,
-          type: "report.resolved",
-          title: resolvedCopy.title,
-          body: resolvedCopy.body,
+          type: resolvedPayload.type,
+          title: resolvedPayload.title,
+          body: resolvedPayload.body,
           entityType: "report",
           entityId: id,
           metadata: { reportId: id, reason: parsed.reason },

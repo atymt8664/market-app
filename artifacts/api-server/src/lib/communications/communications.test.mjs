@@ -45,4 +45,12 @@ assert.equal(getAdminPresetsForContext("reports").length, 6);
 assert.equal(getAdminPresetsForContext("support").length, 5);
 assert.equal(getAdminPresetsForContext("verification").length, 5);
 
+const customReport = resolveOfficialCommunication({
+  type: "report.resolved.custom",
+  reason: "سبب مخصص من الإدارة.",
+});
+assert.ok(customReport);
+assert.ok(customReport.body.includes("سبب مخصص من الإدارة."));
+assert.ok(!customReport.body.includes("{{reason}}"));
+
 console.log("communications.test.mjs: PASS");

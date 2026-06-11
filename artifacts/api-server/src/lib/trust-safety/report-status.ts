@@ -1,4 +1,5 @@
 import { officialNotificationContent } from "../communications";
+import { ADMIN_RESPONSE_PRESETS } from "../communications/admin-presets";
 
 export const REPORT_STATUSES = [
   "open",
@@ -15,6 +16,16 @@ const LEGACY_STATUS_MAP: Record<string, ReportStatus> = {
   reviewing: "under_review",
   ignored: "rejected",
   dismissed: "rejected",
+};
+
+/** Maps canonical admin preset text → reason-specific template suffix. */
+const REPORT_PRESET_TEMPLATE_SUFFIX: Record<string, string> = {
+  [ADMIN_RESPONSE_PRESETS.reports[0]]: "action_taken",
+  [ADMIN_RESPONSE_PRESETS.reports[1]]: "content_removed",
+  [ADMIN_RESPONSE_PRESETS.reports[2]]: "user_warned",
+  [ADMIN_RESPONSE_PRESETS.reports[3]]: "account_suspended",
+  [ADMIN_RESPONSE_PRESETS.reports[4]]: "no_violation",
+  [ADMIN_RESPONSE_PRESETS.reports[5]]: "report_closed",
 };
 
 export function normalizeReportStatus(raw: string | null | undefined): ReportStatus | null {
@@ -38,18 +49,36 @@ function officialReportPayload(
   return { type, ...copy };
 }
 
+function resolveReportClosureTemplateType(
+  status: "resolved" | "rejected",
+  reason: string,
+): string {
+  const trimmed = reason.trim();
+  const suffix = REPORT_PRESET_TEMPLATE_SUFFIX[trimmed] ?? "custom";
+  return `report.${status}.${suffix}`;
+}
+
 export function reportStatusNotificationPayload(
   status: string,
+  reason?: string | null,
 ): { type: string; title: string; body: string } | null {
   const normalized = normalizeReportStatus(status);
   if (normalized === "under_review") {
     return officialReportPayload("report.reviewing");
   }
-  if (normalized === "resolved") {
-    return officialReportPayload("report.resolved");
-  }
-  if (normalized === "rejected") {
-    return officialReportPayload("report.rejected");
+  if (normalized === "resolved" || normalized === "rejected") {
+    const trimmedReason = reason?.trim();
+    if (trimmedReason) {
+      const templateType = resolveReportClosureTemplateType(normalized, trimmedReason);
+      const copy = officialNotificationContent({
+        type: templateType,
+        reason: trimmedReason,
+      });
+      if (copy) {
+        return { type: `report.${normalized}`, ...copy };
+      }
+    }
+    return officialReportPayload(`report.${normalized}`);
   }
   return null;
 }

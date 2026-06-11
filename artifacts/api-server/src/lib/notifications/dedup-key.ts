@@ -113,6 +113,21 @@ export function buildNotificationDedupKey(input: DedupKeyInput): string | null {
     return `security:${userId}:${type}:${hashPart(JSON.stringify(input.metadata ?? {}))}`;
   }
 
+  if (type.startsWith("report.")) {
+    const reportId =
+      (entityType === "report" ? entityId : null) ?? readPositiveInt(input.metadata?.reportId);
+    if (reportId) {
+      const fromStatus = readNonEmptyString(input.metadata?.fromStatus, 32);
+      const toStatus = readNonEmptyString(input.metadata?.toStatus, 32);
+      const reason = readNonEmptyString(input.metadata?.reason, 500);
+      if (fromStatus && toStatus) {
+        const reasonPart = reason ? `:${hashPart(reason)}` : "";
+        return `report:${userId}:${reportId}:${fromStatus}_to_${toStatus}${reasonPart}`;
+      }
+      return `report:${userId}:${reportId}:${type}`;
+    }
+  }
+
   if (entityType && entityId != null) {
     return `${entityType}:${userId}:${entityId}:${type}`;
   }

@@ -75,6 +75,33 @@ assert.equal(
   "verification:1:55:verification.approved",
 );
 
+const reportDedupA = buildNotificationDedupKey({
+  userId: 1,
+  type: "report.resolved",
+  entityType: "report",
+  entityId: 44,
+  metadata: {
+    reportId: 44,
+    fromStatus: "under_review",
+    toStatus: "resolved",
+    reason: "لم يتم العثور على مخالفة.",
+  },
+});
+const reportDedupB = buildNotificationDedupKey({
+  userId: 1,
+  type: "report.resolved",
+  entityType: "report",
+  entityId: 44,
+  metadata: {
+    reportId: 44,
+    fromStatus: "under_review",
+    toStatus: "resolved",
+    reason: "تم تحذير المستخدم.",
+  },
+});
+assert.ok(reportDedupA?.startsWith("report:1:44:under_review_to_resolved:"));
+assert.notEqual(reportDedupA, reportDedupB);
+
 assert.ok(isValidDedupKey("msg:1:2:3"));
 assert.throws(() => {
   resolveNotificationFoundation({

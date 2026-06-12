@@ -29,7 +29,7 @@ function runSharp(input, output, ...commands) {
     quoteArg(input),
     "-o",
     quoteArg(output),
-    ...commands.map(String),
+    ...commands.map((c) => quoteArg(String(c))),
   ];
   const result = spawnSync(parts.join(" "), {
     stdio: "pipe",

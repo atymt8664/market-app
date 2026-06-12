@@ -50,9 +50,20 @@ Set **Production** environment variables (Vercel dashboard or CLI — permanent,
 Redeploy after env change (Vite bakes `VITE_*` at build time):
 
 ```bash
+# From monorepo root — official script (preflight + link + archive deploy)
+node infra/hetzner/deploy/vercel-prod-deploy.mjs
+```
+
+Manual equivalent (cwd **must** be `artifacts/souq`; **always** `--archive=tgz`):
+
+```bash
+cd artifacts/souq
 npx vercel link --project market-app-souq --yes
 npx vercel deploy --prod --yes --archive=tgz
 ```
+
+**Never:** `vercel deploy --prod` without `--archive=tgz` from `artifacts/souq` (upload >15k files fails).  
+**Never:** deploy project `classified-marketplace` — production alias is `market-app-souq` only.
 
 Post-deploy checks:
 

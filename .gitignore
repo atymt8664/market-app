@@ -104,5 +104,8 @@ artifacts/souq/scripts/prod-smoke-*
 artifacts/souq/scripts/phase8-*
 artifacts/souq/scripts/compare-*
 artifacts/souq/scripts/generate-*
+!artifacts/souq/scripts/generate-notification-badge.mjs
 artifacts/souq/scripts/gen-*
-scripts/
+# Root scripts/ only — bare `scripts/` ignored artifacts/souq/scripts/ (build break on Vercel).
+/scripts/
+!artifacts/souq/scripts/assert-safe-frontend-api-env.mjs

@@ -15,6 +15,14 @@ const badgeSvg = path.join(iconsDir, "notification-badge.svg");
 
 const BADGE_SIZES = [24, 48, 72, 96];
 
+function committedOutputsReady() {
+  const required = BADGE_SIZES.map((size) =>
+    path.join(iconsDir, `notification-badge-${size}.png`),
+  );
+  required.push(path.join(iconsDir, "notification-large-192.png"));
+  return required.every((file) => fs.existsSync(file));
+}
+
 function quoteArg(arg) {
   if (!/[ "'()]/.test(arg)) return arg;
   return `"${arg.replace(/"/g, '\\"')}"`;
@@ -42,6 +50,11 @@ function runSharp(input, output, ...commands) {
 }
 
 function main() {
+  if (process.env.VERCEL === "1" && committedOutputsReady()) {
+    console.log("[P17-9-13] skip icons:notification on Vercel — committed PNGs present");
+    return;
+  }
+
   if (!fs.existsSync(badgeSvg)) {
     throw new Error(`Missing ${badgeSvg}`);
   }

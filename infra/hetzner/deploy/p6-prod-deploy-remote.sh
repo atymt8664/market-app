@@ -57,10 +57,21 @@ docker run --rm "$TAG" sh -c 'grep -rq "security-alerts" /app/artifacts/api-serv
 log ">> deploy-api.sh"
 bash "${BASE}/scripts/deploy-api.sh" --image "$TAG" --skip-pull >>"$LOG" 2>&1
 
+log ">> prod-shadow sync (nginx public upstream :3002)"
+export SOUQ_PROD_IMAGE="$TAG"
+bash "${BASE}/scripts/phase8-release-deploy-prod-shadow.sh" >>"$LOG" 2>&1
+echo "$TAG" >"${BASE}/releases/CURRENT_PROD_SHADOW_IMAGE" 2>/dev/null || true
+
 for path in /api/healthz /api/readyz; do
   code="$(curl -sS -o /dev/null -w '%{http_code}' "https://api.souq-arab.com${path}")"
   log "PROBE ${path} HTTP ${code}"
   [[ "$code" == "200" ]] || halt "${path} not 200"
+done
+
+for path in /api/account/sessions /api/account/security-alerts /api/account/2fa/status; do
+  code="$(curl -sS -o /dev/null -w '%{http_code}' "https://api.souq-arab.com${path}")"
+  log "PROBE ${path} HTTP ${code}"
+  [[ "$code" == "401" ]] || halt "${path} expected 401 got ${code}"
 done
 
 BUILD="$(curl -sS https://api.souq-arab.com/api/livez | sed -n 's/.*"build":"\([^"]*\)".*/\1/p')"

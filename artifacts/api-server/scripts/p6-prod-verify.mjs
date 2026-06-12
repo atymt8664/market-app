@@ -41,11 +41,55 @@ async function main() {
   const assetMatch = indexHtml.match(/\/assets\/index-[^"]+\.js/);
   record("WEB index has main chunk", Boolean(assetMatch), assetMatch?.[0] ?? null);
 
+  let appText = "";
   if (assetMatch) {
-    const mainJs = await fetch(`${WEB}${assetMatch[0]}`);
-    const mainText = await mainJs.text();
-    record("WEB bundle mentions security-alerts route", mainText.includes("security/alerts"), null);
-    record("WEB bundle mentions privacy activity route", mainText.includes("privacy/activity"), null);
+    const indexJs = await (await fetch(`${WEB}${assetMatch[0]}`)).text();
+    const mainMatch =
+      indexJs.match(/\/assets\/main-[A-Za-z0-9_-]+\.js/) ??
+      indexJs.match(/import\("\.\/(main-[A-Za-z0-9_-]+\.js)"\)/);
+    const mainPath = mainMatch
+      ? mainMatch[0].startsWith("/assets/")
+        ? mainMatch[0]
+        : `/assets/${mainMatch[1] ?? mainMatch[0].replace(/^import\("\.\//, "").replace(/"\)$/, "")}`
+      : null;
+    if (mainPath) {
+      const mainJs = await (await fetch(`${WEB}${mainPath}`)).text();
+      const appMatch =
+        mainJs.match(/\/assets\/App-[A-Za-z0-9_-]+\.js/) ??
+        mainJs.match(/import\("\.\/(App-[A-Za-z0-9_-]+\.js)"\)/);
+      const appPath = appMatch
+        ? appMatch[0].startsWith("/assets/")
+          ? appMatch[0]
+          : `/assets/${appMatch[1] ?? appMatch[0].replace(/^import\("\.\//, "").replace(/"\)$/, "")}`
+        : null;
+      if (appPath) {
+        const appRes = await fetch(`${WEB}${appPath}`);
+        appText = await appRes.text();
+        record("WEB App chunk 200", appRes.ok, { status: appRes.status, chunk: appPath });
+      }
+    }
+  }
+
+  record(
+    "WEB App chunk mentions P6 security routes",
+    appText.includes("account-security-alerts") && appText.includes("account-security-sessions"),
+    null,
+  );
+  record(
+    "WEB App chunk mentions privacy activity route",
+    appText.includes("account-privacy-activity"),
+    null,
+  );
+
+  for (const path of [
+    "/account/security/sessions",
+    "/account/security/alerts",
+    "/account/security/log",
+    "/account/security/two-factor",
+    "/account/privacy/activity",
+  ]) {
+    const routeRes = await fetch(`${WEB}${path}`, { redirect: "manual" });
+    record(`WEB route ${path} SPA shell`, routeRes.ok, { status: routeRes.status });
   }
 
   console.log(JSON.stringify({ api: API, web: WEB, steps, pass: true }, null, 2));

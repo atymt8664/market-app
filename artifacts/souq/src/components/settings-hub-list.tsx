@@ -25,6 +25,8 @@ export interface SettingsHubRowProps {
   iconClassName?: string;
   labelClassName?: string;
   hintClassName?: string;
+  /** When 2, allows up to two compact hint lines instead of single-line truncate. */
+  hintLineClamp?: 1 | 2;
   dividerClassName?: string;
 }
 
@@ -40,9 +42,14 @@ export function SettingsHubRow({
   iconClassName,
   labelClassName,
   hintClassName,
+  hintLineClamp = 1,
   dividerClassName,
 }: SettingsHubRowProps) {
   const rowHint = soon ? t("settings.common.coming_soon") : hint;
+  const hintLayoutClass =
+    hintLineClamp === 2
+      ? "w-full whitespace-normal line-clamp-2"
+      : "truncate";
   return (
     <button
       type="button"
@@ -63,7 +70,7 @@ export function SettingsHubRow({
           {label}
         </span>
         {rowHint && (
-          <span className={`truncate ${hintClassName ?? SETTINGS_HUB_LIST_ROW_HINT}`}>
+          <span className={`${hintLayoutClass} ${hintClassName ?? SETTINGS_HUB_LIST_ROW_HINT}`}>
             {rowHint}
           </span>
         )}

@@ -1,5 +1,5 @@
 import { ArrowRight } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import {
   SETTINGS_BACK_BUTTON,
   SETTINGS_HEADER_BAR,
@@ -8,11 +8,19 @@ import {
 } from "@/components/settings-shell";
 import { navigateBackFromChild } from "@/lib/return-navigation";
 
-export function AccountHeader({ title }: { title: string }) {
+export function AccountHeader({
+  title,
+  backFallback,
+}: {
+  title: string;
+  /** Used when returnTo is absent — e.g. security subpages default to /account/security */
+  backFallback?: string;
+}) {
   const [, navigate] = useLocation();
+  const search = useSearch();
 
   const handleBack = () => {
-    navigateBackFromChild(navigate);
+    navigateBackFromChild(navigate, { search, fallback: backFallback });
   };
 
   return (

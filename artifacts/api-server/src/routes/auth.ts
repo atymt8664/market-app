@@ -34,6 +34,14 @@ import { findStaffLoginByEmail, verifyStaffPassword } from "../lib/admin-staff-a
 import { ADMIN_TOTP_LOGIN_PENDING_MS } from "../lib/admin-2fa-constants";
 import { consumeBackupCodeIfValid } from "../lib/admin-backup-codes";
 import { verifyTotpCode } from "../lib/admin-totp";
+import {
+  USER_TOTP_LOGIN_MAX_FAILURES,
+  USER_TOTP_LOGIN_PENDING_MS,
+} from "../lib/user-2fa-constants";
+import { userHas2faEnabled } from "../lib/user-2fa-settings";
+import { verifyUserTotpCode } from "../lib/user-totp";
+import { isUserSecurityRevisionStale } from "../lib/user-security-revision";
+import { logUserSecurityEvent } from "../lib/user-security-log";
 import { getTrustedClientIp } from "../lib/client-ip";
 import { requireAdminIpAllowlist } from "../middlewares/admin-ip-gate";
 import { defaultAdminHomePath, loadAdminStaffContext } from "../lib/admin-rbac";
@@ -58,8 +66,18 @@ import {
   destroySessionRespondBanned,
 } from "../middlewares/require-auth";
 import { ensureUserCsrfToken, requireUserCsrf } from "../middlewares/require-user-csrf";
+import { ensureUser2faColumns } from "../lib/ensure-user-2fa-columns";
 
 const router: IRouter = Router();
+
+router.use(async (_req, _res, next) => {
+  try {
+    await ensureUser2faColumns();
+    next();
+  } catch (e) {
+    next(e);
+  }
+});
 
 function normalizeAuthLoginBody(body: unknown): unknown {
   if (!body || typeof body !== "object") return body;
@@ -127,6 +145,14 @@ const adminLoginLimiter = rateLimit({
 });
 
 const adminTotpLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDevApi ? 120 : 12,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "محاولات كثيرة، انتظر قليلاً وحاول مجدداً" },
+});
+
+const userTotpLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: isDevApi ? 120 : 12,
   standardHeaders: true,
@@ -207,9 +233,45 @@ function serializeUserBasic(u: typeof usersTable.$inferSelect) {
   };
 }
 
+function userTwoFactorEnabled(u: typeof usersTable.$inferSelect): boolean {
+  return typeof u.totpSecret === "string" && u.totpSecret.length > 0;
+}
+
 async function serializeUserMe(u: typeof usersTable.$inferSelect) {
   const stats = await statsForUser(u.id);
-  return { ...serializeUserBasic(u), ...stats };
+  return {
+    ...serializeUserBasic(u),
+    ...stats,
+    twoFactorEnabled: userTwoFactorEnabled(u),
+  };
+}
+
+async function finalizeUserLoginSession(
+  req: import("express").Request,
+  user: typeof usersTable.$inferSelect,
+): Promise<string> {
+  const securityRevision =
+    typeof user.securityRevision === "number" && Number.isInteger(user.securityRevision)
+      ? user.securityRevision
+      : 0;
+
+  await new Promise<void>((resolve, reject) => {
+    req.session.regenerate((err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      req.session.userId = user.id;
+      req.session.userTotpPending = undefined;
+      req.session.userTotpPendingUserId = undefined;
+      req.session.userTotpPendingExpiresAt = undefined;
+      req.session.userTotpFailedAttempts = undefined;
+      req.session.userSecurityRevision = securityRevision;
+      resolve();
+    });
+  });
+
+  return ensureUserCsrfToken(req);
 }
 
 function generateCode() {
@@ -450,9 +512,95 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
     return;
   }
 
-  req.session.userId = user.id;
-  const csrfToken = ensureUserCsrfToken(req);
-  res.json({ ...(await serializeUserMe(user)), csrfToken });
+  const needs2fa = userHas2faEnabled({ totpSecret: user.totpSecret });
+
+  if (needs2fa) {
+    await new Promise<void>((resolve, reject) => {
+      req.session.regenerate((err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        req.session.userTotpPending = true;
+        req.session.userTotpPendingUserId = user.id;
+        req.session.userTotpPendingExpiresAt = Date.now() + USER_TOTP_LOGIN_PENDING_MS;
+        req.session.userTotpFailedAttempts = 0;
+        resolve();
+      });
+    });
+    return res.json({ requiresTwoFactor: true });
+  }
+
+  const csrfToken = await finalizeUserLoginSession(req, user);
+  await logUserSecurityEvent(user.id, "login", req);
+  return res.json({ ...(await serializeUserMe(user)), csrfToken });
+});
+
+router.post("/auth/login/totp", userTotpLoginLimiter, async (req, res) => {
+  const codeRaw = req.body?.code;
+  const code = typeof codeRaw === "string" ? codeRaw : "";
+  if (!code.trim()) {
+    return res.status(401).json({ error: "رمز التحقق مطلوب" });
+  }
+
+  const pending = req.session.userTotpPending === true;
+  const exp = req.session.userTotpPendingExpiresAt;
+  const pendingUserId = req.session.userTotpPendingUserId;
+  if (
+    !pending ||
+    typeof exp !== "number" ||
+    Number.isNaN(exp) ||
+    Date.now() > exp ||
+    typeof pendingUserId !== "number"
+  ) {
+    return res.status(401).json({ error: "انتهت خطوة التحقق — أعد تسجيل الدخول" });
+  }
+
+  const rows = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, pendingUserId))
+    .limit(1);
+  const user = rows[0];
+  if (!user || !userHas2faEnabled(user) || !user.totpSecret) {
+    return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+  }
+  if (user.isBanned) {
+    return res.status(403).json({
+      error: ACCOUNT_DISABLED_MESSAGE,
+      code: ACCOUNT_DISABLED_CODE,
+    });
+  }
+
+  const totpOk = await verifyUserTotpCode(user.totpSecret, code);
+  let consumedPayload: string | null = null;
+  if (!totpOk) {
+    consumedPayload = await consumeBackupCodeIfValid(code, user.backupCodesHash);
+  }
+
+  if (!totpOk && !consumedPayload) {
+    const fails = (req.session.userTotpFailedAttempts ?? 0) + 1;
+    req.session.userTotpFailedAttempts = fails;
+    if (fails >= USER_TOTP_LOGIN_MAX_FAILURES) {
+      req.session.userTotpPending = undefined;
+      req.session.userTotpPendingUserId = undefined;
+      req.session.userTotpPendingExpiresAt = undefined;
+      req.session.userTotpFailedAttempts = undefined;
+    }
+    return res.status(401).json({ error: "رمز التحقق غير صحيح" });
+  }
+
+  if (!totpOk && consumedPayload) {
+    await db
+      .update(usersTable)
+      .set({ backupCodesHash: consumedPayload })
+      .where(eq(usersTable.id, user.id));
+    user.backupCodesHash = consumedPayload;
+  }
+
+  const csrfToken = await finalizeUserLoginSession(req, user);
+  await logUserSecurityEvent(user.id, totpOk ? "login.2fa" : "login.2fa_backup", req);
+  return res.json({ ...(await serializeUserMe(user)), csrfToken });
 });
 
 router.patch("/auth/me", requireUserCsrf, async (req, res) => {
@@ -581,10 +729,15 @@ router.post("/auth/change-password", requireUserCsrf, async (req, res) => {
     .update(usersTable)
     .set({ passwordHash })
     .where(eq(usersTable.id, userId));
+  await logUserSecurityEvent(userId, "password.change", req);
   res.json({ ok: true });
 });
 
 router.post("/auth/logout", requireUserCsrf, (req, res) => {
+  const userId = req.session.userId;
+  if (userId) {
+    void logUserSecurityEvent(userId, "logout", req);
+  }
   req.session.destroy(() => {
     res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
     res.status(204).end();
@@ -609,6 +762,16 @@ router.get("/auth/me", async (req, res) => {
   }
   if (user.isBanned) {
     destroySessionRespondBanned(req, res);
+    return;
+  }
+  if (isUserSecurityRevisionStale(req.session.userSecurityRevision, user.securityRevision)) {
+    req.session.destroy(() => {
+      res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
+      res.status(401).json({
+        error: "انتهت صلاحية الجلسة لأسباب أمنية — سجّل الدخول مجدداً",
+        code: "SESSION_SECURITY_STALE",
+      });
+    });
     return;
   }
   const me = await serializeUserMe(user);
@@ -817,7 +980,7 @@ router.post("/admin-login", requireAdminIpAllowlist, adminLoginLimiter, async (r
   }
 
   if (isAdminLoginLocked(loginIdentifier)) {
-    return res.status(429).json({ error: "بيانات الدخول غير صحيحة" });
+    return res.status(429).json({ error: "محاولات كثيرة، انتظر قليلاً وحاول مجدداً" });
   }
 
   if (!passwordRaw || typeof passwordRaw !== "string") {
@@ -887,10 +1050,10 @@ router.post("/admin-login", requireAdminIpAllowlist, adminLoginLimiter, async (r
 
   clearAdminLoginFailures(loginIdentifier);
 
+  // DB secret is only persisted after successful 2FA setup confirm; gate login on secret
+  // presence so a stale admin_2fa_enabled=false flag cannot bypass TOTP.
   const needs2fa =
-    snap.admin2faEnabled &&
-    typeof snap.admin2faSecret === "string" &&
-    snap.admin2faSecret.length > 0;
+    typeof snap.admin2faSecret === "string" && snap.admin2faSecret.length > 0;
 
   if (needs2fa) {
     await new Promise<void>((resolve, reject) => {

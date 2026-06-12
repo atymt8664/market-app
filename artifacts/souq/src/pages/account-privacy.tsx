@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Redirect, useLocation } from "wouter";
 import {
+  Activity,
   Download,
   Eye,
   EyeOff,
@@ -155,6 +156,15 @@ export default function AccountPrivacy() {
       <AccountHeader title={t("account_info.privacy.title")} />
       <div className={SETTINGS_HUB_SUBPAGE_MAIN}>
         <SettingsHubSection>
+          <SettingsHubRow
+            icon={<Activity className="w-4 h-4" />}
+            label={t("settings.privacy.activity.hub_title")}
+            hint={t("settings.privacy.activity.hub_hint")}
+            onClick={() => navigate(appendReturnToQuery("/account/privacy/activity", "/account/privacy"))}
+            labelClassName={SETTINGS_HUB_LIST_ROW_LABEL}
+            hintClassName={SETTINGS_HUB_LIST_ROW_HINT}
+            dividerClassName={SETTINGS_ROW_DIVIDER}
+          />
           <SettingsHubRow
             icon={<Mail className="w-4 h-4" />}
             label={t("settings.privacy.row.contact")}

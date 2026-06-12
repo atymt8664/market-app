@@ -19,3 +19,4 @@ export * from "./notification-preferences";
 export * from "./push-subscriptions";
 export * from "./verification-requests";
 export * from "./p17-orders";
+export * from "./user-security-events";

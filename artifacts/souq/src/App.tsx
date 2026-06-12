@@ -77,6 +77,12 @@ const AccountNotificationsQuietHours = lazy(() => import("@/pages/account-notifi
 const AccountPrivacy = lazy(() => import("@/pages/account-privacy"));
 const AccountPrivacyBlocked = lazy(() => import("@/pages/account-privacy-blocked"));
 const AccountSecurity = lazy(() => import("@/pages/account-security"));
+const AccountSecuritySessions = lazy(() => import("@/pages/account-security-sessions"));
+const AccountSecurityDevices = lazy(() => import("@/pages/account-security-devices"));
+const AccountSecurityTwoFactor = lazy(() => import("@/pages/account-security-two-factor"));
+const AccountSecurityLog = lazy(() => import("@/pages/account-security-log"));
+const AccountSecurityAlerts = lazy(() => import("@/pages/account-security-alerts"));
+const AccountPrivacyActivity = lazy(() => import("@/pages/account-privacy-activity"));
 const AccountInfo = lazy(() => import("@/pages/account-info"));
 const Messages = lazy(() => import("@/pages/messages"));
 const MessageThread = lazy(() => import("@/pages/message-thread"));
@@ -167,7 +173,13 @@ function Router() {
           <Route path="/account/notifications" component={AccountNotifications} />
           <Route path="/account/privacy/blocked" component={AccountPrivacyBlocked} />
           <Route path="/account/privacy" component={AccountPrivacy} />
+          <Route path="/account/security/sessions" component={AccountSecuritySessions} />
+          <Route path="/account/security/devices" component={AccountSecurityDevices} />
+          <Route path="/account/security/two-factor" component={AccountSecurityTwoFactor} />
+          <Route path="/account/security/log" component={AccountSecurityLog} />
+          <Route path="/account/security/alerts" component={AccountSecurityAlerts} />
           <Route path="/account/security" component={AccountSecurity} />
+          <Route path="/account/privacy/activity" component={AccountPrivacyActivity} />
           <Route path="/account/help" component={SupportHelpPage} />
           <Route path="/support">{() => <Redirect to="/account/help" />}</Route>
           <Route path="/support/help">{() => <Redirect to="/account/help" />}</Route>

@@ -22,7 +22,7 @@ import {
   SettingsHubRow,
   SettingsHubSection,
 } from "@/components/settings-hub-list";
-import { appendReturnToQuery } from "@/lib/return-navigation";
+import { appendReturnToQuery, stashReturnTarget } from "@/lib/return-navigation";
 import { t } from "@/i18n";
 
 export default function AccountSecurity() {
@@ -34,12 +34,13 @@ export default function AccountSecurity() {
   }
 
   const leaveHub = (path: string) => () => {
+    stashReturnTarget("/account/security");
     navigate(appendReturnToQuery(path, "/account/security"));
   };
 
   return (
     <div className={`flex flex-col w-full ${SETTINGS_PAGE_BG} ${SETTINGS_IMMERSIVE_BOTTOM}`}>
-      <AccountHeader title={t("account_info.security.title")} />
+      <AccountHeader title={t("account_info.security.title")} backFallback="/settings" />
       <div className={SETTINGS_HUB_SUBPAGE_MAIN}>
         <SettingsHubSection>
           <SettingsHubRow
@@ -54,36 +55,46 @@ export default function AccountSecurity() {
           <SettingsHubRow
             icon={<Monitor className="w-4 h-4" />}
             label={t("settings.ia.security.active_sessions")}
-            soon
+            hint={t("settings.sessions.hub_hint")}
+            onClick={leaveHub("/account/security/sessions")}
             labelClassName={SETTINGS_HUB_LIST_ROW_LABEL}
+            hintClassName={SETTINGS_HUB_LIST_ROW_HINT}
             dividerClassName={SETTINGS_ROW_DIVIDER}
           />
           <SettingsHubRow
             icon={<Smartphone className="w-4 h-4" />}
             label={t("settings.ia.security.devices")}
-            soon
+            hint={t("settings.devices.hub_hint")}
+            onClick={leaveHub("/account/security/devices")}
             labelClassName={SETTINGS_HUB_LIST_ROW_LABEL}
+            hintClassName={SETTINGS_HUB_LIST_ROW_HINT}
             dividerClassName={SETTINGS_ROW_DIVIDER}
           />
           <SettingsHubRow
             icon={<KeyRound className="w-4 h-4" />}
             label={t("settings.security_center.two_factor")}
-            soon
+            hint={t("settings.two_factor.hub_hint")}
+            onClick={leaveHub("/account/security/two-factor")}
             labelClassName={SETTINGS_HUB_LIST_ROW_LABEL}
+            hintClassName={SETTINGS_HUB_LIST_ROW_HINT}
             dividerClassName={SETTINGS_ROW_DIVIDER}
           />
           <SettingsHubRow
             icon={<ScrollText className="w-4 h-4" />}
             label={t("settings.ia.security.security_log")}
-            soon
+            hint={t("settings.security_log.hub_hint")}
+            onClick={leaveHub("/account/security/log")}
             labelClassName={SETTINGS_HUB_LIST_ROW_LABEL}
+            hintClassName={SETTINGS_HUB_LIST_ROW_HINT}
             dividerClassName={SETTINGS_ROW_DIVIDER}
           />
           <SettingsHubRow
             icon={<BellRing className="w-4 h-4" />}
             label={t("settings.ia.security.security_alerts")}
-            soon
+            hint={t("settings.security_alerts.hub_hint")}
+            onClick={leaveHub("/account/security/alerts")}
             labelClassName={SETTINGS_HUB_LIST_ROW_LABEL}
+            hintClassName={SETTINGS_HUB_LIST_ROW_HINT}
             dividerClassName={SETTINGS_ROW_DIVIDER}
           />
         </SettingsHubSection>

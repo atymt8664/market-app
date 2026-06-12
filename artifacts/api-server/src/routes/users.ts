@@ -28,7 +28,9 @@ import { PUBLIC_AD_STATUSES } from "../lib/ad-visibility";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import { isUserSocketConnected } from "../lib/realtime";
+import { resolveUserPresenceForViewer } from "../lib/user-presence-privacy";
 import { listBlockedUsersForMe } from "../lib/list-blocked-users";
+import { ensureUserPrivacyColumns } from "../lib/ensure-user-privacy-columns";
 import {
   clampLimit,
   finalizePage,
@@ -40,6 +42,15 @@ import {
 } from "../lib/pagination";
 
 const router: IRouter = Router();
+
+router.use(async (_req, _res, next) => {
+  try {
+    await ensureUserPrivacyColumns();
+    next();
+  } catch (e) {
+    next(e);
+  }
+});
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -174,10 +185,24 @@ router.post("/users/presence-batch", requireAuth, async (req, res) => {
   }
 
   const userRows = await db
-    .select({ id: usersTable.id, lastSeenAt: usersTable.lastSeenAt })
+    .select({
+      id: usersTable.id,
+      lastSeenAt: usersTable.lastSeenAt,
+      presenceActivityVisible: usersTable.presenceActivityVisible,
+      presenceLastSeenVisible: usersTable.presenceLastSeenVisible,
+    })
     .from(usersTable)
     .where(inArray(usersTable.id, unique));
-  const lastSeenMap = new Map(userRows.map((r) => [r.id, r.lastSeenAt]));
+  const userMetaMap = new Map(
+    userRows.map((r) => [
+      r.id,
+      {
+        lastSeenAt: r.lastSeenAt,
+        activityVisible: r.presenceActivityVisible !== false,
+        lastSeenVisible: r.presenceLastSeenVisible !== false,
+      },
+    ]),
+  );
 
   const byUserId: Record<
     string,
@@ -188,12 +213,16 @@ router.post("/users/presence-batch", requireAuth, async (req, res) => {
       byUserId[String(id)] = { visibility: "hidden" };
       continue;
     }
-    const ls = lastSeenMap.get(id) ?? null;
-    byUserId[String(id)] = {
-      visibility: "full",
+    const meta = userMetaMap.get(id);
+    const activityVisible = meta?.activityVisible ?? true;
+    const lastSeenVisible = meta?.lastSeenVisible ?? true;
+    const ls = meta?.lastSeenAt ?? null;
+    byUserId[String(id)] = resolveUserPresenceForViewer({
+      activityVisible,
+      lastSeenVisible,
+      lastSeenAt: ls,
       isOnline: isUserSocketConnected(id),
-      lastSeenAt: ls ? ls.toISOString() : null,
-    };
+    });
   }
   res.json({ byUserId });
 });

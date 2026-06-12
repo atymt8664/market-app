@@ -1,6 +1,7 @@
 /**
  * P7-PR-9: Home cold-path critical CSS — sync on first paint only.
- * Scan limited to Home shell (no ad-card/button/radix toast sources).
+ * Scan limited to Home shell + Settings IA (no ad-card/radix toast sources).
+ * Settings subtree must be here so first visit to /settings is not unstyled until index.css loads.
  */
 @import "./fonts-critical.css";
 @import "tailwindcss" source(none);
@@ -8,6 +9,34 @@
 @source "./App.tsx";
 @source "./pages/home.tsx";
 @source "./pages/home-feed-sections.tsx";
+@source "./pages/settings.tsx";
+@source "./pages/account-security.tsx";
+@source "./pages/account-security-sessions.tsx";
+@source "./pages/account-security-devices.tsx";
+@source "./pages/account-security-two-factor.tsx";
+@source "./pages/account-security-log.tsx";
+@source "./pages/account-security-alerts.tsx";
+@source "./components/security-event-meta.tsx";
+@source "./components/security-events-list-skeleton.tsx";
+@source "./pages/account-privacy-activity.tsx";
+@source "./pages/account-privacy.tsx";
+@source "./pages/account-privacy-blocked.tsx";
+@source "./pages/account-profile.tsx";
+@source "./pages/account-email.tsx";
+@source "./pages/account-password.tsx";
+@source "./pages/account-notifications.tsx";
+@source "./pages/account-notifications-quiet-hours.tsx";
+@source "./pages/account-info.tsx";
+@source "./pages/account-verification.tsx";
+@source "./pages/support-help.tsx";
+@source "./pages/terms.tsx";
+@source "./pages/privacy.tsx";
+@source "./components/account-header.tsx";
+@source "./components/settings-shell.tsx";
+@source "./components/settings-hub-list.tsx";
+@source "./components/legal-document-header.tsx";
+@source "./components/ui/button.tsx";
+@source "./components/ui/alert-dialog.tsx";
 @source "./components/layout.tsx";
 @source "./components/route-loading-fallback.tsx";
 @source "./components/home-feed-ad-card.tsx";

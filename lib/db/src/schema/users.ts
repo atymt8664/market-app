@@ -37,6 +37,18 @@ export const usersTable = pgTable("users", {
     .defaultNow(),
   /** Set when the user's last chat WebSocket disconnects (server-side). */
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  /** TOTP secret (base32); login gate uses secret presence, not totpEnabled alone. */
+  totpSecret: text("totp_secret"),
+  totpEnabled: boolean("totp_enabled").notNull().default(false),
+  totpEnabledAt: timestamp("totp_enabled_at", { withTimezone: true }),
+  /** JSON { v: 1, hashes: string[] } of bcrypt-hashed one-time backup codes. */
+  backupCodesHash: text("backup_codes_hash"),
+  /** Bumped on security-sensitive changes; sessions with stale revision are invalidated. */
+  securityRevision: integer("security_revision").notNull().default(0),
+  /** When false, online activity is hidden from other users (chat, ads, presence batch). */
+  presenceActivityVisible: boolean("presence_activity_visible").notNull().default(true),
+  /** When false, last-seen timestamp is hidden from other users. */
+  presenceLastSeenVisible: boolean("presence_last_seen_visible").notNull().default(true),
 });
 
 export const userFollowsTable = pgTable(

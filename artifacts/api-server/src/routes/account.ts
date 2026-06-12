@@ -15,8 +15,25 @@ import { getSessionClearCookieOptions, SESSION_COOKIE_NAME } from "../lib/sessio
 import { logger } from "../lib/logger";
 import { listBlockedUsersForMe } from "../lib/list-blocked-users";
 import { getUnreadCounters } from "../lib/notifications/counters";
+import {
+  listUserSessions,
+  revokeOtherUserSessions,
+  revokeUserSession,
+} from "../lib/user-sessions";
+import { listUserDevices, revokeUserDevice } from "../lib/user-devices";
+import { logUserSecurityEvent } from "../lib/user-security-log";
+import { ensureUserPrivacyColumns } from "../lib/ensure-user-privacy-columns";
 
 const router: IRouter = Router();
+
+router.use(async (_req, _res, next) => {
+  try {
+    await ensureUserPrivacyColumns();
+    next();
+  } catch (e) {
+    next(e);
+  }
+});
 
 const isDevApi = process.env.NODE_ENV !== "production";
 
@@ -27,6 +44,22 @@ const deleteAccountLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "محاولات كثيرة لحذف الحساب، حاول لاحقاً" },
 });
+
+const sessionRevokeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDevApi ? 60 : 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "محاولات كثيرة، انتظر قليلاً وحاول مجدداً" },
+});
+
+const SessionIdParam = z
+  .string()
+  .min(8, "معرّف الجلسة غير صالح")
+  .max(256, "معرّف الجلسة غير صالح")
+  .regex(/^[a-zA-Z0-9._-]+$/, "معرّف الجلسة غير صالح");
+
+const DeviceIdParam = z.coerce.number().int().positive("معرّف الجهاز غير صالح");
 
 const DeleteAccountBody = z.object({
   password: z.string().min(1, "كلمة المرور مطلوبة"),
@@ -109,6 +142,162 @@ router.get("/account/unread-counters", requireAuth, async (req, res) => {
 
 router.get("/account/blocked-users", requireAuth, async (req, res) => {
   await listBlockedUsersForMe(req.session.userId!, req.query as Record<string, unknown>, res);
+});
+
+router.get("/account/sessions", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const sessions = await listUserSessions(userId, req.sessionID);
+  res.json({ sessions });
+});
+
+router.delete(
+  "/account/sessions/others",
+  sessionRevokeLimiter,
+  requireAuth,
+  requireUserCsrf,
+  async (req, res) => {
+    const userId = req.session.userId!;
+    const currentSessionId = req.sessionID;
+    if (!currentSessionId) {
+      res.status(400).json({ error: "تعذر تحديد الجلسة الحالية" });
+      return;
+    }
+    const revoked = await revokeOtherUserSessions(userId, currentSessionId);
+    await logUserSecurityEvent(userId, "session.revoke_others", req, { revoked });
+    res.json({ ok: true, revoked });
+  },
+);
+
+router.delete(
+  "/account/sessions/:sessionId",
+  sessionRevokeLimiter,
+  requireAuth,
+  requireUserCsrf,
+  async (req, res) => {
+    const userId = req.session.userId!;
+    const parsed = SessionIdParam.safeParse(req.params.sessionId);
+    if (!parsed.success) {
+      res.status(400).json({ error: "معرّف الجلسة غير صالح" });
+      return;
+    }
+    const outcome = await revokeUserSession(userId, parsed.data, req.sessionID);
+    if (outcome === "current_forbidden") {
+      res.status(400).json({
+        error: "لا يمكن إنهاء الجلسة الحالية من هنا — استخدم تسجيل الخروج",
+        code: "CURRENT_SESSION",
+      });
+      return;
+    }
+    if (outcome === "not_found") {
+      res.status(404).json({ error: "الجلسة غير موجودة أو منتهية" });
+      return;
+    }
+    await logUserSecurityEvent(userId, "session.revoke", req, {
+      sessionId: parsed.data,
+    });
+    res.status(200).json({ ok: true });
+  },
+);
+
+router.get("/account/devices", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const rawUa = req.headers["user-agent"];
+  const userAgent = typeof rawUa === "string" ? rawUa : null;
+  const devices = await listUserDevices(userId, userAgent);
+  res.json({ devices });
+});
+
+router.delete(
+  "/account/devices/:deviceId",
+  sessionRevokeLimiter,
+  requireAuth,
+  requireUserCsrf,
+  async (req, res) => {
+    const userId = req.session.userId!;
+    const parsed = DeviceIdParam.safeParse(req.params.deviceId);
+    if (!parsed.success) {
+      res.status(400).json({ error: "معرّف الجهاز غير صالح" });
+      return;
+    }
+    const outcome = await revokeUserDevice(userId, parsed.data);
+    if (outcome === "not_found") {
+      res.status(404).json({ error: "الجهاز غير موجود" });
+      return;
+    }
+    await logUserSecurityEvent(userId, "device.revoke", req, { deviceId: parsed.data });
+    res.status(200).json({ ok: true });
+  },
+);
+
+const PrivacyPreferencesPatchBody = z
+  .object({
+    showActivityStatus: z.boolean().optional(),
+    showLastSeen: z.boolean().optional(),
+  })
+  .strict();
+
+const defaultPrivacyPrefs = {
+  showActivityStatus: true,
+  showLastSeen: true,
+} as const;
+
+router.get("/account/privacy-preferences", requireAuth, async (req, res) => {
+  const userId = req.session.userId!;
+  const [row] = await db
+    .select({
+      presenceActivityVisible: usersTable.presenceActivityVisible,
+      presenceLastSeenVisible: usersTable.presenceLastSeenVisible,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  if (!row) {
+    return res.status(401).json({ error: "يرجى تسجيل الدخول" });
+  }
+  return res.json({
+    showActivityStatus: row.presenceActivityVisible,
+    showLastSeen: row.presenceLastSeenVisible,
+  });
+});
+
+router.patch("/account/privacy-preferences", requireAuth, requireUserCsrf, async (req, res) => {
+  const userId = req.session.userId!;
+  const parsed = PrivacyPreferencesPatchBody.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "بيانات غير صحيحة" });
+  }
+  const patch = parsed.data;
+  if (Object.keys(patch).length === 0) {
+    return res.status(400).json({ error: "لا توجد حقول للتحديث" });
+  }
+
+  const [existing] = await db
+    .select({
+      presenceActivityVisible: usersTable.presenceActivityVisible,
+      presenceLastSeenVisible: usersTable.presenceLastSeenVisible,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  if (!existing) {
+    return res.status(401).json({ error: "يرجى تسجيل الدخول" });
+  }
+
+  const nextPrefs = {
+    showActivityStatus: existing.presenceActivityVisible,
+    showLastSeen: existing.presenceLastSeenVisible,
+    ...patch,
+  };
+
+  await db
+    .update(usersTable)
+    .set({
+      presenceActivityVisible: nextPrefs.showActivityStatus,
+      presenceLastSeenVisible: nextPrefs.showLastSeen,
+    })
+    .where(eq(usersTable.id, userId));
+
+  return res.json(nextPrefs);
 });
 
 router.get("/account/notification-preferences", requireAuth, async (req, res, next) => {

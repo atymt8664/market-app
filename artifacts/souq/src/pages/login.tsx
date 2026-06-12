@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { ArrowRight, Loader2, LogIn } from "lucide-react";
+import { ArrowRight, Loader2, LogIn, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { absorbAuthProfileCsrfFromResponse, getAuthMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,6 +36,7 @@ import {
 } from "@/lib/auth-page-styles";
 import { resolveCommercePostLoginRedirect } from "@/features/p17-commerce/p17-commerce-redirect";
 import { P17_ORDERS_QUERY_ROOT } from "@/features/p17-commerce/orders-api.types";
+import { submitUserLoginTotp } from "@/lib/user-2fa-api";
 
 const schema = z.object({
   email: z.string().email("auth.validation.invalid_email"),
@@ -66,6 +67,8 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [accountDisabledByAdmin, setAccountDisabledByAdmin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [step, setStep] = useState<"password" | "totp">("password");
+  const [totpCode, setTotpCode] = useState("");
 
   /** بعد إعادة التوجيه من اعتراض الحظر، أو فتح الرابط مع ?accountDisabled=1 */
   useLayoutEffect(() => {
@@ -121,6 +124,13 @@ export default function Login() {
         json = {};
       }
 
+      if (res.ok && json?.requiresTwoFactor === true) {
+        setStep("totp");
+        setTotpCode("");
+        form.reset({ email: data.email, password: "" });
+        return;
+      }
+
       if (!res.ok) {
         if (res.status === 403 && json?.code === "EMAIL_NOT_VERIFIED") {
           const params = new URLSearchParams({ email: json?.email || data.email });
@@ -142,21 +152,7 @@ export default function Login() {
         throw new Error("auth.login.invalid_credentials");
       }
 
-      toast({ title: t("auth.login.success") });
-      try {
-        sessionStorage.removeItem(LEGAL_EXPLICIT_RETURN_KEY);
-        sessionStorage.removeItem(LEGAL_NAV_RETURN_KEY);
-      } catch {
-        /* ignore */
-      }
-      absorbAuthProfileCsrfFromResponse(json);
-      queryClient.removeQueries({ queryKey: P17_ORDERS_QUERY_ROOT, exact: false });
-      queryClient.setQueryData(getAuthMeQueryKey(), json);
-      void queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
-
-      const next = resolvePostLoginRedirect(window.location.search);
-      setLocation(next, { replace: true });
-
+      completeLogin(json);
     } catch (err: any) {
       const msg = err?.message as string | undefined;
       setError(
@@ -164,6 +160,42 @@ export default function Login() {
           ? t(msg)
           : msg || t("auth.login.failed"),
       );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const completeLogin = (json: Record<string, unknown>) => {
+    toast({ title: t("auth.login.success") });
+    try {
+      sessionStorage.removeItem(LEGAL_EXPLICIT_RETURN_KEY);
+      sessionStorage.removeItem(LEGAL_NAV_RETURN_KEY);
+    } catch {
+      /* ignore */
+    }
+    absorbAuthProfileCsrfFromResponse(json);
+    queryClient.removeQueries({ queryKey: P17_ORDERS_QUERY_ROOT, exact: false });
+    queryClient.setQueryData(getAuthMeQueryKey(), json);
+    void queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
+    const next = resolvePostLoginRedirect(window.location.search);
+    setLocation(next, { replace: true });
+  };
+
+  const onTotpSubmit = async () => {
+    const code = totpCode.trim();
+    if (!code) {
+      setError(t("auth.login.totp_required"));
+      return;
+    }
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const json = await submitUserLoginTotp(code);
+      setTotpCode("");
+      completeLogin(json);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("auth.login.totp_invalid");
+      setError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -191,22 +223,94 @@ export default function Login() {
         <div className="flex flex-col items-center gap-4">
           <div className="relative flex items-center justify-center">
             <div className="absolute h-36 w-36 rounded-full bg-primary/15 blur-3xl" />
-            <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.35)] ring-1 ring-primary/15">
-              <LogIn className="h-11 w-11 text-primary" strokeWidth={2} />
+            <div
+              className={cn(
+                "relative flex h-24 w-24 items-center justify-center rounded-2xl border bg-[#0A0A0A]/80 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.35)] ring-1",
+                step === "totp"
+                  ? "border-lime-400/40 shadow-[0_0_28px_-10px_rgba(163,230,53,0.45)] ring-lime-400/20"
+                  : "border-primary/35 ring-primary/15",
+              )}
+            >
+              {step === "totp" ? (
+                <Shield className="h-11 w-11 text-lime-400" strokeWidth={2} aria-hidden />
+              ) : (
+                <LogIn className="h-11 w-11 text-primary" strokeWidth={2} />
+              )}
             </div>
           </div>
 
           <div className={cn(AUTH_HERO_CARD, "w-full max-w-md space-y-1.5")}>
             <h2 className="text-lg font-bold text-foreground md:text-xl">
-              {t("auth.login.welcome_title")}
+              {step === "totp" ? t("auth.login.totp_title") : t("auth.login.welcome_title")}
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              {t("auth.login.welcome_desc")}
+              {step === "totp" ? t("auth.login.totp_desc") : t("auth.login.welcome_desc")}
             </p>
           </div>
         </div>
 
-        <div className={AUTH_CARD}>
+        <div
+          className={cn(
+            AUTH_CARD,
+            step === "totp" &&
+              "border-lime-500/20 shadow-[0_0_32px_-18px_rgba(163,230,53,0.35)] ring-1 ring-lime-500/15",
+          )}
+        >
+          {step === "totp" ? (
+            <form
+              className="flex flex-col gap-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void onTotpSubmit();
+              }}
+            >
+              <label className="text-sm font-medium text-foreground" htmlFor="login-totp-code">
+                {t("auth.login.totp_code_label")}
+              </label>
+              <Input
+                id="login-totp-code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={20}
+                value={totpCode}
+                disabled={isSubmitting}
+                onChange={(e) => setTotpCode(e.target.value)}
+                className={cn(AUTH_INPUT, "h-11 dir-ltr text-center tracking-widest")}
+                dir="ltr"
+                placeholder="••••••"
+              />
+              <p className="text-xs text-muted-foreground">{t("auth.login.totp_backup_hint")}</p>
+              {error && (
+                <p className="rounded-xl border border-destructive/35 bg-destructive/10 p-3 text-center text-sm text-destructive ring-1 ring-destructive/20">
+                  {error}
+                </p>
+              )}
+              <Button
+                type="submit"
+                variant="ghost"
+                className={cn(AUTH_ACCENT_OUTLINE_BTN, "mt-1 border-lime-400/35 text-lime-100 hover:bg-lime-500/10")}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  t("auth.login.totp_submit")
+                )}
+              </Button>
+              <button
+                type="button"
+                className="text-center text-sm text-muted-foreground hover:text-foreground"
+                disabled={isSubmitting}
+                onClick={() => {
+                  setStep("password");
+                  setTotpCode("");
+                  setError(null);
+                }}
+              >
+                {t("auth.login.totp_back")}
+              </button>
+            </form>
+          ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
               <FormField
@@ -293,6 +397,7 @@ export default function Login() {
               </Link>
             </form>
           </Form>
+          )}
         </div>
 
         <p className="text-center text-sm text-muted-foreground">

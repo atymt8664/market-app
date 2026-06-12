@@ -43,6 +43,16 @@ declare module "express-session" {
     adminMustChangePassword?: boolean;
     /** CSRF token for logged-in user mutations (separate from `adminCsrfToken`). */
     userCsrfToken?: string;
+    /** Password verified; awaiting user TOTP before full session. */
+    userTotpPending?: boolean;
+    userTotpPendingUserId?: number;
+    userTotpPendingExpiresAt?: number;
+    userTotpFailedAttempts?: number;
+    /** Pending TOTP secret during in-dashboard user 2FA enrollment. */
+    user2faSetupSecret?: string;
+    user2faSetupExpiresAt?: number;
+    /** Mirrors users.security_revision after login; invalidates session when bumped. */
+    userSecurityRevision?: number;
   }
 }
 

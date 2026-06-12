@@ -47,6 +47,39 @@ export function formatNotificationTime(dateString: string) {
   }
 }
 
+/**
+ * Security Alerts / Security Log — stable datetime (no RTL bidi breakage).
+ * Example (ar): 12 يونيو 2026 • 5:23 م
+ */
+export function formatSecurityEventTime(
+  dateString: string,
+  locale: "ar" | "de" | "en",
+): string {
+  try {
+    const d = parseISO(dateString);
+    if (Number.isNaN(d.getTime())) return dateString;
+
+    const intlLocale =
+      locale === "ar" ? "ar-u-nu-latn" : locale === "de" ? "de-DE" : "en-GB";
+
+    const datePart = new Intl.DateTimeFormat(intlLocale, {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(d);
+
+    const timePart = new Intl.DateTimeFormat(intlLocale, {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: locale !== "de",
+    }).format(d);
+
+    return `${datePart} • ${timePart}`;
+  } catch {
+    return dateString;
+  }
+}
+
 /** Short timestamp for chat bubbles (locale-aware). */
 export function formatMessageTimestamp(
   dateString: string,

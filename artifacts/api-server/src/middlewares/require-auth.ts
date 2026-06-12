@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { getSessionClearCookieOptions, SESSION_COOKIE_NAME } from "../lib/session-cookie";
 import { logger } from "../lib/logger";
+import { isUserSecurityRevisionStale } from "../lib/user-security-revision";
 
 /** Matches JSON returned by login and enforced-session endpoints when user is banned */
 export const ACCOUNT_DISABLED_MESSAGE = "تم تعطيل هذا الحساب من قبل الإدارة";
@@ -34,7 +35,10 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
       }
       const userId = req.session.userId;
       const [row] = await db
-        .select({ isBanned: usersTable.isBanned })
+        .select({
+          isBanned: usersTable.isBanned,
+          securityRevision: usersTable.securityRevision,
+        })
         .from(usersTable)
         .where(eq(usersTable.id, userId))
         .limit(1);
@@ -52,6 +56,20 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 
       if (row.isBanned) {
         destroySessionRespondBanned(req, res);
+        return;
+      }
+
+      if (isUserSecurityRevisionStale(req.session.userSecurityRevision, row.securityRevision)) {
+        req.session.destroy((destroyErr) => {
+          if (destroyErr) {
+            logger.warn({ err: destroyErr, userId }, "session.destroy failed for stale security revision");
+          }
+          res.clearCookie(SESSION_COOKIE_NAME, { ...getSessionClearCookieOptions() });
+          res.status(401).json({
+            error: "انتهت صلاحية الجلسة لأسباب أمنية — سجّل الدخول مجدداً",
+            code: "SESSION_SECURITY_STALE",
+          });
+        });
         return;
       }
 

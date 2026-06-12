@@ -993,7 +993,7 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
   broadcastTypingStoppedForSender(convId, userId);
 
   if (!isUserFocusedOnConversation(recipient, convId)) {
-    void notifyMessageReceived({
+    await notifyMessageReceived({
       recipientUserId: recipient,
       senderUserId: userId,
       conversationId: convId,

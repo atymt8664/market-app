@@ -12,6 +12,7 @@ import { useAfterFirstPaint } from "@/lib/after-first-paint";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
 import { NotificationPermissionPrompt } from "@/components/notification-permission-prompt";
+import { PushForegroundBanner } from "@/components/push-foreground-banner";
 import { PushNotificationsRegistrar } from "@/components/push-notifications-registrar";
 import { ChatSocketProvider } from "@/contexts/chat-socket-context";
 import { AppBadgeSync } from "@/components/app-badge-sync";
@@ -92,6 +93,7 @@ export function Layout({ children }: LayoutProps) {
         <>
           <PushNotificationsRegistrar />
           <NotificationPermissionPrompt />
+          <PushForegroundBanner />
         </>
       ) : null}
       {/*

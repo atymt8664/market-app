@@ -84,16 +84,17 @@ async function main() {
   const swHasVisibilityGate =
     swBody.includes("visibilityState") && swBody.includes("appVisible");
   const swHasBranding =
-    swBody.includes("v9-p17-9-13-permission-flow") &&
+    swBody.includes("v10-p17-9-13-foreground-banner") &&
     swBody.includes("notification-badge-96.png") &&
     swBody.includes("notification-large-192.png") &&
+    swBody.includes("souq:push-foreground") &&
     !swBody.includes('badge: "/icons/pwa-icon-192.png"');
   const swOk = swRes.ok && swBody.includes("push") && swHasVisibilityGate && swHasBranding;
   chain(
     "12_sw_deployed",
     swOk ? "PASS" : "FAIL",
     swOk
-      ? "p17-9-13 branding + visibility gate"
+      ? "p17-9-13 branding + foreground banner + visibility gate"
       : !swHasBranding
         ? "missing monochrome badge — redeploy frontend"
         : "old sw.js — redeploy frontend",

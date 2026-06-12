@@ -102,6 +102,24 @@ const reportDedupB = buildNotificationDedupKey({
 assert.ok(reportDedupA?.startsWith("report:1:44:under_review_to_resolved:"));
 assert.notEqual(reportDedupA, reportDedupB);
 
+const supportReplyA = buildNotificationDedupKey({
+  userId: 1,
+  type: "support.reply",
+  entityType: "support_ticket",
+  entityId: 9,
+  metadata: { messageId: 101 },
+});
+const supportReplyB = buildNotificationDedupKey({
+  userId: 1,
+  type: "support.reply",
+  entityType: "support_ticket",
+  entityId: 9,
+  metadata: { messageId: 102 },
+});
+assert.equal(supportReplyA, "support:1:9:reply:101");
+assert.equal(supportReplyB, "support:1:9:reply:102");
+assert.notEqual(supportReplyA, supportReplyB);
+
 assert.ok(isValidDedupKey("msg:1:2:3"));
 assert.throws(() => {
   resolveNotificationFoundation({

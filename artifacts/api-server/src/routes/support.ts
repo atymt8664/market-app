@@ -602,7 +602,13 @@ router.patch("/admin/support/tickets/:id", requireAdminAccessGrant, requireAdmin
           body: copy.body,
           entityType: "support_ticket",
           entityId: id,
-          metadata: { ticketId: id, subject: subj, reason: moderationReason || null },
+          metadata: {
+            ticketId: id,
+            subject: subj,
+            reason: moderationReason || null,
+            ...(statusChanged ? { status: effectiveStatus } : {}),
+            ...(priorityChanged ? { priority: String(priority ?? before.priority) } : {}),
+          },
         });
       }
     } catch (err) {
@@ -688,7 +694,7 @@ router.post("/admin/support/tickets/:id/reply", requireAdminAccessGrant, require
           body: copy.body,
           entityType: "support_ticket",
           entityId: id,
-          metadata: { previewSlice: preview, subject: subj },
+          metadata: { previewSlice: preview, subject: subj, messageId: inserted.id },
         });
       }
     } catch (err) {

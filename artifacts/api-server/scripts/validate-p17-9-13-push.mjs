@@ -22,9 +22,11 @@ assert.ok(messageNotif.includes("createNotification"), "message-notifications mi
 
 const layout = readFileSync(join(souqRoot, "src/components/layout.tsx"), "utf8");
 assert.ok(layout.includes("NotificationPermissionPrompt"), "layout missing permission opt-in flow");
+assert.ok(layout.includes("PushForegroundBanner"), "layout missing foreground push banner");
 
 const sw = readFileSync(join(souqRoot, "public/sw.js"), "utf8");
-assert.ok(sw.includes("v9-p17-9-13-permission-flow"), "sw.js missing P17-9-13 v9 cache version");
+assert.ok(sw.includes("v10-p17-9-13-foreground-banner"), "sw.js missing P17-9-13 v10 cache version");
+assert.ok(sw.includes("souq:push-foreground"), "sw.js missing foreground banner message");
 assert.ok(sw.includes("notification-badge-96.png"), "sw.js missing monochrome badge");
 assert.ok(!sw.includes('badge: "/icons/pwa-icon-192.png"'), "sw.js still uses color icon as badge");
 

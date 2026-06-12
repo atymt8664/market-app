@@ -2,7 +2,7 @@
  * Souq Arab EU — PWA shell + Web Push (P11 / P17-9-13).
  * P9 deploy stability: never precache or serve stale HTML/JS/CSS (prevents mixed bundles).
  */
-const CACHE_VERSION = "souq-arab-eu-v9-p17-9-13-permission-flow";
+const CACHE_VERSION = "souq-arab-eu-v10-p17-9-13-foreground-banner";
 
 /** Android status bar: monochrome white silhouette. Drawer: brand large icon. */
 const NOTIFICATION_BADGE = "/icons/notification-badge-96.png";
@@ -102,12 +102,12 @@ async function showOsNotification(title, body, data, tag) {
     data,
     icon: largeIcon,
     badge: assetUrl(NOTIFICATION_BADGE),
-    image: largeIcon,
     tag,
     vibrate: NOTIFICATION_VIBRATE,
     renotify: true,
     silent: false,
     timestamp: Date.now(),
+    dir: "auto",
   };
 
   try {
@@ -147,9 +147,17 @@ self.addEventListener("push", (event) => {
 
       for (const client of clients) {
         client.postMessage({ type: "souq:push-received", data });
+        if (appVisible) {
+          client.postMessage({
+            type: "souq:push-foreground",
+            title,
+            body,
+            data,
+          });
+        }
       }
 
-      /** OS tray when background / lock / killed — not when app is focused. */
+      /** OS tray when background / lock / killed — foreground uses in-app banner. */
       if (!appVisible) {
         await showOsNotification(title, body, data, tag);
       }

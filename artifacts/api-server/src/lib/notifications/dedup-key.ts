@@ -92,6 +92,19 @@ export function buildNotificationDedupKey(input: DedupKeyInput): string | null {
 
   if (type.startsWith("support.")) {
     if (entityType === "support_ticket" && entityId != null) {
+      const messageId = readPositiveInt(input.metadata?.messageId);
+      if (type === "support.reply" && messageId) {
+        return `support:${userId}:${entityId}:reply:${messageId}`;
+      }
+      if (type === "support.ticket.updated") {
+        const status = readNonEmptyString(input.metadata?.status, 32);
+        const priority = readNonEmptyString(input.metadata?.priority, 16);
+        if (status && priority) {
+          return `support:${userId}:${entityId}:upd:${status}:${priority}`;
+        }
+        if (status) return `support:${userId}:${entityId}:status:${status}`;
+        if (priority) return `support:${userId}:${entityId}:priority:${priority}`;
+      }
       return `support:${userId}:${entityId}:${type}`;
     }
     return null;

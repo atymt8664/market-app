@@ -252,21 +252,14 @@ router.patch("/admin/reports/:id/status", requireAdminPermission("reports"), req
   });
 
   const payload = reportStatusNotificationPayload(status, moderationReason);
-  if (before.reporterId) {
+  const statusChanged = before.status !== status;
+  if (before.reporterId && payload && statusChanged) {
     try {
-      const typeKey = payload?.type ?? "report.updated";
-      const copy =
-        payload ??
-        officialNotificationContent({ type: "report.updated" }) ?? {
-          type: "report.updated",
-          title: "تحديث حالة البلاغ",
-          body: "تحديث على بلاغك",
-        };
       await createNotification({
         userId: before.reporterId,
-        type: typeKey,
-        title: copy.title,
-        body: copy.body,
+        type: payload.type,
+        title: payload.title,
+        body: payload.body,
         entityType: "report",
         entityId: id,
         metadata: {
@@ -415,7 +408,12 @@ router.post("/admin/reports/:id/ad-action", requireAdminPermission("reports"), r
           body: resolvedPayload.body,
           entityType: "report",
           entityId: id,
-          metadata: { reportId: id, reason: parsed.reason },
+          metadata: {
+            reportId: id,
+            fromStatus: report.status,
+            toStatus: "resolved",
+            reason: parsed.reason,
+          },
         });
       }
     } catch (err) {

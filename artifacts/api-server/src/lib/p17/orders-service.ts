@@ -378,7 +378,7 @@ export class OrdersService {
     });
 
     const item = await getPrimaryOrderItem(order.id);
-    void this.dispatchCreateOrderNotifications(order);
+    await this.dispatchCreateOrderNotifications(order);
     return mapDetail(order, item?.title ?? null, "buyer");
   }
 
@@ -444,7 +444,7 @@ export class OrdersService {
         },
       });
       const item = await getPrimaryOrderItem(updated.id);
-      void this.dispatchTransitionNotifications(updated, "mark_shipped");
+      await this.dispatchTransitionNotifications(updated, "mark_shipped");
       return enrichOrderDetail(updated, item?.title ?? null, "seller");
     } catch (e) {
       if (e instanceof Error && e.message === "ORDER_VERSION_CONFLICT") {
@@ -495,7 +495,7 @@ export class OrdersService {
         expectedVersion: row.version,
       });
       const item = await getPrimaryOrderItem(updated.id);
-      void this.dispatchTransitionNotifications(updated, action);
+      await this.dispatchTransitionNotifications(updated, action);
       return enrichOrderDetail(updated, item?.title ?? null, requiredRole);
     } catch (e) {
       if (e instanceof Error && e.message === "ORDER_VERSION_CONFLICT") {

@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- P17-9-13 — Android status bar badge: monochrome SA monogram (white on transparent). -->
+<!-- P17-9-13 — Android status bar: monochrome shopping-bag silhouette (Souq Arab EU brand mark). -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
   <g fill="#FFFFFF">
-    <!-- S -->
-    <path d="M14 28c0-8 7-14 18-14 11 0 18 5 18 13 0 7-5 11-16 14-9 3-12 5-12 9 0 4 4 7 10 7 6 0 10-3 12-8l10 5c-3 9-12 14-23 14-14 0-24-8-24-20 0-9 6-15 18-18 10-3 14-6 14-10 0-4-4-7-10-7-6 0-10 3-12 8L14 28z"/>
-    <!-- A -->
-    <path d="M52 22h14l22 52h-13l-4-10H59l-4 10H42L52 22zm11 20-6 14h12l-6-14z"/>
+    <path d="M20 32h56l-6 52H26L20 32zm10 10 4 32h32l4-32H30z"/>
+    <path d="M34 32V22c0-10 7-18 14-18s14 8 14 18v10h-10V24c0-6-2-10-4-10s-4 4-4 10v8H34z"/>
   </g>
 </svg>

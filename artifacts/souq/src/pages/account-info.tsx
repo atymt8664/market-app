@@ -7,9 +7,7 @@ import {
   HelpCircle,
   Images,
   Info,
-  Lock,
   Pin,
-  Shield,
   Sparkles,
   Star,
   CheckCircle2,
@@ -26,9 +24,9 @@ import {
   SETTINGS_CARD,
   SETTINGS_CARD_COMPACT,
   SETTINGS_FIELD,
+  SETTINGS_HUB_SUBPAGE_MAIN,
   SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_LABEL,
-  SETTINGS_MAIN_COLUMN,
   SETTINGS_OUTLINE_BUTTON,
   SETTINGS_PAGE_BG,
   SETTINGS_PRIMARY_BUTTON,
@@ -49,8 +47,6 @@ const PAYMENTS_FEATURE_ROW =
 const PROMOTE_PREVIEW_FROM_PAYMENTS = "/promote-preview?return=%2Faccount%2Fpayments";
 const PAGE_META: Record<string, { titleKey: string; icon: React.ReactNode }> = {
   language: { titleKey: "language.title", icon: <Globe className="w-6 h-6" /> },
-  privacy: { titleKey: "account_info.privacy.title", icon: <Shield className="w-6 h-6" /> },
-  security: { titleKey: "account_info.security.title", icon: <Lock className="w-6 h-6" /> },
   payments: { titleKey: "payments.title", icon: <CreditCard className="w-6 h-6" /> },
   help: { titleKey: "account_info.help.title", icon: <HelpCircle className="w-6 h-6" /> },
   rate: { titleKey: "account_info.rate.title", icon: <Star className="w-6 h-6" /> },
@@ -74,14 +70,14 @@ export default function AccountInfoPage() {
     return (
       <div className={`flex flex-col w-full ${SETTINGS_PAGE_BG} ${SETTINGS_IMMERSIVE_BOTTOM}`}>
         <AccountHeader title={t("account_info.not_found_title")} />
-        <div className={`${SETTINGS_MAIN_COLUMN} py-10 text-center text-muted-foreground`}>
+        <div className={`${SETTINGS_HUB_SUBPAGE_MAIN} py-10 text-center text-muted-foreground`}>
           {t("account_info.not_found")}
         </div>
       </div>
     );
   }
   const languageBody = (
-    <div className="space-y-3" dir={locale === "ar" ? "rtl" : "ltr"}>
+    <div className="space-y-2" dir={locale === "ar" ? "rtl" : "ltr"}>
       <p className="text-sm text-muted-foreground">{t("language.description")}</p>
       {([
         { code: "ar", label: t("language.option.ar") },
@@ -92,13 +88,13 @@ export default function AccountInfoPage() {
           key={option.code}
           type="button"
           onClick={() => void setLocale(option.code)}
-          className={`${SETTINGS_ROW_BUTTON} flex items-center justify-between ${
+          className={`${SETTINGS_ROW_BUTTON} ${
             locale === option.code
               ? "border-primary/40 bg-primary/[0.12] text-foreground shadow-[0_0_0_1px_rgba(182,227,86,0.1)]"
               : ""
           }`}
         >
-          <span className="text-sm font-medium">{option.label}</span>
+          <span>{option.label}</span>
           {locale === option.code ? <CheckCircle2 className="w-4 h-4 text-primary" /> : null}
         </button>
       ))}
@@ -317,26 +313,6 @@ export default function AccountInfoPage() {
     </div>
   );
   const defaultBodyBySlug: Record<string, React.ReactNode> = {
-    privacy: (
-      <>
-        <p className="mb-3">{t("account_info.privacy.p1")}</p>
-        <ul className="list-disc pr-5 space-y-2 text-muted-foreground">
-          <li>{t("account_info.privacy.i1")}</li>
-          <li>{t("account_info.privacy.i2")}</li>
-          <li>{t("account_info.privacy.i3")}</li>
-        </ul>
-      </>
-    ),
-    security: (
-      <>
-        <p className="mb-3">{t("account_info.security.p1")}</p>
-        <ul className="list-disc pr-5 space-y-2 text-muted-foreground">
-          <li>{t("account_info.security.i1")}</li>
-          <li>{t("account_info.security.i2")}</li>
-          <li>{t("account_info.security.i3")}</li>
-        </ul>
-      </>
-    ),
     help: (
       <>
         <p className="mb-3">{t("account_info.help.p1")}</p>
@@ -389,7 +365,7 @@ export default function AccountInfoPage() {
 
         <section className={SETTINGS_CARD}>
           <h3 className="text-sm md:text-base font-semibold text-foreground mb-2">{t("account_info.about.quick_links_title")}</h3>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <button
               type="button"
               className={SETTINGS_ROW_BUTTON}
@@ -437,7 +413,7 @@ export default function AccountInfoPage() {
   return (
     <div className={`flex flex-col w-full ${SETTINGS_PAGE_BG} ${SETTINGS_IMMERSIVE_BOTTOM}`}>
       <AccountHeader title={t(page.titleKey)} />
-      <div className={SETTINGS_MAIN_COLUMN}>
+      <div className={SETTINGS_HUB_SUBPAGE_MAIN}>
         {isPaymentsPage ? (
           <div className="text-sm leading-relaxed text-zinc-400">{paymentsBody}</div>
         ) : isLanguagePage ? (

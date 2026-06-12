@@ -7,9 +7,13 @@ import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import {
   SETTINGS_CARD,
+  SETTINGS_HUB_ICON_TILE,
+  SETTINGS_HUB_LIST_ROW_HINT,
+  SETTINGS_HUB_LIST_ROW_LABEL,
+  SETTINGS_HUB_SUBPAGE_MAIN,
+  SETTINGS_HUB_TOGGLE_ROW,
   SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_LABEL,
-  SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
   SETTINGS_ROW_BUTTON,
   SETTINGS_SECTION_TITLE,
@@ -44,8 +48,8 @@ function ToggleRow({
   onCheckedChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-1">
-      <p className="min-w-0 flex-1 text-right text-sm font-semibold text-foreground">{label}</p>
+    <div className={SETTINGS_HUB_TOGGLE_ROW}>
+      <p className={cn("min-w-0 flex-1 text-right", SETTINGS_HUB_LIST_ROW_LABEL)}>{label}</p>
       <Switch
         checked={checked}
         disabled={disabled}
@@ -73,21 +77,19 @@ function CategoryRow({
   onCheckedChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-primary/10 py-4 last:border-b-0">
-      <div className="flex min-w-0 flex-1 items-start gap-3 text-right">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-[#0A0A0A]/80 text-primary shadow-[0_0_14px_-10px_hsl(var(--primary)/0.35)] [&_svg]:h-4 [&_svg]:w-4">
-          {icon}
-        </div>
+    <div className="flex min-h-[2.75rem] items-center justify-between gap-3 border-b border-primary/10 py-2 last:border-b-0">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 text-right">
+        <div className={SETTINGS_HUB_ICON_TILE}>{icon}</div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground">{label}</p>
-          <p className={cn(SETTINGS_LABEL, "mt-1 text-zinc-500")}>{hint}</p>
+          <p className={SETTINGS_HUB_LIST_ROW_LABEL}>{label}</p>
+          <p className={cn(SETTINGS_HUB_LIST_ROW_HINT, "text-zinc-500")}>{hint}</p>
         </div>
       </div>
       <Switch
         checked={checked}
         disabled={disabled}
         onCheckedChange={onCheckedChange}
-        className="mt-1 shrink-0"
+        className="shrink-0"
         aria-label={label}
       />
     </div>
@@ -187,17 +189,17 @@ export default function AccountNotifications() {
       dir={isRtl ? "rtl" : "ltr"}
     >
       <AccountHeader title={t("account_notifications.title")} />
-      <div className={cn(SETTINGS_MAIN_COLUMN, "space-y-6")}>
+      <div className={cn(SETTINGS_HUB_SUBPAGE_MAIN, "gap-4")}>
         <p className="text-right text-sm leading-relaxed text-zinc-400">
           {t("account_notifications.intro")}
         </p>
 
-        <section aria-labelledby="alerts-heading" className="space-y-2.5">
+        <section aria-labelledby="alerts-heading">
           <div className="text-right">
             <h2 id="alerts-heading" className={SETTINGS_SECTION_TITLE}>
               {t("account_notifications.alerts_section")}
             </h2>
-            <p className="mt-1 text-sm leading-relaxed text-zinc-500">
+            <p className="mb-2 text-sm leading-relaxed text-zinc-500">
               {t("account_notifications.alerts_section_hint")}
             </p>
           </div>
@@ -341,10 +343,10 @@ export default function AccountNotifications() {
               <div className="flex min-w-0 flex-1 items-center gap-3 text-right">
                 <Moon className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                 <div className="min-w-0 flex-1">
-                  <p id="quiet-hours-heading" className="text-sm font-medium text-foreground">
+                  <p id="quiet-hours-heading" className={SETTINGS_HUB_LIST_ROW_LABEL}>
                     {t("account_notifications.quiet_hours_link")}
                   </p>
-                  <p className={cn(SETTINGS_LABEL, "mt-0.5 text-zinc-500")}>
+                  <p className={cn(SETTINGS_HUB_LIST_ROW_HINT, "text-zinc-500")}>
                     {t("account_notifications.quiet_hours_link_hint")}
                   </p>
                 </div>

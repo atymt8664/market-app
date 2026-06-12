@@ -7,9 +7,12 @@ import { useLocale } from "@/hooks/use-locale";
 import {
   SETTINGS_CARD,
   SETTINGS_FIELD,
+  SETTINGS_HUB_LIST_ROW_HINT,
+  SETTINGS_HUB_LIST_ROW_LABEL,
+  SETTINGS_HUB_SUBPAGE_MAIN,
+  SETTINGS_HUB_TOGGLE_ROW,
   SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_LABEL,
-  SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
 } from "@/components/settings-shell";
 import { cn } from "@/lib/utils";
@@ -72,7 +75,7 @@ export default function AccountNotificationsQuietHours() {
       dir={isRtl ? "rtl" : "ltr"}
     >
       <AccountHeader title={t("account_notifications.quiet_hours_title")} />
-      <div className={SETTINGS_MAIN_COLUMN}>
+      <div className={SETTINGS_HUB_SUBPAGE_MAIN}>
         <p className="text-right text-sm leading-relaxed text-zinc-500">
           {t("account_notifications.quiet_hours_intro")}
         </p>
@@ -84,14 +87,14 @@ export default function AccountNotificationsQuietHours() {
             </div>
           ) : (
             <>
-              <div className="mb-5 flex items-start justify-between gap-4 border-b border-primary/10 pb-4">
-                <div className="flex min-w-0 flex-1 items-start gap-3 text-right">
-                  <Moon className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+              <div className={cn(SETTINGS_HUB_TOGGLE_ROW, "mb-4 border-b border-primary/10 pb-3")}>
+                <div className="flex min-w-0 flex-1 items-center gap-2.5 text-right">
+                  <Moon className="h-5 w-5 shrink-0 text-primary" aria-hidden />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">
+                    <p className={SETTINGS_HUB_LIST_ROW_LABEL}>
                       {t("account_notifications.quiet_hours_enable")}
                     </p>
-                    <p className={cn(SETTINGS_LABEL, "mt-1 text-zinc-500")}>
+                    <p className={cn(SETTINGS_HUB_LIST_ROW_HINT, "text-zinc-500")}>
                       {t("account_notifications.quiet_hours_enable_hint")}
                     </p>
                   </div>

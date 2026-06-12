@@ -13,8 +13,8 @@ import {
   SETTINGS_DROPDOWN_TRIGGER,
   SETTINGS_INPUT,
   SETTINGS_LABEL,
+  SETTINGS_HUB_SUBPAGE_MAIN,
   SETTINGS_IMMERSIVE_BOTTOM,
-  SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
   SETTINGS_PRIMARY_BUTTON,
 } from "@/components/settings-shell";
@@ -63,7 +63,7 @@ export default function AccountProfile() {
   return (
     <div className={`flex min-h-[100dvh] w-full flex-col ${SETTINGS_PAGE_BG} ${SETTINGS_IMMERSIVE_BOTTOM}`}>
       <AccountHeader title={t("account_profile.title")} />
-      <div className={`${SETTINGS_MAIN_COLUMN} py-5`}>
+      <div className={SETTINGS_HUB_SUBPAGE_MAIN}>
         <form onSubmit={onSubmit} className={SETTINGS_CARD} dir="rtl">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
             <div className="flex flex-col gap-2">

@@ -23,8 +23,8 @@ import {
   SETTINGS_CARD,
   SETTINGS_CARD_COMPACT,
   SETTINGS_CARD_TITLE,
+  SETTINGS_HUB_SUBPAGE_MAIN,
   SETTINGS_IMMERSIVE_BOTTOM,
-  SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
 } from "@/components/settings-shell";
 
@@ -132,11 +132,7 @@ export default function AccountVerification() {
       <AccountHeader title={t("verification_preview.page_title")} />
 
       <div
-        className={cn(
-          SETTINGS_MAIN_COLUMN,
-          "flex-1 gap-3.5 pt-2 pb-6",
-          SETTINGS_IMMERSIVE_BOTTOM,
-        )}
+        className={cn(SETTINGS_HUB_SUBPAGE_MAIN, "flex-1 pb-6", SETTINGS_IMMERSIVE_BOTTOM)}
       >
         <section className={SETTINGS_CARD} dir={dir}>
           <div className="flex items-start gap-3">

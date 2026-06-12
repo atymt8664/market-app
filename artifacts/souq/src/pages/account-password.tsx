@@ -13,8 +13,8 @@ import {
   SETTINGS_INPUT_ICON_BUTTON,
   SETTINGS_INPUT_ICON_CLASS,
   SETTINGS_LABEL,
+  SETTINGS_HUB_SUBPAGE_MAIN,
   SETTINGS_IMMERSIVE_BOTTOM,
-  SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
   SETTINGS_PRIMARY_BUTTON,
 } from "@/components/settings-shell";
@@ -81,8 +81,8 @@ export default function AccountPassword() {
   return (
     <div className={`flex min-h-[100dvh] w-full flex-col ${SETTINGS_PAGE_BG} ${SETTINGS_IMMERSIVE_BOTTOM}`}>
       <AccountHeader title={t("account_password.title")} />
-      <div className={`${SETTINGS_MAIN_COLUMN} py-5`}>
-        <form onSubmit={onSubmit} className={`${SETTINGS_CARD} flex flex-col gap-5`} dir="rtl">
+      <div className={SETTINGS_HUB_SUBPAGE_MAIN}>
+        <form onSubmit={onSubmit} className={`${SETTINGS_CARD} flex flex-col gap-4`} dir="rtl">
           <div className="flex flex-col gap-2">
             <label htmlFor="current" className={SETTINGS_LABEL}>
               {t("account_password.current")}

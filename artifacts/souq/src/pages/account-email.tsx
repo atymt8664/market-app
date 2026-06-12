@@ -11,8 +11,8 @@ import {
   SETTINGS_CARD,
   SETTINGS_CARD_COMPACT,
   SETTINGS_ICON_TILE,
+  SETTINGS_HUB_SUBPAGE_MAIN,
   SETTINGS_IMMERSIVE_BOTTOM,
-  SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
   SETTINGS_PRIMARY_BUTTON,
 } from "@/components/settings-shell";
@@ -50,8 +50,8 @@ export default function AccountEmail() {
       dir={dir}
     >
       <AccountHeader title={t("account_email.title")} />
-      <div className={cn(SETTINGS_MAIN_COLUMN, "gap-3 py-4 md:py-5")}>
-        <div className={cn(SETTINGS_CARD, "flex flex-col gap-3 md:gap-4")}>
+      <div className={SETTINGS_HUB_SUBPAGE_MAIN}>
+        <div className={cn(SETTINGS_CARD, "flex flex-col gap-2.5")}>
           <div
             className={cn(
               SETTINGS_CARD_COMPACT,

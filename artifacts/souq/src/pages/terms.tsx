@@ -3,8 +3,8 @@ import { motion } from "framer-motion";
 import { LegalDocumentHeader } from "@/components/legal-document-header";
 import {
   SETTINGS_CARD,
+  SETTINGS_HUB_SUBPAGE_MAIN,
   SETTINGS_IMMERSIVE_BOTTOM,
-  SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
 } from "@/components/settings-shell";
 
@@ -18,7 +18,7 @@ export default function TermsPage() {
     >
       <LegalDocumentHeader title="الشروط والأحكام" />
 
-      <div className={`${SETTINGS_MAIN_COLUMN} flex-1 ${SETTINGS_IMMERSIVE_BOTTOM}`}>
+      <div className={`${SETTINGS_HUB_SUBPAGE_MAIN} flex-1 ${SETTINGS_IMMERSIVE_BOTTOM}`}>
         <div className={SETTINGS_CARD}>
           <h2 className="text-base font-semibold text-foreground">مقدمة</h2>
           <p className="mt-2 text-sm leading-7 text-muted-foreground">

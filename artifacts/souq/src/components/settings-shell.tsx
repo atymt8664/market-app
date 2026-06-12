@@ -50,9 +50,43 @@ export const SETTINGS_PAGE_TITLE =
 export const SETTINGS_MAIN_COLUMN =
   "mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-4 flex flex-col gap-4";
 
-/** Section label — align with create-ad secondary text (`text-zinc-400` / small caps) */
-export const SETTINGS_SECTION_TITLE =
-  "mb-2 px-1 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500";
+/**
+ * Settings hub — shared layout for `/settings` and account subtree pages.
+ * Card gaps stay comfortable; inner list rows use SETTINGS_HUB_LIST_ROW_* tokens.
+ */
+export const SETTINGS_HUB_HEADER_INNER =
+  "mx-auto flex w-full max-w-[900px] items-center justify-between gap-3 px-2.5 py-3 md:max-w-[760px] md:px-3.5 lg:max-w-[860px]";
+
+export const SETTINGS_HUB_MAIN =
+  "mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-2.5 md:px-3.5 pt-2 pb-3 flex flex-col gap-2.5";
+
+export const SETTINGS_HUB_SUBPAGE_MAIN =
+  "mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-2.5 md:px-3.5 py-3 flex flex-col gap-3";
+
+/** Section label above hub cards — white, bold, clear RTL heading */
+export const SETTINGS_HUB_SECTION_TITLE =
+  "mb-2.5 mt-1 px-0.5 text-right text-[15px] font-bold text-white md:text-base";
+
+/** Compact tappable row inside hub cards (min 44px touch target) */
+export const SETTINGS_HUB_LIST_ROW =
+  "flex min-h-[2.75rem] w-full items-center gap-2.5 text-right transition-colors border-b border-primary/10 last:border-0 hover:bg-primary/[0.04] active:bg-primary/[0.07]";
+
+export const SETTINGS_HUB_LIST_ROW_PAD = "px-3 py-2 md:px-4";
+
+export const SETTINGS_HUB_LIST_ROW_LABEL =
+  "text-[15px] font-semibold leading-tight text-foreground";
+
+export const SETTINGS_HUB_LIST_ROW_HINT =
+  "mt-0.5 text-[11px] leading-snug text-muted-foreground/90";
+
+export const SETTINGS_HUB_TOGGLE_ROW =
+  "flex min-h-[2.75rem] items-center justify-between gap-3 py-2";
+
+export const SETTINGS_HUB_OPTION_ROW =
+  "flex min-h-[2.75rem] w-full items-center justify-between gap-2 rounded-xl border border-primary/25 bg-[#0A0A0A]/75 px-3 py-2 text-right transition-colors hover:border-primary/45 hover:bg-black/85";
+
+/** @deprecated alias — settings subtree section headings */
+export const SETTINGS_SECTION_TITLE = SETTINGS_HUB_SECTION_TITLE;
 
 /** In-card heading — matches create-ad section titles */
 export const SETTINGS_CARD_TITLE =
@@ -134,16 +168,18 @@ export const SETTINGS_STATUS_BADGE =
 export const SETTINGS_MESSAGE_BUBBLE =
   "rounded-xl border border-primary/28 bg-[#0A0A0A]/75 p-3 text-sm shadow-[0_0_18px_-14px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10";
 
-/** List / secondary action row — category picker row pattern (`create-ad.tsx` ~1551) */
-export const SETTINGS_ROW_BUTTON =
-  "flex w-full items-center justify-between rounded-xl border border-primary/25 bg-[#0A0A0A]/75 px-3 py-3 text-right text-sm text-foreground transition-colors hover:border-primary/45 hover:bg-black/85";
+/** List / secondary action row — hub option row (language, links) */
+export const SETTINGS_ROW_BUTTON = SETTINGS_HUB_OPTION_ROW;
 
-/** Icon tile in settings rows — matches bordered zinc tiles used around create-ad controls */
+/** Icon tile in settings rows — compact hub list icon */
 export const SETTINGS_ICON_TILE =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A]/80 text-primary [&_svg]:h-4 [&_svg]:w-4";
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A]/80 text-primary [&_svg]:h-4 [&_svg]:w-4";
 
 export const SETTINGS_ICON_TILE_DESTRUCTIVE =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-destructive/30 bg-destructive/10 text-destructive [&_svg]:h-4 [&_svg]:w-4";
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-destructive/30 bg-destructive/10 text-destructive [&_svg]:h-4 [&_svg]:w-4";
+
+/** Alias for hub list rows — use with SETTINGS_HUB_LIST_ROW_PAD */
+export const SETTINGS_HUB_ICON_TILE = SETTINGS_ICON_TILE;
 
 /** @deprecated use SETTINGS_MAIN_COLUMN — kept for minimal churn in files that only need horizontal wrap */
 export const SETTINGS_MAX_CONTAINER =

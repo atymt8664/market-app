@@ -46,7 +46,7 @@ function HomeBellBadge({ count }: { count: number }) {
 
 /** Home-only bell — eager render, settled shell from first paint, badge slot reserved (P9-E-4a-2). */
 function HomeHeaderNotificationBell() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isFetching: authFetching } = useAuth();
   const queryClient = useQueryClient();
   const cachedNotifications =
     (queryClient.getQueryData(unreadCountersQueryKey) as UnreadCounters | undefined)
@@ -57,8 +57,11 @@ function HomeHeaderNotificationBell() {
   });
   const displayCount = liveCount > 0 ? liveCount : cachedNotifications;
 
+  const bellHint = readHomeBellSlotHint();
   const showLink = Boolean(user && !authLoading);
-  const showSettledShell = showLink || (authLoading && readHomeBellSlotHint());
+  /** P9-E-INCIDENT-1: keep settled shell on hint / slow or failed auth — no empty column. */
+  const showSettledShell =
+    showLink || bellHint || authLoading || authFetching;
 
   if (!showSettledShell) {
     return null;

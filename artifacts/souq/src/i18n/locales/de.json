@@ -770,6 +770,8 @@
   "home.search_label": "Anzeigen suchen",
   "home.search_placeholder": "Suche nach Produkt, Dienstleistung oder Kategorie...",
   "home.view_all": "Alle anzeigen",
+  "home.section_load_failed": "Dieser Bereich konnte nicht geladen werden. Verbindung prüfen und erneut versuchen.",
+  "home.retry": "Erneut versuchen",
   "language.description": "Wähle deine App-Sprache. Änderungen werden sofort übernommen.",
   "language.option.ar": "Arabisch",
   "language.option.de": "Deutsch",

@@ -770,6 +770,8 @@
   "home.search_label": "بحث في الإعلانات",
   "home.search_placeholder": "ابحث عن منتج، خدمة، أو قسم...",
   "home.view_all": "عرض الكل",
+  "home.section_load_failed": "تعذّر تحميل هذا القسم. تحقق من الاتصال وحاول مجدداً.",
+  "home.retry": "إعادة المحاولة",
   "language.description": "اختر لغة التطبيق. سيتم تطبيق التغيير فوراً.",
   "language.option.ar": "العربية",
   "language.option.de": "Deutsch",

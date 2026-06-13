@@ -21,6 +21,7 @@ import { HomeNotificationBellSlot } from "@/components/home-notification-bell-sl
 import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HomeFeedSkeleton } from "@/components/home-feed-skeleton";
+import { HomeSectionRetry } from "@/components/home-section-retry";
 import HomeFeedSections from "@/pages/home-feed-sections";
 import { dismissHomeLcpLayer } from "@/lib/home-lcp-handoff";
 import { useSelectedCity } from "@/hooks/use-selected-city";
@@ -40,6 +41,16 @@ import {
 } from "@/lib/home-page-layout";
 import { cn } from "@/lib/utils";
 import { readHomeBellSlotHint, syncHomeBellSlotHint } from "@/lib/home-bell-slot-hint";
+import {
+  HOME_FEED_REVEAL_TIMEOUT_MS,
+  HOME_PUBLIC_QUERY_RETRY,
+  categoriesQueryFailed,
+  computeHomeFeedReady,
+  isFeaturedQuerySettled,
+  isRecommendedQuerySettled,
+  shouldReserveBellColumn,
+  shouldShowCategoryPlaceholders,
+} from "@/lib/home-query-recovery";
 
 /** React Query: تقليل إعادة الجلب عند التنقل للرئيسية دون المساس بـ invalidate بعد الطفرات/الأدمن. */
 const HOME_STALE_CATEGORIES_MS = 10 * 60 * 1000;
@@ -139,15 +150,33 @@ type HomeCategoriesStripProps = {
   isRtl: boolean;
   locale: Locale;
   isLoadingCategories: boolean;
+  isFetchingCategories: boolean;
+  categoriesError: boolean;
+  categoriesFetched: boolean;
   categories: Category[] | undefined;
+  onCategoriesRetry?: () => void;
+  categoriesRetrying?: boolean;
 };
 
 const HomeCategoriesStrip = memo(function HomeCategoriesStrip({
   isRtl,
   locale,
   isLoadingCategories,
+  isFetchingCategories,
+  categoriesError,
+  categoriesFetched,
   categories,
+  onCategoriesRetry,
+  categoriesRetrying,
 }: HomeCategoriesStripProps) {
+  const showPlaceholders = shouldShowCategoryPlaceholders(
+    categories,
+    isLoadingCategories,
+    isFetchingCategories,
+    categoriesError,
+  );
+  const loadFailed = categoriesQueryFailed(categories, categoriesFetched, categoriesError);
+
   /** Stable index keys + one Link shell — avoids skeleton→loaded DOM teardown (root flicker cause). */
   const categoryTiles = useMemo(() => {
     if (Array.isArray(categories)) {
@@ -159,7 +188,7 @@ const HomeCategoriesStrip = memo(function HomeCategoriesStrip({
         isPlaceholder: false,
       }));
     }
-    if (categories === undefined && isLoadingCategories) {
+    if (showPlaceholders) {
       return CATEGORY_SKELETON_KEYS.map((i) => ({
         slotKey: `home-cat-${i}`,
         href: null,
@@ -168,8 +197,14 @@ const HomeCategoriesStrip = memo(function HomeCategoriesStrip({
         isPlaceholder: true,
       }));
     }
-    return [];
-  }, [categories, isLoadingCategories, locale]);
+    return CATEGORY_SKELETON_KEYS.map((i) => ({
+      slotKey: `home-cat-${i}`,
+      href: null,
+      icon: undefined,
+      label: null,
+      isPlaceholder: true,
+    }));
+  }, [categories, showPlaceholders, locale]);
 
   return (
     <div
@@ -225,6 +260,15 @@ const HomeCategoriesStrip = memo(function HomeCategoriesStrip({
             aria-hidden
           />
         </Link>
+        {loadFailed && onCategoriesRetry ? (
+          <div className="px-1 pt-2">
+            <HomeSectionRetry
+              testId="home-categories-retry"
+              onRetry={onCategoriesRetry}
+              busy={categoriesRetrying}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -272,7 +316,12 @@ type HomeFeedHeaderProps = {
   onSearchQueryChange: (value: string) => void;
   onSearchSubmit: (e: React.FormEvent) => void;
   isLoadingCategories: boolean;
+  isFetchingCategories: boolean;
+  categoriesError: boolean;
+  categoriesFetched: boolean;
   categories: Category[] | undefined;
+  onCategoriesRetry: () => void;
+  categoriesRetrying: boolean;
 };
 
 const HomeFeedHeader = memo(function HomeFeedHeader({
@@ -283,7 +332,12 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
   onSearchQueryChange,
   onSearchSubmit,
   isLoadingCategories,
+  isFetchingCategories,
+  categoriesError,
+  categoriesFetched,
   categories,
+  onCategoriesRetry,
+  categoriesRetrying,
   headerRef,
 }: HomeFeedHeaderProps & { headerRef?: React.RefObject<HTMLElement | null> }) {
   return (
@@ -307,7 +361,12 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
           isRtl={isRtl}
           locale={locale}
           isLoadingCategories={isLoadingCategories}
+          isFetchingCategories={isFetchingCategories}
+          categoriesError={categoriesError}
+          categoriesFetched={categoriesFetched}
           categories={categories}
+          onCategoriesRetry={onCategoriesRetry}
+          categoriesRetrying={categoriesRetrying}
         />
         <HomeStickyHeaderDivider isRtl={isRtl} />
       </div>
@@ -326,65 +385,139 @@ export default function Home() {
     () => searchLocationCityForFeed(city, searchLocation),
     [city, searchLocation],
   );
-  const { user, isLoading: authLoading, isFetching, error } = useAuth();
+  const { user, isLoading: authLoading, isFetching } = useAuth();
 
   useEffect(() => {
     if (user?.id) {
       syncHomeBellSlotHint(true);
-    } else if (!authLoading && !isFetching && !user && !error) {
-      syncHomeBellSlotHint(false);
     }
-  }, [user?.id, authLoading, isFetching, error]);
+  }, [user?.id]);
 
-  /** P9-E-4a: tab hint reserves column on refresh before auth/me; user keeps slot when resolved. */
-  const reserveBellSlot = Boolean(user || readHomeBellSlotHint());
-  const { data: categories, isLoading: isLoadingCategories } =
-    useListCategories({
-      query: {
-        queryKey: getListCategoriesQueryKey(),
-        staleTime: HOME_STALE_CATEGORIES_MS,
-      },
-    });
+  /** P9-E-4a / P9-E-INCIDENT-1: reserve column during auth resolve (incl. slow/failed). */
+  const reserveBellSlot = shouldReserveBellColumn(
+    Boolean(user),
+    readHomeBellSlotHint(),
+    authLoading,
+    isFetching,
+  );
+
+  const {
+    data: categories,
+    isLoading: isLoadingCategories,
+    isFetching: isFetchingCategories,
+    isError: categoriesError,
+    isFetched: categoriesFetched,
+    refetch: refetchCategories,
+  } = useListCategories({
+    query: {
+      queryKey: getListCategoriesQueryKey(),
+      staleTime: HOME_STALE_CATEGORIES_MS,
+      retry: HOME_PUBLIC_QUERY_RETRY,
+    },
+  });
   const homeCategories = useMemo(
     () => filterHomeCategories(categories),
     [categories],
   );
 
   /** P7-PR-4: fetch featured in parallel with categories — do not wait for categoriesFetched (LCP waterfall). */
-  const { data: featuredAds, isLoading: isLoadingFeatured } =
-    useListFeaturedAds({
-      query: {
-        queryKey: getListFeaturedAdsQueryKey(),
-        staleTime: HOME_STALE_FEATURED_MS,
-      },
-    });
+  const {
+    data: featuredAds,
+    isLoading: isLoadingFeatured,
+    isError: featuredError,
+    isFetched: featuredQueryFetched,
+    refetch: refetchFeatured,
+    isFetching: isFetchingFeatured,
+  } = useListFeaturedAds({
+    query: {
+      queryKey: getListFeaturedAdsQueryKey(),
+      staleTime: HOME_STALE_FEATURED_MS,
+      retry: HOME_PUBLIC_QUERY_RETRY,
+    },
+  });
 
   /** P9-E-4b: fetch recommended in parallel with featured — no post-featured waterfall. */
-  const { data: defaultRecommended, isFetched: defaultRecFetched } = useListRecommendedAds({
+  const {
+    data: defaultRecommended,
+    isFetched: defaultRecFetched,
+    isError: defaultRecError,
+    refetch: refetchDefaultRecommended,
+    isFetching: isFetchingDefaultRec,
+  } = useListRecommendedAds({
     query: {
       queryKey: getListRecommendedAdsQueryKey(),
       staleTime: HOME_STALE_FEED_MS,
+      retry: HOME_PUBLIC_QUERY_RETRY,
     },
   });
-  const { data: cityAds, isFetched: cityAdsFetched } = useListAds(
+  const {
+    data: cityAds,
+    isFetched: cityAdsFetched,
+    isError: cityAdsError,
+    refetch: refetchCityAds,
+    isFetching: isFetchingCityAds,
+  } = useListAds(
     { city: feedCity, limit: 20 },
     {
       query: {
         queryKey: getListAdsQueryKey({ city: feedCity, limit: 20 }),
         enabled: !!feedCity,
         staleTime: HOME_STALE_FEED_MS,
+        retry: HOME_PUBLIC_QUERY_RETRY,
       },
     },
   );
 
-  const featuredFetched = !isLoadingFeatured && featuredAds !== undefined;
+  const featuredSettled = isFeaturedQuerySettled(featuredQueryFetched, featuredError);
 
-  const recommendedFetched = feedCity
-    ? cityAdsFetched && ((Array.isArray(cityAds) && cityAds.length > 0) || defaultRecFetched)
-    : defaultRecFetched;
+  const recommendedSettled = isRecommendedQuerySettled(
+    feedCity,
+    cityAdsFetched,
+    cityAds,
+    cityAdsError,
+    defaultRecFetched,
+    defaultRecError,
+  );
 
-  /** P9-E-4b: one skeleton until both feed queries settle — unified reveal. */
-  const homeFeedReady = featuredFetched && recommendedFetched;
+  const [feedTimeoutReached, setFeedTimeoutReached] = useState(false);
+  useEffect(() => {
+    if (featuredSettled && recommendedSettled) {
+      setFeedTimeoutReached(false);
+      return;
+    }
+    const id = window.setTimeout(
+      () => setFeedTimeoutReached(true),
+      HOME_FEED_REVEAL_TIMEOUT_MS,
+    );
+    return () => window.clearTimeout(id);
+  }, [featuredSettled, recommendedSettled]);
+
+  /** P9-E-INCIDENT-1: unified reveal + timeout partial reveal — never infinite skeleton. */
+  const homeFeedReady = computeHomeFeedReady(
+    featuredSettled,
+    recommendedSettled,
+    feedTimeoutReached,
+  );
+
+  const feedLoadFailed =
+    featuredError ||
+    defaultRecError ||
+    (feedCity ? cityAdsError : false) ||
+    (feedTimeoutReached && !recommendedSettled);
+
+  const refetchHomeFeed = useCallback(() => {
+    void refetchFeatured();
+    void refetchDefaultRecommended();
+    if (feedCity) void refetchCityAds();
+  }, [refetchFeatured, refetchDefaultRecommended, refetchCityAds, feedCity]);
+
+  const handleCategoriesRetry = useCallback(() => {
+    void refetchCategories();
+  }, [refetchCategories]);
+
+  const feedRetryBusy =
+    isFetchingFeatured || isFetchingDefaultRec || (feedCity && isFetchingCityAds);
+  const categoriesRetryBusy = isFetchingCategories;
 
   /** P9-E-3 Fix B: keep React feed hidden until shell handoff dismisses (no LCP supersession). */
   const [lcpHandoffComplete, setLcpHandoffComplete] = useState(false);
@@ -403,13 +536,13 @@ export default function Home() {
   );
 
   useEffect(() => {
-    if (!featuredFetched) return;
+    if (!featuredSettled && !feedTimeoutReached) return;
     dismissHomeLcpLayer();
     const revealId = requestAnimationFrame(() => setLcpHandoffComplete(true));
     const raw = featuredAdsForHome?.[0]?.images?.[0];
     if (raw) void preloadAdImage(getAdImageFeaturedLeadUrl(raw));
     return () => cancelAnimationFrame(revealId);
-  }, [featuredFetched, featuredAdsForHome]);
+  }, [featuredSettled, feedTimeoutReached, featuredAdsForHome]);
 
   const recommendedAds = useMemo(
     () => buildHomeRecommendedFeed(recommendedAdsRaw, featuredAdsForHome),
@@ -458,20 +591,47 @@ export default function Home() {
         onSearchQueryChange={onSearchQueryChange}
         onSearchSubmit={handleSearch}
         isLoadingCategories={isLoadingCategories}
+        isFetchingCategories={isFetchingCategories}
+        categoriesError={categoriesError}
+        categoriesFetched={categoriesFetched}
         categories={homeCategories}
+        onCategoriesRetry={handleCategoriesRetry}
+        categoriesRetrying={categoriesRetryBusy}
       />
 
       {!homeFeedReady ? (
-        <HomeFeedSkeleton />
+        <>
+          <HomeFeedSkeleton />
+          {feedTimeoutReached && feedLoadFailed ? (
+            <div className={cn(HOME_PAGE_INSET, "pb-3 pt-1")}>
+              <HomeSectionRetry
+                testId="home-feed-retry"
+                onRetry={refetchHomeFeed}
+                busy={feedRetryBusy}
+              />
+            </div>
+          ) : null}
+        </>
       ) : (
-        <HomeFeedSections
-          isRtl={isRtl}
-          isLoadingFeatured={false}
-          featuredAds={featuredAdsForHome}
-          isLoadingRecommended={false}
-          recommendedAds={recommendedAds}
-          lcpHandoffPending={!lcpHandoffComplete}
-        />
+        <>
+          {feedLoadFailed ? (
+            <div className={cn(HOME_PAGE_INSET, "pb-2 pt-1")}>
+              <HomeSectionRetry
+                testId="home-feed-retry"
+                onRetry={refetchHomeFeed}
+                busy={feedRetryBusy}
+              />
+            </div>
+          ) : null}
+          <HomeFeedSections
+            isRtl={isRtl}
+            isLoadingFeatured={false}
+            featuredAds={featuredAdsForHome}
+            isLoadingRecommended={!recommendedSettled}
+            recommendedAds={recommendedAds}
+            lcpHandoffPending={!lcpHandoffComplete}
+          />
+        </>
       )}
     </main>
   );

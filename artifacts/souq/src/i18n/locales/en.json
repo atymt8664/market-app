@@ -770,6 +770,8 @@
   "home.search_label": "Search ads",
   "home.search_placeholder": "Search for a product, service, or category...",
   "home.view_all": "View all",
+  "home.section_load_failed": "This section could not load. Check your connection and try again.",
+  "home.retry": "Retry",
   "language.description": "Choose your app language. Changes apply immediately.",
   "language.option.ar": "Arabic",
   "language.option.de": "Deutsch",

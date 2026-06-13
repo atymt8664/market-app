@@ -4,6 +4,7 @@
 import { isHomePathname } from "@/lib/p7-home-path";
 import {
   dismissHomeLcpLayer,
+  HOME_LCP_MAX_WAIT_MS,
   stripHomeLcpShellIfNotHome,
   waitForHomeShellLcp,
 } from "@/lib/home-lcp-handoff";
@@ -12,8 +13,10 @@ stripHomeLcpShellIfNotHome();
 
 async function bootApp(): Promise<void> {
   if (isHomePathname() && document.getElementById("p7-lcp-layer")) {
-    await waitForHomeShellLcp();
-    /** Dismiss shell before React paint — avoids refresh flash of a lone featured card. */
+    await Promise.race([
+      waitForHomeShellLcp(),
+      new Promise<void>((resolve) => window.setTimeout(resolve, HOME_LCP_MAX_WAIT_MS)),
+    ]);
     dismissHomeLcpLayer();
   }
   await import("./main");

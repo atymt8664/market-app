@@ -19,8 +19,11 @@ import { CategoryIcon } from "@/components/category-icon";
 import { MarketplaceSearchBar } from "@/components/marketplace-search-bar";
 import { HomeNotificationBellSlot } from "@/components/home-notification-bell-slot";
 import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
-import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { scheduleAfterFirstPaint, useAfterFirstPaint } from "@/lib/after-first-paint";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
+import { HomeFeedSkeleton } from "@/components/home-feed-skeleton";
+import HomeFeedSections from "@/pages/home-feed-sections";
+import { dismissHomeLcpLayer } from "@/lib/home-lcp-handoff";
 import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useSearchLocation } from "@/hooks/use-search-location";
 import { searchLocationCityForFeed } from "@/lib/search-location";
@@ -37,7 +40,6 @@ import {
   HOME_PAGE_INSET,
 } from "@/lib/home-page-layout";
 import { cn } from "@/lib/utils";
-import { dismissHomeLcpLayer } from "@/lib/home-lcp-handoff";
 
 /** React Query: تقليل إعادة الجلب عند التنقل للرئيسية دون المساس بـ invalidate بعد الطفرات/الأدمن. */
 const HOME_STALE_CATEGORIES_MS = 10 * 60 * 1000;
@@ -46,8 +48,7 @@ const HOME_STALE_FEED_MS = 90 * 1000;
 
 const CATEGORY_SKELETON_KEYS = [0, 1, 2, 3, 4] as const;
 
-/** P7-PR-8: feed sections + heavy card UI in a separate chunk after shell paint. */
-const HomeFeedSections = lazy(() => import("@/pages/home-feed-sections"));
+/** P9-E: feed sections co-located with Home lazy chunk — removes second network round-trip on cold load. */
 
 /** Unified home category tile — fixed width for strip alignment. */
 const HOME_CATEGORY_TILE_W = "w-16";
@@ -327,8 +328,7 @@ export default function Home() {
     () => searchLocationCityForFeed(city, searchLocation),
     [city, searchLocation],
   );
-  const afterFirstPaint = useAfterFirstPaint();
-  const { user, isLoading: authLoading } = useAuth({ queryEnabled: afterFirstPaint });
+  const { user, isLoading: authLoading } = useAuth();
   const reserveBellSlot = Boolean(user && !authLoading);
   const { data: categories, isLoading: isLoadingCategories } =
     useListCategories({
@@ -406,7 +406,6 @@ export default function Home() {
     [featuredAds],
   );
 
-  /** P7 featured stability: dismiss Edge shell when featured query settles; React owns all cards. */
   useEffect(() => {
     if (!featuredFetched) return;
     dismissHomeLcpLayer();
@@ -471,7 +470,9 @@ export default function Home() {
       />
 
       <div ref={recommendedGateRef} className="h-px w-full opacity-0" aria-hidden />
-      <Suspense fallback={null}>
+      {!featuredFetched ? (
+        <HomeFeedSkeleton />
+      ) : (
         <HomeFeedSections
           isRtl={isRtl}
           isLoadingFeatured={isLoadingFeatured}
@@ -479,7 +480,7 @@ export default function Home() {
           isLoadingRecommended={isLoadingRecommended}
           recommendedAds={recommendedAds}
         />
-      </Suspense>
+      )}
     </main>
   );
 }

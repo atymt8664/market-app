@@ -14,7 +14,11 @@ import {
 } from "@/lib/ad-image-url";
 import {
   FEATURED_HOME_FEED_CARD_W,
+  FEATURED_LEAD_IMG_H,
+  FEATURED_LEAD_IMG_W,
   HOME_FEED_CARD_SHELL,
+  HOME_FEED_IMG_H,
+  HOME_FEED_IMG_W,
 } from "@/components/ad-card-shells";
 
 export type HomeFeedAdCardProps = {
@@ -84,6 +88,9 @@ export const HomeFeedAdCard = memo(function HomeFeedAdCard({
     ? "(max-width: 640px) 168px, 175px"
     : "(max-width: 640px) 50vw, (max-width: 1024px) 34vw, 360px";
 
+  const imgWidth = featured ? FEATURED_LEAD_IMG_W : HOME_FEED_IMG_W;
+  const imgHeight = featured ? FEATURED_LEAD_IMG_H : HOME_FEED_IMG_H;
+
   return (
     <div
       className={cn(
@@ -104,6 +111,8 @@ export const HomeFeedAdCard = memo(function HomeFeedAdCard({
               <img
                 src={imageSrc}
                 alt={ad.title}
+                width={imgWidth}
+                height={imgHeight}
                 className="absolute inset-0 h-full w-full object-cover"
                 loading={featured && featuredLead ? "eager" : "lazy"}
                 decoding="async"

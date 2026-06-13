@@ -26,6 +26,8 @@ installAccountDisabledFetchInterceptor(queryClient);
 if (isHomePathname()) {
   startHomeLcpPrefetch();
   wireHomeLcpPrefetchToQueryClient(queryClient);
+  /** P9-E: warm Home lazy chunk in parallel with App boot (Android cold load). */
+  void import("@/pages/home");
 }
 
 /** P7-PR-8: SW registration after first paint — avoids competing with LCP on Home cold path. */

@@ -11,3 +11,9 @@ export const FEATURED_HOME_FEED_CARD_W =
 
 export const FEATURED_DEFAULT_CARD_W =
   "w-[136px] max-w-[136px] shrink-0 sm:w-[148px] sm:max-w-[148px] md:w-[160px] md:max-w-[160px]";
+
+/** P9-E: intrinsic 4:3 dimensions for Home feed imgs — matches shell LCP + Supabase transforms (CLS). */
+export const FEATURED_LEAD_IMG_W = 168;
+export const FEATURED_LEAD_IMG_H = 126;
+export const HOME_FEED_IMG_W = 400;
+export const HOME_FEED_IMG_H = 300;

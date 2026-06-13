@@ -3,7 +3,7 @@
  */
 import { isHomePathname } from "@/lib/p7-home-path";
 
-export const HOME_LCP_MAX_WAIT_MS = 2000;
+export const HOME_LCP_MAX_WAIT_MS = 900;
 
 /** @deprecated P7 featured stability — slot handoff removed; kept for regression guards only. */
 export const REACT_LCP_SLOT_ID = "react-lcp-slot";
@@ -40,9 +40,8 @@ export function waitForHomeShellLcp(): Promise<void> {
     const done = () => {
       document.documentElement.classList.add("p7-lcp-stable");
       document.documentElement.setAttribute("data-p7-lcp-stable", "1");
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => resolve());
-      });
+      /** Single rAF — shell img painted; defer second frame (P9-E cold-path trim). */
+      requestAnimationFrame(() => resolve());
     };
 
     if (img.complete && img.naturalWidth > 0) {

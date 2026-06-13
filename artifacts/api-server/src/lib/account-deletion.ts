@@ -18,6 +18,13 @@ import {
 } from "./supabaseStorage";
 import { ensureVerificationSchema } from "./admin-verification-workflow";
 import { logger } from "./logger";
+import {
+  DELETED_ACCOUNT_TOMBSTONE_EMAIL,
+  ensureDeletedAccountTombstoneUserId,
+  prepareOrdersForAccountDeletionTx,
+} from "./account-deletion-orders";
+
+export { AccountDeletionActiveOrdersError, ACCOUNT_DELETE_ACTIVE_ORDERS_CODE } from "./account-deletion-orders";
 
 function collectPathsFromAdImagesJson(images: unknown): string[] {
   const out: string[] = [];
@@ -101,7 +108,7 @@ export async function collectUploadsPathsForUserAccount(userId: number): Promise
 export async function deleteUserAccountInTransaction(userId: number): Promise<boolean> {
   return db.transaction(async (tx) => {
     const [stillThere] = await tx
-      .select({ id: usersTable.id })
+      .select({ id: usersTable.id, email: usersTable.email })
       .from(usersTable)
       .where(eq(usersTable.id, userId))
       .limit(1);
@@ -109,6 +116,13 @@ export async function deleteUserAccountInTransaction(userId: number): Promise<bo
     if (!stillThere) {
       return false;
     }
+
+    if (stillThere.email === DELETED_ACCOUNT_TOMBSTONE_EMAIL) {
+      return false;
+    }
+
+    const tombstoneUserId = await ensureDeletedAccountTombstoneUserId(tx);
+    await prepareOrdersForAccountDeletionTx(tx, userId, tombstoneUserId);
 
     await tx.delete(notificationsTable).where(eq(notificationsTable.userId, userId));
     await tx.delete(adFavoritesTable).where(eq(adFavoritesTable.userId, userId));

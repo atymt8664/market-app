@@ -9,6 +9,7 @@ import { requireUserCsrf } from "../middlewares/require-user-csrf";
 import {
   collectUploadsPathsForUserAccount,
   deleteUserAccountInTransaction,
+  AccountDeletionActiveOrdersError,
 } from "../lib/account-deletion";
 import { routeAccountDeletionStoragePurge } from "../lib/purge-outbox";
 import { getSessionClearCookieOptions, SESSION_COOKIE_NAME } from "../lib/session-cookie";
@@ -454,6 +455,15 @@ router.post(
     try {
       deleted = await deleteUserAccountInTransaction(userId);
     } catch (err) {
+      if (err instanceof AccountDeletionActiveOrdersError) {
+        res.status(409).json({
+          error:
+            "لا يمكن حذف حسابك الآن لوجود طلبات قيد التنفيذ. أكمل الطلبات أو انتظر إلغاءها ثم حاول مجددًا.",
+          code: err.code,
+          activeOrders: err.activeOrderCount,
+        });
+        return;
+      }
       logger.error({ err, userId }, "account delete: transaction failed");
       res.status(500).json({ error: "تعذر إكمال حذف الحساب" });
       return;

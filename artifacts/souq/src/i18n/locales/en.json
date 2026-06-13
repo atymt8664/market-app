@@ -67,7 +67,7 @@
   "account_info.not_found_title": "Not found",
   "account_info.privacy.i1": "Your phone number is shown only to interested buyers.",
   "account_info.privacy.i2": "Your email is not displayed publicly.",
-  "account_info.privacy.i3": "You can delete your account anytime from Settings → Account actions.",
+  "account_info.privacy.i3": "You can delete your account anytime from Settings → Privacy → Delete Account.",
   "account_info.privacy.p1": "We care about your privacy. We do not share your data with third parties.",
   "account_info.privacy.title": "Privacy",
   "account_info.rate.feedback_optional": "Your feedback (optional)",

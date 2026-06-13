@@ -19,10 +19,18 @@ const GATE_LOCALES: Record<Locale, Dictionary> = {
   de: gateDe,
 };
 
+async function mergeLocale(
+  baseMod: Promise<{ default: Dictionary }>,
+  legalMod: Promise<{ default: Dictionary }>,
+): Promise<{ default: Dictionary }> {
+  const [base, legal] = await Promise.all([baseMod, legalMod]);
+  return { default: { ...base.default, ...legal.default } };
+}
+
 const localeLoaders: Record<Locale, () => Promise<{ default: Dictionary }>> = {
-  ar: () => import("./locales/ar.json"),
-  en: () => import("./locales/en.json"),
-  de: () => import("./locales/de.json"),
+  ar: () => mergeLocale(import("./locales/ar.json"), import("./locales/legal-ar.json")),
+  en: () => mergeLocale(import("./locales/en.json"), import("./locales/legal-en.json")),
+  de: () => mergeLocale(import("./locales/de.json"), import("./locales/legal-de.json")),
 };
 
 const dictionaries: Partial<Record<Locale, Dictionary>> = {};

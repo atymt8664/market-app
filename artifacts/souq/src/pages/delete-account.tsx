@@ -1,16 +1,7 @@
 ﻿import { Link } from "wouter";
+import { Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
-import {
-  ArrowUpRight,
-  Heart,
-  Image as ImageIcon,
-  MessageSquare,
-  Newspaper,
-  Settings as SettingsIcon,
-  ShieldCheck,
-  Trash2,
-  UserCircle,
-} from "lucide-react";
+import { LegalSectionCard } from "@/components/legal/legal-section-card";
 import {
   SETTINGS_BACK_BUTTON,
   SETTINGS_CARD,
@@ -21,243 +12,60 @@ import {
   SETTINGS_PAGE_BG,
   SETTINGS_PAGE_TITLE,
 } from "@/components/settings-shell";
-
-const SUPPORT_EMAIL = "souqarab.market@gmail.com";
-
-type DeletedItem = {
-  icon: React.ReactNode;
-  en: string;
-  ar: string;
-};
-
-const DELETED_ITEMS: DeletedItem[] = [
-  {
-    icon: <UserCircle className="h-4 w-4" />,
-    en: "Your profile (name, email, phone, avatar, account metadata)",
-    ar: "ملفك الشخصي (الاسم، البريد، رقم الهاتف، الصورة، بيانات الحساب)",
-  },
-  {
-    icon: <Newspaper className="h-4 w-4" />,
-    en: "All ads / listings you published",
-    ar: "جميع إعلاناتك المنشورة على المنصة",
-  },
-  {
-    icon: <Heart className="h-4 w-4" />,
-    en: "Your favorites and likes",
-    ar: "المفضلة والإعجابات المرتبطة بحسابك",
-  },
-  {
-    icon: <MessageSquare className="h-4 w-4" />,
-    en: "Your chats and messages with other users",
-    ar: "المحادثات والرسائل المرتبطة بحسابك",
-  },
-  {
-    icon: <ImageIcon className="h-4 w-4" />,
-    en: "Images you uploaded (ad photos, profile picture)",
-    ar: "الصور التي قمت برفعها (صور الإعلانات والصورة الشخصية)",
-  },
-];
-
-const STEPS: { en: string; ar: string }[] = [
-  {
-    en: "Open the Souq Arab EU app and sign in to your account.",
-    ar: "افتح تطبيق سوق العرب EU وسجّل الدخول إلى حسابك.",
-  },
-  {
-    en: "Go to Profile → Settings.",
-    ar: "افتح ملفي → الإعدادات.",
-  },
-  {
-    en: "Scroll to the bottom and tap Delete Account.",
-    ar: "انتقل إلى أسفل الصفحة واضغط على «حذف الحساب».",
-  },
-  {
-    en: "Confirm by entering your current password.",
-    ar: "أكّد العملية عبر إدخال كلمة المرور الحالية.",
-  },
-  {
-    en: "Your account and the data listed above are removed permanently.",
-    ar: "يتم حذف الحساب والبيانات المذكورة أعلاه بشكل دائم.",
-  },
-];
+import { t } from "@/i18n";
+import { useLocale } from "@/hooks/use-locale";
+import { DELETE_ACCOUNT_SECTIONS } from "@/lib/legal-sections-config";
 
 export default function DeleteAccountPage() {
+  const { locale } = useLocale();
+  const dir = locale === "ar" ? "rtl" : "ltr";
+  const textAlign = locale === "ar" ? "right" : "left";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={`flex w-full flex-col ${SETTINGS_PAGE_BG}`}
-      dir="ltr"
+      dir={dir}
     >
-      <header className={SETTINGS_HEADER_BAR} dir="ltr">
+      <header className={SETTINGS_HEADER_BAR} dir={dir}>
         <div className={SETTINGS_HEADER_INNER}>
           <Link href="/" className="shrink-0">
             <button type="button" className={SETTINGS_BACK_BUTTON} aria-label="Souq Arab EU home">
               <span className="text-[11px] font-bold uppercase tracking-[0.12em]">EU</span>
             </button>
           </Link>
-          <h1 className={SETTINGS_PAGE_TITLE} style={{ textAlign: "left" }}>
-            Delete Account
+          <h1 className={SETTINGS_PAGE_TITLE} style={{ textAlign }}>
+            {t("legal.delete.title")}
           </h1>
         </div>
       </header>
 
       <div className={`${SETTINGS_MAIN_COLUMN} flex-1 ${SETTINGS_IMMERSIVE_BOTTOM}`}>
-        {/* Hero card */}
         <div className={SETTINGS_CARD}>
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-red-500/45 bg-red-950/35 text-red-200 shadow-[0_0_18px_-12px_rgba(248,113,113,0.55)]">
               <Trash2 className="h-5 w-5" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-bold text-foreground">
-                Delete your Souq Arab EU account
-              </h2>
-              <p className="mt-1 text-xs font-medium text-muted-foreground" dir="rtl">
-                حذف حسابك في سوق العرب EU بشكل دائم
+              <h2 className="text-lg font-bold text-foreground">{t("legal.delete.intro.title")}</h2>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">
+                {t("legal.delete.meta.last_updated")}: 2026-06-13
               </p>
             </div>
           </div>
-
-          <p className="mt-4 text-sm leading-7 text-muted-foreground">
-            You can permanently delete your Souq Arab EU account directly inside the app — no
-            external request or support ticket is required. This page explains the in-app
-            deletion path and what data is removed.
-          </p>
-          <p className="mt-3 text-sm leading-7 text-muted-foreground" dir="rtl">
-            يمكنك حذف حسابك في تطبيق سوق العرب EU مباشرةً من داخل التطبيق دون الحاجة إلى التواصل مع
-            الدعم. تشرح هذه الصفحة خطوات الحذف من داخل التطبيق والبيانات التي يتم حذفها.
+          <p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">
+            {t("legal.delete.intro.body")}
           </p>
         </div>
 
-        {/* In-app path — primary call to action */}
-        <div className={SETTINGS_CARD}>
-          <h3 className="text-sm font-semibold text-foreground">
-            How to delete your account from inside the app
-          </h3>
-          <p className="mt-1 text-xs font-medium text-muted-foreground" dir="rtl">
-            كيفية حذف الحساب من داخل التطبيق
-          </p>
+        {DELETE_ACCOUNT_SECTIONS.map((section) => (
+          <LegalSectionCard key={section.titleKey} {...section} />
+        ))}
 
-          <div className="mt-4 flex flex-col gap-2 rounded-xl border border-primary/35 bg-[#0A0A0A]/70 p-3 shadow-[0_0_18px_-14px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12">
-            <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-              <SettingsIcon className="h-4 w-4" aria-hidden />
-              <span>Settings → Delete Account</span>
-            </div>
-            <div className="text-xs font-medium text-muted-foreground" dir="rtl">
-              الإعدادات → حذف الحساب
-            </div>
-          </div>
-
-          <ol className="mt-4 list-decimal space-y-2 ps-5 text-sm leading-7 text-muted-foreground marker:font-semibold marker:text-primary/80">
-            {STEPS.map((step) => (
-              <li key={step.en}>
-                <span className="block">{step.en}</span>
-                <span className="mt-0.5 block text-xs text-muted-foreground/85" dir="rtl">
-                  {step.ar}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        {/* Data deleted */}
-        <div className={SETTINGS_CARD}>
-          <h3 className="text-sm font-semibold text-foreground">What gets deleted</h3>
-          <p className="mt-1 text-xs font-medium text-muted-foreground" dir="rtl">
-            البيانات التي يتم حذفها
-          </p>
-
-          <ul className="mt-4 flex flex-col gap-2">
-            {DELETED_ITEMS.map((item) => (
-              <li
-                key={item.en}
-                className="flex items-start gap-3 rounded-xl border border-primary/25 bg-[#0A0A0A]/75 px-3 py-3 shadow-[0_0_20px_-14px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10"
-              >
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/35 bg-[#0A0A0A]/80 text-primary">
-                  {item.icon}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-foreground">{item.en}</span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground" dir="rtl">
-                    {item.ar}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-
-          <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-            Account deletion is permanent and cannot be undone after it has been confirmed inside
-            the app.
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground" dir="rtl">
-            حذف الحساب إجراء دائم ولا يمكن التراجع عنه بعد تأكيد العملية داخل التطبيق.
-          </p>
-        </div>
-
-        {/* Retention notice */}
-        <div className={SETTINGS_CARD}>
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A]/80 text-primary">
-              <ShieldCheck className="h-4 w-4" aria-hidden />
-            </span>
-            <h3 className="text-sm font-semibold text-foreground">
-              Security &amp; legal log retention
-            </h3>
-          </div>
-          <p className="mt-1 text-xs font-medium text-muted-foreground" dir="rtl">
-            الاحتفاظ بسجلات الأمان والامتثال القانوني
-          </p>
-
-          <p className="mt-3 text-sm leading-7 text-muted-foreground">
-            For abuse prevention, fraud detection and to comply with applicable EU regulations,
-            limited security and administrative logs may be retained temporarily after deletion.
-            These records are kept without direct personal identifiers wherever possible and only
-            for as long as legally necessary.
-          </p>
-          <p className="mt-3 text-sm leading-7 text-muted-foreground" dir="rtl">
-            لأغراض الأمان ومنع إساءة الاستخدام والامتثال للأنظمة المعمول بها في الاتحاد الأوروبي،
-            قد يتم الاحتفاظ مؤقتاً بسجلات أمنية وإدارية محدودة بعد الحذف. تُحفظ هذه السجلات بدون
-            بيانات شخصية مباشرة قدر الإمكان وللمدة اللازمة قانونياً فقط.
-          </p>
-        </div>
-
-        {/* Support */}
-        <div className={SETTINGS_CARD}>
-          <h3 className="text-sm font-semibold text-foreground">Need help?</h3>
-          <p className="mt-1 text-xs font-medium text-muted-foreground" dir="rtl">
-            هل تحتاج إلى مساعدة؟
-          </p>
-
-          <p className="mt-3 text-sm leading-7 text-muted-foreground">
-            If you are unable to access your account or you cannot complete the in-app deletion
-            for any reason, contact our support team and we will help you remove your account.
-          </p>
-          <p className="mt-3 text-sm leading-7 text-muted-foreground" dir="rtl">
-            إذا تعذّر عليك الوصول إلى حسابك أو إكمال الحذف من داخل التطبيق لأي سبب، يمكنك التواصل
-            مع فريق الدعم وسنقوم بمساعدتك على حذف الحساب.
-          </p>
-
-          <a
-            href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Account deletion request")}`}
-            className="mt-4 inline-flex items-center gap-1 rounded-lg border border-primary/30 bg-[#0A0A0A]/80 px-3 py-2 text-sm font-medium text-primary shadow-[0_0_18px_-14px_hsl(var(--primary)/0.28)] ring-1 ring-primary/15 transition hover:border-primary/55 hover:bg-black/95 hover:underline"
-          >
-            <span dir="ltr">{SUPPORT_EMAIL}</span>
-            <ArrowUpRight className="h-4 w-4" aria-hidden />
-          </a>
-        </div>
-
-        {/* Footer / branding */}
-        <div className="pt-2 pb-4 text-center text-[11px] leading-relaxed text-muted-foreground/85">
-          <p>
-            Souq Arab EU · Account deletion notice · Last updated{" "}
-            {new Date().getFullYear()}
-          </p>
-          <p className="mt-1" dir="rtl">
-            سوق العرب EU · صفحة حذف الحساب
-          </p>
-        </div>
+        <p className="pt-2 pb-4 text-center text-[11px] leading-relaxed text-muted-foreground/85">
+          {t("legal.delete.footer")}
+        </p>
       </div>
     </motion.div>
   );

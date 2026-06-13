@@ -18,6 +18,12 @@ function walk(dir, files = []) {
 const ar = JSON.parse(fs.readFileSync(path.join(localesDir, "ar.json"), "utf8"));
 const en = JSON.parse(fs.readFileSync(path.join(localesDir, "en.json"), "utf8"));
 const de = JSON.parse(fs.readFileSync(path.join(localesDir, "de.json"), "utf8"));
+const legalAr = JSON.parse(fs.readFileSync(path.join(localesDir, "legal-ar.json"), "utf8"));
+const legalEn = JSON.parse(fs.readFileSync(path.join(localesDir, "legal-en.json"), "utf8"));
+const legalDe = JSON.parse(fs.readFileSync(path.join(localesDir, "legal-de.json"), "utf8"));
+const arMerged = { ...ar, ...legalAr };
+const enMerged = { ...en, ...legalEn };
+const deMerged = { ...de, ...legalDe };
 
 const re = /\bt\(\s*["']([^"']+)["']/g;
 const used = new Set();
@@ -29,9 +35,9 @@ for (const file of walk(src)) {
 }
 
 const keys = [...used].sort();
-const missingAr = keys.filter((k) => !ar[k]);
-const missingEn = keys.filter((k) => !en[k]);
-const missingDe = keys.filter((k) => !de[k]);
+const missingAr = keys.filter((k) => !arMerged[k]);
+const missingEn = keys.filter((k) => !enMerged[k]);
+const missingDe = keys.filter((k) => !deMerged[k]);
 
 console.log("t() unique keys:", keys.length);
 console.log("missing ar:", missingAr.length);

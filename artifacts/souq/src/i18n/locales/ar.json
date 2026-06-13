@@ -67,7 +67,7 @@
   "account_info.not_found_title": "غير موجود",
   "account_info.privacy.i1": "رقم هاتفك يُعرض فقط للمشترين المهتمين بإعلاناتك.",
   "account_info.privacy.i2": "بريدك الإلكتروني لا يُعرض علنياً.",
-  "account_info.privacy.i3": "يمكنك حذف حسابك في أي وقت من الإعدادات → إجراءات الحساب.",
+  "account_info.privacy.i3": "يمكنك حذف حسابك في أي وقت من الإعدادات → الخصوصية → حذف الحساب.",
   "account_info.privacy.p1": "نحن نهتم بخصوصيتك. لا نشارك بياناتك مع أي طرف ثالث.",
   "account_info.privacy.title": "الخصوصية",
   "account_info.rate.feedback_optional": "ملاحظاتك (اختياري)",

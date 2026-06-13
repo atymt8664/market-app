@@ -9,7 +9,6 @@ import {
   Lock,
   LogOut,
   Mail,
-  Moon,
   Shield,
   Star,
   User as UserIcon,
@@ -166,15 +165,6 @@ export default function Settings() {
             label={t("settings.customization.language")}
             hint={locale === "ar" ? t("language.option.ar") : locale === "en" ? t("language.option.en") : t("language.option.de")}
             onClick={leaveSettings("/account/language")}
-            labelClassName={SETTINGS_HUB_LIST_ROW_LABEL}
-            hintClassName={SETTINGS_HUB_LIST_ROW_HINT}
-            dividerClassName={SETTINGS_ROW_DIVIDER}
-          />
-          <SettingsHubRow
-            icon={<Moon className="w-4 h-4" />}
-            label={t("account_notifications.quiet_hours_link")}
-            hint={t("account_notifications.quiet_hours_link_hint")}
-            onClick={leaveSettings("/account/notifications/quiet-hours")}
             labelClassName={SETTINGS_HUB_LIST_ROW_LABEL}
             hintClassName={SETTINGS_HUB_LIST_ROW_HINT}
             dividerClassName={SETTINGS_ROW_DIVIDER}

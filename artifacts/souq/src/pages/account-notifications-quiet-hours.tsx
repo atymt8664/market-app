@@ -76,7 +76,7 @@ export default function AccountNotificationsQuietHours() {
     >
       <AccountHeader title={t("account_notifications.quiet_hours_title")} />
       <div className={SETTINGS_HUB_SUBPAGE_MAIN}>
-        <p className="text-right text-sm leading-relaxed text-zinc-500">
+        <p className="text-right text-sm leading-relaxed text-zinc-400">
           {t("account_notifications.quiet_hours_intro")}
         </p>
 

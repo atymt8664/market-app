@@ -3,7 +3,8 @@
  */
 import { isHomePathname } from "@/lib/p7-home-path";
 
-export const HOME_LCP_MAX_WAIT_MS = 900;
+/** P9-E-3 Fix C: restore pre-P9-E safety margin for shell img under throttling. */
+export const HOME_LCP_MAX_WAIT_MS = 2000;
 
 /** @deprecated P7 featured stability — slot handoff removed; kept for regression guards only. */
 export const REACT_LCP_SLOT_ID = "react-lcp-slot";

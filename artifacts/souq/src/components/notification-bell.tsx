@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useNotificationsUnreadCount } from "@/hooks/use-unread-counters";
 import { formatBadgeCount } from "@/lib/app-badge-counters";
+import { UNREAD_COUNTER_BADGE_CLASS } from "@/lib/messages-badge-styles";
 import { t } from "@/i18n";
 import { useAfterFirstPaint } from "@/lib/after-first-paint";
 
@@ -27,10 +28,7 @@ export function NotificationBell({ className }: { className?: string } = {}) {
     >
       <Bell className="h-4 w-4" strokeWidth={2.25} aria-hidden />
       {count > 0 ? (
-        <span
-          dir="ltr"
-          className="absolute -top-1 -end-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-[#0A0A0A] bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground tabular-nums shadow-[0_0_8px_-2px_hsl(var(--primary)/0.45)]"
-        >
+        <span dir="ltr" className={cn("absolute -top-1 -end-1", UNREAD_COUNTER_BADGE_CLASS)}>
           {formatBadgeCount(count)}
         </span>
       ) : null}

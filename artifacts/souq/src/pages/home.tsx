@@ -20,7 +20,6 @@ import { MarketplaceSearchBar } from "@/components/marketplace-search-bar";
 import { HomeNotificationBellSlot } from "@/components/home-notification-bell-slot";
 import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
 import { HomeFeedSkeleton } from "@/components/home-feed-skeleton";
 import HomeFeedSections from "@/pages/home-feed-sections";
 import { dismissHomeLcpLayer } from "@/lib/home-lcp-handoff";
@@ -40,6 +39,7 @@ import {
   HOME_PAGE_INSET,
 } from "@/lib/home-page-layout";
 import { cn } from "@/lib/utils";
+import { readHomeBellSlotHint, syncHomeBellSlotHint } from "@/lib/home-bell-slot-hint";
 
 /** React Query: تقليل إعادة الجلب عند التنقل للرئيسية دون المساس بـ invalidate بعد الطفرات/الأدمن. */
 const HOME_STALE_CATEGORIES_MS = 10 * 60 * 1000;
@@ -301,9 +301,7 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
             onSubmit={onSearchSubmit}
             className="border-primary/28 bg-[#0A0A0A] ring-primary/8 focus-within:border-primary/38 focus-within:ring-primary/12"
           />
-          {reserveBellSlot ? (
-            <HomeNotificationBellSlot className="h-8 w-8 shrink-0 [&_svg]:h-4 [&_svg]:w-4" />
-          ) : null}
+          {reserveBellSlot ? <HomeNotificationBellSlot /> : null}
         </div>
         <HomeCategoriesStrip
           isRtl={isRtl}
@@ -328,8 +326,18 @@ export default function Home() {
     () => searchLocationCityForFeed(city, searchLocation),
     [city, searchLocation],
   );
-  const { user, isLoading: authLoading } = useAuth();
-  const reserveBellSlot = Boolean(user && !authLoading);
+  const { user, isLoading: authLoading, isFetching, error } = useAuth();
+
+  useEffect(() => {
+    if (user?.id) {
+      syncHomeBellSlotHint(true);
+    } else if (!authLoading && !isFetching && !user && !error) {
+      syncHomeBellSlotHint(false);
+    }
+  }, [user?.id, authLoading, isFetching, error]);
+
+  /** P9-E-4a: tab hint reserves column on refresh before auth/me; user keeps slot when resolved. */
+  const reserveBellSlot = Boolean(user || readHomeBellSlotHint());
   const { data: categories, isLoading: isLoadingCategories } =
     useListCategories({
       query: {
@@ -351,47 +359,35 @@ export default function Home() {
       },
     });
 
-  const [recommendedQueryEnabled, setRecommendedQueryEnabled] = useState(false);
-  const recommendedGateRef = useRef<HTMLDivElement>(null);
-  const featuredFetched = !isLoadingFeatured && featuredAds !== undefined;
-
-  useEffect(() => {
-    if (!featuredFetched) return;
-    const el = recommendedGateRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      return scheduleAfterFirstPaint(() => setRecommendedQueryEnabled(true), 400);
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setRecommendedQueryEnabled(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: "0px 0px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [featuredFetched]);
-
-  const { data: defaultRecommended, isLoading: isLoadingDefaultRec, isFetched: defaultRecFetched } =
-    useListRecommendedAds({
-      query: {
-        queryKey: getListRecommendedAdsQueryKey(),
-        enabled: recommendedQueryEnabled,
-        staleTime: HOME_STALE_FEED_MS,
-      },
-    });
-  const { data: cityAds, isLoading: isLoadingCityAds, isFetched: cityAdsFetched } = useListAds(
+  /** P9-E-4b: fetch recommended in parallel with featured — no post-featured waterfall. */
+  const { data: defaultRecommended, isFetched: defaultRecFetched } = useListRecommendedAds({
+    query: {
+      queryKey: getListRecommendedAdsQueryKey(),
+      staleTime: HOME_STALE_FEED_MS,
+    },
+  });
+  const { data: cityAds, isFetched: cityAdsFetched } = useListAds(
     { city: feedCity, limit: 20 },
     {
       query: {
         queryKey: getListAdsQueryKey({ city: feedCity, limit: 20 }),
-        enabled: recommendedQueryEnabled && !!feedCity,
+        enabled: !!feedCity,
         staleTime: HOME_STALE_FEED_MS,
       },
     },
   );
+
+  const featuredFetched = !isLoadingFeatured && featuredAds !== undefined;
+
+  const recommendedFetched = feedCity
+    ? cityAdsFetched && ((Array.isArray(cityAds) && cityAds.length > 0) || defaultRecFetched)
+    : defaultRecFetched;
+
+  /** P9-E-4b: one skeleton until both feed queries settle — unified reveal. */
+  const homeFeedReady = featuredFetched && recommendedFetched;
+
+  /** P9-E-3 Fix B: keep React feed hidden until shell handoff dismisses (no LCP supersession). */
+  const [lcpHandoffComplete, setLcpHandoffComplete] = useState(false);
 
   const recommendedAdsRaw = useMemo(() => {
     if (feedCity) {
@@ -409,20 +405,16 @@ export default function Home() {
   useEffect(() => {
     if (!featuredFetched) return;
     dismissHomeLcpLayer();
+    const revealId = requestAnimationFrame(() => setLcpHandoffComplete(true));
     const raw = featuredAdsForHome?.[0]?.images?.[0];
     if (raw) void preloadAdImage(getAdImageFeaturedLeadUrl(raw));
+    return () => cancelAnimationFrame(revealId);
   }, [featuredFetched, featuredAdsForHome]);
 
   const recommendedAds = useMemo(
     () => buildHomeRecommendedFeed(recommendedAdsRaw, featuredAdsForHome),
     [recommendedAdsRaw, featuredAdsForHome],
   );
-
-  const isLoadingRecommended =
-    !recommendedQueryEnabled ||
-    (feedCity
-      ? !cityAdsFetched && !defaultRecFetched
-      : isLoadingDefaultRec);
 
   const onSearchQueryChange = useCallback((value: string) => {
     setSearchQuery(value);
@@ -469,16 +461,16 @@ export default function Home() {
         categories={homeCategories}
       />
 
-      <div ref={recommendedGateRef} className="h-px w-full opacity-0" aria-hidden />
-      {!featuredFetched ? (
+      {!homeFeedReady ? (
         <HomeFeedSkeleton />
       ) : (
         <HomeFeedSections
           isRtl={isRtl}
-          isLoadingFeatured={isLoadingFeatured}
+          isLoadingFeatured={false}
           featuredAds={featuredAdsForHome}
-          isLoadingRecommended={isLoadingRecommended}
+          isLoadingRecommended={false}
           recommendedAds={recommendedAds}
+          lcpHandoffPending={!lcpHandoffComplete}
         />
       )}
     </main>

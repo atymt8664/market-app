@@ -92,6 +92,7 @@ scanMustMatch(
 scanMustMatch("home.tsx", homeTsx, /dismissHomeLcpLayer/, "must call dismissHomeLcpLayer (safety)");
 
 const homeFeedSections = read("src/pages/home-feed-sections.tsx");
+scanMustMatch("home-feed-sections.tsx", homeFeedSections, /lcpHandoffPending/, "P9-E-3: LCP supersession guard during handoff");
 scanNoMatch(
   "home-feed-sections.tsx",
   homeFeedSections,
@@ -100,7 +101,13 @@ scanNoMatch(
 );
 
 const lcpLoader = read("src/lcp-loader.ts");
-scanMustMatch("lcp-loader.ts", lcpLoader, /dismissHomeLcpLayer\(\)/, "must dismiss shell before main import");
+scanMustMatch("lcp-loader.ts", lcpLoader, /waitForHomeShellLcp/, "must await shell LCP before main import");
+scanNoMatch(
+  "lcp-loader.ts",
+  lcpLoader,
+  /dismissHomeLcpLayer\(\)/,
+  "P9-E-3: shell dismiss only from home.tsx handoff — not boot path",
+);
 scanMustMatch("lcp-loader.ts", lcpLoader, /isHomePathname/, "must guard with isHomePathname");
 
 const middleware = read("middleware.js");

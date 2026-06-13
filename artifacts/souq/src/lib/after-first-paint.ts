@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 
-/** Run after paint (double rAF) then idle — avoids competing with first Gate/Home paint. */
+function isIosSafari(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /iP(hone|ad|od)/.test(ua) && /WebKit/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua);
+}
+
+/** Run after paint — single rAF on iOS Safari; double rAF + idle elsewhere. */
 export function scheduleAfterFirstPaint(
   callback: () => void,
   idleTimeoutMs = 2000,
@@ -15,15 +21,24 @@ export function scheduleAfterFirstPaint(
     if (!cancelled) callback();
   };
 
+  const scheduleIdle = () => {
+    if (cancelled) return;
+    const ric = window.requestIdleCallback;
+    if (ric) {
+      idleId = ric(run, { timeout: Math.min(idleTimeoutMs, 800) });
+    } else {
+      timeoutId = window.setTimeout(run, 1);
+    }
+  };
+
   const frameId = requestAnimationFrame(() => {
+    if (isIosSafari()) {
+      run();
+      return;
+    }
     requestAnimationFrame(() => {
       if (cancelled) return;
-      const ric = window.requestIdleCallback;
-      if (ric) {
-        idleId = ric(run, { timeout: idleTimeoutMs });
-      } else {
-        timeoutId = window.setTimeout(run, 1);
-      }
+      scheduleIdle();
     });
   });
 

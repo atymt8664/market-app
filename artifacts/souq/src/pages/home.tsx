@@ -23,7 +23,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HomeFeedSkeleton } from "@/components/home-feed-skeleton";
 import { HomeSectionRetry } from "@/components/home-section-retry";
 import HomeFeedSections from "@/pages/home-feed-sections";
-import { dismissHomeLcpLayer } from "@/lib/home-lcp-handoff";
+import { dismissHomeLcpLayer, isHomeLcpFeedShellActive } from "@/lib/home-lcp-handoff";
 import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useSearchLocation } from "@/hooks/use-search-location";
 import { searchLocationCityForFeed } from "@/lib/search-location";
@@ -521,6 +521,8 @@ export default function Home() {
 
   /** P9-E-3 Fix B: keep React feed hidden until shell handoff dismisses (no LCP supersession). */
   const [lcpHandoffComplete, setLcpHandoffComplete] = useState(false);
+  /** P9-E-PROD-SHELL: skip React skeleton while build/Edge feed shell is visible (dev has no feed shell). */
+  const [skipReactFeedSkeleton] = useState(() => isHomeLcpFeedShellActive());
 
   const recommendedAdsRaw = useMemo(() => {
     if (feedCity) {
@@ -570,7 +572,11 @@ export default function Home() {
   useEffect(() => {
     const el = headerRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const sync = () => setHeaderOffsetPx(el.getBoundingClientRect().height);
+    const sync = () => {
+      const h = el.getBoundingClientRect().height;
+      setHeaderOffsetPx(h);
+      document.documentElement.style.setProperty("--p7-home-header-offset", `${h}px`);
+    };
     sync();
     const ro = new ResizeObserver(sync);
     ro.observe(el);
@@ -601,7 +607,7 @@ export default function Home() {
 
       {!homeFeedReady ? (
         <>
-          <HomeFeedSkeleton />
+          {!skipReactFeedSkeleton ? <HomeFeedSkeleton /> : null}
           {feedTimeoutReached && feedLoadFailed ? (
             <div className={cn(HOME_PAGE_INSET, "pb-3 pt-1")}>
               <HomeSectionRetry

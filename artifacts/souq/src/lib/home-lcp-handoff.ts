@@ -70,6 +70,14 @@ export function handoffShellLcpToReact(_slotId = REACT_LCP_SLOT_ID): boolean {
   return false;
 }
 
+/** True when build/Edge injected the neutral feed skeleton (not empty dev placeholder). */
+export function isHomeLcpFeedShellActive(): boolean {
+  if (typeof document === "undefined") return false;
+  return !!document
+    .getElementById("p7-lcp-layer")
+    ?.querySelector('[data-p7-feed-shell="1"]');
+}
+
 /** Remove Edge/build LCP overlay — React featured strip owns all card images. */
 export function dismissHomeLcpLayer(): void {
   if (typeof document === "undefined") return;

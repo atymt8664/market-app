@@ -26,6 +26,13 @@ const FEATURED_LEAD_PARAMS = "width=350&height=262&resize=cover&quality=80";
 
 const GATE_FEATURED_HEADING = "إعلانات مميزة";
 
+/** Feed-only shell starts below React header (matches home.tsx default headerOffsetPx). */
+export const HOME_SHELL_HEADER_OFFSET_PX = 106;
+
+/** P9-E-PROD-SHELL: neutral featured skeleton slots — never a lone real ad card. */
+const FEATURED_SHELL_SLOT_COUNT = 4;
+const FEATURED_SHELL_CARD_W = 168;
+
 export const P7_LCP_LAYER_MARKER = "<!-- P7-PR-12:LCP_LAYER -->";
 export const P7_HOME_LCP_HEAD_MARKER = "<!-- P7-PR-12:HOME_LCP_HEAD -->";
 
@@ -102,55 +109,62 @@ export function buildHomeLcpHeadTags(lead) {
   return lines.join("\n    ");
 }
 
-/** Progressive LCP layer — sibling of #root; not replaced by createRoot. */
-export function buildHomeLcpLayerHtml(lead) {
-  if (!lead?.heroUrl) return "";
-  const title = escapeHtml(lead.title || "");
-  const hero = escapeHtml(lead.heroUrl);
-  const href = escapeHtml(lead.href || "/");
-  const heading = escapeHtml(GATE_FEATURED_HEADING);
-
-  return `<header
-      style="position:fixed;inset:0 0 auto 0;z-index:1;background:#0A0A0A;padding:max(12px,env(safe-area-inset-top,0px)) 16px 8px"
-      dir="rtl"
-    >
-      <div
-        style="display:flex;align-items:center;gap:8px;max-width:1280px;margin:0 auto;height:36px;border-radius:16px;border:1px solid rgba(194,235,108,.28);background:#0A0A0A"
-        aria-hidden="true"
-      ></div>
-    </header>
-    <section
-      style="position:absolute;inset:0;padding-top:106px;max-width:1280px;margin:0 auto;padding-left:16px;padding-right:16px;box-sizing:border-box"
-      dir="rtl"
-    >
-      <h2
-        style="display:inline-flex;margin:0 0 6px;padding:2px 8px;border-radius:16px;border:1px solid rgba(194,235,108,.28);background:#0A0A0A;font-size:15px;font-weight:600;line-height:1.25;color:#fafafa;font-family:system-ui,-apple-system,sans-serif"
-      >${heading}</h2>
-      <div style="display:flex;gap:8px;overflow:hidden;padding-bottom:4px">
-        <a
-          href="${href}"
-          style="display:block;flex:0 0 168px;width:168px;text-decoration:none;color:inherit;pointer-events:auto"
-          tabindex="-1"
-        >
-          <article
-            style="overflow:hidden;border-radius:12px;border:1px solid rgba(194,235,108,.3);background:#0A0A0A"
-          >
-            <div style="position:relative;width:100%;aspect-ratio:4/3;background:#0A0A0A;overflow:hidden">
-              <img
+/** Neutral skeleton tile — no <article>, no product link (P9-E-PROD-SHELL). */
+function buildFeaturedShellSlotHtml({ leadSlot = false, lead = null } = {}) {
+  const w = FEATURED_SHELL_CARD_W;
+  const lcpImg =
+    leadSlot && lead?.heroUrl
+      ? `<img
                 id="p7-lcp-candidate"
                 data-testid="home-lcp-prerender"
-                src="${hero}"
-                alt="${title}"
+                src="${escapeHtml(lead.heroUrl)}"
+                alt=""
                 width="168"
                 height="126"
                 loading="eager"
                 fetchpriority="high"
                 decoding="async"
+                aria-hidden="true"
                 style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"
-              />
-            </div>
-          </article>
-        </a>
+              />`
+      : "";
+
+  return `<div
+          style="flex:0 0 ${w}px;width:${w}px;overflow:hidden;border-radius:12px;border:1px solid rgba(194,235,108,.22);background:#0A0A0A"
+          aria-hidden="true"
+        >
+          <div style="position:relative;width:100%;aspect-ratio:4/3;background:rgba(255,255,255,0.04);overflow:hidden">
+            ${lcpImg}
+            <div style="position:absolute;inset:0;background:rgba(10,10,10,0.88)"></div>
+          </div>
+          <div style="height:10px;margin:6px 6px 4px;border-radius:4px;background:rgba(255,255,255,0.05)"></div>
+          <div style="height:8px;margin:0 6px 8px;width:60%;border-radius:4px;background:rgba(255,255,255,0.04)"></div>
+        </div>`;
+}
+
+/**
+ * Feed-area shell only — no fake header; LCP img masked under skeleton overlay.
+ * React header (z-40) stays visible above #p7-lcp-layer (z-25, top offset in index.html).
+ */
+export function buildHomeLcpLayerHtml(lead) {
+  if (!lead?.heroUrl) return "";
+  const heading = escapeHtml(GATE_FEATURED_HEADING);
+  const slots = Array.from({ length: FEATURED_SHELL_SLOT_COUNT }, (_, i) =>
+    buildFeaturedShellSlotHtml({ leadSlot: i === 0, lead: i === 0 ? lead : null }),
+  ).join("\n        ");
+
+  return `<section
+      style="position:absolute;inset:0;max-width:1280px;margin:0 auto;padding:0 16px;box-sizing:border-box"
+      dir="rtl"
+      aria-busy="true"
+      aria-hidden="true"
+      data-p7-feed-shell="1"
+    >
+      <h2
+        style="display:inline-flex;margin:0 0 6px;padding:2px 8px;border-radius:16px;border:1px solid rgba(194,235,108,.28);background:#0A0A0A;font-size:15px;font-weight:600;line-height:1.25;color:#fafafa;font-family:system-ui,-apple-system,sans-serif"
+      >${heading}</h2>
+      <div style="display:flex;gap:8px;overflow:hidden;padding-bottom:4px">
+        ${slots}
       </div>
     </section>`;
 }

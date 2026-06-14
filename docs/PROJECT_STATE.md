@@ -70,8 +70,8 @@ Only **one open builder phase** at a time. Sequence:
 | Phase | Scope | Status | Notes |
 |-------|-------|--------|-------|
 | **P9-1** | Location Picker i18n | ✅ **Closed — Production verified** | Commit `4cc3795` · gate picker keys + `ensureFullLocaleForInteraction` on open · `p9-1-location-picker-i18n-verify` PASS prod (10/10 · refresh×10 · open/close×10) |
-| **P9-2** | Language Gate isolation | ⏳ **Next** | Gate ↔ LCP/skeleton overlap on first launch |
-| **P9-3** | Cold Start Contract | ⏳ Not opened | |
+| **P9-2** | Language Gate isolation | ✅ **Closed — Production verified** | Commit `838f9ba` · strip shell on first launch · gate full-screen z-100 · skip Home warm path · `p9-2-language-gate-isolation-verify` PASS prod (6/6 · refresh×10 · clear storage) |
+| **P9-3** | Cold Start Contract | ⏳ **Next** | |
 | **P9-4** | CI Guards | ⏳ Not opened | |
 | **P9-5** | Real Device Matrix | ⏳ Not opened | Mohamed checklist |
 | **P9-6** | PWA / A2HS Stability | ⏳ Not opened | |
@@ -87,7 +87,7 @@ Only **one open builder phase** at a time. Sequence:
 
 **Owner manual PASS (do not re-audit unless regression):** Signup · Login · OTP · Forgot Password · Reset Password on Production.
 
-**Next implementation milestone:** **P9-2 — Language Gate Isolation** only.
+**Next implementation milestone:** **P9-3 — Cold Start Contract** only.
 
 ---
 
@@ -193,4 +193,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P9-1 closed (2026-06-14): Location Picker i18n — commit `4cc3795` · production verify PASS (ar/en/de · desktop · iPhone · Android · incognito · refresh×10 · picker×10). **Next: P9-2 — Language Gate Isolation.** P17-9-17 closed. Production verification account: `PROD_SMOKE_EMAIL` in VPS `api.env.production`.
+P9-2 closed (2026-06-14): Language Gate isolation — commit `838f9ba` · production verify PASS (first launch + returning · desktop · iPhone · Android · incognito · refresh×10). **Next: P9-3 — Cold Start Contract.** P9-1 closed. P17-9-17 closed.

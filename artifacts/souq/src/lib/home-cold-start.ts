@@ -6,7 +6,6 @@ import { isHomePathname } from "@/lib/p7-home-path";
 export type HomeColdStartPhase = "idle" | "booting" | "ready";
 
 let phase: HomeColdStartPhase = "idle";
-let pendingSwReload = false;
 let readyWaiters: Array<() => void> = [];
 
 /** iPhone / iPad WebKit (Safari + A2HS standalone). */
@@ -42,23 +41,15 @@ export function markHomeColdStartReady(): void {
   phase = "ready";
   for (const resolve of readyWaiters) resolve();
   readyWaiters = [];
-  if (pendingSwReload) {
-    pendingSwReload = false;
-    window.location.reload();
-  }
 }
 
 export function isHomeColdStartBootLocked(): boolean {
   return phase === "booting";
 }
 
-/** SW controllerchange — defer reload while Home hydrates. */
+/** P9-3A: Home absorbs SW controllerchange — never schedule hard reload (iOS loop). */
 export function onServiceWorkerControllerChange(): void {
-  if (isHomeColdStartBootLocked()) {
-    pendingSwReload = true;
-    return;
-  }
-  window.location.reload();
+  /* no-op — reload-on-SW removed for Home cold path */
 }
 
 export function waitForHomeColdStartReady(timeoutMs = 90_000): Promise<void> {

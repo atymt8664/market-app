@@ -1,14 +1,10 @@
 import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
-import {
-  isHomeColdStartBootLocked,
-  onServiceWorkerControllerChange,
-  waitForHomeColdStartReady,
-} from "@/lib/home-cold-start";
+import { waitForHomeColdStartReady } from "@/lib/home-cold-start";
 import { isHomePathname } from "@/lib/p7-home-path";
 
 /**
  * P9/P11 — production service worker registration with deploy-safe activation.
- * P9-3/P9-6 — no reload during Home boot/hydration; defer update until feed ready.
+ * P9-3A — never hard-reload Home on controllerchange (iOS Safari/A2HS skeleton loop).
  */
 export function registerProductionServiceWorker(baseUrl: string): void {
   if (!("serviceWorker" in navigator)) return;
@@ -16,10 +12,8 @@ export function registerProductionServiceWorker(baseUrl: string): void {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (refreshing) return;
-    if (isHomeColdStartBootLocked()) {
-      onServiceWorkerControllerChange();
-      return;
-    }
+    /** P9-3A: SW activate on Home must not reload — resets Edge shell → infinite loop on iOS. */
+    if (isHomePathname()) return;
     refreshing = true;
     window.location.reload();
   });

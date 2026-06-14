@@ -8,7 +8,6 @@ import {
 } from "@/hooks/use-unread-counters";
 import { formatBadgeCount, type UnreadCounters } from "@/lib/app-badge-counters";
 import { UNREAD_COUNTER_BADGE_CLASS } from "@/lib/messages-badge-styles";
-import { readHomeBellSlotHint } from "@/lib/home-bell-slot-hint";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +45,7 @@ function HomeBellBadge({ count }: { count: number }) {
 
 /** Home-only bell — eager render, settled shell from first paint, badge slot reserved (P9-E-4a-2). */
 function HomeHeaderNotificationBell() {
-  const { user, isLoading: authLoading, isFetching: authFetching } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const cachedNotifications =
     (queryClient.getQueryData(unreadCountersQueryKey) as UnreadCounters | undefined)
@@ -57,15 +56,7 @@ function HomeHeaderNotificationBell() {
   });
   const displayCount = liveCount > 0 ? liveCount : cachedNotifications;
 
-  const bellHint = readHomeBellSlotHint();
   const showLink = Boolean(user && !authLoading);
-  /** P9-E-INCIDENT-1: keep settled shell on hint / slow or failed auth — no empty column. */
-  const showSettledShell =
-    showLink || bellHint || authLoading || authFetching;
-
-  if (!showSettledShell) {
-    return null;
-  }
 
   const body = (
     <>

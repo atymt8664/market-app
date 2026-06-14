@@ -40,7 +40,7 @@ import {
   HOME_PAGE_INSET,
 } from "@/lib/home-page-layout";
 import { cn } from "@/lib/utils";
-import { readHomeBellSlotHint, syncHomeBellSlotHint } from "@/lib/home-bell-slot-hint";
+import { syncHomeBellSlotHint } from "@/lib/home-bell-slot-hint";
 import {
   HOME_FEED_REVEAL_TIMEOUT_MS,
   HOME_PUBLIC_QUERY_RETRY,
@@ -48,7 +48,6 @@ import {
   computeHomeFeedReady,
   isFeaturedQuerySettled,
   isRecommendedQuerySettled,
-  shouldReserveBellColumn,
   shouldShowCategoryPlaceholders,
 } from "@/lib/home-query-recovery";
 
@@ -385,7 +384,7 @@ export default function Home() {
     () => searchLocationCityForFeed(city, searchLocation),
     [city, searchLocation],
   );
-  const { user, isLoading: authLoading, isFetching } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (user?.id) {
@@ -393,13 +392,8 @@ export default function Home() {
     }
   }, [user?.id]);
 
-  /** P9-E-4a / P9-E-INCIDENT-1: reserve column during auth resolve (incl. slow/failed). */
-  const reserveBellSlot = shouldReserveBellColumn(
-    Boolean(user),
-    readHomeBellSlotHint(),
-    authLoading,
-    isFetching,
-  );
+  /** P9-E-FIX-B: bell column always reserved — matches static header shell (handoff parity). */
+  const reserveBellSlot = true;
 
   const {
     data: categories,

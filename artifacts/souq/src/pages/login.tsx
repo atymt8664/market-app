@@ -37,6 +37,7 @@ import {
 import { resolveCommercePostLoginRedirect } from "@/features/p17-commerce/p17-commerce-redirect";
 import { P17_ORDERS_QUERY_ROOT } from "@/features/p17-commerce/orders-api.types";
 import { submitUserLoginTotp } from "@/lib/user-2fa-api";
+import { syncHomeBellSlotHint } from "@/lib/home-bell-slot-hint";
 
 const schema = z.object({
   email: z.string().email("auth.validation.invalid_email"),
@@ -177,6 +178,10 @@ export default function Login() {
     queryClient.removeQueries({ queryKey: P17_ORDERS_QUERY_ROOT, exact: false });
     queryClient.setQueryData(getAuthMeQueryKey(), json);
     void queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
+    /** P9-E-FIX-B: bootstrap bell hint before redirect — covers incognito / fresh tab refresh. */
+    if (typeof (json as { id?: unknown }).id === "string" || typeof (json as { id?: unknown }).id === "number") {
+      syncHomeBellSlotHint(true);
+    }
     const next = resolvePostLoginRedirect(window.location.search);
     setLocation(next, { replace: true });
   };

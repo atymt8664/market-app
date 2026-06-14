@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 /** P7-PR-7: sync critical CSS only — full index.css deferred after first paint. */
 import "./home-critical.css";
-import { ensureBootstrapLocales } from "@/i18n";
+import { ensureBootstrapLocales, hasSavedLocale } from "@/i18n";
 import { getApiBaseUrl } from "@/lib/api-url";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { queryClient } from "@/lib/query-client";
@@ -23,7 +23,8 @@ setBaseUrl(apiBase || null);
 installAccountDisabledFetchInterceptor(queryClient);
 
 /** P7-PR-9: featured API prefetch on Home — seeds React Query (shell dismissed when feed mounts). */
-if (isHomePathname()) {
+/** P9-2: skip Home warm path while first-launch language gate is active. */
+if (isHomePathname() && hasSavedLocale()) {
   startHomeLcpPrefetch();
   wireHomeLcpPrefetchToQueryClient(queryClient);
   /** P9-E: warm Home lazy chunk in parallel with App boot (Android cold load). */

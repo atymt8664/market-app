@@ -142,7 +142,19 @@
           var preload = document.getElementById("p7-lcp-hero-preload");
           if (preload) preload.remove();
           document.documentElement.classList.remove("p7-await-handoff");
+          return;
         }
+        try {
+          if (!localStorage.getItem("app_locale")) {
+            var hs = document.getElementById("p7-header-shell");
+            if (hs) hs.remove();
+            var ly = document.getElementById("p7-lcp-layer");
+            if (ly) ly.remove();
+            var pl = document.getElementById("p7-lcp-hero-preload");
+            if (pl) pl.remove();
+            document.documentElement.classList.remove("p7-await-handoff");
+          }
+        } catch (e) {}
       })();
     </script>
     <div id="root"></div>

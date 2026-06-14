@@ -32,7 +32,7 @@
 Only **one open builder phase** at a time. Sequence:
 
 ```
-✅ P13-1 → … → ✅ P17-8 Package 2 → ✅ P17-PRELAUNCH-1 → ✅ P17-PRELAUNCH-2 → P5-PRELAUNCH → P11-PRELAUNCH → P0-LAUNCH-GATE
+✅ P13-1 → … → ✅ P17-8 Package 2 → ✅ P17-PRELAUNCH-1 → ✅ P17-PRELAUNCH-2 → **P9 Pre-Launch Wave (P9-1…P9-13)** → P5-PRELAUNCH → P11-PRELAUNCH → P0-LAUNCH-GATE
 ```
 
 **P17-5/6/7/7A** buyer · seller · shipping · address gate **live on PRODUCTION** (API `souq-api:p17-7a-prod-20260607`). **P17-8 Package 1** closed (`2c96aa1` · `dpl_7wKgH4VJHWypCVTubcNKrdbo2cTU`). **P17-8 Package 2** closed + **prod verified** (commit `bb6070a` · Vercel `dpl_8TNVeqkxcELqQoXxcEUsWyEN3BWU` · Mohamed visual APPROVED) · **P17-8 Package 3+** not opened.
@@ -53,6 +53,8 @@ Only **one open builder phase** at a time. Sequence:
 
 | Milestone | Status | Notes |
 |-----------|--------|-------|
+| **P9-C-0** Rendering simplification wave | ✅ **Closed** | Per P9-C charter — Home stability preserved |
+
 ### P9-D — Image & Feed Performance (Phase D)
 
 | Milestone | Status | Notes |
@@ -60,6 +62,32 @@ Only **one open builder phase** at a time. Sequence:
 | **P9-D-0** LCP image sizing + delivery path | ✅ **Closed — Production verified** | `featuredLead` transform (350×262 @2x) · deploy `dpl_9vD5HcUMB77wZHtP8w69wENVSYfT` · PSI LCP 4.9s→4.2s · guards PASS · **UX unchanged** |
 
 **P9-A/B/C/D** lock Home post P7 Featured Stability Fix. No Phase E until explicit sign-off after P9-D.
+
+### P9 Pre-Launch Execution Wave
+
+**Coverage lock:** PRE-LAUNCH audit + P9-AUDIT-COVERAGE-LOCK + P9-COVERAGE-COMPLETION (2026-06-14).
+
+| Phase | Scope | Status | Notes |
+|-------|-------|--------|-------|
+| **P9-1** | Location Picker i18n | ✅ **Closed — Production verified** | Commit `4cc3795` · gate picker keys + `ensureFullLocaleForInteraction` on open · `p9-1-location-picker-i18n-verify` PASS prod (10/10 · refresh×10 · open/close×10) |
+| **P9-2** | Language Gate isolation | ⏳ **Next** | Gate ↔ LCP/skeleton overlap on first launch |
+| **P9-3** | Cold Start Contract | ⏳ Not opened | |
+| **P9-4** | CI Guards | ⏳ Not opened | |
+| **P9-5** | Real Device Matrix | ⏳ Not opened | Mohamed checklist |
+| **P9-6** | PWA / A2HS Stability | ⏳ Not opened | |
+| **P9-7** | Full Interaction Flows | ⏳ Not opened | |
+| **P9-8** | Network Resilience | ⏳ Not opened | |
+| **P9-9** | Arabic Overlay Sweep | ⏳ Not opened | |
+| **P9-10** | UX Stability Hardening | ⏳ Not opened | |
+| **P9-11** | Scale Readiness | ⏳ Not opened | |
+| **P9-12** | Push Notifications Closure | ⏳ Not opened | P17-9-13 device matrix |
+| **P9-13** | Pre-Promotion Gate | ⏳ Not opened | After P9-2…P9-12 |
+
+**Sequence after P9-13 closes:** `P5-PRELAUNCH → P11-PRELAUNCH → P0-LAUNCH-GATE`.
+
+**Owner manual PASS (do not re-audit unless regression):** Signup · Login · OTP · Forgot Password · Reset Password on Production.
+
+**Next implementation milestone:** **P9-2 — Language Gate Isolation** only.
 
 ---
 
@@ -165,4 +193,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P17-9-17 closed (backend + frontend + Production UI/user verification PASS per constitution). Frontend redeploy required `VITE_API_BASE_URL=https://api.souq-arab.com` (prior empty value broke same-origin API POST). **P17-9-8** next when opened. Production verification account: `PROD_SMOKE_EMAIL` in VPS `api.env.production`. **Action:** restore founder admin password (temp reset for E2E).
+P9-1 closed (2026-06-14): Location Picker i18n — commit `4cc3795` · production verify PASS (ar/en/de · desktop · iPhone · Android · incognito · refresh×10 · picker×10). **Next: P9-2 — Language Gate Isolation.** P17-9-17 closed. Production verification account: `PROD_SMOKE_EMAIL` in VPS `api.env.production`.

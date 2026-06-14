@@ -1,6 +1,7 @@
 /**
  * P7-PR-12 / P9-C: Edge LCP shell lifecycle — dismiss overlay before React featured strip (no DOM handoff).
  */
+import { getHomeShellLcpBootWaitMs } from "@/lib/home-cold-start";
 import { isHomePathname } from "@/lib/p7-home-path";
 
 /** P9-E-3 Fix C: restore pre-P9-E safety margin for shell img under throttling. */
@@ -51,7 +52,7 @@ export function waitForHomeShellLcp(): Promise<void> {
       return;
     }
 
-    const timeoutId = window.setTimeout(done, HOME_LCP_MAX_WAIT_MS);
+    const timeoutId = window.setTimeout(done, getHomeShellLcpBootWaitMs());
     const finish = () => {
       window.clearTimeout(timeoutId);
       done();

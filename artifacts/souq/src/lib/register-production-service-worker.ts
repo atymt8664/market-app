@@ -1,8 +1,14 @@
 import { scheduleAfterFirstPaint } from "@/lib/after-first-paint";
+import {
+  isHomeColdStartBootLocked,
+  onServiceWorkerControllerChange,
+  waitForHomeColdStartReady,
+} from "@/lib/home-cold-start";
+import { isHomePathname } from "@/lib/p7-home-path";
 
 /**
  * P9/P11 — production service worker registration with deploy-safe activation.
- * Reloads once when a new SW takes control so clients never run mixed old/new bundles.
+ * P9-3/P9-6 — no reload during Home boot/hydration; defer update until feed ready.
  */
 export function registerProductionServiceWorker(baseUrl: string): void {
   if (!("serviceWorker" in navigator)) return;
@@ -10,6 +16,10 @@ export function registerProductionServiceWorker(baseUrl: string): void {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (refreshing) return;
+    if (isHomeColdStartBootLocked()) {
+      onServiceWorkerControllerChange();
+      return;
+    }
     refreshing = true;
     window.location.reload();
   });
@@ -21,12 +31,20 @@ export function registerProductionServiceWorker(baseUrl: string): void {
     navigator.serviceWorker
       .register(swUrl, { scope, updateViaCache: "none" })
       .then((registration) => {
-        /** P7-PR-9: defer update() — immediate update() caused PSI "Failed to update SW" noise. */
-        scheduleAfterFirstPaint(() => {
+        const runUpdate = () => {
           void registration.update().catch(() => {
             void registration.unregister().catch(() => undefined);
           });
-        }, 12_000);
+        };
+
+        if (isHomePathname()) {
+          void waitForHomeColdStartReady().then(() => {
+            scheduleAfterFirstPaint(runUpdate, 5_000);
+          });
+          return;
+        }
+
+        scheduleAfterFirstPaint(runUpdate, 12_000);
       })
       .catch(() => {
         void navigator.serviceWorker.getRegistrations().then((regs) => {

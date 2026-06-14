@@ -24,6 +24,10 @@ import { HomeFeedSkeleton } from "@/components/home-feed-skeleton";
 import { HomeSectionRetry } from "@/components/home-section-retry";
 import HomeFeedSections from "@/pages/home-feed-sections";
 import { dismissHomeLcpLayer, dismissHomeHeaderShell, isHomeLcpFeedShellActive } from "@/lib/home-lcp-handoff";
+import {
+  markHomeColdStartReady,
+  scheduleHomeShellStuckWatchdog,
+} from "@/lib/home-cold-start";
 import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useSearchLocation } from "@/hooks/use-search-location";
 import { searchLocationCityForFeed } from "@/lib/search-location";
@@ -514,7 +518,17 @@ export default function Home() {
   const categoriesRetryBusy = isFetchingCategories;
 
   /** P9-E-PROD-SHELL: skip React skeleton while build/Edge feed shell is visible (dev has no feed shell). */
-  const [skipReactFeedSkeleton] = useState(() => isHomeLcpFeedShellActive());
+  const [skipReactFeedSkeleton, setSkipReactFeedSkeleton] = useState(() =>
+    isHomeLcpFeedShellActive(),
+  );
+
+  /** P9-3/P9-6: iOS/A2HS — force-dismiss static shell if WebKit boot stalls. */
+  useEffect(() => {
+    return scheduleHomeShellStuckWatchdog(() => {
+      dismissHomeLcpLayer();
+      setSkipReactFeedSkeleton(false);
+    });
+  }, []);
 
   const recommendedAdsRaw = useMemo(() => {
     if (feedCity) {
@@ -533,6 +547,7 @@ export default function Home() {
   useLayoutEffect(() => {
     if (!homeFeedReady) return;
     dismissHomeLcpLayer();
+    markHomeColdStartReady();
     const raw = featuredAdsForHome?.[0]?.images?.[0];
     if (raw) void preloadAdImage(getAdImageFeaturedLeadUrl(raw));
   }, [homeFeedReady, featuredAdsForHome]);

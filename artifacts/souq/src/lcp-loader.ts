@@ -3,6 +3,7 @@
  * P9-2: first-launch language gate — strip Home shell; never wait for LCP behind gate.
  */
 import { hasSavedLocale } from "@/i18n";
+import { beginHomeColdStartBoot, markHomeColdStartReady } from "@/lib/home-cold-start";
 import { isHomePathname } from "@/lib/p7-home-path";
 import { stripHomeLcpShell, stripHomeLcpShellIfNotHome, waitForHomeShellLcp } from "@/lib/home-lcp-handoff";
 
@@ -12,9 +13,13 @@ async function bootApp(): Promise<void> {
   const firstLaunchGate = isHomePathname() && !hasSavedLocale();
   if (firstLaunchGate) {
     stripHomeLcpShell();
+    beginHomeColdStartBoot();
   } else if (isHomePathname() && document.getElementById("p7-lcp-layer")) {
+    beginHomeColdStartBoot();
     /** P9-E-3 Fix A/C: wait for shell paint — do not dismiss before React handoff (home.tsx). */
     await waitForHomeShellLcp();
+  } else if (!isHomePathname()) {
+    markHomeColdStartReady();
   }
   await import("./main");
 }

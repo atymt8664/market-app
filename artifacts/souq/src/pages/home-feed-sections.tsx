@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils";
 const FEATURED_SKELETON_KEYS = [0, 1, 2, 3] as const;
 const GRID_SKELETON_KEYS = [0, 1, 2, 3] as const;
 
-/** Recommended grid only — featured strip renders all items immediately (stability). */
-const HOME_FEED_INITIAL_BATCH = 0;
+/** Recommended grid — first paint batch matches 2-col mobile row (P9-E-FIX-B unified reveal). */
+const HOME_FEED_INITIAL_BATCH = 8;
 const HOME_FEED_REVEAL_STEP = 4;
 
 const homeSectionHeading = cn(
@@ -47,8 +47,6 @@ export type HomeFeedSectionsProps = {
   featuredAds: Ad[] | undefined;
   isLoadingRecommended: boolean;
   recommendedAds: Ad[] | undefined;
-  /** P9-E-3: hide feed paint until Edge shell handoff — prevents larger imgs winning LCP. */
-  lcpHandoffPending?: boolean;
 };
 
 /** P7-PR-8: lazy chunk — AdCard favorite/auth stack stays off Home entry parse path. */
@@ -58,7 +56,6 @@ const HomeFeedSections = memo(function HomeFeedSections({
   featuredAds,
   isLoadingRecommended,
   recommendedAds,
-  lcpHandoffPending = false,
 }: HomeFeedSectionsProps) {
   const featuredList = Array.isArray(featuredAds) ? featuredAds : [];
 
@@ -72,13 +69,12 @@ const HomeFeedSections = memo(function HomeFeedSections({
     step: HOME_FEED_REVEAL_STEP,
     enabled: recommendedReady,
     idleExpandMs: 1500,
+    idleExpand: false,
   });
-
-  const feedRevealClass = lcpHandoffPending ? "invisible" : undefined;
 
   return (
     <>
-      <section className={cn("min-w-0 pb-1 pt-0.5 max-md:pb-0.5 md:py-4", feedRevealClass)}>
+      <section className="min-w-0 pb-1 pt-0.5 max-md:pb-0.5 md:py-4">
         <div className={cn(HOME_PAGE_INSET, "mb-1.5 md:mb-2")}>
           <h2 className={homeSectionHeading}>{t("home.featured_ads")}</h2>
         </div>
@@ -108,7 +104,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
         </div>
       </section>
 
-      <div className={feedRevealClass}>
+      <div>
         <HomeFeaturedDivider isRtl={isRtl} placement="featured-bottom" />
       </div>
 
@@ -116,7 +112,6 @@ const HomeFeedSections = memo(function HomeFeedSections({
         className={cn(
           HOME_PAGE_INSET,
           "pb-3 pt-1 max-md:pb-3 max-md:pt-0.5 md:py-4",
-          feedRevealClass,
         )}
       >
         <h2 className={cn(homeSectionHeading, "mb-1.5 md:mb-2")}>{t("home.recommended")}</h2>

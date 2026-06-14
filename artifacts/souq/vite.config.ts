@@ -131,15 +131,15 @@ function injectHomeHtmlShell(): {
             "./scripts/home-lcp-shell.mjs"
           );
           const injection = await buildHomeShellInjection();
-          if (!injection) {
+          if (injection.lead?.id) {
+            // eslint-disable-next-line no-console -- build diagnostics
+            console.info(
+              `[p7-pr-12] Home LCP layer: ad #${injection.lead.id} in #p7-lcp-layer`,
+            );
+          } else {
             // eslint-disable-next-line no-console -- build diagnostics
             console.warn("[p7-pr-12] Home LCP layer skipped (featured API unavailable at build).");
-            return html;
           }
-          // eslint-disable-next-line no-console -- build diagnostics
-          console.info(
-            `[p7-pr-12] Home LCP layer: ad #${injection.lead.id} in #p7-lcp-layer`,
-          );
           return applyHomeShellToHtml(html, injection);
         } catch (err) {
           // eslint-disable-next-line no-console -- build diagnostics

@@ -90,9 +90,17 @@ scanMustMatch(
   "must use buildHomeRecommendedFeed for Recommended dedupe",
 );
 scanMustMatch("home.tsx", homeTsx, /dismissHomeLcpLayer/, "must call dismissHomeLcpLayer (safety)");
+scanMustMatch("home.tsx", homeTsx, /dismissHomeHeaderShell/, "P9-E-FIX-A: must dismiss static header shell after React header paints");
 
 const homeFeedSections = read("src/pages/home-feed-sections.tsx");
-scanMustMatch("home-feed-sections.tsx", homeFeedSections, /lcpHandoffPending/, "P9-E-3: LCP supersession guard during handoff");
+scanMustMatch("home.tsx", homeTsx, /useLayoutEffect/, "P9-E-FIX-B: unified feed shell dismiss before paint");
+scanMustMatch("home-feed-sections.tsx", homeFeedSections, /HOME_FEED_INITIAL_BATCH = 8/, "P9-E-FIX-B: recommended first paint batch");
+scanNoMatch(
+  "home-feed-sections.tsx",
+  homeFeedSections,
+  /lcpHandoffPending|feedRevealClass/,
+  "P9-E-FIX-B: invisible feed gate removed",
+);
 scanNoMatch(
   "home-feed-sections.tsx",
   homeFeedSections,
@@ -126,6 +134,7 @@ scanMustMatch(
   "inline script must strip shell on non-Home paths",
 );
 scanMustMatch(indexHtml, indexHtml, /id="p7-lcp-layer"/, "shell layer placeholder required");
+scanMustMatch(indexHtml, indexHtml, /id="p7-header-shell"/, "P9-E-FIX-A: static header shell placeholder required");
 
 const p7HomePath = read("src/lib/p7-home-path.ts");
 scanMustMatch(

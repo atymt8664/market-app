@@ -19,11 +19,11 @@ import { CategoryIcon } from "@/components/category-icon";
 import { MarketplaceSearchBar } from "@/components/marketplace-search-bar";
 import { HomeNotificationBellSlot } from "@/components/home-notification-bell-slot";
 import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { HomeFeedSkeleton } from "@/components/home-feed-skeleton";
 import { HomeSectionRetry } from "@/components/home-section-retry";
 import HomeFeedSections from "@/pages/home-feed-sections";
-import { dismissHomeLcpLayer, isHomeLcpFeedShellActive } from "@/lib/home-lcp-handoff";
+import { dismissHomeLcpLayer, dismissHomeHeaderShell, isHomeLcpFeedShellActive } from "@/lib/home-lcp-handoff";
 import { useSelectedCity } from "@/hooks/use-selected-city";
 import { useSearchLocation } from "@/hooks/use-search-location";
 import { searchLocationCityForFeed } from "@/lib/search-location";
@@ -519,8 +519,6 @@ export default function Home() {
     isFetchingFeatured || isFetchingDefaultRec || (feedCity && isFetchingCityAds);
   const categoriesRetryBusy = isFetchingCategories;
 
-  /** P9-E-3 Fix B: keep React feed hidden until shell handoff dismisses (no LCP supersession). */
-  const [lcpHandoffComplete, setLcpHandoffComplete] = useState(false);
   /** P9-E-PROD-SHELL: skip React skeleton while build/Edge feed shell is visible (dev has no feed shell). */
   const [skipReactFeedSkeleton] = useState(() => isHomeLcpFeedShellActive());
 
@@ -537,14 +535,13 @@ export default function Home() {
     [featuredAds],
   );
 
-  useEffect(() => {
-    if (!featuredSettled && !feedTimeoutReached) return;
+  /** P9-E-FIX-B: dismiss Edge feed shell only when unified feed gate opens (both queries settled or timeout). */
+  useLayoutEffect(() => {
+    if (!homeFeedReady) return;
     dismissHomeLcpLayer();
-    const revealId = requestAnimationFrame(() => setLcpHandoffComplete(true));
     const raw = featuredAdsForHome?.[0]?.images?.[0];
     if (raw) void preloadAdImage(getAdImageFeaturedLeadUrl(raw));
-    return () => cancelAnimationFrame(revealId);
-  }, [featuredSettled, feedTimeoutReached, featuredAdsForHome]);
+  }, [homeFeedReady, featuredAdsForHome]);
 
   const recommendedAds = useMemo(
     () => buildHomeRecommendedFeed(recommendedAdsRaw, featuredAdsForHome),
@@ -576,6 +573,8 @@ export default function Home() {
       const h = el.getBoundingClientRect().height;
       setHeaderOffsetPx(h);
       document.documentElement.style.setProperty("--p7-home-header-offset", `${h}px`);
+      /** P9-E-FIX-A: drop static header shell after React header paints. */
+      if (h > 0) dismissHomeHeaderShell();
     };
     sync();
     const ro = new ResizeObserver(sync);
@@ -633,9 +632,8 @@ export default function Home() {
             isRtl={isRtl}
             isLoadingFeatured={false}
             featuredAds={featuredAdsForHome}
-            isLoadingRecommended={!recommendedSettled}
+            isLoadingRecommended={feedTimeoutReached && !recommendedSettled}
             recommendedAds={recommendedAds}
-            lcpHandoffPending={!lcpHandoffComplete}
           />
         </>
       )}

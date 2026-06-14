@@ -12,6 +12,7 @@ export const REACT_LCP_SLOT_ID = "react-lcp-slot";
 /** Remove Home-only shell from SPA routes (shared index.html). */
 export function stripHomeLcpShell(): void {
   if (typeof document === "undefined") return;
+  document.getElementById("p7-header-shell")?.remove();
   document.getElementById("p7-lcp-layer")?.remove();
   document.getElementById("p7-lcp-hero-preload")?.remove();
   document.documentElement.classList.remove("p7-await-handoff", "p7-lcp-stable");
@@ -68,6 +69,18 @@ export function beginHomeLcpHandoffAwait(): void {
 /** @deprecated DOM handoff removed — use dismissHomeLcpLayer when React featured is ready. */
 export function handoffShellLcpToReact(_slotId = REACT_LCP_SLOT_ID): boolean {
   return false;
+}
+
+/** True when build/Edge injected the static header shell. */
+export function isHomeHeaderShellActive(): boolean {
+  if (typeof document === "undefined") return false;
+  return !!document.getElementById("p7-header-shell")?.querySelector('[data-p7-header-shell="1"]');
+}
+
+/** Remove static header shell once React header has painted (P9-E-FIX-A). */
+export function dismissHomeHeaderShell(): void {
+  if (typeof document === "undefined") return;
+  document.getElementById("p7-header-shell")?.remove();
 }
 
 /** True when build/Edge injected the neutral feed skeleton (not empty dev placeholder). */

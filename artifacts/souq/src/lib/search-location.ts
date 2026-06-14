@@ -187,7 +187,23 @@ export function formatSearchLocationBarLabel(
   if (!loc) return null;
   const place = loc.isCurrentLocation
     ? t("search_location.current_place")
-    : loc.city || loc.country;
+    : loc.city || resolveSearchLocationCountryLabel(loc, t);
   if (!place) return null;
   return t("search_location.bar_label", { place, radius: loc.radiusKm });
+}
+
+/** P9-E-COMPAT-3: localize stored EN country names (e.g. Germany → ألمانيا). */
+function resolveSearchLocationCountryLabel(
+  loc: SearchLocationState,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  const code = loc.countryCode.trim().toUpperCase();
+  if (code === "DE") {
+    return t("search_location.default_country");
+  }
+  const country = loc.country.trim();
+  if (/^germany$/i.test(country) || country === "Deutschland" || country === "ألمانيا") {
+    return t("search_location.default_country");
+  }
+  return country;
 }

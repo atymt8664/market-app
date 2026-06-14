@@ -33,7 +33,7 @@ export function isRecommendedQuerySettled(
   return (cityAdsFetched && defaultRecFetched) || defaultRecError;
 }
 
-/** Unified feed gate — full ready, or timeout partial reveal when featured settled. */
+/** Unified feed gate — full ready, or timeout unlock (P9-E-COMPAT-1: pending queries must not block forever). */
 export function computeHomeFeedReady(
   featuredSettled: boolean,
   recommendedSettled: boolean,
@@ -42,7 +42,10 @@ export function computeHomeFeedReady(
   if (featuredSettled && recommendedSettled) {
     return true;
   }
-  return feedTimeoutReached && featuredSettled;
+  if (feedTimeoutReached) {
+    return true;
+  }
+  return false;
 }
 
 /** Never render an empty category strip — skeleton while loading, fetching, or failed. */

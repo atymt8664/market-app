@@ -25,6 +25,8 @@ assert.equal(
 assert.equal(computeHomeFeedReady(true, true, false), true);
 assert.equal(computeHomeFeedReady(true, false, false), false);
 assert.equal(computeHomeFeedReady(true, false, true), true);
+assert.equal(computeHomeFeedReady(false, false, true), true);
+assert.equal(computeHomeFeedReady(false, true, true), true);
 
 assert.equal(shouldShowCategoryPlaceholders(undefined, false, false, true), true);
 assert.equal(shouldShowCategoryPlaceholders(undefined, false, false, false), true);

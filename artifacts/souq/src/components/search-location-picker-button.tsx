@@ -5,7 +5,7 @@ import {
   marketplaceHeaderIconButtonActiveClass,
   marketplaceHeaderIconButtonClass,
 } from "@/lib/marketplace-icon-button-styles";
-import { t } from "@/i18n";
+import { ensureFullLocaleForInteraction, t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 /** P7-PR-1: defer Leaflet + picker sheet until first tap — keeps Home cold path lean. */
@@ -26,6 +26,7 @@ export function SearchLocationPickerButton({
   const [pickerMounted, setPickerMounted] = useState(false);
 
   const handleOpen = useCallback(() => {
+    ensureFullLocaleForInteraction();
     setPickerMounted(true);
     setOpen(true);
   }, []);

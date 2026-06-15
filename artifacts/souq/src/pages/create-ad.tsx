@@ -65,6 +65,7 @@ import {
 } from "@/lib/ad-stored-details";
 import { cn } from "@/lib/utils";
 import { BOTTOM_NAV_PAGE_SHELL_CLASS } from "@/lib/bottom-nav-layout";
+import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
 import { SETTINGS_PRIMARY_BUTTON } from "@/components/settings-shell";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
@@ -1525,7 +1526,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   return (
     <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
       <header
-        className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]"
+        className={cn(
+          "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]",
+          TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
+        )}
         dir={isRtl ? "rtl" : "ltr"}
       >
         <div className="mx-auto flex w-full max-w-[900px] items-center justify-between gap-3 px-4 py-2 md:max-w-[760px] md:px-6 md:py-2.5 lg:max-w-[860px]">

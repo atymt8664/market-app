@@ -37,6 +37,7 @@ import {
   BOTTOM_NAV_PAGE_SHELL_CLASS,
   BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
 } from "@/lib/bottom-nav-layout";
+import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
 import {
   ChatInboxCollectionsMenu,
   ChatInboxCollectionsMenuButton,
@@ -534,7 +535,10 @@ export default function Messages() {
         />
       ) : (
         <header
-          className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A] shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]"
+          className={cn(
+            "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A] shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]",
+            TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
+          )}
           dir={getAppTextDir()}
         >
           <div className="mx-auto flex w-full max-w-[820px] items-center justify-between gap-3 px-3 py-2.5 md:px-4">

@@ -17,17 +17,21 @@ export {
   SETTINGS_PAGE_BG as ORDERS_PAGE_BG,
 } from "@/components/settings-shell";
 
+import { cn } from "@/lib/utils";
 import {
   BOTTOM_NAV_PAGE_SHELL_CLASS,
   BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
   BOTTOM_NAV_SCROLL_OFFSET_CLASS,
 } from "@/lib/bottom-nav-layout";
+import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
 
 export { profileStatTileShell as ORDERS_STAT_CARD } from "@/components/profile-stat-tiles";
 
-/** `create-ad.tsx` — sticky header bar */
-export const CREATE_AD_HEADER_BAR =
-  "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]";
+/** `create-ad.tsx` — sticky header bar + P9-3H-iOS safe-top */
+export const CREATE_AD_HEADER_BAR = cn(
+  "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]",
+  TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
+);
 
 /** `create-ad.tsx` — header inner row */
 export const CREATE_AD_HEADER_INNER =

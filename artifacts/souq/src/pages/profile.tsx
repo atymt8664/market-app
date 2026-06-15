@@ -65,6 +65,7 @@ import { buildAdShareText, buildProfileShareText } from "@/lib/share-text";
 import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { cn } from "@/lib/utils";
 import { BOTTOM_NAV_PAGE_SHELL_CLASS, BOTTOM_NAV_SCROLL_END_SPACER_CLASS } from "@/lib/bottom-nav-layout";
+import { TAB_IOS_CONTENT_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 import { stashPromoteAdPreview } from "@/lib/promote-ad-preview";
 import {
@@ -286,8 +287,13 @@ export default function Profile() {
 
   return (
     <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
-      <div className="mx-auto w-full max-w-screen-sm md:max-w-[760px] lg:max-w-[860px] px-3 md:px-6 py-3 md:py-5">
-        <header className="pt-2 md:pt-5" dir="rtl">
+      <div
+        className={cn(
+          "mx-auto w-full max-w-screen-sm md:max-w-[760px] lg:max-w-[860px] px-3 md:px-6",
+          TAB_IOS_CONTENT_SAFE_TOP_CLASS,
+        )}
+      >
+        <header dir="rtl">
           <div className="flex w-full items-start justify-between gap-3">
             <div className="flex min-w-0 flex-col items-start gap-2.5 text-right">
               <span className="inline-flex rounded-full border-2 border-primary/60 bg-black/40 px-4 py-1.5 text-sm font-semibold text-foreground shadow-[0_0_12px_-6px_hsl(var(--primary)/0.22)]">

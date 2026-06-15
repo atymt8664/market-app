@@ -1,6 +1,7 @@
 import { BellOff, ListX, Pin, Trash2, X } from "lucide-react";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
 
 type ChatInboxSelectionHeaderProps = {
   selectedCount: number;
@@ -37,6 +38,7 @@ export function ChatInboxSelectionHeader({
     <header
       className={cn(
         "sticky top-0 z-40 border-b border-primary/25 bg-[#0A0A0A]/98 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.45)]",
+        TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
         className,
       )}
       dir="rtl"

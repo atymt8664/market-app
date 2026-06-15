@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
+import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
 import {
   BOTTOM_NAV_PAGE_SHELL_CLASS,
   BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
@@ -60,7 +61,10 @@ export default function Favorites() {
   return (
     <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
       <header
-        className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 px-3 py-3 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)] md:backdrop-blur md:px-4 md:py-3.5"
+        className={cn(
+          "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 px-3 py-3 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)] md:backdrop-blur md:px-4 md:py-3.5",
+          TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
+        )}
         dir="rtl"
       >
         <h1 className="flex items-center gap-2 text-lg font-bold text-foreground md:text-xl">
@@ -76,7 +80,7 @@ export default function Favorites() {
         </h1>
       </header>
 
-      <div className="flex-1 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-2 md:px-4 md:pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pt-3">
+      <div className="flex-1 px-3 pt-2 md:px-4 md:pt-3">
         {isLoading ? (
           <ul className="mx-auto flex w-full max-w-lg flex-col gap-2 sm:max-w-xl md:max-w-2xl md:gap-2.5">
             {Array.from({ length: 5 }).map((_, i) => (

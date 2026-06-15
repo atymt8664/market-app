@@ -13,16 +13,23 @@ import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { cn } from "@/lib/utils";
 import {
+  BOTTOM_NAV_PAGE_SHELL_CLASS,
+  BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
+} from "@/lib/bottom-nav-layout";
+import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
+import {
   SETTINGS_BACK_BUTTON,
-  SETTINGS_HEADER_BAR,
   SETTINGS_HEADER_INNER,
-  SETTINGS_IMMERSIVE_BOTTOM,
-  SETTINGS_PAGE_BG,
   SETTINGS_CARD_SHELL,
 } from "@/components/settings-shell";
 
 const listingGridCardTone =
   "[&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-[#0A0A0A]/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:bg-[#0A0A0A]/70 [&_article]:hover:border-primary/40 [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55";
+
+const searchStickyHeaderClass = cn(
+  "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]",
+  TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
+);
 
 export default function Search() {
   const { locale } = useLocale();
@@ -72,10 +79,10 @@ export default function Search() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
-      className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM, "flex flex-col")}
+      className={cn(BOTTOM_NAV_PAGE_SHELL_CLASS, "flex flex-col")}
       dir={isRtl ? "rtl" : "ltr"}
     >
-      <header className={cn(SETTINGS_HEADER_BAR, "border-b border-primary/15")}>
+      <header className={cn(searchStickyHeaderClass, "border-b border-primary/15")}>
         <div className={cn(SETTINGS_HEADER_INNER, "flex-col gap-3 py-3 md:flex-row md:items-center md:py-3")}>
           <div className="flex w-full items-center gap-3">
             <Link href="/">
@@ -157,6 +164,8 @@ export default function Search() {
             </div>
           )}
         </div>
+
+        <div aria-hidden className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS} />
       </main>
     </motion.div>
   );

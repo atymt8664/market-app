@@ -573,7 +573,7 @@ export default function Home() {
   );
 
   const headerRef = useRef<HTMLElement>(null);
-  const [headerOffsetPx, setHeaderOffsetPx] = useState(138);
+  const [headerOffsetPx, setHeaderOffsetPx] = useState(154);
 
   useLayoutEffect(() => {
     const el = headerRef.current;

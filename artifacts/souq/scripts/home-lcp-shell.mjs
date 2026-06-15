@@ -30,14 +30,21 @@ const GATE_RECOMMENDED_HEADING = "موصى لك";
 /** Gate locale mirror — gate/ar.json home.search_placeholder (P9-E-FIX-A). */
 const GATE_SEARCH_PLACEHOLDER = "ابحث عن منتج، خدمة، أو قسم...";
 
-/** Feed-only shell starts below static header shell (fallback before runtime measure). */
-export const HOME_SHELL_HEADER_OFFSET_PX = 138;
+/** Feed-only shell starts below static header shell (measured mobile shell height). */
+export const HOME_SHELL_HEADER_OFFSET_PX = 154;
 
 /** P9-E-FIX-A: static header shell marker (build + Edge). */
 export const P9_E_HEADER_SHELL_MARKER = "<!-- P9-E-FIX-A:HEADER_SHELL -->";
 
 /** P9-3C: static bottom nav shell marker (build + Edge). */
 export const P9_3C_BOTTOM_NAV_SHELL_MARKER = "<!-- P9-3C:BOTTOM_NAV_SHELL -->";
+
+/** P9-3C: build-time feed offset style injected into head. */
+export const P9_3C_SHELL_OFFSET_STYLE_MARKER = "<!-- P9-3C:SHELL_FEED_OFFSET -->";
+
+function buildHomeShellFeedOffsetStyleHtml() {
+  return `<style id="p7-shell-feed-offset">:root{--p7-home-header-offset:${HOME_SHELL_HEADER_OFFSET_PX}px;--p7-home-feed-offset:${HOME_SHELL_HEADER_OFFSET_PX}px}</style>`;
+}
 
 const HEADER_SHELL_CATEGORY_SLOTS = 5;
 
@@ -377,6 +384,10 @@ export function acceptsDocumentHtml(request) {
 export function applyHomeShellToHtml(html, injection) {
   let out = html;
   if (injection.headerShell) {
+    const offsetStyle = buildHomeShellFeedOffsetStyleHtml();
+    if (out.includes(P9_3C_SHELL_OFFSET_STYLE_MARKER)) {
+      out = out.replace(P9_3C_SHELL_OFFSET_STYLE_MARKER, offsetStyle);
+    }
     if (out.includes(P9_E_HEADER_SHELL_MARKER)) {
       out = out.replace(P9_E_HEADER_SHELL_MARKER, injection.headerShell);
     } else {

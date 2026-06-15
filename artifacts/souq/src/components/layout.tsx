@@ -1,4 +1,4 @@
-﻿import { memo } from "react";
+﻿import { memo, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useSearch } from "wouter";
 import { Home, Heart, Plus, MessageCircle, User } from "lucide-react";
@@ -25,6 +25,7 @@ import {
   BOTTOM_NAV_BUTTONS_ROW_CLASS,
   BOTTOM_NAV_LAYOUT_FRAME_CLASS,
 } from "@/lib/bottom-nav-layout";
+import { dismissHomeBottomNavShell } from "@/lib/home-lcp-handoff";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -111,6 +112,10 @@ export function Layout({ children }: LayoutProps) {
 }
 
 const BottomNav = memo(function BottomNav() {
+  useLayoutEffect(() => {
+    dismissHomeBottomNavShell();
+  }, []);
+
   const [location, navigate] = useLocation();
   const search = useSearch();
   const { isAuthenticated, isLoading } = useAuth();

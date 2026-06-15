@@ -30,11 +30,14 @@ const GATE_RECOMMENDED_HEADING = "موصى لك";
 /** Gate locale mirror — gate/ar.json home.search_placeholder (P9-E-FIX-A). */
 const GATE_SEARCH_PLACEHOLDER = "ابحث عن منتج، خدمة، أو قسم...";
 
-/** Feed-only shell starts below static header shell (matches home.tsx default headerOffsetPx). */
-export const HOME_SHELL_HEADER_OFFSET_PX = 106;
+/** Feed-only shell starts below static header shell (fallback before runtime measure). */
+export const HOME_SHELL_HEADER_OFFSET_PX = 138;
 
 /** P9-E-FIX-A: static header shell marker (build + Edge). */
 export const P9_E_HEADER_SHELL_MARKER = "<!-- P9-E-FIX-A:HEADER_SHELL -->";
+
+/** P9-3C: static bottom nav shell marker (build + Edge). */
+export const P9_3C_BOTTOM_NAV_SHELL_MARKER = "<!-- P9-3C:BOTTOM_NAV_SHELL -->";
 
 const HEADER_SHELL_CATEGORY_SLOTS = 5;
 
@@ -113,6 +116,72 @@ export function buildHomeHeaderShellHtml() {
         </div>
       </div>
     </header>`;
+}
+
+/** Gate locale mirror — gate/ar.json bottom_nav.* (P9-3C). */
+const GATE_BOTTOM_NAV_HOME = "بحث";
+const GATE_BOTTOM_NAV_FAVORITES = "المفضلة";
+const GATE_BOTTOM_NAV_POST = "إعلان";
+const GATE_BOTTOM_NAV_MESSAGES = "الرسائل";
+const GATE_BOTTOM_NAV_ACCOUNT = "حسابي";
+
+const SHELL_HOME_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C2EB6C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`;
+const SHELL_HEART_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(194,235,108,0.58)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`;
+const SHELL_MESSAGE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(194,235,108,0.58)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>`;
+const SHELL_USER_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(194,235,108,0.58)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+const SHELL_PLUS_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C2EB6C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`;
+
+function buildBottomNavSlotHtml({ label, icon, active, promote }) {
+  const border = active ? "rgba(194,235,108,0.55)" : "rgba(194,235,108,0.3)";
+  const bg = active ? "rgba(10,10,10,0.95)" : "rgba(10,10,10,0.82)";
+  const ring = active ? "0 0 0 1px rgba(194,235,108,0.32)" : "0 0 0 1px rgba(194,235,108,0.14)";
+  const labelColor = active ? "#C2EB6C" : "rgba(194,235,108,0.52)";
+  const labelWeight = active ? "600" : "500";
+  const iconBlock = promote
+    ? `<div style="display:flex;height:28px;width:28px;align-items:center;justify-content:center;border-radius:9999px;border:1px solid rgba(194,235,108,0.5);background:rgba(10,10,10,0.9);box-shadow:0 0 12px -10px rgba(194,235,108,0.26)">${icon}</div>`
+    : icon;
+  return `<div style="display:flex;min-height:44px;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:12px;border:1px solid ${border};background:${bg};box-shadow:${ring};padding:2px 2px">
+        ${iconBlock}
+        <span style="font-size:10px;font-weight:${labelWeight};line-height:1.2;color:${labelColor};font-family:system-ui,-apple-system,sans-serif">${escapeHtml(label)}</span>
+      </div>`;
+}
+
+/**
+ * P9-3C: static BottomNav shell — Arabic default, Home active, matches layout.tsx chrome.
+ */
+export function buildBottomNavShellHtml() {
+  const home = buildBottomNavSlotHtml({ label: GATE_BOTTOM_NAV_HOME, icon: SHELL_HOME_ICON_SVG, active: true });
+  const favorites = buildBottomNavSlotHtml({ label: GATE_BOTTOM_NAV_FAVORITES, icon: SHELL_HEART_ICON_SVG, active: false });
+  const post = buildBottomNavSlotHtml({
+    label: GATE_BOTTOM_NAV_POST,
+    icon: SHELL_PLUS_ICON_SVG,
+    active: false,
+    promote: true,
+  });
+  const messages = buildBottomNavSlotHtml({ label: GATE_BOTTOM_NAV_MESSAGES, icon: SHELL_MESSAGE_ICON_SVG, active: false });
+  const account = buildBottomNavSlotHtml({ label: GATE_BOTTOM_NAV_ACCOUNT, icon: SHELL_USER_ICON_SVG, active: false });
+
+  return `<nav
+      id="p7-bottom-nav-shell"
+      data-p7-bottom-nav-shell="1"
+      data-bottom-nav-shell
+      dir="rtl"
+      aria-hidden="true"
+      style="position:fixed;inset-inline:0;bottom:0;z-index:40;display:flex;flex-direction:column;background:#0A0A0A;font-family:system-ui,-apple-system,sans-serif"
+    >
+      <div style="width:100%;border-top:1px solid rgba(163,230,53,0.25);background:#0A0A0A;box-shadow:0 -1px 0 rgba(163,230,53,0.06),0 -6px 20px -14px rgba(0,0,0,0.42)">
+        <div
+          data-bottom-nav-buttons
+          style="display:flex;max-width:1536px;margin:0 auto;align-items:stretch;gap:2px;padding:2px 4px calc(2px + env(safe-area-inset-bottom,0px))"
+        >
+          ${home}
+          ${favorites}
+          ${post}
+          ${messages}
+          ${account}
+        </div>
+      </div>
+    </nav>`;
 }
 
 /** P9-E-PROD-SHELL: neutral featured skeleton slots — never a lone real ad card. */
@@ -278,17 +347,19 @@ export function buildHomeLcpLayerHtml(lead) {
 }
 
 /**
- * @returns {{ headerShell: string, headTags: string, lcpLayer: string, lead: object | null }}
+ * @returns {{ headerShell: string, bottomNavShell: string, headTags: string, lcpLayer: string, lead: object | null }}
  */
 export async function buildHomeShellInjection() {
   const headerShell = buildHomeHeaderShellHtml();
+  const bottomNavShell = buildBottomNavShellHtml();
   const lead = await fetchFeaturedLeadAd();
   if (!lead) {
-    return { headerShell, headTags: "", lcpLayer: "", lead: null };
+    return { headerShell, bottomNavShell, headTags: "", lcpLayer: "", lead: null };
   }
   return {
     lead,
     headerShell,
+    bottomNavShell,
     headTags: buildHomeLcpHeadTags(lead),
     lcpLayer: buildHomeLcpLayerHtml(lead),
   };
@@ -301,7 +372,7 @@ export function acceptsDocumentHtml(request) {
 
 /**
  * @param {string} html
- * @param {{ headerShell?: string, headTags?: string, lcpLayer?: string }} injection
+ * @param {{ headerShell?: string, bottomNavShell?: string, headTags?: string, lcpLayer?: string }} injection
  */
 export function applyHomeShellToHtml(html, injection) {
   let out = html;
@@ -329,6 +400,16 @@ export function applyHomeShellToHtml(html, injection) {
       out = out.replace(
         /<div id="p7-lcp-layer"[^>]*>\s*<\/div>/,
         `<div id="p7-lcp-layer" data-p7-pr="12">${injection.lcpLayer}</div>`,
+      );
+    }
+  }
+  if (injection.bottomNavShell) {
+    if (out.includes(P9_3C_BOTTOM_NAV_SHELL_MARKER)) {
+      out = out.replace(P9_3C_BOTTOM_NAV_SHELL_MARKER, injection.bottomNavShell);
+    } else {
+      out = out.replace(
+        /<div id="p7-bottom-nav-shell-mount"[^>]*>\s*<\/div>/,
+        `<div id="p7-bottom-nav-shell-mount" data-p7-pr="12">${injection.bottomNavShell}</div>`,
       );
     }
   }

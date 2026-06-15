@@ -5,7 +5,7 @@
 import { hasSavedLocale } from "@/i18n";
 import { beginHomeColdStartBoot, markHomeColdStartReady } from "@/lib/home-cold-start";
 import { isHomePathname } from "@/lib/p7-home-path";
-import { stripHomeLcpShell, stripHomeLcpShellIfNotHome, waitForHomeShellLcp } from "@/lib/home-lcp-handoff";
+import { stripHomeLcpShell, stripHomeLcpShellIfNotHome, syncHomeFeedShellOffsetFromStaticHeader, waitForHomeShellLcp } from "@/lib/home-lcp-handoff";
 
 stripHomeLcpShellIfNotHome();
 
@@ -16,6 +16,7 @@ async function bootApp(): Promise<void> {
     beginHomeColdStartBoot();
   } else if (isHomePathname() && document.getElementById("p7-lcp-layer")) {
     beginHomeColdStartBoot();
+    syncHomeFeedShellOffsetFromStaticHeader();
     /** P9-E-3 Fix A/C: wait for shell paint — do not dismiss before React handoff (home.tsx). */
     await waitForHomeShellLcp();
   } else if (!isHomePathname()) {

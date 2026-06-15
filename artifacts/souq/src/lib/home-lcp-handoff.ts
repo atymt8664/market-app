@@ -15,6 +15,8 @@ export function stripHomeLcpShell(): void {
   if (typeof document === "undefined") return;
   document.getElementById("p7-header-shell")?.remove();
   document.getElementById("p7-lcp-layer")?.remove();
+  document.getElementById("p7-bottom-nav-shell")?.remove();
+  document.getElementById("p7-bottom-nav-shell-mount")?.remove();
   document.getElementById("p7-lcp-hero-preload")?.remove();
   document.documentElement.classList.remove("p7-await-handoff", "p7-lcp-stable");
   document.documentElement.removeAttribute("data-p7-lcp-stable");
@@ -98,6 +100,28 @@ export function syncHomeFeedShellOffset(headerPx: number): void {
   const h = Math.max(0, Math.round(headerPx));
   document.documentElement.style.setProperty("--p7-home-header-offset", `${h}px`);
   document.documentElement.style.setProperty("--p7-home-feed-offset", `${h}px`);
+}
+
+/** P9-3C: measure static header shell before React boot — correct feed offset from Frame 1. */
+export function syncHomeFeedShellOffsetFromStaticHeader(): void {
+  if (typeof document === "undefined") return;
+  const shell = document.querySelector<HTMLElement>('#p7-header-shell [data-p7-header-shell="1"]');
+  if (!shell) return;
+  const h = shell.getBoundingClientRect().height;
+  if (h > 0) syncHomeFeedShellOffset(h);
+}
+
+/** True when build/Edge injected the static bottom nav shell. */
+export function isHomeBottomNavShellActive(): boolean {
+  if (typeof document === "undefined") return false;
+  return !!document.getElementById("p7-bottom-nav-shell")?.querySelector('[data-p7-bottom-nav-shell="1"]');
+}
+
+/** Remove static bottom nav shell once React BottomNav has painted (P9-3C). */
+export function dismissHomeBottomNavShell(): void {
+  if (typeof document === "undefined") return;
+  document.getElementById("p7-bottom-nav-shell")?.remove();
+  document.getElementById("p7-bottom-nav-shell-mount")?.remove();
 }
 
 /** Remove Edge/build LCP overlay — React featured strip owns all card images. */

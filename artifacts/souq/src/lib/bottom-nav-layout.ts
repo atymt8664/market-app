@@ -2,13 +2,13 @@
 export const BOTTOM_NAV_HEIGHT_MOBILE_PX = 50;
 export const BOTTOM_NAV_HEIGHT_MD_PX = 56;
 
-/** Fixed nav — flush to viewport bottom; safe-area lives inside button row only. */
+/** Fixed nav — flush to viewport bottom; safe-area on shell chrome. */
 export const BOTTOM_NAV_FIXED_SHELL_CLASS =
-  "fixed inset-x-0 bottom-0 z-40 flex w-full flex-col bg-[#0A0A0A] [transform:translateZ(0)]";
+  "fixed inset-x-0 bottom-0 z-40 flex w-full flex-col justify-end bg-[#0A0A0A] pb-[env(safe-area-inset-bottom,0px)] [transform:translateZ(0)]";
 
-/** Button row — home-indicator clearance inside chrome, not an empty strip below nav. */
+/** Button row — icons sit directly above shell safe-area padding. */
 export const BOTTOM_NAV_BUTTONS_ROW_CLASS =
-  "relative mx-auto flex max-w-screen-2xl items-stretch gap-0.5 px-1 py-0.5 pb-[env(safe-area-inset-bottom,0px)] md:gap-1 md:px-2 md:py-1 md:pb-1 lg:px-8";
+  "relative mx-auto flex max-w-screen-2xl items-stretch gap-0.5 px-1 py-0.5 md:gap-1 md:px-2 md:py-1 md:pb-1 lg:px-8";
 
 /** @deprecated Safe-area moved to BOTTOM_NAV_FIXED_SHELL_CLASS padding-bottom. */
 export const BOTTOM_NAV_SAFE_AREA_FILL_CLASS = "hidden";

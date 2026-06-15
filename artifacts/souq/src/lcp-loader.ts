@@ -4,10 +4,17 @@
  */
 import { hasSavedLocale } from "@/i18n";
 import { beginHomeColdStartBoot, markHomeColdStartReady } from "@/lib/home-cold-start";
+import { startHomeLcpPrefetch, startHomeRecommendedPrefetch } from "@/lib/home-lcp-prefetch";
 import { isHomePathname } from "@/lib/p7-home-path";
 import { stripHomeLcpShell, stripHomeLcpShellIfNotHome, syncHomeFeedShellOffsetFromStaticHeader, waitForHomeShellLcp } from "@/lib/home-lcp-handoff";
 
 stripHomeLcpShellIfNotHome();
+
+/** P9-3D: start feed API prefetch before shell LCP wait — parallel cold-path fetch. */
+if (isHomePathname() && hasSavedLocale()) {
+  startHomeLcpPrefetch();
+  startHomeRecommendedPrefetch();
+}
 
 async function bootApp(): Promise<void> {
   const firstLaunchGate = isHomePathname() && !hasSavedLocale();

@@ -42,6 +42,7 @@ import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 import { splitHomeCategoryLabel, filterHomeCategories } from "@/lib/home-category-display";
 import {
   HOME_PAGE_INSET,
+  HOME_HEADER_SEARCH_ROW_CLASS,
 } from "@/lib/home-page-layout";
 import { cn } from "@/lib/utils";
 import { syncHomeBellSlotHint } from "@/lib/home-bell-slot-hint";
@@ -350,7 +351,7 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
       dir={isRtl ? "rtl" : "ltr"}
     >
       <div className={HOME_PAGE_INSET}>
-        <div className="flex items-center gap-2 pt-3 pb-0 -mx-2 md:-mx-3 lg:-mx-4">
+        <div className={HOME_HEADER_SEARCH_ROW_CLASS}>
           <MarketplaceSearchBar
             isRtl={isRtl}
             value={searchQuery}
@@ -573,7 +574,7 @@ export default function Home() {
   );
 
   const headerRef = useRef<HTMLElement>(null);
-  const [headerOffsetPx, setHeaderOffsetPx] = useState(154);
+  const [headerOffsetPx, setHeaderOffsetPx] = useState(148);
 
   useLayoutEffect(() => {
     const el = headerRef.current;

@@ -73,7 +73,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
   });
 
   return (
-    <>
+    <div className="animate-in fade-in duration-300">
       <section className="min-w-0 pb-1 pt-0.5 max-md:pb-0.5 md:py-4">
         <div className={cn(HOME_PAGE_INSET, "mb-1.5 md:mb-2")}>
           <h2 className={homeSectionHeading}>{t("home.featured_ads")}</h2>
@@ -146,7 +146,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
         </div>
       </section>
       <div aria-hidden className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS} />
-    </>
+    </div>
   );
 });
 

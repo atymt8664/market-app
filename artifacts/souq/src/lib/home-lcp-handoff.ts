@@ -92,6 +92,14 @@ export function isHomeLcpFeedShellActive(): boolean {
     ?.querySelector('[data-p7-feed-shell="1"]');
 }
 
+/** P9-3B: keep Edge feed shell below header — sync with React fixed header height. */
+export function syncHomeFeedShellOffset(headerPx: number): void {
+  if (typeof document === "undefined") return;
+  const h = Math.max(0, Math.round(headerPx));
+  document.documentElement.style.setProperty("--p7-home-header-offset", `${h}px`);
+  document.documentElement.style.setProperty("--p7-home-feed-offset", `${h}px`);
+}
+
 /** Remove Edge/build LCP overlay — React featured strip owns all card images. */
 export function dismissHomeLcpLayer(): void {
   if (typeof document === "undefined") return;

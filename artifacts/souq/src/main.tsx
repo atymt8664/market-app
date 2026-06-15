@@ -13,6 +13,7 @@ import { registerProductionServiceWorker } from "@/lib/register-production-servi
 import { initWebVitalsReporting } from "@/lib/web-vitals-reporting";
 import {
   startHomeLcpPrefetch,
+  startHomeRecommendedPrefetch,
   wireHomeLcpPrefetchToQueryClient,
 } from "@/lib/home-lcp-prefetch";
 import { isHomePathname } from "@/lib/p7-home-path";
@@ -26,10 +27,19 @@ installAccountDisabledFetchInterceptor(queryClient);
 /** P9-2: skip Home warm path while first-launch language gate is active. */
 if (isHomePathname() && hasSavedLocale()) {
   startHomeLcpPrefetch();
+  startHomeRecommendedPrefetch();
   wireHomeLcpPrefetchToQueryClient(queryClient);
   /** P9-E: warm Home lazy chunk in parallel with App boot (Android cold load). */
   void import("@/pages/home");
 }
+
+/** P9-3B: warm primary BottomNav route chunks after first paint. */
+scheduleAfterFirstPaint(() => {
+  void import("@/pages/profile");
+  void import("@/pages/favorites");
+  void import("@/pages/messages");
+  void import("@/pages/create-ad");
+});
 
 /** P7-PR-8: SW registration after first paint — avoids competing with LCP on Home cold path. */
 if (import.meta.env.PROD) {

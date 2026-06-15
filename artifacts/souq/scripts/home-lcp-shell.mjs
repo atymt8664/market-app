@@ -252,21 +252,21 @@ export function buildHomeLcpLayerHtml(lead) {
   const recGrid = buildRecommendedShellGridHtml();
 
   return `${hiddenLcp}<section
-      style="position:absolute;inset:0;max-width:1280px;margin:0 auto;padding:0 16px;box-sizing:border-box"
+      style="position:absolute;inset:0;max-width:1280px;margin:0 auto;padding:2px 16px 0;box-sizing:border-box"
       dir="rtl"
       aria-busy="true"
       aria-hidden="true"
       data-p7-feed-shell="1"
     >
       <h2
-        style="display:inline-flex;margin:0 0 6px;padding:2px 8px;border-radius:16px;border:1px solid rgba(194,235,108,.28);background:#0A0A0A;font-size:15px;font-weight:600;line-height:1.25;color:#fafafa;font-family:system-ui,-apple-system,sans-serif"
+        style="display:inline-flex;margin:0 0 8px;padding:2px 8px;border-radius:16px;border:1px solid rgba(194,235,108,.28);background:#0A0A0A;font-size:15px;font-weight:600;line-height:1.25;color:#fafafa;font-family:system-ui,-apple-system,sans-serif"
       >${heading}</h2>
       <div style="display:flex;gap:8px;overflow:hidden;padding-bottom:4px">
         ${slots}
       </div>
       <h2
         data-testid="home-shell-recommended-heading"
-        style="display:inline-flex;margin:12px 0 6px;padding:2px 8px;border-radius:16px;border:1px solid rgba(194,235,108,.28);background:#0A0A0A;font-size:15px;font-weight:600;line-height:1.25;color:#fafafa;font-family:system-ui,-apple-system,sans-serif"
+        style="display:inline-flex;margin:16px 0 8px;padding:2px 8px;border-radius:16px;border:1px solid rgba(194,235,108,.28);background:#0A0A0A;font-size:15px;font-weight:600;line-height:1.25;color:#fafafa;font-family:system-ui,-apple-system,sans-serif"
       >${recHeading}</h2>
       <div
         data-testid="home-shell-recommended-grid"

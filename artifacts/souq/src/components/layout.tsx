@@ -177,8 +177,7 @@ const BottomNav = memo(function BottomNav() {
   const handleCreateClick = () => {
     const nextTarget = "/create-ad";
     logNavTap("create", nextTarget);
-    if (isLoading) return;
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       showGuestToast(nextTarget);
       toGuestWelcome(nextTarget);
       return;
@@ -190,8 +189,7 @@ const BottomNav = memo(function BottomNav() {
   const handleProfileClick = () => {
     const nextTarget = "/profile";
     logNavTap("profile", nextTarget);
-    if (isLoading) return;
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       showGuestToast(nextTarget);
       toGuestWelcome(nextTarget);
       return;
@@ -202,8 +200,7 @@ const BottomNav = memo(function BottomNav() {
   const handleMessagesClick = () => {
     const nextTarget = "/messages";
     logNavTap("messages", nextTarget);
-    if (isLoading) return;
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       showGuestToast(nextTarget);
       toGuestWelcome(nextTarget);
       return;
@@ -213,8 +210,7 @@ const BottomNav = memo(function BottomNav() {
   const handleFavoritesClick = () => {
     const nextTarget = "/favorites";
     logNavTap("favorites", nextTarget);
-    if (isLoading) return;
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       showGuestToast(nextTarget);
       toGuestWelcome(nextTarget);
       return;

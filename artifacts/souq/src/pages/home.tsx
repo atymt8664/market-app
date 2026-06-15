@@ -23,7 +23,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { HomeFeedSkeleton } from "@/components/home-feed-skeleton";
 import { HomeSectionRetry } from "@/components/home-section-retry";
 import HomeFeedSections from "@/pages/home-feed-sections";
-import { dismissHomeLcpLayer, dismissHomeHeaderShell, isHomeLcpFeedShellActive } from "@/lib/home-lcp-handoff";
+import { dismissHomeLcpLayer, dismissHomeHeaderShell, isHomeLcpFeedShellActive, syncHomeFeedShellOffset } from "@/lib/home-lcp-handoff";
 import {
   markHomeColdStartReady,
   scheduleHomeShellStuckWatchdog,
@@ -575,17 +575,18 @@ export default function Home() {
   const headerRef = useRef<HTMLElement>(null);
   const [headerOffsetPx, setHeaderOffsetPx] = useState(106);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = headerRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
+    if (!el) return;
     const sync = () => {
       const h = el.getBoundingClientRect().height;
       setHeaderOffsetPx(h);
-      document.documentElement.style.setProperty("--p7-home-header-offset", `${h}px`);
+      syncHomeFeedShellOffset(h);
       /** P9-E-FIX-A: drop static header shell after React header paints. */
       if (h > 0) dismissHomeHeaderShell();
     };
     sync();
+    if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(sync);
     ro.observe(el);
     return () => ro.disconnect();

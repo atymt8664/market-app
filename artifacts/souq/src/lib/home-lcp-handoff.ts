@@ -105,7 +105,9 @@ export function syncHomeFeedShellOffset(headerPx: number): void {
 /** P9-3C: measure static header shell before React boot — correct feed offset from Frame 1. */
 export function syncHomeFeedShellOffsetFromStaticHeader(): void {
   if (typeof document === "undefined") return;
-  const shell = document.querySelector<HTMLElement>('#p7-header-shell [data-p7-header-shell="1"]');
+  const mount = document.getElementById("p7-header-shell");
+  const shell =
+    document.querySelector<HTMLElement>('#p7-header-shell [data-p7-header-shell="1"]') ?? mount;
   if (!shell) return;
   const h = shell.getBoundingClientRect().height;
   if (h > 0) syncHomeFeedShellOffset(h);

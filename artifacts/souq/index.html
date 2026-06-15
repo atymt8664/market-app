@@ -132,7 +132,6 @@
       })();
     </script>
     <div id="p7-header-shell" data-p7-pr="12"><!-- P9-E-FIX-A:HEADER_SHELL --></div>
-    <div id="p7-lcp-layer" data-p7-pr="12"><!-- P7-PR-12:LCP_LAYER --></div>
     <script>
       (function () {
         function syncHomeFeedOffsetFromHeaderShell() {
@@ -141,7 +140,9 @@
           try {
             if (!localStorage.getItem("app_locale")) return;
           } catch (e) {}
-          var shell = document.querySelector('#p7-header-shell [data-p7-header-shell="1"]');
+          var mount = document.getElementById("p7-header-shell");
+          var shell =
+            document.querySelector('#p7-header-shell [data-p7-header-shell="1"]') || mount;
           if (!shell) return;
           var h = shell.getBoundingClientRect().height;
           if (h > 0) {
@@ -151,11 +152,15 @@
           }
         }
         syncHomeFeedOffsetFromHeaderShell();
-        if (typeof requestAnimationFrame === "function") {
+        var mount = document.getElementById("p7-header-shell");
+        if (mount && typeof ResizeObserver !== "undefined") {
+          new ResizeObserver(syncHomeFeedOffsetFromHeaderShell).observe(mount);
+        } else if (typeof requestAnimationFrame === "function") {
           requestAnimationFrame(syncHomeFeedOffsetFromHeaderShell);
         }
       })();
     </script>
+    <div id="p7-lcp-layer" data-p7-pr="12"><!-- P7-PR-12:LCP_LAYER --></div>
     <div id="p7-bottom-nav-shell-mount" data-p7-pr="12"><!-- P9-3C:BOTTOM_NAV_SHELL --></div>
     <script>
       (function () {

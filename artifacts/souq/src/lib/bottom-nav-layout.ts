@@ -4,7 +4,7 @@ export const BOTTOM_NAV_HEIGHT_MD_PX = 56;
 
 /** Fixed nav — flush to viewport bottom; safe-area on shell chrome. */
 export const BOTTOM_NAV_FIXED_SHELL_CLASS =
-  "fixed inset-x-0 bottom-0 z-40 flex w-full flex-col justify-end bg-[#0A0A0A] pb-[env(safe-area-inset-bottom,0px)] [transform:translateZ(0)]";
+  "fixed inset-x-0 bottom-0 z-40 flex w-full flex-col justify-end bg-[#0A0A0A] pb-[var(--souq-safe-bottom,env(safe-area-inset-bottom,0px))] [transform:translateZ(0)]";
 
 /** Button row — icons sit directly above shell safe-area padding. */
 export const BOTTOM_NAV_BUTTONS_ROW_CLASS =
@@ -33,4 +33,4 @@ export const BOTTOM_NAV_PAGE_SHELL_CLASS =
  * Solid #0A0A0A avoids a visible seam above the nav on semi-transparent chrome.
  */
 export const BOTTOM_NAV_SCROLL_END_SPACER_CLASS =
-  "min-h-[calc(3.125rem+env(safe-area-inset-bottom,0px))] shrink-0 bg-[#0A0A0A] md:min-h-[3.5rem]";
+  "min-h-[calc(3.125rem+var(--souq-safe-bottom,env(safe-area-inset-bottom,0px)))] shrink-0 bg-[#0A0A0A] md:min-h-[3.5rem]";

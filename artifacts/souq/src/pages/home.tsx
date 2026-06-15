@@ -347,7 +347,7 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
   return (
     <header
       ref={headerRef}
-      className="fixed inset-x-0 top-0 z-40 bg-[#0A0A0A] pt-[env(safe-area-inset-top,0px)]"
+      className="fixed inset-x-0 top-0 z-40 bg-[#0A0A0A] pt-[var(--souq-safe-top,env(safe-area-inset-top,0px))]"
       dir={isRtl ? "rtl" : "ltr"}
     >
       <div className={HOME_PAGE_INSET}>

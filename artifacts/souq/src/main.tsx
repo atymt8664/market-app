@@ -16,10 +16,13 @@ import {
   startHomeRecommendedPrefetch,
   wireHomeLcpPrefetchToQueryClient,
 } from "@/lib/home-lcp-prefetch";
+import { installStandaloneSafeAreaListeners } from "@/lib/standalone-safe-area";
 import { isHomePathname } from "@/lib/p7-home-path";
 
 const apiBase = getApiBaseUrl();
 setBaseUrl(apiBase || null);
+
+installStandaloneSafeAreaListeners();
 
 installAccountDisabledFetchInterceptor(queryClient);
 

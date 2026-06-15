@@ -85,7 +85,7 @@
     <meta name="theme-color" content="#0A0A0A" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Souq Arab EU" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
@@ -103,7 +103,8 @@
     <style>
       html.dark{color-scheme:dark}html,body{margin:0;padding:0;background:#0a0a0a;height:100%;min-height:-webkit-fill-available}
       [data-bottom-nav-shell]{position:fixed;left:0;right:0;bottom:0;margin:0;padding:0;display:flex;flex-direction:column;background:#0A0A0A}
-      #p7-bottom-nav-shell{position:fixed;inset-inline:0;bottom:0;z-index:40;pointer-events:none;margin:0;padding:0;padding-bottom:env(safe-area-inset-bottom,0px);display:flex;flex-direction:column;justify-content:flex-end;background:#0A0A0A}
+      [data-p7-header-shell="1"]{padding-top:var(--souq-safe-top,env(safe-area-inset-top,0px));padding-inline:16px;padding-bottom:0;box-sizing:border-box}
+      #p7-bottom-nav-shell{position:fixed;inset-inline:0;bottom:0;z-index:40;pointer-events:none;margin:0;padding:0;padding-bottom:var(--souq-safe-bottom,env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;justify-content:flex-end;background:#0A0A0A}
       #p7-bottom-nav-shell *{pointer-events:none}
       #p7-header-shell{position:fixed;inset:0 0 auto 0;z-index:35;pointer-events:none;background:#0A0A0A}
       #p7-header-shell *{pointer-events:none}
@@ -113,6 +114,44 @@
     </style>
   </head>
   <body>
+    <script>
+      (function () {
+        function measureSafeArea() {
+          var root = document.documentElement;
+          var probe = document.createElement("div");
+          probe.style.cssText =
+            "position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";
+          root.appendChild(probe);
+          var s = getComputedStyle(probe);
+          var top = parseFloat(s.paddingTop) || 0;
+          var right = parseFloat(s.paddingRight) || 0;
+          var bottom = parseFloat(s.paddingBottom) || 0;
+          var left = parseFloat(s.paddingLeft) || 0;
+          probe.remove();
+          root.style.setProperty("--souq-safe-top", top + "px");
+          root.style.setProperty("--souq-safe-right", right + "px");
+          root.style.setProperty("--souq-safe-bottom", bottom + "px");
+          root.style.setProperty("--souq-safe-left", left + "px");
+        }
+        function markStandalone() {
+          try {
+            if (
+              window.navigator.standalone === true ||
+              window.matchMedia("(display-mode: standalone)").matches ||
+              window.matchMedia("(display-mode: fullscreen)").matches
+            ) {
+              document.documentElement.classList.add("standalone-pwa");
+            }
+          } catch (e) {}
+        }
+        markStandalone();
+        measureSafeArea();
+        window.addEventListener("resize", measureSafeArea);
+        window.addEventListener("orientationchange", function () {
+          window.setTimeout(measureSafeArea, 100);
+        });
+      })();
+    </script>
     <noscript>
       <div lang="ar" dir="rtl">
         <h1>Souq Arab EU | سوق العرب EU</h1>

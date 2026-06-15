@@ -83,7 +83,7 @@ export function buildHomeHeaderShellHtml() {
       data-testid="home-header-shell"
       dir="rtl"
       aria-hidden="true"
-      style="position:relative;box-sizing:border-box;max-width:1280px;margin:0 auto;padding:env(safe-area-inset-top,0px) 16px 0;font-family:system-ui,-apple-system,sans-serif"
+      style="position:relative;box-sizing:border-box;max-width:1280px;margin:0 auto;padding:0 16px 0;font-family:system-ui,-apple-system,sans-serif"
     >
       <div style="display:flex;align-items:center;gap:8px;padding:6px 0 0;margin:0 -8px">
         <div
@@ -174,7 +174,7 @@ export function buildBottomNavShellHtml() {
       data-bottom-nav-shell
       dir="rtl"
       aria-hidden="true"
-      style="position:fixed;inset-inline:0;bottom:0;z-index:40;display:flex;flex-direction:column;justify-content:flex-end;background:#0A0A0A;padding-bottom:env(safe-area-inset-bottom,0px);font-family:system-ui,-apple-system,sans-serif"
+      style="position:fixed;inset-inline:0;bottom:0;z-index:40;display:flex;flex-direction:column;justify-content:flex-end;background:#0A0A0A;padding-bottom:var(--souq-safe-bottom,env(safe-area-inset-bottom,0px));font-family:system-ui,-apple-system,sans-serif"
     >
       <div style="width:100%;border-top:1px solid rgba(163,230,53,0.25);background:#0A0A0A;box-shadow:0 -1px 0 rgba(163,230,53,0.06),0 -6px 20px -14px rgba(0,0,0,0.42)">
         <div

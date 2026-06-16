@@ -50,6 +50,7 @@ import {
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocale } from "@/hooks/use-locale";
 import { CitySelect } from "@/components/city-select";
 import { CreateAdPreviewDialog } from "@/components/create-ad-preview-dialog";
 import { CreateAdImageGallery } from "@/components/create-ad-image-gallery";

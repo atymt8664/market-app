@@ -20,11 +20,12 @@ import { AppCountersRealtimeSync } from "@/components/app-counters-realtime-sync
 import { useMessagesUnreadCount } from "@/hooks/use-unread-counters";
 import { formatBadgeCount } from "@/lib/app-badge-counters";
 import { MESSAGES_UNREAD_BADGE_CLASS, UNREAD_COUNTER_BADGE_CLASS } from "@/lib/messages-badge-styles";
+import { AppShell } from "@/components/app-shell";
 import {
   BOTTOM_NAV_FIXED_SHELL_CLASS,
   BOTTOM_NAV_BUTTONS_ROW_CLASS,
-  BOTTOM_NAV_LAYOUT_FRAME_CLASS,
 } from "@/lib/bottom-nav-layout";
+import { APP_SHELL_LAYER, APP_SHELL_LAYER_MARKER } from "@/lib/app-shell-layout";
 import { dismissHomeBottomNavShell } from "@/lib/home-lcp-handoff";
 
 interface LayoutProps {
@@ -89,7 +90,7 @@ export function Layout({ children }: LayoutProps) {
           <AppBadgeSync />
         </>
       ) : null}
-    <div className="flex w-full flex-1 flex-col min-h-0 bg-[#0A0A0A]">
+    <AppShell>
       {afterFirstPaint ? (
         <>
           <PushNotificationsRegistrar />
@@ -98,15 +99,14 @@ export function Layout({ children }: LayoutProps) {
         </>
       ) : null}
       {/*
-        لا نفرض overflow:hidden على html/body من هنا — ذلك يمنع pull-to-refresh.
-        تمرير الشات محصور في [data-chat-scroll] (انظر index.css).
-        BottomNav يُعرض عبر portal على body لتفادي أي containing block أو scroll gap.
+        P9-3 App Shell L2 — route outlet. L3 BottomNav via portal on body (containing-block safe).
+        لا نفرض overflow:hidden على html/body — يمنع pull-to-refresh.
       */}
-      <div className={BOTTOM_NAV_LAYOUT_FRAME_CLASS}>{children}</div>
+      {children}
+    </AppShell>
       {showBottomNav && typeof document !== "undefined"
         ? createPortal(<BottomNav />, document.body)
         : null}
-    </div>
     </ChatSocketProvider>
   );
 }
@@ -244,7 +244,11 @@ const BottomNav = memo(function BottomNav() {
     location.startsWith("/new") || location.startsWith("/create-ad");
 
   return (
-    <nav className={BOTTOM_NAV_FIXED_SHELL_CLASS} data-bottom-nav-shell>
+    <nav
+      className={BOTTOM_NAV_FIXED_SHELL_CLASS}
+      data-bottom-nav-shell
+      {...{ [APP_SHELL_LAYER_MARKER]: APP_SHELL_LAYER.L3_BOTTOM_NAV }}
+    >
       <div
         className={cn(
           "w-full border-t border-primary/25",

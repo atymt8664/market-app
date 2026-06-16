@@ -1,8 +1,13 @@
+import { APP_SHELL_CONTENT_SLOT_CLASS } from "@/lib/app-shell-layout";
+
 /** BottomNav chrome height — keep in sync with `layout.tsx` BottomNav slot sizing. */
 export const BOTTOM_NAV_HEIGHT_MOBILE_PX = 50;
 export const BOTTOM_NAV_HEIGHT_MD_PX = 56;
 
-/** Fixed nav — flush to viewport bottom; safe-area on shell chrome. */
+/**
+ * L3 Bottom Nav shell — fixed viewport chrome; L4 safe-bottom via padding-bottom only.
+ * Owner: layout.tsx → BottomNav (P09-3-App-Shell-Contract.md §12).
+ */
 export const BOTTOM_NAV_FIXED_SHELL_CLASS =
   "fixed inset-x-0 bottom-0 z-40 flex w-full flex-col justify-end bg-[#0A0A0A] pb-[var(--souq-safe-bottom,env(safe-area-inset-bottom,0px))] [transform:translateZ(0)]";
 
@@ -13,9 +18,8 @@ export const BOTTOM_NAV_BUTTONS_ROW_CLASS =
 /** @deprecated Safe-area moved to BOTTOM_NAV_FIXED_SHELL_CLASS padding-bottom. */
 export const BOTTOM_NAV_SAFE_AREA_FILL_CLASS = "hidden";
 
-/** Layout frame — single flex child; no min-h 100vh here (prevents scroll gap under fixed nav). */
-export const BOTTOM_NAV_LAYOUT_FRAME_CLASS =
-  "relative mx-auto flex w-full max-w-screen-2xl flex-1 flex-col min-h-0 overflow-x-hidden bg-[#0A0A0A]";
+/** L2 Content Slot frame — alias of APP_SHELL_CONTENT_SLOT_CLASS (single SSOT). */
+export const BOTTOM_NAV_LAYOUT_FRAME_CLASS = APP_SHELL_CONTENT_SLOT_CLASS;
 
 /** @deprecated Layout no longer reserves bottom padding — use BOTTOM_NAV_SCROLL_END_SPACER_CLASS in pages. */
 export const BOTTOM_NAV_CONTENT_PADDING_CLASS = "";

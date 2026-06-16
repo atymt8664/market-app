@@ -38,6 +38,8 @@
 @source "./components/ui/button.tsx";
 @source "./components/ui/alert-dialog.tsx";
 @source "./components/layout.tsx";
+@source "./components/app-shell.tsx";
+@source "./lib/app-shell-layout.ts";
 @source "./components/route-loading-fallback.tsx";
 @source "./components/home-feed-ad-card.tsx";
 @source "./components/ad-card-skeleton.tsx";

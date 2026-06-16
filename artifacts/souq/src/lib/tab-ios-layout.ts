@@ -1,10 +1,11 @@
 /**
- * P9-3H-iOS — Tab page safe-area normalization (Bottom Nav pages only; Home frozen).
+ * P9-3H-iOS — L1 Header Slot safe-top consumers (tab routes).
+ * Authority: P09-3-App-Shell-Contract.md §10–§11.
  * env() resolves to 0 on Android browser → no visual change there.
- * --souq-safe-top (P9-3E bootstrap) covers A2HS / standalone when env() is flaky.
+ * --souq-safe-top (L0) covers A2HS / standalone when env() is flaky.
  */
 
-/** Sticky tab headers — clears notch / status bar on iPhone WebKit. */
+/** L1 sticky tab headers — clears notch / status bar on iPhone WebKit. */
 export const TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS =
   "pt-[var(--souq-safe-top,env(safe-area-inset-top,0px))]";
 

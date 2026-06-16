@@ -1,11 +1,13 @@
 /**
- * P9-3E — Standalone / PWA / TWA safe-area bootstrap (top + bottom insets).
+ * P9-3E — App Shell L0/L4 safe-area bootstrap (standalone / PWA / TWA).
+ * L0: --souq-safe-top → consumed by L1 Header Slot.
+ * L4: --souq-safe-bottom → owned by L3 Bottom Nav padding-bottom only.
  */
 
 export const SOUQ_SAFE_TOP_VAR = "var(--souq-safe-top, env(safe-area-inset-top, 0px))";
 export const SOUQ_SAFE_BOTTOM_VAR = "var(--souq-safe-bottom, env(safe-area-inset-bottom, 0px))";
 
-/** Home fixed header — parity with static shell + P9-3E bootstrap. */
+/** L1 Home header — L0 safe-top consumer. */
 export const HOME_FIXED_HEADER_SAFE_TOP_CLASS =
   "pt-[var(--souq-safe-top,env(safe-area-inset-top,0px))]";
 

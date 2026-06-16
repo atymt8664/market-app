@@ -23,7 +23,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { HomeFeedSkeleton } from "@/components/home-feed-skeleton";
 import { HomeSectionRetry } from "@/components/home-section-retry";
 import HomeFeedSections from "@/pages/home-feed-sections";
-import { dismissHomeLcpLayer, dismissHomeHeaderShell, isHomeLcpFeedShellActive, syncHomeFeedShellOffset } from "@/lib/home-lcp-handoff";
+import { dismissHomeLcpLayer, dismissHomeHeaderShell, getHomeInitialHeaderOffsetPx, isHomeLcpFeedShellActive, syncHomeFeedShellOffset } from "@/lib/home-lcp-handoff";
 import {
   markHomeColdStartReady,
   scheduleHomeShellStuckWatchdog,
@@ -55,6 +55,7 @@ import {
   isRecommendedQuerySettled,
   shouldShowCategoryPlaceholders,
 } from "@/lib/home-query-recovery";
+import { HOME_FIXED_HEADER_SAFE_TOP_CLASS } from "@/lib/standalone-safe-area";
 
 /** React Query: تقليل إعادة الجلب عند التنقل للرئيسية دون المساس بـ invalidate بعد الطفرات/الأدمن. */
 const HOME_STALE_CATEGORIES_MS = 10 * 60 * 1000;
@@ -347,7 +348,7 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
   return (
     <header
       ref={headerRef}
-      className="fixed inset-x-0 top-0 z-40 bg-[#0A0A0A] pt-[var(--souq-safe-top,env(safe-area-inset-top,0px))]"
+      className={cn("fixed inset-x-0 top-0 z-40 bg-[#0A0A0A]", HOME_FIXED_HEADER_SAFE_TOP_CLASS)}
       dir={isRtl ? "rtl" : "ltr"}
     >
       <div className={HOME_PAGE_INSET}>
@@ -574,7 +575,7 @@ export default function Home() {
   );
 
   const headerRef = useRef<HTMLElement>(null);
-  const [headerOffsetPx, setHeaderOffsetPx] = useState(148);
+  const [headerOffsetPx, setHeaderOffsetPx] = useState(() => getHomeInitialHeaderOffsetPx());
 
   useLayoutEffect(() => {
     const el = headerRef.current;

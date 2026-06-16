@@ -54,6 +54,7 @@
 @source "./lib/home-page-layout.ts";
 @source "./lib/home-category-display.ts";
 @source "./lib/bottom-nav-layout.ts";
+@source "./lib/standalone-safe-area.ts";
 @source "./lib/marketplace-icon-button-styles.ts";
 
 @import "./theme-shared.css";

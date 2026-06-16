@@ -105,12 +105,33 @@ export function syncHomeFeedShellOffset(headerPx: number): void {
 /** P9-3C: measure static header shell before React boot — correct feed offset from Frame 1. */
 export function syncHomeFeedShellOffsetFromStaticHeader(): void {
   if (typeof document === "undefined") return;
+  const h = measureStaticHomeHeaderShellHeight();
+  if (h > 0) syncHomeFeedShellOffset(h);
+}
+
+const HOME_HEADER_OFFSET_FALLBACK_PX = 148;
+
+/** Measure build/Edge static header shell height (0 when shell absent). */
+export function measureStaticHomeHeaderShellHeight(): number {
+  if (typeof document === "undefined") return 0;
   const mount = document.getElementById("p7-header-shell");
   const shell =
     document.querySelector<HTMLElement>('#p7-header-shell [data-p7-header-shell="1"]') ?? mount;
-  if (!shell) return;
-  const h = shell.getBoundingClientRect().height;
-  if (h > 0) syncHomeFeedShellOffset(h);
+  if (!shell) return 0;
+  return Math.max(0, Math.round(shell.getBoundingClientRect().height));
+}
+
+/** Seed React Home main padding-top from static shell or CSS var before first paint. */
+export function getHomeInitialHeaderOffsetPx(): number {
+  if (typeof document === "undefined") return HOME_HEADER_OFFSET_FALLBACK_PX;
+  const measured = measureStaticHomeHeaderShellHeight();
+  if (measured > 0) return measured;
+  const fromCss = getComputedStyle(document.documentElement)
+    .getPropertyValue("--p7-home-header-offset")
+    .trim();
+  const parsed = parseFloat(fromCss);
+  if (parsed > 0) return Math.round(parsed);
+  return HOME_HEADER_OFFSET_FALLBACK_PX;
 }
 
 /** True when build/Edge injected the static bottom nav shell. */

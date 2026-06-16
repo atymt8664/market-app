@@ -102,8 +102,8 @@
     <!-- P9-3C:SHELL_FEED_OFFSET -->
     <style>
       html.dark{color-scheme:dark}html,body{margin:0;padding:0;background:#0a0a0a;height:100%;min-height:-webkit-fill-available}
-      [data-bottom-nav-shell]{position:fixed;left:0;right:0;bottom:0;margin:0;padding:0;display:flex;flex-direction:column;background:#0A0A0A}
-      [data-p7-header-shell="1"]{padding-top:var(--souq-safe-top,env(safe-area-inset-top,0px));padding-inline:16px;padding-bottom:0;box-sizing:border-box}
+      [data-bottom-nav-shell]{position:fixed;left:0;right:0;bottom:0;margin:0;display:flex;flex-direction:column;background:#0A0A0A}
+      .standalone-pwa [data-p7-header-shell="1"]{padding-top:var(--souq-safe-top,env(safe-area-inset-top,0px));padding-inline:16px;padding-bottom:0;box-sizing:border-box}
       #p7-bottom-nav-shell{position:fixed;inset-inline:0;bottom:0;z-index:40;pointer-events:none;margin:0;padding:0;padding-bottom:var(--souq-safe-bottom,env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;justify-content:flex-end;background:#0A0A0A}
       #p7-bottom-nav-shell *{pointer-events:none}
       #p7-header-shell{position:fixed;inset:0 0 auto 0;z-index:35;pointer-events:none;background:#0A0A0A}
@@ -116,40 +116,41 @@
   <body>
     <script>
       (function () {
-        function measureSafeArea() {
-          var root = document.documentElement;
-          var probe = document.createElement("div");
-          probe.style.cssText =
-            "position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";
-          root.appendChild(probe);
-          var s = getComputedStyle(probe);
-          var top = parseFloat(s.paddingTop) || 0;
-          var right = parseFloat(s.paddingRight) || 0;
-          var bottom = parseFloat(s.paddingBottom) || 0;
-          var left = parseFloat(s.paddingLeft) || 0;
-          probe.remove();
-          root.style.setProperty("--souq-safe-top", top + "px");
-          root.style.setProperty("--souq-safe-right", right + "px");
-          root.style.setProperty("--souq-safe-bottom", bottom + "px");
-          root.style.setProperty("--souq-safe-left", left + "px");
-        }
-        function markStandalone() {
+        function isStandalone() {
           try {
-            if (
+            return (
               window.navigator.standalone === true ||
               window.matchMedia("(display-mode: standalone)").matches ||
               window.matchMedia("(display-mode: fullscreen)").matches
-            ) {
-              document.documentElement.classList.add("standalone-pwa");
-            }
-          } catch (e) {}
+            );
+          } catch (e) {
+            return false;
+          }
         }
-        markStandalone();
-        measureSafeArea();
-        window.addEventListener("resize", measureSafeArea);
-        window.addEventListener("orientationchange", function () {
-          window.setTimeout(measureSafeArea, 100);
-        });
+        function measureStandaloneInsets() {
+          if (!isStandalone()) return;
+          var root = document.documentElement;
+          var probe = document.createElement("div");
+          probe.style.cssText =
+            "position:fixed;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)";
+          root.appendChild(probe);
+          var styles = getComputedStyle(probe);
+          var top = parseFloat(styles.paddingTop) || 0;
+          var bottom = parseFloat(styles.paddingBottom) || 0;
+          probe.remove();
+          if (top > 0) root.style.setProperty("--souq-safe-top", top + "px");
+          else root.style.removeProperty("--souq-safe-top");
+          if (bottom > 0) root.style.setProperty("--souq-safe-bottom", bottom + "px");
+          else root.style.removeProperty("--souq-safe-bottom");
+        }
+        if (isStandalone()) {
+          document.documentElement.classList.add("standalone-pwa");
+          measureStandaloneInsets();
+          window.addEventListener("resize", measureStandaloneInsets);
+          window.addEventListener("orientationchange", function () {
+            window.setTimeout(measureStandaloneInsets, 100);
+          });
+        }
       })();
     </script>
     <noscript>

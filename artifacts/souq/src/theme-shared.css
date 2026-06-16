@@ -290,6 +290,5 @@ html.dark #root {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   margin: 0;
-  padding: 0;
   bottom: 0;
 }

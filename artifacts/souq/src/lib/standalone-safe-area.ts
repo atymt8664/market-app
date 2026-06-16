@@ -1,9 +1,13 @@
 /**
- * P9-3E — Standalone / PWA / TWA safe-area parity (browser uses env(); standalone probes insets).
+ * P9-3E — Standalone / PWA / TWA safe-area bootstrap (top + bottom insets).
  */
 
 export const SOUQ_SAFE_TOP_VAR = "var(--souq-safe-top, env(safe-area-inset-top, 0px))";
 export const SOUQ_SAFE_BOTTOM_VAR = "var(--souq-safe-bottom, env(safe-area-inset-bottom, 0px))";
+
+/** Home fixed header — parity with static shell + P9-3E bootstrap. */
+export const HOME_FIXED_HEADER_SAFE_TOP_CLASS =
+  "pt-[var(--souq-safe-top,env(safe-area-inset-top,0px))]";
 
 export function isStandaloneDisplayMode(): boolean {
   if (typeof window === "undefined") return false;
@@ -15,31 +19,33 @@ export function isStandaloneDisplayMode(): boolean {
   );
 }
 
-/** Re-measure env() insets — complements index.html bootstrap on resize / orientation. */
+/** Standalone-only inset probe — sets CSS vars when env() resolves > 0. */
 export function syncStandaloneSafeAreaCssVars(): void {
-  if (typeof document === "undefined") return;
+  if (typeof document === "undefined" || !isStandaloneDisplayMode()) return;
   const root = document.documentElement;
   const probe = document.createElement("div");
   probe.style.cssText =
-    "position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";
+    "position:fixed;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)";
   root.appendChild(probe);
-  const style = getComputedStyle(probe);
-  const top = parseFloat(style.paddingTop) || 0;
-  const right = parseFloat(style.paddingRight) || 0;
-  const bottom = parseFloat(style.paddingBottom) || 0;
-  const left = parseFloat(style.paddingLeft) || 0;
+  const styles = getComputedStyle(probe);
+  const top = parseFloat(styles.paddingTop) || 0;
+  const bottom = parseFloat(styles.paddingBottom) || 0;
   probe.remove();
-  root.style.setProperty("--souq-safe-top", `${top}px`);
-  root.style.setProperty("--souq-safe-right", `${right}px`);
-  root.style.setProperty("--souq-safe-bottom", `${bottom}px`);
-  root.style.setProperty("--souq-safe-left", `${left}px`);
+  if (top > 0) {
+    root.style.setProperty("--souq-safe-top", `${top}px`);
+  } else {
+    root.style.removeProperty("--souq-safe-top");
+  }
+  if (bottom > 0) {
+    root.style.setProperty("--souq-safe-bottom", `${bottom}px`);
+  } else {
+    root.style.removeProperty("--souq-safe-bottom");
+  }
 }
 
 export function installStandaloneSafeAreaListeners(): void {
-  if (typeof window === "undefined") return;
-  if (isStandaloneDisplayMode()) {
-    document.documentElement.classList.add("standalone-pwa");
-  }
+  if (typeof window === "undefined" || !isStandaloneDisplayMode()) return;
+  document.documentElement.classList.add("standalone-pwa");
   const sync = () => syncStandaloneSafeAreaCssVars();
   sync();
   window.addEventListener("resize", sync);

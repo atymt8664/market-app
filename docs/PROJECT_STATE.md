@@ -71,7 +71,7 @@ Only **one open builder phase** at a time. Sequence:
 |-------|-------|--------|-------|
 | **P9-1** | Location Picker i18n | ✅ **Closed — Production verified** | Commit `4cc3795` · gate picker keys + `ensureFullLocaleForInteraction` on open · `p9-1-location-picker-i18n-verify` PASS prod (10/10 · refresh×10 · open/close×10) |
 | **P9-2** | Language Gate isolation | ✅ **Closed — Production verified** | Commit `838f9ba` · strip shell on first launch · gate full-screen z-100 · skip Home warm path · `p9-2-language-gate-isolation-verify` PASS prod (6/6 · refresh×10 · clear storage) |
-| **P9-3** | Cold Start Contract | ⏳ **Next** | |
+| **P9-3** | Cold Start Contract · App Shell | ⏳ **Next** | **Architecture SSOT:** [P09-3-App-Shell-Contract.md](./architecture/P09-3-App-Shell-Contract.md) · docs committed · **implementation not started** — pending Mohamed approval |
 | **P9-4** | CI Guards | ⏳ Not opened | |
 | **P9-5** | Real Device Matrix | ⏳ Not opened | Mohamed checklist |
 | **P9-6** | PWA / A2HS Stability | ⏳ Not opened | |
@@ -87,7 +87,14 @@ Only **one open builder phase** at a time. Sequence:
 
 **Owner manual PASS (do not re-audit unless regression):** Signup · Login · OTP · Forgot Password · Reset Password on Production.
 
-**Next implementation milestone:** **P9-3 — Cold Start Contract** only.
+**Next implementation milestone:** **P9-3 — Cold Start Contract** only — gated on approval of [P09-3-App-Shell-Contract.md](./architecture/P09-3-App-Shell-Contract.md).
+
+### P9-3 — App Shell architecture (documentation)
+
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| **P9-3-ARCH-0** App Shell Contract (SSOT) | ✅ **Closed — docs only** | [P09-3-App-Shell-Contract.md](./architecture/P09-3-App-Shell-Contract.md) · App Shell · Header · Bottom Nav · Safe Area · Language Gate · Cold Start · Layout Stability · tab routes · **no production code change** |
+| **P9-3-IMPL** Implementation wave | ⏳ **Not started** | Awaiting explicit Mohamed approval of contract |
 
 ---
 
@@ -193,4 +200,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P9-2 closed (2026-06-14): Language Gate isolation — commit `838f9ba` · production verify PASS (first launch + returning · desktop · iPhone · Android · incognito · refresh×10). **Next: P9-3 — Cold Start Contract.** P9-1 closed. P17-9-17 closed.
+P9-3-ARCH-0 closed (2026-06-16): App Shell Contract SSOT — [P09-3-App-Shell-Contract.md](./architecture/P09-3-App-Shell-Contract.md) · documentation only · **P9-3-IMPL not started** (pending approval). P9-2 closed (2026-06-14): Language Gate isolation — commit `838f9ba`. **Next: Mohamed approval → P9-3 implementation.** P9-1 closed. P17-9-17 closed.

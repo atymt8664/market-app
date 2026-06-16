@@ -27,21 +27,42 @@ export const APP_SHELL_LAYER = {
 
 export type AppShellLayerId = (typeof APP_SHELL_LAYER)[keyof typeof APP_SHELL_LAYER];
 
+/** L0 document frame — lock window scroll; chrome stays outside rubber-band chain. */
+export const APP_SHELL_L0_DOCUMENT_CLASS = "overflow-hidden h-full min-h-0";
+
+/** L0 #root / #main-content — flex column filling viewport. */
+export const APP_SHELL_L0_APP_FRAME_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0A0A0A]";
+
 /** L0–L4 root — flex column filling #root main area. */
 export const APP_SHELL_ROOT_CLASS =
   "relative flex w-full flex-1 flex-col min-h-0 bg-[#0A0A0A]";
 
 /**
- * L2 Content Slot — Router outlet frame.
- * Pages render inside; headers may live in-page until AppChromeHeader (Phase 4+).
+ * L2 Content Slot — Router outlet frame (non-scrolling shell).
+ * Vertical scroll lives in APP_SHELL_CONTENT_SCROLL_CLASS only (§5.1).
  */
 export const APP_SHELL_CONTENT_SLOT_CLASS =
-  "relative mx-auto flex w-full max-w-screen-2xl flex-1 flex-col min-h-0 overflow-x-hidden bg-[#0A0A0A]";
+  "relative mx-auto flex w-full max-w-screen-2xl flex-1 flex-col min-h-0 overflow-hidden bg-[#0A0A0A]";
+
+/** DOM marker: L2 scroll surface (single scroll owner per route). */
+export const APP_SHELL_CONTENT_SCROLL_MARKER = "data-app-shell-scroll";
+export const APP_SHELL_CONTENT_SCROLL_VALUE = "1";
+
+/**
+ * L2 scroll surface — sole progressive-load scroll owner (P9-3 §5.1 · §7).
+ * overscroll-y-contain keeps rubber-band inside L2; chrome (L1/L3) stays fixed.
+ */
+export const APP_SHELL_CONTENT_SCROLL_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain bg-[#0A0A0A] [-webkit-overflow-scrolling:touch]";
 
 /**
  * L1 Header Slot plane — sticky/fixed headers mount with safe-top from tab-ios / home layouts.
- * Exported for contract tests; no wrapper until Phase 4 header centralization.
  */
+export const APP_SHELL_HEADER_SLOT_CLASS =
+  "relative z-40 w-full shrink-0 bg-[#0A0A0A]";
+
+/** @deprecated Use APP_SHELL_HEADER_SLOT_CLASS — kept for contract tests. */
 export const APP_SHELL_HEADER_SLOT_ROLE = APP_SHELL_LAYER.L1_HEADER;
 
 /** Tab routes that require L3 Bottom Nav under App Shell contract. */

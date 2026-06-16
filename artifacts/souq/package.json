@@ -66,6 +66,7 @@
     "locations:generate": "node scripts/generate-marketplace-locations-data.mjs",
     "locations:compare-csc": "node scripts/compare-marketplace-locations-to-csc.mjs",
     "preview": "vite preview",
+    "preview:local": "node scripts/check-local-api-ready.mjs && set PORT=4173&& vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:ws-url": "node ./src/lib/build-ws-url.test.mjs",
     "test:ad-image-url": "node ./src/lib/ad-image-url.test.mjs",

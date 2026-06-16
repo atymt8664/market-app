@@ -20,9 +20,15 @@ import { MarketplaceSearchBar } from "@/components/marketplace-search-bar";
 import { HomeNotificationBellSlot } from "@/components/home-notification-bell-slot";
 import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { HomeFeedSkeleton } from "@/components/home-feed-skeleton";
+import {
+  HomeFeedSkeleton,
+} from "@/components/home-feed-skeleton";
+import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
 import { HomeSectionRetry } from "@/components/home-section-retry";
-import HomeFeedSections from "@/pages/home-feed-sections";
+import {
+  HomeFeedScrollContent,
+} from "@/pages/home-feed-sections";
+import { useAppChromeContext } from "@/contexts/app-chrome-context";
 import { dismissHomeLcpLayer, dismissHomeHeaderShell, getHomeInitialHeaderOffsetPx, isHomeLcpFeedShellActive, syncHomeFeedShellOffset } from "@/lib/home-lcp-handoff";
 import {
   markHomeColdStartReady,
@@ -348,7 +354,7 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
   return (
     <header
       ref={headerRef}
-      className={cn("fixed inset-x-0 top-0 z-40 bg-[#0A0A0A]", HOME_FIXED_HEADER_SAFE_TOP_CLASS)}
+      className={cn("shrink-0 w-full bg-[#0A0A0A]", HOME_FIXED_HEADER_SAFE_TOP_CLASS)}
       dir={isRtl ? "rtl" : "ltr"}
     >
       <div className={HOME_PAGE_INSET}>
@@ -380,6 +386,7 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
 });
 
 export default function Home() {
+  const { setHomeL1Chrome } = useAppChromeContext();
   const { locale } = useLocale();
   const isRtl = locale === "ar";
   const [, setLocation] = useLocation();
@@ -594,11 +601,8 @@ export default function Home() {
     return () => ro.disconnect();
   }, [isLoadingCategories, reserveBellSlot]);
 
-  return (
-    <main
-      className="flex min-h-0 w-full flex-col bg-[#0A0A0A]"
-      style={{ paddingTop: headerOffsetPx }}
-    >
+  const homeL1Chrome = useMemo(
+    () => (
       <HomeFeedHeader
         headerRef={headerRef}
         isRtl={isRtl}
@@ -615,40 +619,67 @@ export default function Home() {
         onCategoriesRetry={handleCategoriesRetry}
         categoriesRetrying={categoriesRetryBusy}
       />
+    ),
+    [
+      isRtl,
+      locale,
+      reserveBellSlot,
+      searchQuery,
+      onSearchQueryChange,
+      handleSearch,
+      isLoadingCategories,
+      isFetchingCategories,
+      categoriesError,
+      categoriesFetched,
+      homeCategories,
+      handleCategoriesRetry,
+      categoriesRetryBusy,
+    ],
+  );
 
-      {!homeFeedReady ? (
-        <>
-          {!skipReactFeedSkeleton ? <HomeFeedSkeleton /> : null}
-          {feedTimeoutReached && feedLoadFailed ? (
-            <div className={cn(HOME_PAGE_INSET, "pb-3 pt-1")}>
-              <HomeSectionRetry
-                testId="home-feed-retry"
-                onRetry={refetchHomeFeed}
-                busy={feedRetryBusy}
+  useLayoutEffect(() => {
+    setHomeL1Chrome(homeL1Chrome);
+    return () => setHomeL1Chrome(null);
+  }, [homeL1Chrome, setHomeL1Chrome]);
+
+  return (
+    <main className="flex min-h-0 flex-1 w-full flex-col bg-[#0A0A0A]">
+      <AppShellContentScroll>
+        {!homeFeedReady ? (
+          <>
+            {!skipReactFeedSkeleton ? <HomeFeedSkeleton /> : null}
+            {feedTimeoutReached && feedLoadFailed ? (
+              <div className={cn(HOME_PAGE_INSET, "pb-3 pt-1")}>
+                <HomeSectionRetry
+                  testId="home-feed-retry"
+                  onRetry={refetchHomeFeed}
+                  busy={feedRetryBusy}
+                />
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <>
+            {feedLoadFailed ? (
+              <div className={cn(HOME_PAGE_INSET, "pb-2 pt-1")}>
+                <HomeSectionRetry
+                  testId="home-feed-retry"
+                  onRetry={refetchHomeFeed}
+                  busy={feedRetryBusy}
+                />
+              </div>
+            ) : (
+              <HomeFeedScrollContent
+                isRtl={isRtl}
+                isLoadingFeatured={false}
+                featuredAds={featuredAdsForHome}
+                isLoadingRecommended={feedTimeoutReached && !recommendedSettled}
+                recommendedAds={recommendedAds}
               />
-            </div>
-          ) : null}
-        </>
-      ) : (
-        <>
-          {feedLoadFailed ? (
-            <div className={cn(HOME_PAGE_INSET, "pb-2 pt-1")}>
-              <HomeSectionRetry
-                testId="home-feed-retry"
-                onRetry={refetchHomeFeed}
-                busy={feedRetryBusy}
-              />
-            </div>
-          ) : null}
-          <HomeFeedSections
-            isRtl={isRtl}
-            isLoadingFeatured={false}
-            featuredAds={featuredAdsForHome}
-            isLoadingRecommended={feedTimeoutReached && !recommendedSettled}
-            recommendedAds={recommendedAds}
-          />
-        </>
-      )}
+            )}
+          </>
+        )}
+      </AppShellContentScroll>
     </main>
   );
 }

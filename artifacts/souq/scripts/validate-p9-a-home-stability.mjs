@@ -135,6 +135,12 @@ scanMustMatch(
 );
 scanMustMatch(indexHtml, indexHtml, /id="p7-lcp-layer"/, "shell layer placeholder required");
 scanMustMatch(indexHtml, indexHtml, /id="p7-header-shell"/, "P9-E-FIX-A: static header shell placeholder required");
+scanNoMatch(
+  "index.html",
+  indexHtml,
+  /p7-bottom-nav-shell/,
+  "P9-3 L3: static bottom nav shell retired — React portal is sole owner",
+);
 
 const p7HomePath = read("src/lib/p7-home-path.ts");
 scanMustMatch(

@@ -49,8 +49,8 @@ export type HomeFeedSectionsProps = {
   recommendedAds: Ad[] | undefined;
 };
 
-/** P7-PR-8: lazy chunk — AdCard favorite/auth stack stays off Home entry parse path. */
-const HomeFeedSections = memo(function HomeFeedSections({
+/** Recommended grid only — featured strip renders all items immediately (L2 scroll content). */
+export const HomeFeedScrollContent = memo(function HomeFeedScrollContent({
   isRtl,
   isLoadingFeatured,
   featuredAds,
@@ -58,9 +58,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
   recommendedAds,
 }: HomeFeedSectionsProps) {
   const featuredList = Array.isArray(featuredAds) ? featuredAds : [];
-
   const recommendedReady = Array.isArray(recommendedAds) && recommendedAds.length > 0;
-  /** Recommended grid only — featured strip renders all items immediately */
   const {
     visible: visibleRecommended,
     hasMore: hasMoreRecommended,
@@ -108,14 +106,8 @@ const HomeFeedSections = memo(function HomeFeedSections({
         <HomeFeaturedDivider isRtl={isRtl} placement="featured-bottom" />
       </div>
 
-      <section
-        className={cn(
-          HOME_PAGE_INSET,
-          "pb-3 pt-1 max-md:pb-3 max-md:pt-0.5 md:py-4",
-        )}
-      >
+      <section className={cn(HOME_PAGE_INSET, "pb-3 pt-0.5 max-md:pb-0.5 md:pb-4 md:pt-0")}>
         <h2 className={cn(homeSectionHeading, "mb-1.5 md:mb-2")}>{t("home.recommended")}</h2>
-
         <div className={recommendedGridClassName}>
           {isLoadingRecommended ? (
             GRID_SKELETON_KEYS.map((i) => (
@@ -139,7 +131,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
               ) : null}
             </>
           ) : (
-            <div className="col-span-full text-sm text-muted-foreground text-center py-8">
+            <div className="col-span-full py-8 text-center text-sm text-muted-foreground">
               {t("home.no_ads")}
             </div>
           )}
@@ -148,6 +140,11 @@ const HomeFeedSections = memo(function HomeFeedSections({
       <div aria-hidden className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS} />
     </div>
   );
+});
+
+/** P7-PR-8: lazy chunk — AdCard favorite/auth stack stays off Home entry parse path. */
+const HomeFeedSections = memo(function HomeFeedSections(props: HomeFeedSectionsProps) {
+  return <HomeFeedScrollContent {...props} />;
 });
 
 export default HomeFeedSections;

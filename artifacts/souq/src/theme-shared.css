@@ -201,6 +201,21 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 
+  html:not(.promo-video-root),
+  html:not(.promo-video-root) body {
+    overflow: hidden;
+    height: 100%;
+    min-height: 100dvh;
+  }
+
+  html:not(.promo-video-root) #main-content {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
   /** الشات: التمرير العمودي هنا فقط؛ overscroll لا يُسلسل للمستند فيحمي سكرول القائمة ويسمح بـ pull-to-refresh من خارج المنطقة */
   [data-chat-scroll] {
     overflow-y: auto;

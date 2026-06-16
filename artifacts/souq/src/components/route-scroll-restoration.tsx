@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { scrollPopstateGuard } from "@/components/scroll-restoration-guard";
+import { getAppShellScrollElement } from "@/lib/app-shell-scroll";
 import {
   FORCE_RESTORE_PATH_KEY,
   clearReturnTargetIfLandingHere,
@@ -50,8 +51,14 @@ function writeScroll(routeKey: string, y: number): void {
   }
 }
 
+function resolveScrollElement(): HTMLElement | null {
+  return getAppShellScrollElement() ?? document.scrollingElement ?? document.documentElement;
+}
+
 function getViewportScrollY(): number {
   if (typeof window === "undefined") return 0;
+  const shell = getAppShellScrollElement();
+  if (shell) return shell.scrollTop;
   const se = document.scrollingElement;
   if (se && typeof se.scrollTop === "number") return se.scrollTop;
   return (
@@ -65,6 +72,11 @@ function getViewportScrollY(): number {
 
 function setViewportScrollY(y: number): void {
   const top = Math.max(0, Math.round(y));
+  const shell = getAppShellScrollElement();
+  if (shell) {
+    shell.scrollTop = top;
+    return;
+  }
   const se = document.scrollingElement;
   if (se) se.scrollTop = top;
   window.scrollTo({ top, left: 0, behavior: "auto" });
@@ -182,9 +194,11 @@ export function RouteScrollRestoration() {
       if (isAdDetailPathname(k)) return;
       writeScroll(k, getViewportScrollY());
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    const shell = getAppShellScrollElement();
+    const target = shell ?? window;
+    target.addEventListener("scroll", onScroll, { passive: true });
+    return () => target.removeEventListener("scroll", onScroll);
+  }, [routeSignature]);
 
   useLayoutEffect(() => {
     scrollRestoreGeneration += 1;

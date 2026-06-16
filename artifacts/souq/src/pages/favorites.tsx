@@ -11,33 +11,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
-import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
 import {
   BOTTOM_NAV_PAGE_SHELL_CLASS,
   BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
 } from "@/lib/bottom-nav-layout";
+import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
 
 const emptyCardShell =
   "rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 p-6 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-8";
-
-/** نفس mini-card عنوان «إنشاء إعلان» — dark/lime خفيف */
-const favoritesSectionHeading = cn(
-  "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 px-2 py-px",
-  "text-sm font-semibold leading-tight tracking-tight text-foreground md:text-base",
-  "shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 bg-[#0A0A0A]/70",
-);
-const favoritesPageTitleHeading = cn(
-  favoritesSectionHeading,
-  "px-2.5 py-0.5 text-lg font-bold md:px-3 md:py-1 md:text-xl",
-);
-
-/** دائرة القلب — h-11 مثل أزرار الرجوع + هوية dark/lime لكرت العنوان */
-const favoritesHeaderHeartCircle = cn(
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
-  "border border-primary/40 bg-[#0A0A0A]/75",
-  "shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10",
-  "text-primary transition-[border-color,box-shadow] duration-200",
-);
 
 export default function Favorites() {
   const { user, isLoading: authLoading } = useAuth();
@@ -57,26 +38,7 @@ export default function Favorites() {
 
   return (
     <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
-      <header
-        className={cn(
-          "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 px-3 py-3 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)] md:backdrop-blur md:px-4 md:py-3.5",
-          TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
-        )}
-        dir="rtl"
-      >
-        <h1 className="flex items-center gap-2 text-lg font-bold text-foreground md:text-xl">
-          <span className="min-w-0 flex-1 text-right">
-            <span className={favoritesPageTitleHeading}>{t("favorites.title")}</span>
-          </span>
-          <span className={favoritesHeaderHeartCircle} aria-hidden>
-            <Heart
-              className="h-5 w-5 fill-primary text-primary md:h-6 md:w-6"
-              strokeWidth={2.25}
-            />
-          </span>
-        </h1>
-      </header>
-
+      <AppShellContentScroll>
       <div className="flex-1 px-3 pt-2 md:px-4 md:pt-3">
         {isLoading ? (
           <ul className="mx-auto flex w-full max-w-lg flex-col gap-2 sm:max-w-xl md:max-w-2xl md:gap-2.5">
@@ -128,6 +90,7 @@ export default function Favorites() {
         className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS}
         data-testid="favorites-scroll-spacer"
       />
+      </AppShellContentScroll>
     </div>
   );
 }

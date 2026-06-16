@@ -1,4 +1,4 @@
-﻿import { memo, useLayoutEffect } from "react";
+﻿import { memo } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useSearch } from "wouter";
 import { Home, Heart, Plus, MessageCircle, User } from "lucide-react";
@@ -21,12 +21,14 @@ import { useMessagesUnreadCount } from "@/hooks/use-unread-counters";
 import { formatBadgeCount } from "@/lib/app-badge-counters";
 import { MESSAGES_UNREAD_BADGE_CLASS, UNREAD_COUNTER_BADGE_CLASS } from "@/lib/messages-badge-styles";
 import { AppShell } from "@/components/app-shell";
+import { AppChromeHeaderBridge } from "@/components/app-chrome-header-bridge";
+import { AppChromeProvider } from "@/contexts/app-chrome-context";
 import {
+  BOTTOM_NAV_CHROME_PANEL_CLASS,
   BOTTOM_NAV_FIXED_SHELL_CLASS,
   BOTTOM_NAV_BUTTONS_ROW_CLASS,
 } from "@/lib/bottom-nav-layout";
 import { APP_SHELL_LAYER, APP_SHELL_LAYER_MARKER } from "@/lib/app-shell-layout";
-import { dismissHomeBottomNavShell } from "@/lib/home-lcp-handoff";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -90,7 +92,8 @@ export function Layout({ children }: LayoutProps) {
           <AppBadgeSync />
         </>
       ) : null}
-    <AppShell>
+    <AppChromeProvider>
+    <AppShell header={<AppChromeHeaderBridge />}>
       {afterFirstPaint ? (
         <>
           <PushNotificationsRegistrar />
@@ -100,10 +103,11 @@ export function Layout({ children }: LayoutProps) {
       ) : null}
       {/*
         P9-3 App Shell L2 — route outlet. L3 BottomNav via portal on body (containing-block safe).
-        لا نفرض overflow:hidden على html/body — يمنع pull-to-refresh.
+        L0 locks document scroll; L2 data-app-shell-scroll is the sole vertical scroll owner.
       */}
       {children}
     </AppShell>
+    </AppChromeProvider>
       {showBottomNav && typeof document !== "undefined"
         ? createPortal(<BottomNav />, document.body)
         : null}
@@ -112,12 +116,9 @@ export function Layout({ children }: LayoutProps) {
 }
 
 const BottomNav = memo(function BottomNav() {
-  useLayoutEffect(() => {
-    dismissHomeBottomNavShell();
-  }, []);
-
   const [location, navigate] = useLocation();
   const search = useSearch();
+
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const secondaryQueriesReady = useAfterFirstPaint();
@@ -249,15 +250,7 @@ const BottomNav = memo(function BottomNav() {
       data-bottom-nav-shell
       {...{ [APP_SHELL_LAYER_MARKER]: APP_SHELL_LAYER.L3_BOTTOM_NAV }}
     >
-      <div
-        className={cn(
-          "w-full border-t border-primary/25",
-          /* موبايل: solid #0A0A0A — no seam/gap under chrome or in safe-area fill */
-          "bg-[#0A0A0A] shadow-[0_-1px_0_rgba(163,230,53,0.06),0_-6px_20px_-14px_rgba(0,0,0,0.42)]",
-          /* md+: نفس الطبقة الزجاجية السابقة تقريبًا */
-          "md:bg-[#0A0A0A]/94 md:backdrop-blur-md md:shadow-[0_-1px_0_rgba(163,230,53,0.08),0_-12px_36px_-16px_rgba(0,0,0,0.65)]",
-        )}
-      >
+      <div className={BOTTOM_NAV_CHROME_PANEL_CLASS}>
         <div
           className={BOTTOM_NAV_BUTTONS_ROW_CLASS}
           dir="rtl"

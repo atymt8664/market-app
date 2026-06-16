@@ -134,19 +134,6 @@ export function getHomeInitialHeaderOffsetPx(): number {
   return HOME_HEADER_OFFSET_FALLBACK_PX;
 }
 
-/** True when build/Edge injected the static bottom nav shell. */
-export function isHomeBottomNavShellActive(): boolean {
-  if (typeof document === "undefined") return false;
-  return !!document.getElementById("p7-bottom-nav-shell")?.querySelector('[data-p7-bottom-nav-shell="1"]');
-}
-
-/** Remove static bottom nav shell once React BottomNav has painted (P9-3C). */
-export function dismissHomeBottomNavShell(): void {
-  if (typeof document === "undefined") return;
-  document.getElementById("p7-bottom-nav-shell")?.remove();
-  document.getElementById("p7-bottom-nav-shell-mount")?.remove();
-}
-
 /** Remove Edge/build LCP overlay — React featured strip owns all card images. */
 export function dismissHomeLcpLayer(): void {
   if (typeof document === "undefined") return;

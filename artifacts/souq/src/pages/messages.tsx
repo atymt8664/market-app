@@ -3,6 +3,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type KeyboardEvent,
@@ -22,6 +23,7 @@ import { ChatInboxActionSheet } from "@/components/chat-inbox-action-sheet";
 import { ChatInboxConfirmDialog } from "@/components/chat-inbox-confirm-dialog";
 import { ChatInboxPresenceLine } from "@/components/chat-inbox-presence-line";
 import { ChatInboxSelectionHeader } from "@/components/chat-inbox-selection-header";
+import { useAppChromeContext } from "@/contexts/app-chrome-context";
 import { useAuth } from "@/hooks/use-auth";
 import { useInboxClientPrefs } from "@/hooks/use-inbox-client-prefs";
 import { useInboxLongPress } from "@/hooks/use-inbox-long-press";
@@ -37,7 +39,7 @@ import {
   BOTTOM_NAV_PAGE_SHELL_CLASS,
   BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
 } from "@/lib/bottom-nav-layout";
-import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
+import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
 import {
   ChatInboxCollectionsMenu,
   ChatInboxCollectionsMenuButton,
@@ -67,7 +69,7 @@ import {
   appTextAlignClass,
   getAppTextDir,
 } from "@/lib/app-text-direction";
-import { inboxCollectionPageTitleBadge } from "@/lib/chat-inbox-collection-styles";
+import { inboxCollectionShellClass } from "@/lib/chat-inbox-collection-styles";
 
 const emptyCardShell =
   "rounded-2xl border border-primary/40 bg-[#0A0A0A]/80 p-8 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/15 bg-[#0A0A0A]/70 md:p-10";
@@ -343,6 +345,27 @@ export default function Messages() {
 
   const hiddenCount = hiddenQ.data?.length ?? 0;
   const blockedCount = blockedQ.data?.length ?? 0;
+  const { setOverride } = useAppChromeContext();
+
+  useLayoutEffect(() => {
+    if (collectionView || selectMode) {
+      setOverride({ hidden: true });
+      return () => setOverride({});
+    }
+    setOverride({
+      trailing: (
+        <ChatInboxCollectionsMenuButton
+          onClick={() => {
+            void queryClient.invalidateQueries({ queryKey: inboxBlockedQueryKey() });
+            void queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
+            setCollectionsMenuOpen(true);
+          }}
+        />
+      ),
+    });
+    return () => setOverride({});
+  }, [collectionView, selectMode, queryClient, setOverride]);
+
   const mutedCount = useMemo(() => {
     const mutedSet = new Set(prefs.mutedIds);
     return (conversations ?? []).filter((c) => mutedSet.has(c.id)).length;
@@ -521,6 +544,7 @@ export default function Messages() {
 
   return (
     <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
+      <AppShellContentScroll>
       {selectMode ? (
         <ChatInboxSelectionHeader
           selectedCount={selectedIds.size}
@@ -533,28 +557,7 @@ export default function Messages() {
           onHide={() => requestHide(selectedIdList)}
           onDelete={() => requestDelete(selectedIdList)}
         />
-      ) : (
-        <header
-          className={cn(
-            "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A] shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]",
-            TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
-          )}
-          dir={getAppTextDir()}
-        >
-          <div className="mx-auto flex w-full max-w-[820px] items-center justify-between gap-3 px-3 py-2.5 md:px-4">
-            <h1 className={cn("m-0 min-w-0 flex-1", appTextAlignClass())}>
-              <span className={inboxCollectionPageTitleBadge}>{t("messages.title")}</span>
-            </h1>
-            <ChatInboxCollectionsMenuButton
-              onClick={() => {
-                void queryClient.invalidateQueries({ queryKey: inboxBlockedQueryKey() });
-                void queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
-                setCollectionsMenuOpen(true);
-              }}
-            />
-          </div>
-        </header>
-      )}
+      ) : null}
 
       <div className="mx-auto flex w-full max-w-[820px] flex-1 px-4 pt-3 md:px-6">
         {inboxHydrating ? (
@@ -632,6 +635,13 @@ export default function Messages() {
           </div>
         ) : null}
       </div>
+
+      <div
+        aria-hidden
+        className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS}
+        data-testid="messages-scroll-spacer"
+      />
+      </AppShellContentScroll>
 
       <ChatInboxActionSheet
         open={actionSheetConvId != null}
@@ -712,11 +722,6 @@ export default function Messages() {
         mutedCount={mutedCount}
         onOpenChange={setCollectionsMenuOpen}
         onSelect={setCollectionView}
-      />
-      <div
-        aria-hidden
-        className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS}
-        data-testid="messages-scroll-spacer"
       />
     </div>
   );

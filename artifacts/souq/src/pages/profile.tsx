@@ -65,7 +65,7 @@ import { buildAdShareText, buildProfileShareText } from "@/lib/share-text";
 import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { cn } from "@/lib/utils";
 import { BOTTOM_NAV_PAGE_SHELL_CLASS, BOTTOM_NAV_SCROLL_END_SPACER_CLASS } from "@/lib/bottom-nav-layout";
-import { TAB_IOS_CONTENT_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
+import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 import { stashPromoteAdPreview } from "@/lib/promote-ad-preview";
 import {
@@ -287,18 +287,13 @@ export default function Profile() {
 
   return (
     <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
+      <AppShellContentScroll>
       <div
-        className={cn(
-          "mx-auto w-full max-w-screen-sm md:max-w-[760px] lg:max-w-[860px] px-3 md:px-6",
-          TAB_IOS_CONTENT_SAFE_TOP_CLASS,
-        )}
+        className="mx-auto w-full max-w-screen-sm px-3 pt-2 md:max-w-[760px] md:px-6 md:pt-3 lg:max-w-[860px]"
       >
-        <header dir="rtl">
+        <div dir="rtl">
           <div className="flex w-full items-start justify-between gap-3">
             <div className="flex min-w-0 flex-col items-start gap-2.5 text-right">
-              <span className="inline-flex rounded-full border-2 border-primary/60 bg-black/40 px-4 py-1.5 text-sm font-semibold text-foreground shadow-[0_0_12px_-6px_hsl(var(--primary)/0.22)]">
-                {t("profile.title")}
-              </span>
               <div className="relative shrink-0">
                 <button
                   type="button"
@@ -376,7 +371,7 @@ export default function Profile() {
               </Link>
             </div>
           </div>
-        </header>
+        </div>
 
         <ProfileMetricsBand
           className="mt-4 md:mt-5"
@@ -508,6 +503,8 @@ export default function Profile() {
           )}
         </ProfileContentTabShell>
       </div>
+      <div aria-hidden className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS} data-testid="profile-scroll-spacer" />
+      </AppShellContentScroll>
 
       <ProfileAvatarPreviewDialog
         open={avatarPreviewOpen}
@@ -688,7 +685,6 @@ export default function Profile() {
           </div>
         </DrawerContent>
       </Drawer>
-      <div aria-hidden className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS} data-testid="profile-scroll-spacer" />
     </div>
   );
 }

@@ -101,16 +101,14 @@
     <!-- P7-PR-12:HOME_LCP_HEAD -->
     <!-- P9-3C:SHELL_FEED_OFFSET -->
     <style>
-      html.dark{color-scheme:dark}html,body{margin:0;padding:0;background:#0a0a0a;height:100%;min-height:-webkit-fill-available}
+      html.dark{color-scheme:dark}html,body{margin:0;padding:0;background:#0a0a0a;height:100%;min-height:-webkit-fill-available;overflow:hidden}
       [data-bottom-nav-shell]{position:fixed;left:0;right:0;bottom:0;margin:0;display:flex;flex-direction:column;background:#0A0A0A}
       .standalone-pwa [data-p7-header-shell="1"]{padding-top:var(--souq-safe-top,env(safe-area-inset-top,0px));padding-inline:16px;padding-bottom:0;box-sizing:border-box}
-      #p7-bottom-nav-shell{position:fixed;inset-inline:0;bottom:0;z-index:40;pointer-events:none;margin:0;padding:0;padding-bottom:var(--souq-safe-bottom,env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;justify-content:flex-end;background:#0A0A0A}
-      #p7-bottom-nav-shell *{pointer-events:none}
       #p7-header-shell{position:fixed;inset:0 0 auto 0;z-index:35;pointer-events:none;background:#0A0A0A}
       #p7-header-shell *{pointer-events:none}
       #p7-lcp-layer{position:fixed;left:0;right:0;top:var(--p7-home-feed-offset,var(--p7-home-header-offset,148px));bottom:0;z-index:25;pointer-events:none;background:transparent}
       #p7-lcp-layer.p7-dismissed{opacity:0;visibility:hidden}
-      #root{position:relative;z-index:1;display:flex;flex-direction:column;flex:1;min-height:0;background:#0A0A0A;padding-bottom:0}
+      #root{position:relative;z-index:1;display:flex;flex-direction:column;flex:1;min-height:0;height:100%;overflow:hidden;background:#0A0A0A;padding-bottom:0}
     </style>
   </head>
   <body>
@@ -202,7 +200,6 @@
       })();
     </script>
     <div id="p7-lcp-layer" data-p7-pr="12"><!-- P7-PR-12:LCP_LAYER --></div>
-    <div id="p7-bottom-nav-shell-mount" data-p7-pr="12"><!-- P9-3C:BOTTOM_NAV_SHELL --></div>
     <script>
       (function () {
         var p = location.pathname.replace(/\/$/, "") || "/";
@@ -213,10 +210,6 @@
           if (layer) layer.remove();
           var preload = document.getElementById("p7-lcp-hero-preload");
           if (preload) preload.remove();
-          var bottomNavShell = document.getElementById("p7-bottom-nav-shell");
-          if (bottomNavShell) bottomNavShell.remove();
-          var bottomNavMount = document.getElementById("p7-bottom-nav-shell-mount");
-          if (bottomNavMount) bottomNavMount.remove();
           document.documentElement.classList.remove("p7-await-handoff");
           return;
         }
@@ -228,10 +221,6 @@
             if (ly) ly.remove();
             var pl = document.getElementById("p7-lcp-hero-preload");
             if (pl) pl.remove();
-            var bns = document.getElementById("p7-bottom-nav-shell");
-            if (bns) bns.remove();
-            var bnsMount = document.getElementById("p7-bottom-nav-shell-mount");
-            if (bnsMount) bnsMount.remove();
             document.documentElement.classList.remove("p7-await-handoff");
           }
         } catch (e) {}

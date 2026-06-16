@@ -313,7 +313,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <main id="main-content">
+      <main id="main-content" className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {wrapChrome ? (
           <Suspense fallback={main}>
             <DeferredAppChrome>{main as ReactNode}</DeferredAppChrome>

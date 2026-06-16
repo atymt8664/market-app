@@ -65,10 +65,9 @@ import {
 } from "@/lib/ad-stored-details";
 import { cn } from "@/lib/utils";
 import { BOTTOM_NAV_PAGE_SHELL_CLASS } from "@/lib/bottom-nav-layout";
-import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
 import { SETTINGS_PRIMARY_BUTTON } from "@/components/settings-shell";
 import { t } from "@/i18n";
-import { useLocale } from "@/hooks/use-locale";
+import { useAppChromePage } from "@/contexts/app-chrome-context";
 import { useSelectedCity } from "@/hooks/use-selected-city";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 import { GERMAN_CITIES } from "@/lib/german-cities";
@@ -80,20 +79,12 @@ const adCardShellCompact =
   "rounded-2xl border border-primary/35 bg-[#0A0A0A]/70 p-2 shadow-[0_0_18px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10 md:p-2.5";
 const adInputClass =
   "border border-primary/30 bg-[#0A0A0A]/90 text-foreground placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0 focus-visible:ring-offset-[#0A0A0A]";
-const adHeaderBackBtn =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/55 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 active:opacity-90";
 
 /** عناوين أقسام — نفس أسلوب Home (إعلانات مميزة / موصى لك / التصنيفات) */
 const createAdSectionHeading = cn(
   "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 px-2 py-px",
   "text-sm font-semibold leading-tight tracking-tight text-foreground md:text-base",
   "shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 bg-[#0A0A0A]/70",
-);
-
-/** عنوان الصفحة في الهيدر — أوضح قليلًا ليتناسب مع زر الرجوع (h-11) دون تكبير الهيدر */
-const createAdPageTitleHeading = cn(
-  createAdSectionHeading,
-  "px-2.5 py-0.5 text-base font-semibold md:px-3 md:py-1 md:text-lg",
 );
 
 /** زرّان h-11 + فجوة + تنفس فوق الشريط السفلي — فوق spacer القياسي للـ BottomNav */
@@ -573,6 +564,9 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const { countryCode: savedMarketCountryCode } = useSelectedCity();
   const queryClient = useQueryClient();
   const isEdit = typeof editId === "number";
+  useAppChromePage({
+    titleKey: isEdit ? "create_ad.edit_title" : "create_ad.create_title",
+  });
   const accountCountryCode =
     savedMarketCountryCode.trim().toUpperCase() || MARKETPLACE_COUNTRY_CODE;
 
@@ -1525,31 +1519,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
 
   return (
     <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
-      <header
-        className={cn(
-          "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]",
-          TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
-        )}
-        dir={isRtl ? "rtl" : "ltr"}
-      >
-        <div className="mx-auto flex w-full max-w-[900px] items-center justify-between gap-3 px-4 py-2 md:max-w-[760px] md:px-6 md:py-2.5 lg:max-w-[860px]">
-          <h1 className="min-w-0 flex-1 text-start">
-            <span className={createAdPageTitleHeading}>
-              {isEdit ? t("create_ad.edit_title") : t("create_ad.create_title")}
-            </span>
-          </h1>
-          <Link href="/" className="shrink-0">
-            <button
-              type="button"
-              className={adHeaderBackBtn}
-              aria-label={t("common.back")}
-            >
-              <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
-            </button>
-          </Link>
-        </div>
-      </header>
-
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}

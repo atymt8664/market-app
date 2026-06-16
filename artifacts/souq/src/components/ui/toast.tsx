@@ -5,6 +5,10 @@ import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/** L0 + viewport inset — mobile top toasts clear notch; preserves prior 1rem breathing room. */
+const TOAST_VIEWPORT_SAFE_TOP_CLASS =
+  "pt-[calc(var(--souq-safe-top,env(safe-area-inset-top,0px))+1rem)]";
+
 /** كرت تنبيه / نجاح — dark premium + حدود lime + توهج خفيف (بدون تعبئة lime مسطحة) */
 const PREMIUM_TOAST_CARD =
   "mx-auto w-full max-w-[min(100%,20rem)] rounded-2xl border border-primary/40 bg-[#0A0A0A]/95 p-4 pr-10 text-foreground shadow-[0_0_32px_-10px_hsl(var(--primary)/0.32)] ring-1 ring-primary/18 backdrop-blur-sm sm:max-w-sm"
@@ -18,7 +22,9 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse items-center p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col sm:items-end md:max-w-[420px]",
+      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse items-center px-4 pb-4",
+      TOAST_VIEWPORT_SAFE_TOP_CLASS,
+      "sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col sm:items-end sm:px-4 sm:pb-4 sm:pt-0 md:max-w-[420px]",
       className
     )}
     {...props}

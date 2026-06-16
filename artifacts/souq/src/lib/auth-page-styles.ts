@@ -2,12 +2,17 @@
  * أنماط موحدة لصفحات الحساب — نفس هوية كروت البروفايل / المفضلة / الشات (dark + lime).
  * استخدم القيم كسلاسل Tailwind جاهزة مع `cn()`.
  */
+import { cn } from "@/lib/utils";
+import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
 
 export const AUTH_PAGE_BG =
   "flex min-h-[100dvh] w-full flex-col bg-[#0A0A0A]";
 
-export const AUTH_HEADER =
-  "sticky top-0 z-40 flex items-center gap-3 border-b border-primary/20 bg-[#0A0A0A]/95 px-4 py-3 backdrop-blur shadow-[0_1px_14px_-6px_rgba(0,0,0,0.35)] md:gap-4 md:py-3.5";
+/** L1 auth/guest chrome — sticky header with L0 safe-top (P9-3 §10–§11). pb-only so pt safe-top is not overridden by py. */
+export const AUTH_HEADER = cn(
+  "sticky top-0 z-40 flex items-center gap-3 border-b border-primary/20 bg-[#0A0A0A]/95 px-4 pb-3 backdrop-blur shadow-[0_1px_14px_-6px_rgba(0,0,0,0.35)] md:gap-4 md:pb-3.5",
+  TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
+);
 
 export const AUTH_HEADER_TITLE = "text-lg font-bold text-foreground";
 

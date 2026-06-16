@@ -556,7 +556,7 @@ export default function Messages() {
         </header>
       )}
 
-      <div className="mx-auto flex w-full max-w-[820px] flex-1 px-4 py-3 md:px-6">
+      <div className="mx-auto flex w-full max-w-[820px] flex-1 px-4 pt-3 md:px-6">
         {inboxHydrating ? (
           <div className="flex w-full flex-col gap-1.5">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -586,7 +586,6 @@ export default function Messages() {
                 onOpenConversation={openConversation}
               />
             ))}
-            <li aria-hidden className={cn(BOTTOM_NAV_SCROLL_END_SPACER_CLASS, "list-none")} />
           </ul>
         ) : isError ? (
           <div className="flex w-full flex-col items-center justify-center gap-3 py-10 text-center">
@@ -713,6 +712,11 @@ export default function Messages() {
         mutedCount={mutedCount}
         onOpenChange={setCollectionsMenuOpen}
         onSelect={setCollectionView}
+      />
+      <div
+        aria-hidden
+        className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS}
+        data-testid="messages-scroll-spacer"
       />
     </div>
   );

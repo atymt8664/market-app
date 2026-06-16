@@ -39,9 +39,6 @@ const favoritesHeaderHeartCircle = cn(
   "text-primary transition-[border-color,box-shadow] duration-200",
 );
 
-/** مساحة نهاية القائمة — إظهار شريط إحصائيات آخر كرت فوق Bottom Nav الثابت */
-const favoritesScrollEndSpacer = BOTTOM_NAV_SCROLL_END_SPACER_CLASS;
-
 export default function Favorites() {
   const { user, isLoading: authLoading } = useAuth();
 
@@ -92,7 +89,6 @@ export default function Favorites() {
             {favoriteAds.map((ad) => (
               <FavoriteListItem key={ad.id} ad={ad} />
             ))}
-            <li aria-hidden className={cn(favoritesScrollEndSpacer, "list-none")} />
           </ul>
         ) : (
           <div className="flex justify-center py-6 md:py-8">
@@ -127,6 +123,11 @@ export default function Favorites() {
           </div>
         )}
       </div>
+      <div
+        aria-hidden
+        className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS}
+        data-testid="favorites-scroll-spacer"
+      />
     </div>
   );
 }

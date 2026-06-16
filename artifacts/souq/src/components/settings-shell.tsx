@@ -6,8 +6,18 @@
  * - Inputs: `create-ad.tsx` (`adInputClass`)
  * - Category-style rows: `create-ad.tsx` (Sheet list rows, e.g. `border-primary/25 bg-[#0A0A0A]/75`)
  *
- * Navigation / scroll logic stays unchanged in consuming files.
+ * P9-3: SETTINGS_PAGE_BG is the L2 scroll owner when App Shell locks document scroll.
  */
+
+import {
+  TAB_PAGE_HEADER_ACTION_BTN_DARK,
+  TAB_PAGE_HEADER_ACTION_ICON,
+  TAB_PAGE_HEADER_BAR,
+  TAB_PAGE_HEADER_HUB_INNER,
+  TAB_PAGE_HEADER_SETTINGS_TITLE,
+  TAB_PAGE_HEADER_TRAILING_WRAP_COMPACT,
+  TAB_PAGE_TITLE_BADGE_COMPACT,
+} from "@/lib/tab-page-header-styles";
 
 /** `profile.tsx` / `create-ad.tsx` — card without outer padding (tabs shell, section wrapper) */
 export const SETTINGS_CARD_SHELL =
@@ -21,7 +31,12 @@ export const SETTINGS_CARD =
 export const SETTINGS_CARD_COMPACT =
   "rounded-2xl border border-primary/35 bg-[#0A0A0A]/70 p-3 shadow-[0_0_18px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10";
 
-export const SETTINGS_PAGE_BG = "min-h-[100svh] w-full bg-[#0A0A0A]";
+/**
+ * Settings / legal / account immersive pages — L2 scroll owner (P9-3 App Shell).
+ * Replaces min-h-[100svh] which clipped inside overflow-hidden L2 Content Slot.
+ */
+export const SETTINGS_PAGE_BG =
+  "flex min-h-0 flex-1 w-full flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain bg-[#0A0A0A] [-webkit-overflow-scrolling:touch]";
 
 /**
  * Bottom padding for settings / legal / account subtrees when the main BottomNav is hidden.
@@ -30,21 +45,26 @@ export const SETTINGS_PAGE_BG = "min-h-[100svh] w-full bg-[#0A0A0A]";
 export const SETTINGS_IMMERSIVE_BOTTOM =
   "pb-[max(2rem,env(safe-area-inset-bottom,0px))]";
 
-/** `create-ad.tsx` sticky header */
-export const SETTINGS_HEADER_BAR =
-  "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]";
+/** Settings subtree sticky header — compact approved shell (P9-3 §10–§11). */
+export const SETTINGS_HEADER_BAR = TAB_PAGE_HEADER_BAR;
 
-/** `create-ad.tsx` header inner row */
-export const SETTINGS_HEADER_INNER =
-  "mx-auto flex w-full max-w-[900px] items-center justify-between gap-3 px-4 py-3 md:max-w-[760px] md:px-6 lg:max-w-[860px]";
+/** Compact header inner row — hub / account / legal pages. */
+export const SETTINGS_HEADER_INNER = TAB_PAGE_HEADER_HUB_INNER;
 
-/** `create-ad.tsx` `adHeaderBackBtn` */
-export const SETTINGS_BACK_BUTTON =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/55 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 active:opacity-90";
+/** Compact circular back button. */
+export const SETTINGS_BACK_BUTTON = TAB_PAGE_HEADER_ACTION_BTN_DARK;
 
-/** `create-ad.tsx` page title */
-export const SETTINGS_PAGE_TITLE =
-  "min-w-0 flex-1 text-right text-lg font-bold text-foreground";
+/** Lucide size for header action icons — pair with SETTINGS_BACK_BUTTON. */
+export const SETTINGS_HEADER_ACTION_ICON = TAB_PAGE_HEADER_ACTION_ICON;
+
+/** Card title badge — compact approved size. */
+export const SETTINGS_PAGE_TITLE_BADGE = TAB_PAGE_TITLE_BADGE_COMPACT;
+
+/** h1 wrapper — place {@link SETTINGS_PAGE_TITLE_BADGE} inside. */
+export const SETTINGS_PAGE_TITLE = TAB_PAGE_HEADER_SETTINGS_TITLE;
+
+/** Trailing header actions (back, menu). */
+export const SETTINGS_HEADER_TRAILING = TAB_PAGE_HEADER_TRAILING_WRAP_COMPACT;
 
 /** `create-ad.tsx` form outer: `mx-auto ... px-4 md:px-6 py-4 flex flex-col gap-4` */
 export const SETTINGS_MAIN_COLUMN =
@@ -54,8 +74,7 @@ export const SETTINGS_MAIN_COLUMN =
  * Settings hub — shared layout for `/settings` and account subtree pages.
  * Card gaps stay comfortable; inner list rows use SETTINGS_HUB_LIST_ROW_* tokens.
  */
-export const SETTINGS_HUB_HEADER_INNER =
-  "mx-auto flex w-full max-w-[900px] items-center justify-between gap-3 px-2.5 py-3 md:max-w-[760px] md:px-3.5 lg:max-w-[860px]";
+export const SETTINGS_HUB_HEADER_INNER = TAB_PAGE_HEADER_HUB_INNER;
 
 export const SETTINGS_HUB_MAIN =
   "mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-2.5 md:px-3.5 pt-2 pb-3 flex flex-col gap-2.5";

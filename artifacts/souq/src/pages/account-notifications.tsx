@@ -106,7 +106,7 @@ export default function AccountNotifications() {
   if (!user) {
     return (
       <div
-        className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM, "flex min-h-[100dvh] flex-col")}
+        className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}
         dir={isRtl ? "rtl" : "ltr"}
       >
         <AccountHeader title={t("account_notifications.title")} />
@@ -153,7 +153,7 @@ export default function AccountNotifications() {
 
   return (
     <div
-      className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM, "flex min-h-[100dvh] flex-col")}
+      className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}
       dir={isRtl ? "rtl" : "ltr"}
     >
       <AccountHeader title={t("account_notifications.title")} />

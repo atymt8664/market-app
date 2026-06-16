@@ -65,6 +65,7 @@ import {
   parseStoredAdDetails,
 } from "@/lib/ad-stored-details";
 import { cn } from "@/lib/utils";
+import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
 import { BOTTOM_NAV_PAGE_SHELL_CLASS } from "@/lib/bottom-nav-layout";
 import { SETTINGS_PRIMARY_BUTTON } from "@/components/settings-shell";
 import { t } from "@/i18n";
@@ -1520,10 +1521,11 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
 
   return (
     <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
+      <AppShellContentScroll>
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="mx-auto flex w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 py-2.5 flex flex-col gap-2.5 md:gap-3 md:py-3"
+          className="mx-auto flex w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 pt-2 pb-2.5 flex flex-col gap-2.5 md:gap-3 md:pt-3 md:pb-3"
         >
           <section className="space-y-2" dir={isRtl ? "rtl" : "ltr"}>
             <input
@@ -2589,6 +2591,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
         isPending={improveDescMutation.isPending}
         showHint={showAiImproveHint}
       />
+      </AppShellContentScroll>
     </div>
   );
 }

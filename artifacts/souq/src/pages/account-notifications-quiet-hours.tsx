@@ -44,7 +44,7 @@ export default function AccountNotificationsQuietHours() {
   if (!user) {
     return (
       <div
-        className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM, "flex min-h-[100dvh] flex-col")}
+        className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}
         dir={isRtl ? "rtl" : "ltr"}
       >
         <AccountHeader title={t("account_notifications.quiet_hours_title")} />
@@ -71,7 +71,7 @@ export default function AccountNotificationsQuietHours() {
 
   return (
     <div
-      className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM, "flex min-h-[100dvh] flex-col")}
+      className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}
       dir={isRtl ? "rtl" : "ltr"}
     >
       <AccountHeader title={t("account_notifications.quiet_hours_title")} />

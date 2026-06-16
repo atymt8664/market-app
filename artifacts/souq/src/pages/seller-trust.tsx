@@ -19,12 +19,15 @@ import { Button } from "@/components/ui/button";
 import {
   SETTINGS_BACK_BUTTON,
   SETTINGS_CARD,
+  SETTINGS_HEADER_ACTION_ICON,
   SETTINGS_HEADER_BAR,
   SETTINGS_HEADER_INNER,
+  SETTINGS_HEADER_TRAILING,
   SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
   SETTINGS_PAGE_TITLE,
+  SETTINGS_PAGE_TITLE_BADGE,
   SETTINGS_SECTION_TITLE,
 } from "@/components/settings-shell";
 
@@ -111,10 +114,14 @@ export default function SellerTrustPage() {
     <div className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)} dir={dir} {...p10PreviewAttrs("user.trust_score")}>
       <header className={SETTINGS_HEADER_BAR} dir="rtl">
         <div className={SETTINGS_HEADER_INNER}>
-          <h1 className={SETTINGS_PAGE_TITLE}>{t("seller_trust.page.title")}</h1>
-          <button type="button" onClick={onBack} className={SETTINGS_BACK_BUTTON} aria-label={t("seller_trust.page.back_aria")}>
-            <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
-          </button>
+          <h1 className={SETTINGS_PAGE_TITLE}>
+            <span className={SETTINGS_PAGE_TITLE_BADGE}>{t("seller_trust.page.title")}</span>
+          </h1>
+          <div className={SETTINGS_HEADER_TRAILING}>
+            <button type="button" onClick={onBack} className={SETTINGS_BACK_BUTTON} aria-label={t("seller_trust.page.back_aria")}>
+              <ArrowRight className={SETTINGS_HEADER_ACTION_ICON} strokeWidth={2.25} />
+            </button>
+          </div>
         </div>
       </header>
 

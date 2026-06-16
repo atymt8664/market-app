@@ -25,10 +25,14 @@ import {
 } from "@/lib/query-stale-times";
 import {
   SETTINGS_BACK_BUTTON,
+  SETTINGS_HEADER_ACTION_ICON,
   SETTINGS_HEADER_BAR,
   SETTINGS_HEADER_INNER,
+  SETTINGS_HEADER_TRAILING,
   SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_PAGE_BG,
+  SETTINGS_PAGE_TITLE,
+  SETTINGS_PAGE_TITLE_BADGE,
   SETTINGS_CARD_SHELL,
 } from "@/components/settings-shell";
 
@@ -116,42 +120,37 @@ export default function Category() {
     >
       <header className={SETTINGS_HEADER_BAR}>
         <div className={SETTINGS_HEADER_INNER}>
-          <Link href="/categories">
-            <button
-              type="button"
-              className={SETTINGS_BACK_BUTTON}
-              aria-label={t("common.back")}
-            >
-              <ArrowRight className="h-5 w-5" />
-            </button>
-          </Link>
-          <div
+          <h1
             className={cn(
-              "flex min-w-0 flex-1 items-center gap-2.5",
-              isRtl ? "flex-row-reverse" : "flex-row",
+              SETTINGS_PAGE_TITLE,
+              "flex items-center gap-2",
+              isRtl ? "flex-row-reverse justify-end" : "flex-row",
             )}
           >
             {selectedCategory ? (
               <div
                 className={cn(
-                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
                   "border border-primary/35 bg-[#0A0A0A]/75 text-primary",
                   "shadow-[0_0_14px_-10px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10",
                 )}
               >
-                <CategoryIcon name={selectedCategory.icon} className="h-6 w-6" />
+                <CategoryIcon name={selectedCategory.icon} className="h-5 w-5" />
               </div>
             ) : null}
-            <h1
-              className={cn(
-                "min-w-0 flex-1 text-lg font-bold leading-tight text-foreground md:text-xl",
-                isRtl ? "text-right" : "text-left",
-              )}
-            >
-              {title}
-            </h1>
+            <span className={SETTINGS_PAGE_TITLE_BADGE}>{title}</span>
+          </h1>
+          <div className={SETTINGS_HEADER_TRAILING}>
+            <Link href="/categories">
+              <button
+                type="button"
+                className={SETTINGS_BACK_BUTTON}
+                aria-label={t("common.back")}
+              >
+                <ArrowRight className={SETTINGS_HEADER_ACTION_ICON} />
+              </button>
+            </Link>
           </div>
-          <span className="w-11 shrink-0" aria-hidden />
         </div>
       </header>
 

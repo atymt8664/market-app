@@ -125,7 +125,7 @@ export default function AccountVerification() {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn("flex min-h-[100dvh] w-full flex-col", SETTINGS_PAGE_BG)}
+      className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}
       dir={dir}
       {...p10PreviewAttrs("user.verification_preview")}
     >

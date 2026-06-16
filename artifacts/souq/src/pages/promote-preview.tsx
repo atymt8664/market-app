@@ -13,9 +13,12 @@ import {
   SETTINGS_HEADER_BAR,
   SETTINGS_HEADER_INNER,
   SETTINGS_IMMERSIVE_BOTTOM,
+  SETTINGS_HEADER_ACTION_ICON,
+  SETTINGS_HEADER_TRAILING,
   SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
   SETTINGS_PAGE_TITLE,
+  SETTINGS_PAGE_TITLE_BADGE,
 } from "@/components/settings-shell";
 
 /** مسموح فقط بمسارات داخلية معروفة — لا يُقبل مسار عشوائي. */
@@ -48,10 +51,14 @@ export default function PromotePreviewPage() {
     <div className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)} dir={dir} {...p10PreviewAttrs("user.promote_preview")}>
       <header className={SETTINGS_HEADER_BAR} dir="rtl">
         <div className={SETTINGS_HEADER_INNER}>
-          <h1 className={SETTINGS_PAGE_TITLE}>{t("promote.title")}</h1>
-          <button type="button" onClick={onBack} className={SETTINGS_BACK_BUTTON} aria-label={t("promote_preview.back_aria")}>
-            <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
-          </button>
+          <h1 className={SETTINGS_PAGE_TITLE}>
+            <span className={SETTINGS_PAGE_TITLE_BADGE}>{t("promote.title")}</span>
+          </h1>
+          <div className={SETTINGS_HEADER_TRAILING}>
+            <button type="button" onClick={onBack} className={SETTINGS_BACK_BUTTON} aria-label={t("promote_preview.back_aria")}>
+              <ArrowRight className={SETTINGS_HEADER_ACTION_ICON} strokeWidth={2.25} />
+            </button>
+          </div>
         </div>
       </header>
 

@@ -7,11 +7,13 @@ import { Link } from "wouter";
 import { ArrowRight, Heart, Share2 } from "lucide-react";
 import { AdImagesPublic } from "@/components/ad-images-public";
 import { cn } from "@/lib/utils";
+import {
+  TAB_PAGE_HEADER_ACTION_BTN,
+  TAB_PAGE_HEADER_ACTION_ICON,
+  TAB_PAGE_HEADER_ACTIONS_GAP,
+} from "@/lib/tab-page-header-styles";
 import { t } from "@/i18n";
 import { adImageListEqual } from "@/lib/ad-image-preload";
-
-const floatingHeaderBtn =
-  "inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-primary/55 bg-[#0A0A0A]/90 text-primary shadow-[0_0_16px_-5px_hsl(var(--primary)/0.38)] transition-[transform,colors,box-shadow] duration-150 hover:border-primary/70 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.45)] active:scale-[0.96] disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
 
 type AdDetailHeroSectionProps = {
   pageMax: string;
@@ -34,35 +36,35 @@ function AdDetailHeroSectionInner({
 }: AdDetailHeroSectionProps) {
   return (
     <div className={`${pageMax} pb-1 space-y-1`}>
-      <div className="flex items-center justify-between gap-3 py-1.5 md:py-2.5">
+      <div className="flex items-center justify-between gap-3 py-1 md:py-1.5">
         <Link href="/" className="shrink-0">
           <button
             type="button"
-            className={floatingHeaderBtn}
+            className={cn(TAB_PAGE_HEADER_ACTION_BTN, "touch-manipulation active:scale-[0.96]")}
             aria-label={t("common.back")}
           >
-            <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
+            <ArrowRight className={TAB_PAGE_HEADER_ACTION_ICON} strokeWidth={2.25} />
           </button>
         </Link>
-        <div className="flex gap-2">
+        <div className={cn("flex", TAB_PAGE_HEADER_ACTIONS_GAP)}>
           <button
             type="button"
             onClick={onShare}
-            className={floatingHeaderBtn}
+            className={cn(TAB_PAGE_HEADER_ACTION_BTN, "touch-manipulation active:scale-[0.96]")}
             aria-label={t("ad_detail.copy_link")}
           >
-            <Share2 className="h-5 w-5" strokeWidth={2.25} />
+            <Share2 className={TAB_PAGE_HEADER_ACTION_ICON} strokeWidth={2.25} />
           </button>
           <button
             type="button"
             onClick={onToggleFavorite}
             aria-label={t("ad_detail.favorite")}
             disabled={favBusy}
-            className={floatingHeaderBtn}
+            className={cn(TAB_PAGE_HEADER_ACTION_BTN, "touch-manipulation active:scale-[0.96]")}
           >
             <Heart
               className={cn(
-                "h-5 w-5",
+                TAB_PAGE_HEADER_ACTION_ICON,
                 isFavorited ? "fill-primary text-primary" : "text-primary",
               )}
               strokeWidth={2.25}
@@ -87,4 +89,4 @@ export const AdDetailHeroSection = memo(AdDetailHeroSectionInner, (prev, next) =
 
 AdDetailHeroSection.displayName = "AdDetailHeroSection";
 
-export { floatingHeaderBtn as adDetailFloatingHeaderBtnClass };
+export { TAB_PAGE_HEADER_ACTION_BTN as adDetailFloatingHeaderBtnClass };

@@ -16,7 +16,7 @@ import {
   ThumbsUp,
   ArrowUp,
 } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useLayoutEffect, useCallback } from "react";
 import {
   useListMyAds,
   useDeleteAd,
@@ -66,6 +66,7 @@ import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { cn } from "@/lib/utils";
 import { BOTTOM_NAV_PAGE_SHELL_CLASS, BOTTOM_NAV_SCROLL_END_SPACER_CLASS } from "@/lib/bottom-nav-layout";
 import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
+import { useAppChromeContext } from "@/contexts/app-chrome-context";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 import { stashPromoteAdPreview } from "@/lib/promote-ad-preview";
 import {
@@ -86,9 +87,14 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 
-/** أزرار الرأس — ظل ثابت خفيف، بدون transform (يقلّل flicker أثناء التمرير) */
-const profileHeaderIconBtn =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-[#0A0A0A]/90 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.18)] transition-colors hover:border-primary/75 hover:bg-[#0A0A0A]/95 active:opacity-90 disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
+import {
+  TAB_PAGE_HEADER_ACTION_BTN,
+  TAB_PAGE_HEADER_ACTION_ICON,
+  TAB_PAGE_HEADER_ACTIONS_GAP,
+} from "@/lib/tab-page-header-styles";
+
+const profilePageColumn =
+  "mx-auto w-full max-w-screen-sm px-3 md:max-w-[760px] md:px-6 lg:max-w-[860px]";
 
 /** نفس تعريفات كروت صفحة «نشر إعلان» (`create-ad.tsx` — adCardShell / adCardShellCompact) */
 const AD_CARD_SHELL =
@@ -163,17 +169,10 @@ export default function Profile() {
     },
   });
 
-  if (authLoading) {
-    return (
-      <div className={cn(BOTTOM_NAV_PAGE_SHELL_CLASS, "items-center justify-center")}>
-        <div className="w-12 h-12 rounded-full border-4 border-muted border-t-primary animate-spin" />
-      </div>
-    );
-  }
+  const { setOverride } = useAppChromeContext();
 
-  if (!user) return <Redirect to="/guest-welcome?redirect=/profile" />;
-
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
+    if (!user) return;
     const url = getPublicUserProfileUrl(user.id);
     const text = buildProfileShareText(user.name, user.city, url);
     const outcome = await shareOrCopyLink({
@@ -190,7 +189,48 @@ export default function Profile() {
         variant: "destructive",
       });
     }
-  };
+  }, [user, toast]);
+
+  useLayoutEffect(() => {
+    if (!user) {
+      setOverride({});
+      return () => setOverride({});
+    }
+    setOverride({
+      trailing: (
+        <div className={cn("flex shrink-0 items-center", TAB_PAGE_HEADER_ACTIONS_GAP)} dir="ltr">
+          <button
+            type="button"
+            onClick={() => void handleShare()}
+            aria-label={t("profile.share")}
+            className={TAB_PAGE_HEADER_ACTION_BTN}
+          >
+            <Share2 className={TAB_PAGE_HEADER_ACTION_ICON} strokeWidth={2.25} />
+          </button>
+          <Link href="/settings">
+            <button
+              type="button"
+              aria-label={t("profile.settings")}
+              className={TAB_PAGE_HEADER_ACTION_BTN}
+            >
+              <Settings className={TAB_PAGE_HEADER_ACTION_ICON} strokeWidth={2.25} />
+            </button>
+          </Link>
+        </div>
+      ),
+    });
+    return () => setOverride({});
+  }, [user, setOverride, handleShare]);
+
+  if (authLoading) {
+    return (
+      <div className={cn(BOTTOM_NAV_PAGE_SHELL_CLASS, "items-center justify-center")}>
+        <div className="w-12 h-12 rounded-full border-4 border-muted border-t-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) return <Redirect to="/guest-welcome?redirect=/profile" />;
 
   const handleDelete = () => {
     if (adToDelete === null) return;
@@ -286,13 +326,10 @@ export default function Profile() {
   const avatarBusy = isUploading || updateProfile.isPending;
 
   return (
-    <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
-      <AppShellContentScroll>
-      <div
-        className="mx-auto w-full max-w-screen-sm px-3 pt-2 md:max-w-[760px] md:px-6 md:pt-3 lg:max-w-[860px]"
-      >
-        <div dir="rtl">
-          <div className="flex w-full items-start justify-between gap-3">
+    <div className={cn(BOTTOM_NAV_PAGE_SHELL_CLASS)}>
+      <div className="shrink-0 bg-[#0A0A0A]" data-testid="profile-pinned-header">
+        <div className={cn(profilePageColumn, "pt-2 md:pt-3")}>
+          <div dir="rtl">
             <div className="flex min-w-0 flex-col items-start gap-2.5 text-right">
               <div className="relative shrink-0">
                 <button
@@ -332,60 +369,43 @@ export default function Profile() {
                 />
               </div>
 
-            <h2 className="max-w-full truncate text-right text-xl font-bold leading-tight text-foreground md:text-2xl">
-              {user.name}
-            </h2>
-            <p className="text-right text-[0.82rem] leading-tight text-muted-foreground md:text-sm">
-              <span className="inline-flex items-center gap-1.5">
-                <UserIcon className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
-                {t("profile.seller_type")}
-              </span>
-            </p>
-            {memberSince ? (
-              <p className="text-right text-[0.8rem] leading-tight text-muted-foreground/85 md:text-sm">
+              <h2 className="max-w-full truncate text-right text-xl font-bold leading-tight text-foreground md:text-2xl">
+                {user.name}
+              </h2>
+              <p className="text-right text-[0.82rem] leading-tight text-muted-foreground md:text-sm">
                 <span className="inline-flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
-                  {t("profile.member_since", { date: memberSince })}
+                  <UserIcon className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
+                  {t("profile.seller_type")}
                 </span>
               </p>
-            ) : null}
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2 self-start" dir="ltr">
-              <button
-                type="button"
-                onClick={handleShare}
-                aria-label={t("profile.share")}
-                className={profileHeaderIconBtn}
-              >
-                <Share2 className="h-5 w-5" strokeWidth={2.25} />
-              </button>
-              <Link href="/settings">
-                <button
-                  type="button"
-                  aria-label={t("profile.settings")}
-                  className={profileHeaderIconBtn}
-                >
-                  <Settings className="h-5 w-5" strokeWidth={2.25} />
-                </button>
-              </Link>
+              {memberSince ? (
+                <p className="text-right text-[0.8rem] leading-tight text-muted-foreground/85 md:text-sm">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
+                    {t("profile.member_since", { date: memberSince })}
+                  </span>
+                </p>
+              ) : null}
             </div>
           </div>
+
+          <ProfileMetricsBand
+            className="mt-4 md:mt-5"
+            dir={profileDir}
+            adCount={adCount}
+            profileViews={profileViews}
+            followerCount={followerCount}
+            followingCount={followingCount}
+            numberLocale={numberLocale}
+            onFollowersClick={() => setStatsSheet("followers")}
+            onFollowingClick={() => setStatsSheet("following")}
+            onViewsClick={() => setStatsSheet("views")}
+          />
         </div>
+      </div>
 
-        <ProfileMetricsBand
-          className="mt-4 md:mt-5"
-          dir={profileDir}
-          adCount={adCount}
-          profileViews={profileViews}
-          followerCount={followerCount}
-          followingCount={followingCount}
-          numberLocale={numberLocale}
-          onFollowersClick={() => setStatsSheet("followers")}
-          onFollowingClick={() => setStatsSheet("following")}
-          onViewsClick={() => setStatsSheet("views")}
-        />
-
+      <AppShellContentScroll>
+      <div className={profilePageColumn}>
         <OrdersAccountCardGrid
           className={PROFILE_SECTION_STACK_GAP}
           onBuyerNavigate={() => navigate("/orders")}

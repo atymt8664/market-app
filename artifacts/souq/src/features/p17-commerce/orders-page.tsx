@@ -27,6 +27,11 @@ import {
   ORDERS_TAB_LIST_LAYOUT,
   ORDERS_TAB_TRIGGER,
 } from "./orders-page-styles";
+import {
+  SETTINGS_HEADER_ACTION_ICON,
+  SETTINGS_HEADER_TRAILING,
+  SETTINGS_PAGE_TITLE,
+} from "@/components/settings-shell";
 
 function HubTabTriggerLabel({ labelKey, count }: { labelKey: string; count: number }) {
   return (
@@ -192,12 +197,14 @@ function CreateAdPatternHeader({
   return (
     <header className={CREATE_AD_HEADER_BAR} dir="rtl" data-testid={testId}>
       <div className={CREATE_AD_HEADER_INNER}>
-        <h1 className="min-w-0 flex-1 text-start">
+        <h1 className={SETTINGS_PAGE_TITLE}>
           <span className={ORDERS_BUYER_PAGE_TITLE_HEADING}>{title}</span>
         </h1>
-        <button type="button" onClick={onBack} className={CREATE_AD_BACK_BTN} aria-label={t("common.back")}>
-          <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
-        </button>
+        <div className={SETTINGS_HEADER_TRAILING}>
+          <button type="button" onClick={onBack} className={CREATE_AD_BACK_BTN} aria-label={t("common.back")}>
+            <ArrowRight className={SETTINGS_HEADER_ACTION_ICON} strokeWidth={2.25} />
+          </button>
+        </div>
       </div>
     </header>
   );

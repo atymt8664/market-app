@@ -26,6 +26,8 @@ import {
   SETTINGS_BACK_BUTTON,
   SETTINGS_CARD_SHELL,
   SETTINGS_HEADER_BAR,
+  SETTINGS_HEADER_ACTION_ICON,
+  SETTINGS_HEADER_TRAILING,
   SETTINGS_HUB_HEADER_INNER,
   SETTINGS_HUB_LIST_ROW_HINT,
   SETTINGS_HUB_LIST_ROW_LABEL,
@@ -33,6 +35,7 @@ import {
   SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_PAGE_BG,
   SETTINGS_PAGE_TITLE,
+  SETTINGS_PAGE_TITLE_BADGE,
 } from "@/components/settings-shell";
 import {
   SETTINGS_ROW_DIVIDER,
@@ -80,12 +83,16 @@ export default function Settings() {
     <div className={`flex flex-col w-full ${SETTINGS_PAGE_BG} ${SETTINGS_IMMERSIVE_BOTTOM}`}>
       <header className={SETTINGS_HEADER_BAR} dir="rtl">
         <div className={SETTINGS_HUB_HEADER_INNER}>
-          <h1 className={SETTINGS_PAGE_TITLE}>{t("settings.title")}</h1>
-          <Link href="/profile" className="shrink-0">
-            <button type="button" className={SETTINGS_BACK_BUTTON} aria-label={t("settings.title")}>
-              <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
-            </button>
-          </Link>
+          <h1 className={SETTINGS_PAGE_TITLE}>
+            <span className={SETTINGS_PAGE_TITLE_BADGE}>{t("settings.title")}</span>
+          </h1>
+          <div className={SETTINGS_HEADER_TRAILING}>
+            <Link href="/profile" className="shrink-0">
+              <button type="button" className={SETTINGS_BACK_BUTTON} aria-label={t("settings.title")}>
+                <ArrowRight className={SETTINGS_HEADER_ACTION_ICON} strokeWidth={2.25} />
+              </button>
+            </Link>
+          </div>
         </div>
       </header>
 

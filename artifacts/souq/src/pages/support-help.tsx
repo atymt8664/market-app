@@ -16,6 +16,8 @@ import {
   SETTINGS_CARD_TITLE,
   SETTINGS_FIELD,
   SETTINGS_HEADER_BAR,
+  SETTINGS_HEADER_ACTION_ICON,
+  SETTINGS_HEADER_TRAILING,
   SETTINGS_HUB_HEADER_INNER,
   SETTINGS_HUB_SUBPAGE_MAIN,
   SETTINGS_IMMERSIVE_BOTTOM,
@@ -24,6 +26,7 @@ import {
   SETTINGS_MESSAGE_BUBBLE,
   SETTINGS_PAGE_BG,
   SETTINGS_PAGE_TITLE,
+  SETTINGS_PAGE_TITLE_BADGE,
   SETTINGS_PRIMARY_BUTTON,
   SETTINGS_STATUS_BADGE,
   SETTINGS_TICKET_ROW,
@@ -121,17 +124,21 @@ export default function SupportHelpPage() {
     <div className={`flex flex-col ${SETTINGS_PAGE_BG}`}>
       <header className={SETTINGS_HEADER_BAR} dir="rtl">
         <div className={SETTINGS_HUB_HEADER_INNER}>
-          <h1 className={SETTINGS_PAGE_TITLE}>المساعدة والدعم</h1>
-          <button
-            type="button"
-            onClick={() => {
-              navigateBackFromLegalPage(navigate, getBrowserSearchRaw(), "/settings");
-            }}
-            className={SETTINGS_BACK_BUTTON}
-            aria-label="رجوع"
-          >
-            <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
-          </button>
+          <h1 className={SETTINGS_PAGE_TITLE}>
+            <span className={SETTINGS_PAGE_TITLE_BADGE}>المساعدة والدعم</span>
+          </h1>
+          <div className={SETTINGS_HEADER_TRAILING}>
+            <button
+              type="button"
+              onClick={() => {
+                navigateBackFromLegalPage(navigate, getBrowserSearchRaw(), "/settings");
+              }}
+              className={SETTINGS_BACK_BUTTON}
+              aria-label="رجوع"
+            >
+              <ArrowRight className={SETTINGS_HEADER_ACTION_ICON} strokeWidth={2.25} />
+            </button>
+          </div>
         </div>
       </header>
 

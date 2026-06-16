@@ -14,11 +14,15 @@ import { STALE_CATEGORIES_MS } from "@/lib/query-stale-times";
 import { Button } from "@/components/ui/button";
 import {
   SETTINGS_BACK_BUTTON,
+  SETTINGS_CARD_SHELL,
+  SETTINGS_HEADER_ACTION_ICON,
   SETTINGS_HEADER_BAR,
   SETTINGS_HEADER_INNER,
+  SETTINGS_HEADER_TRAILING,
   SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_PAGE_BG,
-  SETTINGS_CARD_SHELL,
+  SETTINGS_PAGE_TITLE,
+  SETTINGS_PAGE_TITLE_BADGE,
 } from "@/components/settings-shell";
 
 function CategoryCardSkeleton({ className }: { className?: string }) {
@@ -82,24 +86,20 @@ export default function Categories() {
     >
       <header className={SETTINGS_HEADER_BAR}>
         <div className={SETTINGS_HEADER_INNER}>
-          <Link href="/">
-            <button
-              type="button"
-              className={SETTINGS_BACK_BUTTON}
-              aria-label={t("common.back")}
-            >
-              <ArrowRight className="h-5 w-5" />
-            </button>
-          </Link>
-          <h1
-            className={cn(
-              "min-w-0 flex-1 text-lg font-bold text-foreground md:text-xl",
-              isRtl ? "text-right" : "text-left",
-            )}
-          >
-            {t("categories.title")}
+          <h1 className={SETTINGS_PAGE_TITLE}>
+            <span className={SETTINGS_PAGE_TITLE_BADGE}>{t("categories.title")}</span>
           </h1>
-          <span className="w-11 shrink-0" aria-hidden />
+          <div className={SETTINGS_HEADER_TRAILING}>
+            <Link href="/">
+              <button
+                type="button"
+                className={SETTINGS_BACK_BUTTON}
+                aria-label={t("common.back")}
+              >
+                <ArrowRight className={SETTINGS_HEADER_ACTION_ICON} />
+              </button>
+            </Link>
+          </div>
         </div>
       </header>
 

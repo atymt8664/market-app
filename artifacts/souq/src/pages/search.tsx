@@ -16,20 +16,23 @@ import {
   BOTTOM_NAV_PAGE_SHELL_CLASS,
   BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
 } from "@/lib/bottom-nav-layout";
-import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
+import {
+  TAB_PAGE_HEADER_ACTION_BTN,
+  TAB_PAGE_HEADER_ACTION_ICON,
+  TAB_PAGE_HEADER_BAR,
+  TAB_PAGE_HEADER_COMPACT_PADDING,
+  TAB_PAGE_HEADER_INNER_ROW,
+} from "@/lib/tab-page-header-styles";
 import {
   SETTINGS_BACK_BUTTON,
-  SETTINGS_HEADER_INNER,
+  SETTINGS_HEADER_ACTION_ICON,
   SETTINGS_CARD_SHELL,
 } from "@/components/settings-shell";
 
 const listingGridCardTone =
   "[&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-[#0A0A0A]/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:bg-[#0A0A0A]/70 [&_article]:hover:border-primary/40 [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55";
 
-const searchStickyHeaderClass = cn(
-  "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]",
-  TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
-);
+const searchStickyHeaderClass = TAB_PAGE_HEADER_BAR;
 
 export default function Search() {
   const { locale } = useLocale();
@@ -83,15 +86,15 @@ export default function Search() {
       dir={isRtl ? "rtl" : "ltr"}
     >
       <header className={cn(searchStickyHeaderClass, "border-b border-primary/15")}>
-        <div className={cn(SETTINGS_HEADER_INNER, "flex-col gap-3 py-3 md:flex-row md:items-center md:py-3")}>
-          <div className="flex w-full items-center gap-3">
+        <div className={cn(TAB_PAGE_HEADER_INNER_ROW, "max-w-[900px] md:max-w-[760px] lg:max-w-[860px]", TAB_PAGE_HEADER_COMPACT_PADDING, "flex-col gap-2 md:flex-row md:items-center")}>
+          <div className="flex w-full items-center gap-2">
             <Link href="/">
               <button
                 type="button"
                 className={SETTINGS_BACK_BUTTON}
                 aria-label={t("common.back")}
               >
-                <ArrowRight className="h-5 w-5" />
+                <ArrowRight className={SETTINGS_HEADER_ACTION_ICON} />
               </button>
             </Link>
             <MarketplaceSearchBar
@@ -106,14 +109,10 @@ export default function Search() {
             />
             <button
               type="button"
-              className={cn(
-                "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
-                "border border-primary/50 bg-black/55 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)]",
-                "transition-colors hover:border-primary/75 active:opacity-90",
-              )}
+              className={TAB_PAGE_HEADER_ACTION_BTN}
               aria-label={t("search.filters_aria")}
             >
-              <Filter className="h-5 w-5" />
+              <Filter className={TAB_PAGE_HEADER_ACTION_ICON} />
             </button>
           </div>
         </div>

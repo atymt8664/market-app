@@ -57,7 +57,15 @@ import {
 import { AdDetailSellerPresenceBadge } from "@/components/ad-detail-seller-presence-badge";
 import { ProfileAvatarRing } from "@/components/profile-avatar-ring";
 import { t, type Locale } from "@/i18n";
+import {
+  BOTTOM_NAV_PAGE_SHELL_CLASS,
+} from "@/lib/bottom-nav-layout";
+import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
 import { cn } from "@/lib/utils";
+
+/** Scroll-end clearance — nav button row + L3 visual drop + breathing room for last full card. */
+const adDetailScrollEndSpacer =
+  "min-h-[calc(3.125rem+var(--souq-bottom-nav-drop,8px)+1rem)] shrink-0 bg-[#0A0A0A] md:min-h-[calc(3.5rem+var(--souq-bottom-nav-drop,8px)+1rem)]";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 import { lookupMarketplaceCountry } from "@/lib/locations/manifest-data";
 import { useQueryClient } from "@tanstack/react-query";
@@ -566,25 +574,33 @@ export default function AdDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col w-full min-h-[100dvh] bg-[#0A0A0A]">
-        <Skeleton className="w-full aspect-square" />
-        <div className="p-4 flex flex-col gap-4">
-          <Skeleton className="w-2/3 h-8" />
-          <Skeleton className="w-1/3 h-6" />
-          <Skeleton className="w-full h-24 mt-4" />
-        </div>
+      <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
+        <AppShellContentScroll>
+          <div className="flex w-full flex-col bg-[#0A0A0A]">
+            <Skeleton className="aspect-square w-full" />
+            <div className="flex flex-col gap-4 p-4">
+              <Skeleton className="h-8 w-2/3" />
+              <Skeleton className="h-6 w-1/3" />
+              <Skeleton className="mt-4 h-24 w-full" />
+            </div>
+          </div>
+        </AppShellContentScroll>
       </div>
     );
   }
 
   if (!ad) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[100dvh] bg-[#0A0A0A] p-4 text-center">
-        <h2 className="text-2xl font-bold mb-2">{t("ad_detail.not_found_title")}</h2>
-        <p className="text-muted-foreground mb-6">{t("ad_detail.not_found_desc")}</p>
-        <Link href="/">
-          <Button>{t("ad_detail.back_home")}</Button>
-        </Link>
+      <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
+        <AppShellContentScroll>
+          <div className="flex min-h-[50dvh] flex-col items-center justify-center bg-[#0A0A0A] p-4 text-center">
+            <h2 className="mb-2 text-2xl font-bold">{t("ad_detail.not_found_title")}</h2>
+            <p className="mb-6 text-muted-foreground">{t("ad_detail.not_found_desc")}</p>
+            <Link href="/">
+              <Button>{t("ad_detail.back_home")}</Button>
+            </Link>
+          </div>
+        </AppShellContentScroll>
       </div>
     );
   }
@@ -696,10 +712,12 @@ export default function AdDetail() {
       : cityTrim || adCountryLabel;
 
   return (
-    <div
-      dir="rtl"
-      className="flex flex-col w-full min-h-[100dvh] bg-[#0A0A0A] pb-28"
-    >
+    <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
+      <AppShellContentScroll>
+      <div
+        dir="rtl"
+        className="flex w-full flex-col bg-[#0A0A0A]"
+      >
       <AdDetailHeroSection
         pageMax={pageMax}
         images={adImages}
@@ -1083,6 +1101,9 @@ export default function AdDetail() {
         </div>
       </div>
 
+      <div aria-hidden className={adDetailScrollEndSpacer} data-testid="ad-detail-scroll-spacer" />
+      </div>
+
       <Sheet open={reportReasonOpen} onOpenChange={setReportReasonOpen}>
         <SheetContent
           side="bottom"
@@ -1147,6 +1168,7 @@ export default function AdDetail() {
           </div>
         </SheetContent>
       </Sheet>
+      </AppShellContentScroll>
     </div>
   );
 }

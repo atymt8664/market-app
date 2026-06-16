@@ -9,6 +9,7 @@ import {
 import { t } from "@/i18n";
 import { getAppTextDir } from "@/lib/app-text-direction";
 import { cn } from "@/lib/utils";
+import { TAB_PAGE_HEADER_ACTION_BTN, TAB_PAGE_HEADER_ACTION_ICON } from "@/lib/tab-page-header-styles";
 
 export type InboxCollectionKind = "hidden" | "blocked" | "muted";
 
@@ -123,11 +124,9 @@ export function ChatInboxCollectionsMenuButton({
       type="button"
       onClick={onClick}
       aria-label={t("p5.chat.collections.menu_aria")}
-      className={cn(
-        "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-[#0A0A0A]/85 text-primary shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/12 transition-colors hover:border-primary/52 hover:bg-black/95",
-      )}
+      className={cn(TAB_PAGE_HEADER_ACTION_BTN, "rounded-full")}
     >
-      <MoreVertical className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+      <MoreVertical className={TAB_PAGE_HEADER_ACTION_ICON} strokeWidth={2.25} aria-hidden />
     </button>
   );
 }

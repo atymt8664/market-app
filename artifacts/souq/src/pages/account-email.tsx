@@ -46,7 +46,7 @@ export default function AccountEmail() {
 
   return (
     <div
-      className={cn("flex min-h-[100dvh] w-full flex-col", SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}
+      className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}
       dir={dir}
     >
       <AccountHeader title={t("account_email.title")} />

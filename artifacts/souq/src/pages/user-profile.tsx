@@ -20,6 +20,10 @@ import {
   showUserApiErrorToast,
 } from "@/lib/user-api-errors";
 import { cn } from "@/lib/utils";
+import {
+  TAB_PAGE_HEADER_ACTION_BTN,
+  TAB_PAGE_HEADER_ACTION_ICON,
+} from "@/lib/tab-page-header-styles";
 import { STALE_AD_LIST_MS, STALE_PEER_BLOCK_MS } from "@/lib/query-stale-times";
 import {
   useGetUserProfile,
@@ -120,9 +124,8 @@ const reportReasonBtn = (active: boolean, alignClass: string) =>
       : "border-primary/25 bg-[#0A0A0A]/85 hover:border-primary/38 hover:bg-black/70",
   );
 
-/** أزرار الرأس — متناسقة مع /profile */
-const publicProfileHeaderBtn =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-[#0A0A0A]/90 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.18)] transition-colors hover:border-primary/75 hover:bg-[#0A0A0A]/95 active:opacity-90 disabled:pointer-events-none disabled:opacity-55 dark:bg-black/55";
+/** أزرار الرأس — compact SSOT (profile parity) */
+const publicProfileHeaderBtn = TAB_PAGE_HEADER_ACTION_BTN;
 
 const PAGE_INSET =
   "mx-auto w-full max-w-screen-sm md:max-w-[760px] lg:max-w-[860px] px-3 md:px-6";
@@ -587,7 +590,7 @@ export default function UserProfile() {
             className={publicProfileHeaderBtn}
             aria-label={t("user_profile.back_aria")}
           >
-            <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
+            <ArrowRight className={TAB_PAGE_HEADER_ACTION_ICON} strokeWidth={2.25} />
           </button>
           <span className="min-w-0 flex-1" aria-hidden="true" />
           {!isSelfProfile ? (
@@ -599,7 +602,7 @@ export default function UserProfile() {
                   aria-label={t("user_profile.more_aria")}
                   onClick={() => dismissMoreHint()}
                 >
-                  <MoreVertical className="h-5 w-5" strokeWidth={2.25} />
+                  <MoreVertical className={TAB_PAGE_HEADER_ACTION_ICON} strokeWidth={2.25} />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className={dropdownSurface} dir={profileDir}>

@@ -12,9 +12,12 @@ import {
   SETTINGS_HEADER_BAR,
   SETTINGS_HEADER_INNER,
   SETTINGS_IMMERSIVE_BOTTOM,
+  SETTINGS_HEADER_ACTION_ICON,
+  SETTINGS_HEADER_TRAILING,
   SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
   SETTINGS_PAGE_TITLE,
+  SETTINGS_PAGE_TITLE_BADGE,
 } from "@/components/settings-shell";
 
 const SEGMENTS = ["personal", "premium", "professional", "trust"] as const;
@@ -25,18 +28,25 @@ function isSegment(s: string | undefined): s is Segment {
 }
 
 function SegmentPageTitle({ segment }: { segment: Segment }) {
-  switch (segment) {
-    case "personal":
-      return <h1 className={SETTINGS_PAGE_TITLE}>{t("pro_seller_page.segment.header.personal")}</h1>;
-    case "premium":
-      return <h1 className={SETTINGS_PAGE_TITLE}>{t("pro_seller_page.segment.header.premium")}</h1>;
-    case "professional":
-      return <h1 className={SETTINGS_PAGE_TITLE}>{t("pro_seller_page.segment.header.professional")}</h1>;
-    case "trust":
-      return <h1 className={SETTINGS_PAGE_TITLE}>{t("pro_seller_page.segment.header.trust")}</h1>;
-    default:
-      return <h1 className={SETTINGS_PAGE_TITLE}>{t("pro_seller_page.segment.header.personal")}</h1>;
-  }
+  const titleKey = (() => {
+    switch (segment) {
+      case "personal":
+        return "pro_seller_page.segment.header.personal";
+      case "premium":
+        return "pro_seller_page.segment.header.premium";
+      case "professional":
+        return "pro_seller_page.segment.header.professional";
+      case "trust":
+        return "pro_seller_page.segment.header.trust";
+      default:
+        return "pro_seller_page.segment.header.personal";
+    }
+  })();
+  return (
+    <h1 className={SETTINGS_PAGE_TITLE}>
+      <span className={SETTINGS_PAGE_TITLE_BADGE}>{t(titleKey)}</span>
+    </h1>
+  );
 }
 
 /** Shared plan-page typography (personal + premium) */
@@ -459,9 +469,11 @@ export default function ProfessionalSellerPage() {
       <header className={SETTINGS_HEADER_BAR} dir="rtl">
         <div className={SETTINGS_HEADER_INNER}>
           <SegmentPageTitle segment={segment} />
-          <button type="button" onClick={onBack} className={SETTINGS_BACK_BUTTON} aria-label={t("pro_seller_page.back_aria")}>
-            <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
-          </button>
+          <div className={SETTINGS_HEADER_TRAILING}>
+            <button type="button" onClick={onBack} className={SETTINGS_BACK_BUTTON} aria-label={t("pro_seller_page.back_aria")}>
+              <ArrowRight className={SETTINGS_HEADER_ACTION_ICON} strokeWidth={2.25} />
+            </button>
+          </div>
         </div>
       </header>
 

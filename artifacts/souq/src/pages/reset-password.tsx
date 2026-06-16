@@ -29,7 +29,10 @@ import {
   SETTINGS_ACTION_PANEL,
   SETTINGS_CARD,
   SETTINGS_HEADER_BAR,
+  SETTINGS_HEADER_ACTION_ICON,
+  SETTINGS_HEADER_TRAILING,
   SETTINGS_HEADER_INNER,
+  SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_INPUT,
   SETTINGS_INPUT_ICON_BUTTON,
   SETTINGS_INPUT_ICON_CLASS,
@@ -37,6 +40,7 @@ import {
   SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
   SETTINGS_PAGE_TITLE,
+  SETTINGS_PAGE_TITLE_BADGE,
   SETTINGS_PRIMARY_BUTTON,
   SETTINGS_BACK_BUTTON,
 } from "@/components/settings-shell";
@@ -124,21 +128,25 @@ export default function ResetPassword() {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`flex min-h-[100dvh] w-full flex-col ${SETTINGS_PAGE_BG}`}
+      className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}
       dir={dir}
     >
       <header className={SETTINGS_HEADER_BAR}>
         <div className={SETTINGS_HEADER_INNER}>
-          <h1 className={SETTINGS_PAGE_TITLE}>{t("auth.reset.title")}</h1>
-          <Link href="/login">
-            <button
-              type="button"
-              className={SETTINGS_BACK_BUTTON}
-              aria-label={t("common.back")}
-            >
-              <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
-            </button>
-          </Link>
+          <h1 className={SETTINGS_PAGE_TITLE}>
+            <span className={SETTINGS_PAGE_TITLE_BADGE}>{t("auth.reset.title")}</span>
+          </h1>
+          <div className={SETTINGS_HEADER_TRAILING}>
+            <Link href="/login">
+              <button
+                type="button"
+                className={SETTINGS_BACK_BUTTON}
+                aria-label={t("common.back")}
+              >
+                <ArrowRight className={SETTINGS_HEADER_ACTION_ICON} strokeWidth={2.25} />
+              </button>
+            </Link>
+          </div>
         </div>
       </header>
 

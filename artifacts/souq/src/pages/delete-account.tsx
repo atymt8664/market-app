@@ -7,10 +7,12 @@ import {
   SETTINGS_CARD,
   SETTINGS_HEADER_BAR,
   SETTINGS_HEADER_INNER,
+  SETTINGS_HEADER_TRAILING,
   SETTINGS_IMMERSIVE_BOTTOM,
   SETTINGS_MAIN_COLUMN,
   SETTINGS_PAGE_BG,
   SETTINGS_PAGE_TITLE,
+  SETTINGS_PAGE_TITLE_BADGE,
 } from "@/components/settings-shell";
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
@@ -30,14 +32,16 @@ export default function DeleteAccountPage() {
     >
       <header className={SETTINGS_HEADER_BAR} dir={dir}>
         <div className={SETTINGS_HEADER_INNER}>
-          <Link href="/" className="shrink-0">
-            <button type="button" className={SETTINGS_BACK_BUTTON} aria-label="Souq Arab EU home">
-              <span className="text-[11px] font-bold uppercase tracking-[0.12em]">EU</span>
-            </button>
-          </Link>
           <h1 className={SETTINGS_PAGE_TITLE} style={{ textAlign }}>
-            {t("legal.delete.title")}
+            <span className={SETTINGS_PAGE_TITLE_BADGE}>{t("legal.delete.title")}</span>
           </h1>
+          <div className={SETTINGS_HEADER_TRAILING}>
+            <Link href="/" className="shrink-0">
+              <button type="button" className={SETTINGS_BACK_BUTTON} aria-label="Souq Arab EU home">
+                <span className="text-[11px] font-bold uppercase tracking-[0.12em]">EU</span>
+              </button>
+            </Link>
+          </div>
         </div>
       </header>
 

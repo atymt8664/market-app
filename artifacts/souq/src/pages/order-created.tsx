@@ -14,11 +14,17 @@ import {
   CREATE_AD_HEADER_BAR,
   CREATE_AD_HEADER_INNER,
   CREATE_AD_MAIN_COLUMN,
+  ORDERS_BUYER_PAGE_TITLE_HEADING,
   ORDERS_CARD,
   ORDERS_CARD_COMPACT,
   ORDERS_GHOST_BTN,
   ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL,
 } from "@/features/p17-commerce/orders-page-styles";
+import {
+  SETTINGS_HEADER_ACTION_ICON,
+  SETTINGS_HEADER_TRAILING,
+  SETTINGS_PAGE_TITLE,
+} from "@/components/settings-shell";
 export default function OrderCreatedPage() {
   const [, navigate] = useLocation();
   const search = useSearch();
@@ -59,17 +65,19 @@ export default function OrderCreatedPage() {
     >
       <header className={CREATE_AD_HEADER_BAR}>
         <div className={CREATE_AD_HEADER_INNER}>
-          <h1 className="truncate text-sm font-bold text-foreground">
-            {t("p17.commerce.created.title")}
+          <h1 className={SETTINGS_PAGE_TITLE}>
+            <span className={ORDERS_BUYER_PAGE_TITLE_HEADING}>{t("p17.commerce.created.title")}</span>
           </h1>
-          <button
-            type="button"
-            onClick={() => navigate("/orders")}
-            className={CREATE_AD_BACK_BTN}
-            aria-label={t("p17.commerce.created.back_to_hub")}
-          >
-            <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
-          </button>
+          <div className={SETTINGS_HEADER_TRAILING}>
+            <button
+              type="button"
+              onClick={() => navigate("/orders")}
+              className={CREATE_AD_BACK_BTN}
+              aria-label={t("p17.commerce.created.back_to_hub")}
+            >
+              <ArrowRight className={SETTINGS_HEADER_ACTION_ICON} strokeWidth={2.25} />
+            </button>
+          </div>
         </div>
       </header>
 

@@ -22,7 +22,11 @@ import {
   AUTH_BACK_BUTTON,
   AUTH_CARD,
   AUTH_HEADER,
-  AUTH_HEADER_TITLE,
+  AUTH_HEADER_ACTION_ICON,
+  AUTH_HEADER_INNER,
+  AUTH_HEADER_TITLE_BADGE,
+  AUTH_HEADER_TITLE_WRAP,
+  AUTH_HEADER_TRAILING,
   AUTH_HERO_CARD,
   AUTH_INPUT,
   AUTH_PAGE_BG,
@@ -85,12 +89,18 @@ export default function ForgotPassword() {
       dir={dir}
     >
       <header className={AUTH_HEADER}>
-        <Link href="/login">
-          <button type="button" className={AUTH_BACK_BUTTON} aria-label={t("common.back")}>
-            <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
-          </button>
-        </Link>
-        <h1 className={AUTH_HEADER_TITLE}>{t("auth.forgot.title")}</h1>
+        <div className={AUTH_HEADER_INNER} dir={dir}>
+          <h1 className={AUTH_HEADER_TITLE_WRAP}>
+            <span className={AUTH_HEADER_TITLE_BADGE}>{t("auth.forgot.title")}</span>
+          </h1>
+          <div className={AUTH_HEADER_TRAILING}>
+            <Link href="/login">
+              <button type="button" className={AUTH_BACK_BUTTON} aria-label={t("common.back")}>
+                <ArrowRight className={AUTH_HEADER_ACTION_ICON} strokeWidth={2.25} />
+              </button>
+            </Link>
+          </div>
+        </div>
       </header>
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pb-8 pt-6 sm:px-5">

@@ -79,7 +79,7 @@ export default function AccountPassword() {
   };
 
   return (
-    <div className={`flex min-h-[100dvh] w-full flex-col ${SETTINGS_PAGE_BG} ${SETTINGS_IMMERSIVE_BOTTOM}`}>
+    <div className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}>
       <AccountHeader title={t("account_password.title")} />
       <div className={SETTINGS_HUB_SUBPAGE_MAIN}>
         <form onSubmit={onSubmit} className={`${SETTINGS_CARD} flex flex-col gap-4`} dir="rtl">

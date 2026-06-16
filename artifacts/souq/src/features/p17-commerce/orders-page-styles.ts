@@ -23,33 +23,29 @@ import {
   BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
   BOTTOM_NAV_SCROLL_OFFSET_CLASS,
 } from "@/lib/bottom-nav-layout";
-import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
+import {
+  TAB_PAGE_HEADER_BAR,
+  TAB_PAGE_HEADER_HUB_INNER,
+  TAB_PAGE_HEADER_ACTION_BTN_DARK,
+  TAB_PAGE_TITLE_BADGE_COMPACT,
+} from "@/lib/tab-page-header-styles";
 
 export { profileStatTileShell as ORDERS_STAT_CARD } from "@/components/profile-stat-tiles";
 
-/** `create-ad.tsx` — sticky header bar + P9-3H-iOS safe-top */
-export const CREATE_AD_HEADER_BAR = cn(
-  "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)]",
-  TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
-);
+/** Compact approved header bar + P9-3H-iOS safe-top */
+export const CREATE_AD_HEADER_BAR = TAB_PAGE_HEADER_BAR;
 
-/** `create-ad.tsx` — header inner row */
-export const CREATE_AD_HEADER_INNER =
-  "mx-auto flex w-full max-w-[900px] items-center justify-between gap-3 px-4 py-2 md:max-w-[760px] md:px-6 md:py-2.5 lg:max-w-[860px]";
+/** Compact header inner row */
+export const CREATE_AD_HEADER_INNER = TAB_PAGE_HEADER_HUB_INNER;
 
-/** `create-ad.tsx` — adHeaderBackBtn */
-export const CREATE_AD_BACK_BTN =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/55 bg-black/55 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] transition-colors hover:border-primary/75 active:opacity-90";
+/** Compact circular back button */
+export const CREATE_AD_BACK_BTN = TAB_PAGE_HEADER_ACTION_BTN_DARK;
 
-/** `create-ad.tsx` — createAdSectionHeading base */
-const CREATE_AD_SECTION_HEADING =
-  "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 px-2 py-px text-sm font-semibold leading-tight tracking-tight text-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10 bg-[#0A0A0A]/70 md:text-base";
+/** Compact page title badge */
+export const CREATE_AD_PAGE_TITLE_HEADING = TAB_PAGE_TITLE_BADGE_COMPACT;
 
-/** `create-ad.tsx` — createAdPageTitleHeading */
-export const CREATE_AD_PAGE_TITLE_HEADING = `${CREATE_AD_SECTION_HEADING} px-2.5 py-0.5 text-base font-semibold md:px-3 md:py-1 md:text-lg`;
-
-/** Hub page title (buyer + seller) — balances h-11 back button (create-ad parity) */
-export const ORDERS_BUYER_PAGE_TITLE_HEADING = `${CREATE_AD_SECTION_HEADING} px-2.5 py-0.5 text-xl font-semibold md:px-3 md:py-1 md:text-[1.375rem]`;
+/** Hub page title — compact badge */
+export const ORDERS_BUYER_PAGE_TITLE_HEADING = TAB_PAGE_TITLE_BADGE_COMPACT;
 
 /** @deprecated Checkout-only legacy — hub/detail use {@link ORDERS_PAGE_SHELL} instead */
 export const ORDERS_PAGE_LAYOUT_BOTTOM_CANCEL = BOTTOM_NAV_SCROLL_OFFSET_CLASS;

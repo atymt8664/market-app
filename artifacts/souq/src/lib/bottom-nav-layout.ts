@@ -43,7 +43,7 @@ export const BOTTOM_NAV_SCROLL_OFFSET_CLASS =
 
 /** Standard page shell — flex-1 inside layout frame; never stack min-h 100dvh with layout padding. */
 export const BOTTOM_NAV_PAGE_SHELL_CLASS =
-  "flex w-full flex-1 flex-col min-h-0 bg-[#0A0A0A]";
+  "flex w-full flex-1 flex-col min-h-0 overflow-hidden bg-[#0A0A0A]";
 
 /**
  * In-content scroll-end spacer — last row clears fixed BottomNav.

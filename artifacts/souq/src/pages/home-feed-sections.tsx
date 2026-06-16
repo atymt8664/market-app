@@ -60,6 +60,7 @@ const HomeFeedSections = memo(function HomeFeedSections({
   const featuredList = Array.isArray(featuredAds) ? featuredAds : [];
 
   const recommendedReady = Array.isArray(recommendedAds) && recommendedAds.length > 0;
+  /** Recommended grid only — featured strip renders all items immediately */
   const {
     visible: visibleRecommended,
     hasMore: hasMoreRecommended,
@@ -69,7 +70,6 @@ const HomeFeedSections = memo(function HomeFeedSections({
     step: HOME_FEED_REVEAL_STEP,
     enabled: recommendedReady,
     idleExpandMs: 1500,
-    idleExpand: false,
   });
 
   return (

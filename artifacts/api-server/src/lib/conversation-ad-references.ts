@@ -45,14 +45,34 @@ export async function ensureConversationAdReference(
     .onConflictDoNothing();
 }
 
+function isUniqueViolation(err: unknown): boolean {
+  let cur: unknown = err;
+  for (let i = 0; i < 4 && cur; i++) {
+    if (typeof cur === "object" && cur !== null && "code" in cur) {
+      if (String((cur as { code?: string }).code) === "23505") return true;
+    }
+    cur =
+      typeof cur === "object" && cur !== null && "cause" in cur
+        ? (cur as { cause?: unknown }).cause
+        : undefined;
+  }
+  return false;
+}
+
+/** Best-effort primary ad pointer; non-fatal when legacy (ad_id, buyer_id) unique blocks update. */
 export async function touchConversationPrimaryAd(
   conversationId: number,
   adId: number,
 ): Promise<void> {
-  await db
-    .update(conversationsTable)
-    .set({ adId })
-    .where(eq(conversationsTable.id, conversationId));
+  try {
+    await db
+      .update(conversationsTable)
+      .set({ adId })
+      .where(eq(conversationsTable.id, conversationId));
+  } catch (err: unknown) {
+    if (isUniqueViolation(err)) return;
+    throw err;
+  }
 }
 
 export async function loadConversationAdReferences(

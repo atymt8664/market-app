@@ -186,9 +186,21 @@ async function main() {
     });
     report.scenarios.firstMessageSent = msg1.res.status === 201;
 
-    // Scenario 2: ad2 → same conversation
+    // Legacy duplicate rows: same buyer/seller, different ad_id (pre-consolidation)
+    const legacyConvId = (
+      await pool.query(
+        `insert into conversations (ad_id, buyer_id, seller_id, last_message_at)
+         values ($1,$2,$3, now() - interval '1 hour') returning id`,
+        [ad2Id, buyerId, sellerId],
+      )
+    ).rows[0].id;
+    cleanup.convIds.push(legacyConvId);
+
+    // Scenario 2: ad2 → same conversation (must not 500 on primary ad touch)
     const start2 = await apiPost("/api/conversations", buyer.jar, buyer.csrf, { adId: ad2Id });
     const convId2 = start2.data.id;
+    report.scenarios.legacyDuplicateNo500 =
+      start2.res.status === 200 && !String(start2.data.raw ?? "").includes("Internal");
     report.scenarios.ad2ReusesConversation =
       convId2 === convId1 && start2.res.status === 200;
     if (!report.scenarios.ad2ReusesConversation) {
@@ -249,6 +261,7 @@ async function main() {
     report.scenarios.messageCount = msgItems.length;
 
     report.checks.allScenariosPass =
+      report.scenarios.legacyDuplicateNo500 &&
       report.scenarios.ad2ReusesConversation &&
       report.scenarios.referencedAdsContainsBoth &&
       report.scenarios.ad3ReusesConversation &&

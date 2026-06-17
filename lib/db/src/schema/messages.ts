@@ -10,7 +10,7 @@ import {
 import { adsTable } from "./ads";
 import { usersTable } from "./users";
 
-/** One row per (ad, buyer); required for upsert + prevents duplicate threads. */
+/** One row per buyer/seller pair; ad_id is the latest/primary ad for inbox preview. */
 export const conversationsTable = pgTable(
   "conversations",
   {
@@ -44,6 +44,29 @@ export const conversationsTable = pgTable(
   }),
 );
 
+/** Ads inquired about within a consolidated buyer/seller conversation. */
+export const conversationAdReferencesTable = pgTable(
+  "conversation_ad_references",
+  {
+    id: serial("id").primaryKey(),
+    conversationId: integer("conversation_id")
+      .notNull()
+      .references(() => conversationsTable.id, { onDelete: "cascade" }),
+    adId: integer("ad_id")
+      .notNull()
+      .references(() => adsTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    convAdUnique: uniqueIndex("conversation_ad_references_conv_ad_unique").on(
+      t.conversationId,
+      t.adId,
+    ),
+  }),
+);
+
 export const messagesTable = pgTable("messages", {
   id: serial("id").primaryKey(),
   conversationId: integer("conversation_id").notNull().references(() => conversationsTable.id, { onDelete: "cascade" }),
@@ -66,4 +89,5 @@ export const messagesTable = pgTable("messages", {
 });
 
 export type ConversationRow = typeof conversationsTable.$inferSelect;
+export type ConversationAdReferenceRow = typeof conversationAdReferencesTable.$inferSelect;
 export type MessageRow = typeof messagesTable.$inferSelect;

@@ -228,6 +228,16 @@ export interface ConversationListItem {
   unreadCount: number;
 }
 
+export interface ConversationAdReference {
+  adId: number;
+  title: string;
+  imageUrl?: string | null;
+  price?: number | null;
+  priceType?: string | null;
+  available?: boolean;
+  status?: string | null;
+}
+
 export interface ConversationDetail {
   id: number;
   adId: number;
@@ -237,6 +247,7 @@ export interface ConversationDetail {
   adAvailable?: boolean;
   adPrice?: number | null;
   adPriceType?: string | null;
+  referencedAds?: ConversationAdReference[];
   otherId: number;
   otherName: string;
   otherAvatarUrl?: string | null;
@@ -250,6 +261,7 @@ export const QuotedMessageMessageType = {
   text: "text",
   image: "image",
   location: "location",
+  ad_reference: "ad_reference",
 } as const;
 
 export interface QuotedMessage {
@@ -268,6 +280,7 @@ export const MessageMessageType = {
   text: "text",
   image: "image",
   location: "location",
+  ad_reference: "ad_reference",
 } as const;
 
 export interface Message {
@@ -481,6 +494,8 @@ export type SendMessageBody = {
   longitude?: number;
   /** Reply target message id within the same conversation */
   replyToMessageId?: number | null;
+  /** Highlight a linked ad inside this buyer/seller conversation */
+  referencedAdId?: number;
 };
 
 export type HideConversationForMe200 = {

@@ -113,7 +113,12 @@ import {
 import { apiUrl } from "@/lib/api-url";
 import { useToast } from "@/hooks/use-toast";
 import { ChatThreadHeader } from "@/components/chat-thread-header";
-import { ChatProductContextBar } from "@/components/chat-product-context-bar";
+import { ChatConversationAdsBar } from "@/components/chat-conversation-ads-bar";
+import { ChatAdReferenceMessageContent } from "@/components/chat-ad-reference-message-content";
+import {
+  CHAT_AD_REFERENCE_MESSAGE_TYPE,
+  parseChatAdReferenceBody,
+} from "@/lib/chat-ad-reference-message";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -455,9 +460,13 @@ const ChatMessageBubbleRow = memo(function ChatMessageBubbleRow({
   const locationPayload = parseChatLocationBody(plain, m.messageType);
   const isLocationMsg =
     String(m.messageType) === CHAT_LOCATION_MESSAGE_TYPE && locationPayload != null;
-  const showText = !deletedForEveryone && !isLocationMsg && plain.trim().length > 0;
+  const adReferencePayload = parseChatAdReferenceBody(plain, m.messageType);
+  const isAdReferenceMsg =
+    String(m.messageType) === CHAT_AD_REFERENCE_MESSAGE_TYPE && adReferencePayload != null;
+  const showText =
+    !deletedForEveryone && !isLocationMsg && !isAdReferenceMsg && plain.trim().length > 0;
   const showBubbleContent =
-    deletedForEveryone || isImageMsg || isLocationMsg || showText;
+    deletedForEveryone || isImageMsg || isLocationMsg || isAdReferenceMsg || showText;
   const deletedLabel = deletedForEveryone
     ? mine
       ? t("message_thread.deleted_for_everyone_by_me")
@@ -469,6 +478,7 @@ const ChatMessageBubbleRow = memo(function ChatMessageBubbleRow({
     !replyQuote &&
     !isImageMsg &&
     !isLocationMsg &&
+    !isAdReferenceMsg &&
     plain.length <= 72 &&
     !plain.includes("\n");
   const swipePastThreshold = Math.abs(swipeOffset) >= CHAT_SWIPE_REPLY_THRESHOLD_PX;
@@ -687,6 +697,13 @@ const ChatMessageBubbleRow = memo(function ChatMessageBubbleRow({
                   location={locationPayload}
                   mine={mine}
                   dirRtl={dirRtl}
+                />
+              ) : null}
+              {isAdReferenceMsg && adReferencePayload ? (
+                <ChatAdReferenceMessageContent
+                  payload={adReferencePayload}
+                  dirRtl={dirRtl}
+                  mine={mine}
                 />
               ) : null}
               {isImageMsg && m.imageUrl ? (
@@ -2253,7 +2270,28 @@ export default function MessageThread() {
       )}
 
       {conv && !(selectMode && selectedIds.size >= 2) ? (
-        <ChatProductContextBar conv={conv} dirRtl={dirRtl} />
+        <ChatConversationAdsBar
+          conv={conv}
+          dirRtl={dirRtl}
+          onSelectAd={(ad) => {
+            if (!conversationOk || send.isPending) return;
+            send.mutate(
+              {
+                convId: conversationId,
+                data: { referencedAdId: ad.adId },
+              },
+              {
+                onError: (err) => {
+                  toast({
+                    title: t("ad_detail.error"),
+                    description: userSafeToastDescription(err),
+                    variant: "destructive",
+                  });
+                },
+              },
+            );
+          }}
+        />
       ) : null}
 
       <ChatThreadDeleteSheet

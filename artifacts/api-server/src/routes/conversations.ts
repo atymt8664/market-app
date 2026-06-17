@@ -3,6 +3,7 @@ import multer from "multer";
 import {
   db,
   conversationsTable,
+  conversationAdReferencesTable,
   messagesTable,
   adsTable,
   usersTable,
@@ -45,6 +46,19 @@ import {
   stringifyChatLocationBody,
 } from "../lib/chat-location-message";
 import { isValidChatReactionEmoji } from "../lib/chat-message-reaction";
+import {
+  CHAT_AD_REFERENCE_MESSAGE_TYPE,
+  chatAdReferencePreviewLabel,
+  stringifyChatAdReferenceBody,
+} from "../lib/chat-ad-reference-message";
+import {
+  conversationHasAdReference,
+  ensureConversationAdReference,
+  findBuyerSellerConversation,
+  loadAdReferencePayload,
+  loadConversationAdReferences,
+  touchConversationPrimaryAd,
+} from "../lib/conversation-ad-references";
 import { notifyMessageReceived } from "../lib/message-notifications";
 
 const router: IRouter = Router();
@@ -63,7 +77,9 @@ function resolveMessageType(m: typeof messagesTable.$inferSelect) {
     ? "image"
     : m.messageType === CHAT_LOCATION_MESSAGE_TYPE
       ? CHAT_LOCATION_MESSAGE_TYPE
-      : "text";
+      : m.messageType === CHAT_AD_REFERENCE_MESSAGE_TYPE
+        ? CHAT_AD_REFERENCE_MESSAGE_TYPE
+        : "text";
 }
 
 function serializeQuotedMessage(m: typeof messagesTable.$inferSelect) {
@@ -174,7 +190,15 @@ router.post("/conversations", requireAuth, requireUserCsrf, async (req, res) => 
   }
   const sellerId = ad.userId;
 
-  const existingFirst = await db
+  const existingPair = await findBuyerSellerConversation(userId, sellerId);
+  if (existingPair) {
+    await ensureConversationAdReference(existingPair.id, adId);
+    await touchConversationPrimaryAd(existingPair.id, adId);
+    res.json({ id: existingPair.id });
+    return;
+  }
+
+  const existingAdBuyer = await db
     .select({
       id: conversationsTable.id,
       hasPreview: conversationsTable.lastMessagePreview,
@@ -187,8 +211,8 @@ router.post("/conversations", requireAuth, requireUserCsrf, async (req, res) => 
       ),
     )
     .limit(1);
-  if (existingFirst[0]) {
-    res.json({ id: existingFirst[0].id });
+  if (existingAdBuyer[0]) {
+    res.json({ id: existingAdBuyer[0].id });
     return;
   }
 
@@ -207,6 +231,10 @@ router.post("/conversations", requireAuth, requireUserCsrf, async (req, res) => 
           sellerId,
         })
         .returning();
+      await tx
+        .insert(conversationAdReferencesTable)
+        .values({ conversationId: conv!.id, adId })
+        .onConflictDoNothing();
       return conv!;
     });
     res.status(201).json({ id: created.id });
@@ -216,6 +244,13 @@ router.post("/conversations", requireAuth, requireUserCsrf, async (req, res) => 
         ? String((err as { code?: string }).code)
         : "";
     if (code === "23505") {
+      const pairAgain = await findBuyerSellerConversation(userId, sellerId);
+      if (pairAgain) {
+        await ensureConversationAdReference(pairAgain.id, adId);
+        await touchConversationPrimaryAd(pairAgain.id, adId);
+        res.json({ id: pairAgain.id });
+        return;
+      }
       const again = await db
         .select({ id: conversationsTable.id })
         .from(conversationsTable)
@@ -266,7 +301,7 @@ router.get("/conversations", requireAuth, async (req, res) => {
   const buyer = sql`coalesce(buyer.name, '')`;
   const seller = sql`coalesce(seller.name, '')`;
   const cursorFilter = pagination.cursor
-    ? sql`and (c.last_message_at, c.id) < (${pagination.cursor.at}, ${pagination.cursor.id})`
+    ? sql`and (last_message_at, id) < (${pagination.cursor.at}, ${pagination.cursor.id})`
     : sql``;
   const rows = await db.execute<{
     id: number;
@@ -282,27 +317,36 @@ router.get("/conversations", requireAuth, async (req, res) => {
     other_name: string;
     unread_count: number;
   }>(sql`
-    select c.id, c.ad_id, c.buyer_id, c.seller_id,
-           c.last_message_at, c.last_message_preview, c.last_message_sender_id,
-           a.title as ad_title,
-           (a.images::jsonb->>0) as ad_image,
-           case when c.buyer_id = ${userId} then c.seller_id else c.buyer_id end as other_id,
-           case when c.buyer_id = ${userId} then ${seller} else ${buyer} end as other_name,
-           (select count(*)::int from messages m
-              where m.conversation_id = c.id
-                and m.sender_id <> ${userId}
-                and m.read_at is null) as unread_count
-    from conversations c
-    join ads a on a.id = c.ad_id
-    left join users buyer on buyer.id = c.buyer_id
-    left join users seller on seller.id = c.seller_id
-    where (c.buyer_id = ${userId} or c.seller_id = ${userId})
-      and not exists (
-        select 1 from conversation_hides ch
-        where ch.conversation_id = c.id and ch.user_id = ${userId}
-      )
+    with base as (
+      select c.id, c.ad_id, c.buyer_id, c.seller_id,
+             c.last_message_at, c.last_message_preview, c.last_message_sender_id,
+             a.title as ad_title,
+             (a.images::jsonb->>0) as ad_image,
+             case when c.buyer_id = ${userId} then c.seller_id else c.buyer_id end as other_id,
+             case when c.buyer_id = ${userId} then ${seller} else ${buyer} end as other_name,
+             (select count(*)::int from messages m
+                where m.conversation_id = c.id
+                  and m.sender_id <> ${userId}
+                  and m.read_at is null) as unread_count
+      from conversations c
+      join ads a on a.id = c.ad_id
+      left join users buyer on buyer.id = c.buyer_id
+      left join users seller on seller.id = c.seller_id
+      where (c.buyer_id = ${userId} or c.seller_id = ${userId})
+        and not exists (
+          select 1 from conversation_hides ch
+          where ch.conversation_id = c.id and ch.user_id = ${userId}
+        )
+    ),
+    deduped as (
+      select distinct on (other_id) *
+      from base
+      order by other_id, last_message_at desc, id desc
+    )
+    select * from deduped
+    where 1=1
       ${cursorFilter}
-    order by c.last_message_at desc, c.id desc
+    order by last_message_at desc, id desc
     limit ${pagination.fetchLimit}
   `);
   const raw = rows.rows as Array<Record<string, unknown>>;
@@ -330,7 +374,7 @@ router.get("/conversations/hidden", requireAuth, async (req, res) => {
   const buyer = sql`coalesce(buyer.name, '')`;
   const seller = sql`coalesce(seller.name, '')`;
   const cursorFilter = pagination.cursor
-    ? sql`and (c.last_message_at, c.id) < (${pagination.cursor.at}, ${pagination.cursor.id})`
+    ? sql`and (last_message_at, id) < (${pagination.cursor.at}, ${pagination.cursor.id})`
     : sql``;
   const rows = await db.execute<{
     id: number;
@@ -346,27 +390,36 @@ router.get("/conversations/hidden", requireAuth, async (req, res) => {
     other_name: string;
     unread_count: number;
   }>(sql`
-    select c.id, c.ad_id, c.buyer_id, c.seller_id,
-           c.last_message_at, c.last_message_preview, c.last_message_sender_id,
-           a.title as ad_title,
-           (a.images::jsonb->>0) as ad_image,
-           case when c.buyer_id = ${userId} then c.seller_id else c.buyer_id end as other_id,
-           case when c.buyer_id = ${userId} then ${seller} else ${buyer} end as other_name,
-           (select count(*)::int from messages m
-              where m.conversation_id = c.id
-                and m.sender_id <> ${userId}
-                and m.read_at is null) as unread_count
-    from conversations c
-    join ads a on a.id = c.ad_id
-    left join users buyer on buyer.id = c.buyer_id
-    left join users seller on seller.id = c.seller_id
-    where (c.buyer_id = ${userId} or c.seller_id = ${userId})
-      and exists (
-        select 1 from conversation_hides ch
-        where ch.conversation_id = c.id and ch.user_id = ${userId}
-      )
+    with base as (
+      select c.id, c.ad_id, c.buyer_id, c.seller_id,
+             c.last_message_at, c.last_message_preview, c.last_message_sender_id,
+             a.title as ad_title,
+             (a.images::jsonb->>0) as ad_image,
+             case when c.buyer_id = ${userId} then c.seller_id else c.buyer_id end as other_id,
+             case when c.buyer_id = ${userId} then ${seller} else ${buyer} end as other_name,
+             (select count(*)::int from messages m
+                where m.conversation_id = c.id
+                  and m.sender_id <> ${userId}
+                  and m.read_at is null) as unread_count
+      from conversations c
+      join ads a on a.id = c.ad_id
+      left join users buyer on buyer.id = c.buyer_id
+      left join users seller on seller.id = c.seller_id
+      where (c.buyer_id = ${userId} or c.seller_id = ${userId})
+        and exists (
+          select 1 from conversation_hides ch
+          where ch.conversation_id = c.id and ch.user_id = ${userId}
+        )
+    ),
+    deduped as (
+      select distinct on (other_id) *
+      from base
+      order by other_id, last_message_at desc, id desc
+    )
+    select * from deduped
+    where 1=1
       ${cursorFilter}
-    order by c.last_message_at desc, c.id desc
+    order by last_message_at desc, id desc
     limit ${pagination.fetchLimit}
   `);
   const raw = rows.rows as Array<Record<string, unknown>>;
@@ -421,7 +474,18 @@ async function syncConversationPreviewAfterMessageChange(convId: number): Promis
         : "صورة"
       : last.messageType === CHAT_LOCATION_MESSAGE_TYPE
         ? chatLocationPreviewLabel()
-        : last.body.slice(0, 200);
+        : last.messageType === CHAT_AD_REFERENCE_MESSAGE_TYPE
+          ? (() => {
+              try {
+                const parsed = JSON.parse(last.body) as { title?: string };
+                return chatAdReferencePreviewLabel(
+                  typeof parsed.title === "string" ? parsed.title : "",
+                );
+              } catch {
+                return chatAdReferencePreviewLabel("");
+              }
+            })()
+          : last.body.slice(0, 200);
   await db
     .update(conversationsTable)
     .set({
@@ -559,14 +623,16 @@ router.get("/conversations/:convId", requireAuth, async (req, res) => {
   const otherId = conv.buyerId === userId ? conv.sellerId : conv.buyerId;
   const otherRows = await db.select().from(usersTable).where(eq(usersTable.id, otherId)).limit(1);
   const otherUser = otherRows[0];
+  const referencedAds = await loadConversationAdReferences(conv.id);
   res.json({
     id: conv.id,
     adId: conv.adId,
     adTitle: ad?.title ?? "",
     adImage: ad ? ((ad.images as string[])[0] ?? null) : null,
-    adAvailable: Boolean(ad),
+    adAvailable: Boolean(ad && isPublicAdStatus(ad.status)),
     adPrice: ad && ad.price !== null ? Number(ad.price) : null,
     adPriceType: ad?.priceType ?? null,
+    referencedAds,
     otherId,
     otherName: otherUser?.name ?? "",
     otherAvatarUrl: otherUser
@@ -862,7 +928,14 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
     latitude?: unknown;
     longitude?: unknown;
     replyToMessageId?: unknown;
+    referencedAdId?: unknown;
   };
+  const referencedAdId = Number(raw.referencedAdId);
+  const hasReferencedAd =
+    raw.referencedAdId !== undefined &&
+    raw.referencedAdId !== null &&
+    Number.isInteger(referencedAdId) &&
+    referencedAdId > 0;
   const imageUrlRaw = typeof raw.imageUrl === "string" ? raw.imageUrl.trim() : "";
   const body = String(raw.body ?? "").trim();
   const latNum = Number(raw.latitude);
@@ -887,10 +960,33 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
   }
 
   let messageBody: string;
-  let messageType: "text" | "image" | typeof CHAT_LOCATION_MESSAGE_TYPE;
+  let messageType:
+    | "text"
+    | "image"
+    | typeof CHAT_LOCATION_MESSAGE_TYPE
+    | typeof CHAT_AD_REFERENCE_MESSAGE_TYPE;
   let imageUrl: string | null;
 
-  if (hasLocation) {
+  if (hasReferencedAd) {
+    if (imageUrlRaw || hasLocation || body) {
+      res.status(400).json({ error: "لا يمكن دمج مرجع الإعلان مع نص أو صورة أو موقع" });
+      return;
+    }
+    const hasRef = await conversationHasAdReference(convId, referencedAdId);
+    if (!hasRef) {
+      res.status(400).json({ error: "هذا الإعلان غير مرتبط بهذه المحادثة" });
+      return;
+    }
+    const payload = await loadAdReferencePayload(referencedAdId);
+    if (!payload) {
+      res.status(404).json({ error: "الإعلان غير موجود" });
+      return;
+    }
+    messageBody = stringifyChatAdReferenceBody(payload);
+    messageType = CHAT_AD_REFERENCE_MESSAGE_TYPE;
+    imageUrl = null;
+    await touchConversationPrimaryAd(convId, referencedAdId);
+  } else if (hasLocation) {
     if (imageUrlRaw) {
       res.status(400).json({ error: "لا يمكن إرسال صورة وموقع في رسالة واحدة" });
       return;
@@ -962,7 +1058,18 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
       ? (messageBody ? messageBody.slice(0, 200) : "صورة")
       : messageType === CHAT_LOCATION_MESSAGE_TYPE
         ? chatLocationPreviewLabel()
-        : messageBody.slice(0, 200);
+        : messageType === CHAT_AD_REFERENCE_MESSAGE_TYPE
+          ? (() => {
+              try {
+                const parsed = JSON.parse(messageBody) as { title?: string };
+                return chatAdReferencePreviewLabel(
+                  typeof parsed.title === "string" ? parsed.title : "",
+                );
+              } catch {
+                return chatAdReferencePreviewLabel("");
+              }
+            })()
+          : messageBody.slice(0, 200);
 
   const [created] = await db
     .insert(messagesTable)

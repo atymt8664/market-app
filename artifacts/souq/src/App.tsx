@@ -1,7 +1,7 @@
 ﻿import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
-import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { lazyWithRetry } from "@/lib/lazy-with-retry";
 /** P7-PR-12: Home off entry bundle — cold path uses #p7-lcp-layer until lazy chunk loads. */
 const Home = lazy(() => import("@/pages/home"));
@@ -13,6 +13,7 @@ import { RouteLoadingFallback } from "@/components/route-loading-fallback";
 import { RouteScrollRestoration } from "@/components/route-scroll-restoration";
 import { ensureFullLocaleForInteraction, hasSavedLocale, t, type Locale } from "@/i18n";
 import { stripHomeLcpShell } from "@/lib/home-lcp-handoff";
+import { dismissStaticLanguageGate } from "@/lib/language-gate-shell";
 import { useLocale } from "@/hooks/use-locale";
 import {
   AUTH_ACCENT_OUTLINE_BTN,
@@ -282,7 +283,11 @@ function isPublicDataSafetyPath(pathname: string): boolean {
 }
 
 function App() {
-  const [showFirstLaunchSelector, setShowFirstLaunchSelector] = useState(false);
+  const [showFirstLaunchSelector, setShowFirstLaunchSelector] = useState(() => {
+    if (typeof window === "undefined") return false;
+    if (isPublicDataSafetyPath(window.location.pathname)) return false;
+    return !hasSavedLocale();
+  });
   const afterFirstPaint = useAfterFirstPaint();
 
   useEffect(() => {
@@ -296,6 +301,12 @@ function App() {
       stripHomeLcpShell();
     }
   }, []);
+
+  useLayoutEffect(() => {
+    if (showFirstLaunchSelector) {
+      dismissStaticLanguageGate();
+    }
+  }, [showFirstLaunchSelector]);
 
   const main = showFirstLaunchSelector ? (
     <>

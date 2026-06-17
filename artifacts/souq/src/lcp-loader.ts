@@ -16,11 +16,23 @@ if (isHomePathname() && hasSavedLocale()) {
   startHomeRecommendedPrefetch();
 }
 
+async function waitForFirstLaunchLocale(): Promise<void> {
+  if (hasSavedLocale()) return;
+  await new Promise<void>((resolve) => {
+    if (hasSavedLocale()) {
+      resolve();
+      return;
+    }
+    document.addEventListener("p7-locale-saved", () => resolve(), { once: true });
+  });
+}
+
 async function bootApp(): Promise<void> {
   const firstLaunchGate = isHomePathname() && !hasSavedLocale();
   if (firstLaunchGate) {
     stripHomeLcpShell();
-    beginHomeColdStartBoot();
+    markHomeColdStartReady();
+    await waitForFirstLaunchLocale();
   } else if (isHomePathname() && document.getElementById("p7-lcp-layer")) {
     beginHomeColdStartBoot();
     syncHomeFeedShellOffsetFromStaticHeader();

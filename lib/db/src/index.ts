@@ -21,11 +21,16 @@ const useSsl =
 
 const poolConfig = resolvePgPoolConfig();
 
+/** Supabase transaction pooler (:6543) does not support prepared statements (node-pg + Drizzle). */
+const disablePreparedStatements =
+  lower.includes("pooler.supabase.com") && lower.includes(":6543");
+
 export const pool = new Pool({
   connectionString,
   max: poolConfig.max,
   idleTimeoutMillis: poolConfig.idleTimeoutMillis,
   connectionTimeoutMillis: poolConfig.connectionTimeoutMillis,
+  ...(disablePreparedStatements ? { prepare: false as const } : {}),
   ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 pool.on("connect", (client) => {

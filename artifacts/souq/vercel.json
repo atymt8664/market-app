@@ -40,7 +40,7 @@
         { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'sha256-OhyhPVAVzUKqCXtB1vgexNqJWdUXVpUuN0tYr1ufaN8=' 'sha256-dPWZBNa8e2MdU9ICqm5mMpA7BAMsxdW10SgrjjT8wFQ=' 'sha256-ygTZ4uMpi263k/XUIUNOcPyLK8sNClPdZH/ruiy8IyU=' 'sha256-Y2Lu9GsxoccEh8hpa5AOsZwX152j8AGftx2xUY4RTqI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https: wss:; media-src 'self' https: blob:; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests"
+          "value": "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'sha256-sigPwJdVsEfiRWrXqvxpUotg7mn7YrC0WeW0DmgFaHY=' 'sha256-zeRea5aNz1TWUigSQz+ZM88I0TeZJihDfedg4+/VSZM=' 'sha256-7UGdnLwzHaYdciNGbiWtrMMEroETxj5fzGy+0zXzg1U=' 'sha256-+AZVIgC/01obJBI+s3Q6AW6MfKoGHF/QHrf2w1x+2kY='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https: wss:; media-src 'self' https: blob:; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests"
         }
       ]
     }

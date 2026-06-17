@@ -51,14 +51,15 @@ const distHtmlForCsp = fs.existsSync(distIndex) ? fs.readFileSync(distIndex, "ut
 const requiredHashes = [];
 let scriptMatch;
 while ((scriptMatch = inlineScriptRe.exec(distHtmlForCsp))) {
-  const hash = crypto.createHash("sha256").update(scriptMatch[1], "utf8").digest("base64");
+  const normalized = scriptMatch[1].replace(/\r\n/g, "\n");
+  const hash = crypto.createHash("sha256").update(normalized, "utf8").digest("base64");
   requiredHashes.push(`sha256-${hash}`);
 }
 for (const hash of requiredHashes) {
   must(vercelJson.includes(`'${hash}'`), `vercel.json CSP missing inline script hash ${hash}`);
 }
 must(
-  vercelJson.includes("sha256-Y2Lu9GsxoccEh8hpa5AOsZwX152j8AGftx2xUY4RTqI="),
+  vercelJson.includes("sha256-+AZVIgC/01obJBI+s3Q6AW6MfKoGHF/QHrf2w1x+2kY="),
   "vercel.json must allow language gate bootstrap inline script hash",
 );
 

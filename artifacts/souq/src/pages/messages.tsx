@@ -24,6 +24,7 @@ import {
 import { ChatInboxActionSheet } from "@/components/chat-inbox-action-sheet";
 import { ChatInboxDeleteUndoSnackbar } from "@/components/chat-inbox-delete-undo-snackbar";
 import { ChatInboxConfirmDialog } from "@/components/chat-inbox-confirm-dialog";
+import { ProfileAvatarRing } from "@/components/profile-avatar-ring";
 import { ChatInboxPresenceLine } from "@/components/chat-inbox-presence-line";
 import { ChatInboxSelectionHeader } from "@/components/chat-inbox-selection-header";
 import { useAppChromeContext } from "@/contexts/app-chrome-context";
@@ -101,7 +102,7 @@ function areInboxListRowsEqual(a: ConversationListItem, b: ConversationListItem)
       a.unreadCount === b.unreadCount &&
       a.otherName === b.otherName &&
       a.adTitle === b.adTitle &&
-      (a.adImage ?? "") === (b.adImage ?? "") &&
+      (a.otherAvatarUrl ?? "") === (b.otherAvatarUrl ?? "") &&
       a.otherId === b.otherId)
   );
 }
@@ -123,24 +124,11 @@ function InboxRowBody({
   const rowHeadJustify = appInlineStartJustifyClass();
   return (
     <>
-      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-primary/20 bg-[#0A0A0A]">
-        {c.adImage ? (
-          <img
-            src={c.adImage}
-            alt=""
-            className="pointer-events-none h-full w-full object-cover"
-            loading="lazy"
-            decoding="async"
-            draggable={false}
-            sizes="40px"
-            onContextMenu={blockNativeRowContextMenu}
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-primary/70">
-            <MessageCircle className="h-3.5 w-3.5" strokeWidth={2} />
-          </div>
-        )}
-      </div>
+      <ProfileAvatarRing
+        name={c.otherName}
+        src={c.otherAvatarUrl}
+        size={30}
+      />
       <div className={cn("min-w-0 flex-1", textAlign)} dir={getAppTextDir()}>
         <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2">
           <div className={cn("flex min-w-0 items-center gap-1", rowHeadJustify)}>
@@ -166,7 +154,7 @@ function InboxRowBody({
         <ChatInboxPresenceLine
           entry={presenceEntry}
           isLoading={presenceLoading}
-          adTitle={c.adTitle}
+          adTitle=""
           className={textAlign}
         />
         <div className="mt-px grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1.5">

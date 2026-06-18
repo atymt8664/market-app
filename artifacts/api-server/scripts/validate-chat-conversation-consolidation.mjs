@@ -245,6 +245,32 @@ async function main() {
     report.scenarios.inboxOneRowPerSeller = forSellerB.length === 1;
     report.scenarios.inboxSellerBCount = forSellerB.length;
 
+    // Scenario 6b: delete-for-me hides entire buyer/seller pair (legacy rows too)
+    const delPair = await fetch(`${BASE}/api/conversations/${convId1}/delete-for-me`, {
+      method: "POST",
+      headers: {
+        cookie: buyer.jar.cookie,
+        "x-csrf-token": buyer.csrf,
+        "content-type": "application/json",
+      },
+    });
+    report.scenarios.deleteForMeStatus = delPair.status;
+    const inboxAfterDelete = await apiGet("/api/conversations", buyer.jar);
+    const afterItems = Array.isArray(inboxAfterDelete.data)
+      ? inboxAfterDelete.data
+      : (inboxAfterDelete.data.items ?? []);
+    const forSellerAfter = afterItems.filter((c) => c.otherId === sellerId);
+    report.scenarios.inboxEmptyAfterDeletePair =
+      delPair.status === 200 && forSellerAfter.length === 0;
+    report.scenarios.inboxSellerBCountAfterDelete = forSellerAfter.length;
+
+    const delRows = await pool.query(
+      `select conversation_id from conversation_deletes where user_id = $1 and conversation_id = any($2::int[])`,
+      [buyerId, [convId1, legacyConvId]],
+    );
+    report.scenarios.deleteMarksLegacyAndCanonical =
+      delRows.rowCount >= 2;
+
     // Scenario 7: different seller → different conversation
     const startOther = await apiPost("/api/conversations", buyer.jar, buyer.csrf, {
       adId: otherAdId,
@@ -266,6 +292,8 @@ async function main() {
       report.scenarios.referencedAdsContainsBoth &&
       report.scenarios.ad3ReusesConversation &&
       report.scenarios.inboxOneRowPerSeller &&
+      report.scenarios.inboxEmptyAfterDeletePair &&
+      report.scenarios.deleteMarksLegacyAndCanonical &&
       report.scenarios.differentSellerDifferentConv &&
       report.scenarios.adReferenceMessage &&
       report.scenarios.messagesPersistAfterReads;

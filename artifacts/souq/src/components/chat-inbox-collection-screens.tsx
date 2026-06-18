@@ -7,7 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Ban, BellOff, ListX, MessageCircle, User } from "lucide-react";
-import { AvatarCircle } from "@/components/avatar-circle";
+import { ProfileAvatarRing } from "@/components/profile-avatar-ring";
 import { ChatInboxCollectionShell } from "@/components/chat-inbox-collection-shell";
 import {
   inboxBlockedQueryKey,
@@ -240,7 +240,7 @@ export function ChatInboxBlockedCollection({ enabled, onBack }: BlockedCollectio
       {rows.map((u) => (
         <article key={u.id} className={inboxCollectionRowCard}>
           <div className="flex items-center gap-2" dir={textDir}>
-            <AvatarCircle name={u.name} src={u.avatarUrl} size={36} />
+            <ProfileAvatarRing name={u.name} src={u.avatarUrl} size={26} />
             <div className={cn("min-w-0 flex-1", textAlign)}>
               <div className={cn("block min-w-0 truncate text-[13px] font-semibold text-foreground", textAlign)}>
                 {u.name || t("messages.user")}

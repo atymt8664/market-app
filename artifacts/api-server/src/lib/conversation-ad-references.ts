@@ -35,6 +35,23 @@ export async function findBuyerSellerConversation(
   return rows[0] ?? null;
 }
 
+/** All conversation rows for a buyer/seller pair (legacy pre-consolidation duplicates). */
+export async function listConversationIdsForBuyerSellerPair(
+  buyerId: number,
+  sellerId: number,
+): Promise<number[]> {
+  const rows = await db
+    .select({ id: conversationsTable.id })
+    .from(conversationsTable)
+    .where(
+      and(
+        eq(conversationsTable.buyerId, buyerId),
+        eq(conversationsTable.sellerId, sellerId),
+      ),
+    );
+  return rows.map((r) => r.id);
+}
+
 export async function ensureConversationAdReference(
   conversationId: number,
   adId: number,

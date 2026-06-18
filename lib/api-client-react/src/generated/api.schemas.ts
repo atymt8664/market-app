@@ -220,6 +220,7 @@ export interface ConversationListItem {
   adImage?: string | null;
   otherId: number;
   otherName: string;
+  otherAvatarUrl?: string | null;
   lastMessageAt: string;
   lastMessagePreview?: string | null;
   lastMessageSenderId?: number | null;

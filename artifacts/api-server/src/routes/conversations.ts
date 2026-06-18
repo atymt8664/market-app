@@ -56,6 +56,7 @@ import {
   conversationHasAdReference,
   ensureConversationAdReference,
   findBuyerSellerConversation,
+  listConversationIdsForBuyerSellerPair,
   loadAdReferencePayload,
   loadConversationAdReferences,
   touchConversationPrimaryAd,
@@ -271,25 +272,40 @@ router.post("/conversations", requireAuth, requireUserCsrf, async (req, res) => 
   }
 });
 
-function mapConversationListRows(rows: Array<Record<string, unknown>>) {
-  return rows.map((r) => ({
-    id: Number(r["id"]),
-    adId: Number(r["ad_id"]),
-    adTitle: String(r["ad_title"]),
-    adImage: (r["ad_image"] as string | null) ?? null,
-    otherId: Number(r["other_id"]),
-    otherName: String(r["other_name"]),
-    lastMessageAt:
-      r["last_message_at"] instanceof Date
-        ? (r["last_message_at"] as Date).toISOString()
-        : String(r["last_message_at"]),
-    lastMessagePreview: (r["last_message_preview"] as string | null) ?? null,
-    lastMessageSenderId:
-      r["last_message_sender_id"] === null
-        ? null
-        : Number(r["last_message_sender_id"]),
-    unreadCount: Number(r["unread_count"]) || 0,
-  }));
+function mapConversationListRows(
+  rows: Array<Record<string, unknown>>,
+  viewerUserId: number,
+) {
+  return rows.map((r) => {
+    const buyerId = Number(r["buyer_id"]);
+    const otherAvatarUrl = resolvePublicAvatarUrl(
+      {
+        avatarUrl: (r["other_avatar_url"] as string | null) ?? null,
+        avatarApprovedUrl: (r["other_avatar_approved_url"] as string | null) ?? null,
+        avatarPendingReview: Boolean(r["other_avatar_pending_review"]),
+      },
+      false,
+    );
+    return {
+      id: Number(r["id"]),
+      adId: Number(r["ad_id"]),
+      adTitle: String(r["ad_title"]),
+      adImage: (r["ad_image"] as string | null) ?? null,
+      otherId: Number(r["other_id"]),
+      otherName: String(r["other_name"]),
+      otherAvatarUrl,
+      lastMessageAt:
+        r["last_message_at"] instanceof Date
+          ? (r["last_message_at"] as Date).toISOString()
+          : String(r["last_message_at"]),
+      lastMessagePreview: (r["last_message_preview"] as string | null) ?? null,
+      lastMessageSenderId:
+        r["last_message_sender_id"] === null
+          ? null
+          : Number(r["last_message_sender_id"]),
+      unreadCount: Number(r["unread_count"]) || 0,
+    };
+  });
 }
 
 router.get("/conversations", requireAuth, async (req, res) => {
@@ -325,6 +341,9 @@ router.get("/conversations", requireAuth, async (req, res) => {
              (a.images::jsonb->>0) as ad_image,
              case when c.buyer_id = ${userId} then c.seller_id else c.buyer_id end as other_id,
              case when c.buyer_id = ${userId} then ${seller} else ${buyer} end as other_name,
+             case when c.buyer_id = ${userId} then seller.avatar_url else buyer.avatar_url end as other_avatar_url,
+             case when c.buyer_id = ${userId} then seller.avatar_approved_url else buyer.avatar_approved_url end as other_avatar_approved_url,
+             case when c.buyer_id = ${userId} then seller.avatar_pending_review else buyer.avatar_pending_review end as other_avatar_pending_review,
              (select count(*)::int from messages m
                 where m.conversation_id = c.id
                   and m.sender_id <> ${userId}
@@ -362,7 +381,7 @@ router.get("/conversations", requireAuth, async (req, res) => {
         : new Date(String(r["last_message_at"])),
     id: Number(r["id"]),
   }));
-  sendJsonArrayPage(res, mapConversationListRows(items), meta);
+  sendJsonArrayPage(res, mapConversationListRows(items, userId), meta);
   } catch (err) {
     if (handlePaginationError(err, res)) return;
     throw err;
@@ -402,6 +421,9 @@ router.get("/conversations/hidden", requireAuth, async (req, res) => {
              (a.images::jsonb->>0) as ad_image,
              case when c.buyer_id = ${userId} then c.seller_id else c.buyer_id end as other_id,
              case when c.buyer_id = ${userId} then ${seller} else ${buyer} end as other_name,
+             case when c.buyer_id = ${userId} then seller.avatar_url else buyer.avatar_url end as other_avatar_url,
+             case when c.buyer_id = ${userId} then seller.avatar_approved_url else buyer.avatar_approved_url end as other_avatar_approved_url,
+             case when c.buyer_id = ${userId} then seller.avatar_pending_review else buyer.avatar_pending_review end as other_avatar_pending_review,
              (select count(*)::int from messages m
                 where m.conversation_id = c.id
                   and m.sender_id <> ${userId}
@@ -439,7 +461,7 @@ router.get("/conversations/hidden", requireAuth, async (req, res) => {
         : new Date(String(r["last_message_at"])),
     id: Number(r["id"]),
   }));
-  sendJsonArrayPage(res, mapConversationListRows(items), meta);
+  sendJsonArrayPage(res, mapConversationListRows(items, userId), meta);
   } catch (err) {
     if (handlePaginationError(err, res)) return;
     throw err;
@@ -626,16 +648,20 @@ async function deleteConversationForMeHandler(req: Request, res: Response): Prom
     res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
     return;
   }
+  const { conv } = r;
+  const pairIds = await listConversationIdsForBuyerSellerPair(conv.buyerId, conv.sellerId);
   await db.transaction(async (tx) => {
-    await tx
-      .insert(conversationDeletesTable)
-      .values({ userId, conversationId: convId })
-      .onConflictDoNothing();
-    await tx
-      .delete(conversationHidesTable)
-      .where(
-        and(eq(conversationHidesTable.userId, userId), eq(conversationHidesTable.conversationId, convId)),
-      );
+    for (const id of pairIds) {
+      await tx
+        .insert(conversationDeletesTable)
+        .values({ userId, conversationId: id })
+        .onConflictDoNothing();
+      await tx
+        .delete(conversationHidesTable)
+        .where(
+          and(eq(conversationHidesTable.userId, userId), eq(conversationHidesTable.conversationId, id)),
+        );
+    }
   });
   res.json({ ok: true });
 }
@@ -652,12 +678,14 @@ async function restoreConversationForMeHandler(req: Request, res: Response): Pro
     res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
     return;
   }
+  const { conv } = r;
+  const pairIds = await listConversationIdsForBuyerSellerPair(conv.buyerId, conv.sellerId);
   await db
     .delete(conversationDeletesTable)
     .where(
       and(
         eq(conversationDeletesTable.userId, userId),
-        eq(conversationDeletesTable.conversationId, convId),
+        inArray(conversationDeletesTable.conversationId, pairIds),
       ),
     );
   res.json({ ok: true });

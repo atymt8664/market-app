@@ -1,11 +1,22 @@
 # P0 — reduce CLI archive size; never upload local noise to Vercel.
 node_modules
+dist
+.vercel
+.screenshots
+.screenshots/**
+scripts/.screenshots
+scripts/.screenshots/**
 **/.screenshots
+**/.screenshots/**
 **/.psi-*
 **/.p11-*
 **/*.log
 tmp-*
 **/tmp-*
+**/.real-browser-visual-qa-output/**
+**/.p9e-*/**
+**/.phase-b-header-verify/**
+artifacts/souq
 public/p5-previews
 .p7-pr-*
 .p9-*

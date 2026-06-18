@@ -9,7 +9,7 @@
 
 ## الهدف / Goal
 
-Provide reliable **runtime hosting** for the API: Hetzner VPS, Docker, Nginx, DNS/TLS (when approved), deploy/rollback, health checks, and Railway fallback documentation — without owning product business logic.
+Provide reliable **runtime hosting** for the API (Hetzner VPS, Docker, Nginx) and **documented Production frontend deploy** (Vercel Git-only per ADR-006), plus DNS/TLS (when approved), deploy/rollback, health checks, and Railway fallback documentation — without owning product business logic.
 
 ---
 
@@ -30,9 +30,10 @@ Provide reliable **runtime hosting** for the API: Hetzner VPS, Docker, Nginx, DN
 |------|-------|
 | Foundation | `infra/hetzner/vps-foundation/` |
 | API readiness | `infra/hetzner/api-readiness/` |
-| Deploy | `infra/hetzner/deploy/` (`deploy-api.sh`, `rollback-api.sh`, `verify-deploy.sh`, `DEPLOY.md`) |
+| Deploy (API) | `infra/hetzner/deploy/` (`deploy-api.sh`, `rollback-api.sh`, `verify-deploy.sh`, `DEPLOY.md`) |
+| Deploy (frontend SSOT) | [ADR-006](./adr/006-git-only-production-frontend-deploy.md) · [P0-production-frontend-deploy.md](../runbooks/P0-production-frontend-deploy.md) |
 | Milestones (legacy names) | `infra/hetzner/phase1-stabilization/` … `phase8/` |
-| Root deploy config | `vercel.json` (hosting headers only — **rewrites require Mohamed approval**) |
+| Root deploy config | `vercel.json` (hosting headers only — **rewrites require Mohamed approval**) · `artifacts/souq/vercel.json` (build/install for Vercel) |
 | Helpers | `scripts/phase3-vps-apply.ps1`, `phase4-vps-apply.ps1`, `phase5-dns-and-cutover.ps1` |
 
 ---
@@ -82,11 +83,25 @@ Provide reliable **runtime hosting** for the API: Hetzner VPS, Docker, Nginx, DN
 
 ---
 
+## Production frontend deploy (Vercel)
+
+**SSOT:** [ADR-006](./adr/006-git-only-production-frontend-deploy.md) — GitHub `main` → Vercel Git Integration → Production.
+
+| Rule | Detail |
+|------|--------|
+| Official path | `git push origin main` — Vercel builds from GitHub at commit SHA |
+| Prohibited (Production) | CLI `vercel deploy --prod --archive=tgz`, prebuilt CLI deploy, local archive upload |
+| Runbook | [P0-production-frontend-deploy.md](../runbooks/P0-production-frontend-deploy.md) |
+| Legacy script | `infra/hetzner/deploy/vercel-prod-deploy.mjs` — deprecated for Production (**P0-DG-2** guard pending) |
+| Emergency | ADR-006 exception only with Mohamed approval |
+
+Frontend deploy does **not** use developer-local files as the upload source. Secrets stay in Vercel env — never in git.
+
 ## Scalability notes
 
 - Single API container today; Nginx upstream prepared for **API-2/3** (**P16**)
 - Edge rate limits: see `infra/hetzner/phase3-hardening/nginx/souq-phase3-limits.conf`
-- Never `scp` source — tagged images only
+- Never `scp` source — tagged images only (API)
 
 ---
 

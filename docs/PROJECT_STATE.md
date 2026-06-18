@@ -23,7 +23,7 @@
 | **Expansion** | **Sub-Phases** (e.g. `P17-7A`, `P9-A-0`) inside a builder P · **Annexes** ([annex/](./architecture/annex/README.md)) — not new P numbers |
 | **Not adopted** | P18–P25 as builder domains |
 | **New features** | [CONSTITUTION A11 + Feature Admission Flow](./architecture/CONSTITUTION.md#11-feature-admission-flow) |
-| **ADRs** | [architecture/adr/](./architecture/adr/README.md) — [ADR-000](./architecture/adr/000-approved-platform-stack.md) approved stack |
+| **ADRs** | [architecture/adr/](./architecture/adr/README.md) — [ADR-000](./architecture/adr/000-approved-platform-stack.md) approved stack · [ADR-006](./architecture/adr/006-git-only-production-frontend-deploy.md) Git-only frontend deploy (**Accepted** 2026-06-18) |
 
 ---
 
@@ -192,6 +192,19 @@ Only **one open builder phase** at a time. Sequence:
 
 ---
 
+### P0 — Deployment Governance (ADR-006)
+
+| Sub-Phase | Status | Notes |
+|-----------|--------|-------|
+| **P0-DG-0** | ✅ **Closed** | ADR-006 drafted — Git-only Production frontend SSOT |
+| **P0-DG-1** | ✅ **Closed** | Docs only — [006-git-only-production-frontend-deploy.md](./architecture/adr/006-git-only-production-frontend-deploy.md) (**Accepted**) · [P0-production-frontend-deploy.md](./runbooks/P0-production-frontend-deploy.md) · P17 runbook §2 · P00 updated |
+| **P0-DG-2** | ⏳ Not opened | Deploy guards; deprecate `vercel-prod-deploy.mjs` |
+| **P0-DG-3** | ⏳ Not opened | QA artifact policy; `.gitignore` |
+| **P0-DG-4** | ⏳ Not opened | Production verification on next Git-only frontend deploy |
+| **P0-DG-5** | ⏳ Not opened | Closure report + PCL |
+
+---
+
 ## Visual identity (frozen)
 
 - Background: **`#0A0A0A`**
@@ -200,4 +213,4 @@ Only **one open builder phase** at a time. Sequence:
 
 ## Last updated
 
-P9-3-ARCH-0 closed (2026-06-16): App Shell Contract SSOT — [P09-3-App-Shell-Contract.md](./architecture/P09-3-App-Shell-Contract.md) · documentation only · **P9-3-IMPL not started** (pending approval). P9-2 closed (2026-06-14): Language Gate isolation — commit `838f9ba`. **Next: Mohamed approval → P9-3 implementation.** P9-1 closed. P17-9-17 closed.
+ADR-006 **Accepted** (2026-06-18): Git-only Production frontend deploy — [ADR-006](./architecture/adr/006-git-only-production-frontend-deploy.md) · [P0 runbook](./runbooks/P0-production-frontend-deploy.md) · **P0-DG-0/1 closed** · **Next: P0-DG-2** (guards — not opened). P9-3-ARCH-0 closed (2026-06-16). P9-2 closed (2026-06-14). P17-9-17 closed.

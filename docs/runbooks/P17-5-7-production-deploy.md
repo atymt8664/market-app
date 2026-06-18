@@ -36,9 +36,15 @@ Verify tables exist: `orders`, `order_items`, `buyer_addresses`, `shipments`, et
 
 ## 2. Vercel (frontend) — P17-PROD-3
 
+**Official Production frontend deploy (SSOT):** [P0-production-frontend-deploy.md](./P0-production-frontend-deploy.md) — implements [ADR-006](../architecture/adr/006-git-only-production-frontend-deploy.md).
+
+```
+git commit on main → git push origin main → Vercel Git Integration → Production
+```
+
 **Project:** `market-app-souq` (aliases `https://www.souq-arab.com`) — not `classified-marketplace`.
 
-Set **Production** environment variables (Vercel dashboard or CLI — permanent, not shell-only):
+Set **Production** environment variables (Vercel dashboard — permanent, not shell-only):
 
 | Variable | Value |
 |----------|-------|
@@ -47,22 +53,16 @@ Set **Production** environment variables (Vercel dashboard or CLI — permanent,
 | `VITE_P17_SELLER_ORDERS_ENABLED` | `1` |
 | `VITE_P17_SHIPPING_ENABLED` | `1` |
 
-Redeploy after env change (Vite bakes `VITE_*` at build time):
+After env change (Vite bakes `VITE_*` at build time): push to `main` or Redeploy the latest `main` commit from Vercel (Git-sourced).
 
-```bash
-# From monorepo root — official script (preflight + link + archive deploy)
-node infra/hetzner/deploy/vercel-prod-deploy.mjs
-```
+**Deprecated — do not use for Production:**
 
-Manual equivalent (cwd **must** be `artifacts/souq`; **always** `--archive=tgz`):
+- `node infra/hetzner/deploy/vercel-prod-deploy.mjs`
+- `vercel deploy --prod --archive=tgz` from a developer machine
+- `vercel deploy --prebuilt --prod` from a developer machine
 
-```bash
-cd artifacts/souq
-npx vercel link --project market-app-souq --yes
-npx vercel deploy --prod --yes --archive=tgz
-```
+See ADR-006 for Emergency exception rules (Mohamed approval only).
 
-**Never:** `vercel deploy --prod` without `--archive=tgz` from `artifacts/souq` (upload >15k files fails).  
 **Never:** deploy project `classified-marketplace` — production alias is `market-app-souq` only.
 
 Post-deploy checks:
@@ -125,7 +125,7 @@ Manual UI: https://www.souq-arab.com — buyer checkout, seller accept → prepa
 
 | Layer | Action |
 |-------|--------|
-| Frontend | Revert Vercel deployment; set `VITE_P17_*` to `0` or unset |
+| Frontend | Promote previous Vercel deployment (`dpl_*`) and/or `git revert` + push `main`; set `VITE_P17_*` to `0` or unset if needed |
 | API | `rollback-api.sh` to `PREVIOUS_TAG` in `/opt/souq-arab/releases/` |
 | API env | `P17_ORDERS_API_ENABLED=0` → mock GET / 503 POST |
 | Data | No destructive rollback without explicit approval |

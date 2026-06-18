@@ -110,6 +110,26 @@ export function clearConversationUnreadInInboxCache(
   }
 }
 
+/** Re-insert rows after undo delete — preserves sort by last message time. */
+export function restoreConversationsToInboxCache(
+  queryClient: QueryClient,
+  rows: readonly ConversationListItem[],
+): void {
+  if (!rows.length) return;
+  const restoreIds = new Set(rows.map((r) => r.id));
+  queryClient.setQueryData<ConversationListItem[]>(getListConversationsQueryKey(), (old) => {
+    const existing = old ?? [];
+    const kept = existing.filter((c) => !restoreIds.has(c.id));
+    const merged = [...rows, ...kept];
+    merged.sort(
+      (a, b) =>
+        new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime(),
+    );
+    return merged;
+  });
+  invalidateUnreadCounters(queryClient);
+}
+
 /** Optimistic removal after hide/delete — keeps user on inbox without full refetch. */
 export function removeConversationsFromInboxCache(
   queryClient: QueryClient,

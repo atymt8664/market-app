@@ -47,6 +47,7 @@
     "p17-9-7:validate": "node ./scripts/validate-p17-9-7-admin-notifications.mjs",
     "p17-9-13:validate": "node ./scripts/validate-p17-9-13-push.mjs",
     "p17-9-17:validate": "node ./scripts/validate-p17-9-17-platform-broadcasts.mjs",
+    "p5-chat-delete:validate": "node ./scripts/validate-chat-delete-for-me.mjs",
     "p17-9-7:communications:validate": "node ./scripts/validate-p17-9-7-communications.mjs",
     "p17:prod-smoke": "node --import tsx/esm ./scripts/p17-prod-deployment-smoke.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",

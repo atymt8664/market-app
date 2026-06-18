@@ -267,6 +267,8 @@ const CONV_PUT_MESSAGE_REACTION =
   /^\/api\/conversations\/\d+\/messages\/\d+\/reaction$/;
 const CONV_POST_HIDE_OR_HIDE_FOR_ME = /^\/api\/conversations\/\d+\/(hide|hide-for-me)$/;
 const CONV_POST_UNHIDE_FOR_ME = /^\/api\/conversations\/\d+\/unhide-for-me$/;
+const CONV_POST_DELETE_FOR_ME = /^\/api\/conversations\/\d+\/delete-for-me$/;
+const CONV_POST_RESTORE_FOR_ME = /^\/api\/conversations\/\d+\/restore-for-me$/;
 const CONV_DELETE_HIDE = /^\/api\/conversations\/\d+\/hide$/;
 
 /** Start conversation, send message, chat image upload, hide/unhide thread (same `userCsrfToken`). */
@@ -282,6 +284,8 @@ function isUserConversationsMutation(method: string, url: string): boolean {
   if (m === "PUT" && CONV_PUT_MESSAGE_REACTION.test(p)) return true;
   if (m === "POST" && CONV_POST_HIDE_OR_HIDE_FOR_ME.test(p)) return true;
   if (m === "POST" && CONV_POST_UNHIDE_FOR_ME.test(p)) return true;
+  if (m === "POST" && CONV_POST_DELETE_FOR_ME.test(p)) return true;
+  if (m === "POST" && CONV_POST_RESTORE_FOR_ME.test(p)) return true;
   if (m === "DELETE" && CONV_DELETE_HIDE.test(p)) return true;
   return false;
 }

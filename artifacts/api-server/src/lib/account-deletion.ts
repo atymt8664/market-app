@@ -9,6 +9,7 @@ import {
   adLikesTable,
   messageHidesTable,
   conversationHidesTable,
+  conversationDeletesTable,
   supportTicketsTable,
 } from "@workspace/db";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
@@ -129,6 +130,7 @@ export async function deleteUserAccountInTransaction(userId: number): Promise<bo
     await tx.delete(adLikesTable).where(eq(adLikesTable.userId, userId));
     await tx.delete(messageHidesTable).where(eq(messageHidesTable.userId, userId));
     await tx.delete(conversationHidesTable).where(eq(conversationHidesTable.userId, userId));
+    await tx.delete(conversationDeletesTable).where(eq(conversationDeletesTable.userId, userId));
 
     await tx.delete(reportsTable).where(eq(reportsTable.reporterId, userId));
     await tx.update(reportsTable).set({ targetUserId: null }).where(eq(reportsTable.targetUserId, userId));

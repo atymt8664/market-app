@@ -122,6 +122,14 @@ const POST_CORE_SCHEMA_SQL = `
     );
     CREATE INDEX IF NOT EXISTS conversation_hides_user_idx ON conversation_hides(user_id);
 
+    CREATE TABLE IF NOT EXISTS conversation_deletes (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      deleted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, conversation_id)
+    );
+    CREATE INDEX IF NOT EXISTS conversation_deletes_user_idx ON conversation_deletes(user_id);
+
     CREATE TABLE IF NOT EXISTS notifications (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

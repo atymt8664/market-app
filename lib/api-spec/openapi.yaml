@@ -1201,6 +1201,60 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /conversations/{convId}/delete-for-me:
+    post:
+      operationId: deleteConversationForMe
+      tags: [conversations]
+      summary: Delete conversation from inbox for the current user only (not for the other party)
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deleted for me (idempotent)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /conversations/{convId}/restore-for-me:
+    post:
+      operationId: restoreConversationForMe
+      tags: [conversations]
+      summary: Restore a conversation previously deleted for the current user
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Restored (idempotent)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /conversations/{convId}/messages/{messageId}/reaction:
     put:
       operationId: setMessageReaction

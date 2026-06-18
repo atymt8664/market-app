@@ -9,6 +9,7 @@ import {
   usersTable,
   messageHidesTable,
   conversationHidesTable,
+  conversationDeletesTable,
   messageReactionsTable,
 } from "@workspace/db";
 import { and, asc, desc, eq, inArray, isNull, ne, notInArray, sql } from "drizzle-orm";
@@ -337,6 +338,10 @@ router.get("/conversations", requireAuth, async (req, res) => {
           select 1 from conversation_hides ch
           where ch.conversation_id = c.id and ch.user_id = ${userId}
         )
+        and not exists (
+          select 1 from conversation_deletes cd
+          where cd.conversation_id = c.id and cd.user_id = ${userId}
+        )
     ),
     deduped as (
       select distinct on (other_id) *
@@ -409,6 +414,10 @@ router.get("/conversations/hidden", requireAuth, async (req, res) => {
         and exists (
           select 1 from conversation_hides ch
           where ch.conversation_id = c.id and ch.user_id = ${userId}
+        )
+        and not exists (
+          select 1 from conversation_deletes cd
+          where cd.conversation_id = c.id and cd.user_id = ${userId}
         )
     ),
     deduped as (
@@ -601,6 +610,55 @@ async function unhideConversationForMeHandler(req: Request, res: Response): Prom
     .delete(conversationHidesTable)
     .where(
       and(eq(conversationHidesTable.userId, userId), eq(conversationHidesTable.conversationId, convId)),
+    );
+  res.json({ ok: true });
+}
+
+async function deleteConversationForMeHandler(req: Request, res: Response): Promise<void> {
+  const userId = req.session.userId!;
+  const convId = Number(req.params["convId"]);
+  if (!Number.isInteger(convId) || convId <= 0) {
+    res.status(400).json({ error: "معرّف غير صالح" });
+    return;
+  }
+  const r = await loadConversation(convId, userId);
+  if ("error" in r) {
+    res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(conversationDeletesTable)
+      .values({ userId, conversationId: convId })
+      .onConflictDoNothing();
+    await tx
+      .delete(conversationHidesTable)
+      .where(
+        and(eq(conversationHidesTable.userId, userId), eq(conversationHidesTable.conversationId, convId)),
+      );
+  });
+  res.json({ ok: true });
+}
+
+async function restoreConversationForMeHandler(req: Request, res: Response): Promise<void> {
+  const userId = req.session.userId!;
+  const convId = Number(req.params["convId"]);
+  if (!Number.isInteger(convId) || convId <= 0) {
+    res.status(400).json({ error: "معرّف غير صالح" });
+    return;
+  }
+  const r = await loadConversation(convId, userId);
+  if ("error" in r) {
+    res.status(r.error === "not_found" ? 404 : 403).json({ error: "غير مصرح" });
+    return;
+  }
+  await db
+    .delete(conversationDeletesTable)
+    .where(
+      and(
+        eq(conversationDeletesTable.userId, userId),
+        eq(conversationDeletesTable.conversationId, convId),
+      ),
     );
   res.json({ ok: true });
 }
@@ -1092,6 +1150,15 @@ router.post("/conversations/:convId/messages", requireAuth, requireUserCsrf, asy
     })
     .where(eq(conversationsTable.id, convId));
 
+  await db
+    .delete(conversationDeletesTable)
+    .where(
+      and(
+        eq(conversationDeletesTable.userId, recipient),
+        eq(conversationDeletesTable.conversationId, convId),
+      ),
+    );
+
   const serialized = serializeMessage(created!, null, quotedSource);
   const payload = { type: "message", conversationId: convId, message: serialized };
   broadcastToUser(recipient, payload);
@@ -1156,6 +1223,20 @@ router.post(
   requireAuth,
   requireUserCsrf,
   unhideConversationForMeHandler,
+);
+
+router.post(
+  "/conversations/:convId/delete-for-me",
+  requireAuth,
+  requireUserCsrf,
+  deleteConversationForMeHandler,
+);
+
+router.post(
+  "/conversations/:convId/restore-for-me",
+  requireAuth,
+  requireUserCsrf,
+  restoreConversationForMeHandler,
 );
 
 router.post("/conversations/:convId/messages/hide-for-me", requireAuth, requireUserCsrf, async (req, res) => {

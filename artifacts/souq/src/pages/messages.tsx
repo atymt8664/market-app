@@ -16,10 +16,13 @@ import {
   normalizePresenceUserIds,
   useUserPresenceBatch,
   useHideConversationForMe,
+  useDeleteConversationForMe,
+  useRestoreConversationForMe,
   type ConversationListItem,
   type UserPresenceEntry,
 } from "@workspace/api-client-react";
 import { ChatInboxActionSheet } from "@/components/chat-inbox-action-sheet";
+import { ChatInboxDeleteUndoSnackbar } from "@/components/chat-inbox-delete-undo-snackbar";
 import { ChatInboxConfirmDialog } from "@/components/chat-inbox-confirm-dialog";
 import { ChatInboxPresenceLine } from "@/components/chat-inbox-presence-line";
 import { ChatInboxSelectionHeader } from "@/components/chat-inbox-selection-header";
@@ -61,6 +64,7 @@ import { sortInboxRowsWithPrefs } from "@/lib/chat-inbox-client-prefs";
 import {
   applyIncomingMessageToInboxCache,
   removeConversationsFromInboxCache,
+  restoreConversationsToInboxCache,
 } from "@/lib/inbox-conversation-cache";
 import { STALE_CONVERSATIONS_MS } from "@/lib/query-stale-times";
 import { prefetchConversationThread } from "@/lib/prefetch-conversation-thread";
@@ -334,8 +338,14 @@ export default function Messages() {
     kind: "hide" | "delete";
     ids: number[];
   } | null>(null);
+  const [deleteUndoSnack, setDeleteUndoSnack] = useState<{
+    convId: number;
+    snapshot: ConversationListItem[];
+  } | null>(null);
 
   const hideConversationMutation = useHideConversationForMe();
+  const deleteConversationMutation = useDeleteConversationForMe();
+  const restoreConversationMutation = useRestoreConversationForMe();
   const { pinnedSet, mutedSet, togglePin, toggleMute, applyPin, applyMute, prefs } =
     useInboxClientPrefs(user?.id);
 
@@ -421,14 +431,15 @@ export default function Messages() {
   );
 
   const runHideConversations = useCallback(
-    async (ids: number[], successKey: "p5.chat.inbox.hide_success" | "p5.chat.inbox.delete_success") => {
+    async (ids: number[]) => {
       if (ids.length === 0) return;
       setActionsBusy(true);
       removeConversationsFromInboxCache(queryClient, ids);
       try {
         await Promise.all(ids.map((id) => hideConversationMutation.mutateAsync({ convId: id })));
+        await queryClient.invalidateQueries({ queryKey: getListConversationsQueryKey() });
         await queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
-        toast({ title: t(successKey) });
+        toast({ title: t("p5.chat.inbox.hide_success") });
         setActionSheetConvId(null);
         exitSelectMode();
       } catch {
@@ -441,6 +452,54 @@ export default function Messages() {
       }
     },
     [exitSelectMode, hideConversationMutation, queryClient, toast],
+  );
+
+  const undoDeleteConversation = useCallback(
+    async (convId: number, snapshot: ConversationListItem[]) => {
+      try {
+        await restoreConversationMutation.mutateAsync({ convId });
+        restoreConversationsToInboxCache(queryClient, snapshot);
+        await queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
+        toast({ title: t("p5.chat.inbox.delete_undo_success") });
+      } catch {
+        await queryClient.invalidateQueries({ queryKey: getListConversationsQueryKey() });
+        await queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
+        toast({ title: t("p5.chat.inbox.delete_undo_failed"), variant: "destructive" });
+      }
+    },
+    [queryClient, restoreConversationMutation, toast],
+  );
+
+  const runDeleteConversations = useCallback(
+    async (ids: number[]) => {
+      if (ids.length === 0) return;
+      setActionsBusy(true);
+      const listKey = getListConversationsQueryKey();
+      const cached = queryClient.getQueryData<ConversationListItem[]>(listKey);
+      const idSet = new Set(ids);
+      const snapshot = (cached ?? []).filter((row) => idSet.has(row.id));
+      removeConversationsFromInboxCache(queryClient, ids);
+      try {
+        await Promise.all(ids.map((id) => deleteConversationMutation.mutateAsync({ convId: id })));
+        await queryClient.invalidateQueries({ queryKey: listKey });
+        await queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
+        if (ids.length === 1 && snapshot.length === 1) {
+          setDeleteUndoSnack({ convId: ids[0]!, snapshot });
+        } else {
+          toast({ title: t("p5.chat.inbox.delete_success_many") });
+        }
+        setActionSheetConvId(null);
+        exitSelectMode();
+      } catch {
+        await queryClient.invalidateQueries({ queryKey: listKey });
+        await queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
+        toast({ title: t("p5.chat.inbox.delete_failed"), variant: "destructive" });
+      } finally {
+        setActionsBusy(false);
+        setPendingConfirm(null);
+      }
+    },
+    [deleteConversationMutation, exitSelectMode, queryClient, toast],
   );
 
   const requestHide = useCallback((ids: number[]) => {
@@ -687,7 +746,7 @@ export default function Messages() {
         busy={actionsBusy}
         onConfirm={() => {
           if (pendingConfirm?.kind === "hide") {
-            void runHideConversations(pendingConfirm.ids, "p5.chat.inbox.hide_success");
+            void runHideConversations(pendingConfirm.ids);
           }
         }}
         onOpenChange={(next) => {
@@ -697,17 +756,23 @@ export default function Messages() {
 
       <ChatInboxConfirmDialog
         open={pendingConfirm?.kind === "delete"}
-        title={t("p5.chat.inbox.delete_confirm_title")}
-        description={t("p5.chat.inbox.delete_confirm_desc", {
-          count: pendingConfirm?.ids.length ?? 0,
-        })}
+        title={t(
+          (pendingConfirm?.ids.length ?? 0) === 1
+            ? "p5.chat.inbox.delete_confirm_title_one"
+            : "p5.chat.inbox.delete_confirm_title_many",
+        )}
+        description={t(
+          (pendingConfirm?.ids.length ?? 0) === 1
+            ? "p5.chat.inbox.delete_confirm_desc_one"
+            : "p5.chat.inbox.delete_confirm_desc_many",
+        )}
         confirmLabel={t("p5.chat.inbox.delete_confirm_cta")}
         cancelLabel={t("message_thread.hide_confirm_cancel")}
         busy={actionsBusy}
         destructive
         onConfirm={() => {
           if (pendingConfirm?.kind === "delete") {
-            void runHideConversations(pendingConfirm.ids, "p5.chat.inbox.delete_success");
+            void runDeleteConversations(pendingConfirm.ids);
           }
         }}
         onOpenChange={(next) => {
@@ -722,6 +787,18 @@ export default function Messages() {
         mutedCount={mutedCount}
         onOpenChange={setCollectionsMenuOpen}
         onSelect={setCollectionView}
+      />
+
+      <ChatInboxDeleteUndoSnackbar
+        open={deleteUndoSnack !== null}
+        onUndo={() => {
+          const pending = deleteUndoSnack;
+          setDeleteUndoSnack(null);
+          if (pending) {
+            void undoDeleteConversation(pending.convId, pending.snapshot);
+          }
+        }}
+        onExpire={() => setDeleteUndoSnack(null)}
       />
     </div>
   );

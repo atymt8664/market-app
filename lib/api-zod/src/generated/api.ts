@@ -336,6 +336,8 @@ export const ListAdsResponseItem = zod.object({
   isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
+  status: zod.string().optional(),
+  details: zod.unknown().optional(),
 });
 export const ListAdsResponse = zod.array(ListAdsResponseItem);
 
@@ -388,6 +390,8 @@ export const ListFeaturedAdsResponseItem = zod.object({
   isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
+  status: zod.string().optional(),
+  details: zod.unknown().optional(),
 });
 export const ListFeaturedAdsResponse = zod.array(ListFeaturedAdsResponseItem);
 
@@ -417,6 +421,8 @@ export const ListRecommendedAdsResponseItem = zod.object({
   isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
+  status: zod.string().optional(),
+  details: zod.unknown().optional(),
 });
 export const ListRecommendedAdsResponse = zod.array(
   ListRecommendedAdsResponseItem,
@@ -469,6 +475,8 @@ export const ListMyAdsResponseItem = zod.object({
   isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
+  status: zod.string().optional(),
+  details: zod.unknown().optional(),
 });
 export const ListMyAdsResponse = zod.array(ListMyAdsResponseItem);
 
@@ -498,6 +506,8 @@ export const ListFavoriteAdsResponseItem = zod.object({
   isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
+  status: zod.string().optional(),
+  details: zod.unknown().optional(),
 });
 export const ListFavoriteAdsResponse = zod.array(ListFavoriteAdsResponseItem);
 
@@ -528,6 +538,8 @@ export const GetAdResponse = zod.object({
   isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
+  status: zod.string().optional(),
+  details: zod.unknown().optional(),
 });
 
 export const UpdateAdParams = zod.object({
@@ -580,6 +592,8 @@ export const UpdateAdResponse = zod.object({
   isFavorited: zod.boolean(),
   userId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
+  status: zod.string().optional(),
+  details: zod.unknown().optional(),
 });
 
 export const DeleteAdParams = zod.object({
@@ -1051,6 +1065,28 @@ export const HideConversationForMeParams = zod.object({
 });
 
 export const HideConversationForMeResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Delete conversation from inbox for the current user only (not for the other party)
+ */
+export const DeleteConversationForMeParams = zod.object({
+  convId: zod.coerce.number(),
+});
+
+export const DeleteConversationForMeResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Restore a conversation previously deleted for the current user
+ */
+export const RestoreConversationForMeParams = zod.object({
+  convId: zod.coerce.number(),
+});
+
+export const RestoreConversationForMeResponse = zod.object({
   ok: zod.boolean(),
 });
 

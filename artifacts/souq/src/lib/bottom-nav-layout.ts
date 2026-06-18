@@ -52,3 +52,7 @@ export const BOTTOM_NAV_PAGE_SHELL_CLASS =
  */
 export const BOTTOM_NAV_SCROLL_END_SPACER_CLASS =
   "min-h-[3.125rem] shrink-0 bg-[#0A0A0A] md:min-h-[3.5rem]";
+
+/** Fixed offset for inbox delete-undo snackbar — above BottomNav chrome + L4 safe area. */
+export const INBOX_UNDO_SNACKBAR_BOTTOM_CLASS =
+  "bottom-[calc(3.125rem+var(--souq-safe-bottom,env(safe-area-inset-bottom,0px))+var(--souq-bottom-nav-drop,8px)+0.5rem)] md:bottom-[calc(3.5rem+var(--souq-safe-bottom,env(safe-area-inset-bottom,0px))+var(--souq-bottom-nav-drop,8px)+0.5rem)]";

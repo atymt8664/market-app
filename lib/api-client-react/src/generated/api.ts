@@ -29,6 +29,7 @@ import type {
   ConversationRef,
   CreateAdInput,
   CreateOrderBody,
+  DeleteConversationForMe200,
   ErrorEnvelope,
   FollowResponse,
   ForgotPasswordInput,
@@ -53,6 +54,7 @@ import type {
   ResendVerificationInput,
   ResendVerificationResponse,
   ResetPasswordInput,
+  RestoreConversationForMe200,
   SendMessageBody,
   SetMessageReaction200,
   SetMessageReactionBody,
@@ -4071,6 +4073,180 @@ export const useHideConversationForMe = <
   TContext
 > => {
   return useMutation(getHideConversationForMeMutationOptions(options));
+};
+
+/**
+ * @summary Delete conversation from inbox for the current user only (not for the other party)
+ */
+export const getDeleteConversationForMeUrl = (convId: number) => {
+  return `/api/conversations/${convId}/delete-for-me`;
+};
+
+export const deleteConversationForMe = async (
+  convId: number,
+  options?: RequestInit,
+): Promise<DeleteConversationForMe200> => {
+  return customFetch<DeleteConversationForMe200>(
+    getDeleteConversationForMeUrl(convId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getDeleteConversationForMeMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteConversationForMe>>,
+    TError,
+    { convId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteConversationForMe>>,
+  TError,
+  { convId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteConversationForMe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteConversationForMe>>,
+    { convId: number }
+  > = (props) => {
+    const { convId } = props ?? {};
+
+    return deleteConversationForMe(convId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteConversationForMeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteConversationForMe>>
+>;
+
+export type DeleteConversationForMeMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Delete conversation from inbox for the current user only (not for the other party)
+ */
+export const useDeleteConversationForMe = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteConversationForMe>>,
+    TError,
+    { convId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteConversationForMe>>,
+  TError,
+  { convId: number },
+  TContext
+> => {
+  return useMutation(getDeleteConversationForMeMutationOptions(options));
+};
+
+/**
+ * @summary Restore a conversation previously deleted for the current user
+ */
+export const getRestoreConversationForMeUrl = (convId: number) => {
+  return `/api/conversations/${convId}/restore-for-me`;
+};
+
+export const restoreConversationForMe = async (
+  convId: number,
+  options?: RequestInit,
+): Promise<RestoreConversationForMe200> => {
+  return customFetch<RestoreConversationForMe200>(
+    getRestoreConversationForMeUrl(convId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getRestoreConversationForMeMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreConversationForMe>>,
+    TError,
+    { convId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof restoreConversationForMe>>,
+  TError,
+  { convId: number },
+  TContext
+> => {
+  const mutationKey = ["restoreConversationForMe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof restoreConversationForMe>>,
+    { convId: number }
+  > = (props) => {
+    const { convId } = props ?? {};
+
+    return restoreConversationForMe(convId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RestoreConversationForMeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof restoreConversationForMe>>
+>;
+
+export type RestoreConversationForMeMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Restore a conversation previously deleted for the current user
+ */
+export const useRestoreConversationForMe = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreConversationForMe>>,
+    TError,
+    { convId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof restoreConversationForMe>>,
+  TError,
+  { convId: number },
+  TContext
+> => {
+  return useMutation(getRestoreConversationForMeMutationOptions(options));
 };
 
 /**

@@ -39,7 +39,7 @@ export async function getUnreadNotificationsCount(userId: number): Promise<numbe
   return Number(row?.c ?? 0);
 }
 
-/** Unread chat messages in non-hidden conversations for the user. */
+/** Unread chat messages in non-hidden, non-deleted conversations for the user. */
 export async function getUnreadMessagesCount(userId: number): Promise<number> {
   if (!Number.isInteger(userId) || userId <= 0) return 0;
   const result = await db.execute<{ c: number }>(sql`
@@ -52,6 +52,10 @@ export async function getUnreadMessagesCount(userId: number): Promise<number> {
       AND NOT EXISTS (
         SELECT 1 FROM conversation_hides ch
         WHERE ch.conversation_id = c.id AND ch.user_id = ${userId}
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM conversation_deletes cd
+        WHERE cd.conversation_id = c.id AND cd.user_id = ${userId}
       )
   `);
   const row = result.rows[0];

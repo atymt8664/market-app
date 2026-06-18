@@ -1,22 +1,12 @@
-# P0 — reduce CLI archive size; never upload local noise to Vercel.
+# ADR-006 — Git-only Production deploy (Vercel Git Integration).
+# Root Directory: artifacts/souq. Exclude local QA noise only; never ignore source or dist output.
 node_modules
-dist
-.vercel
-.screenshots
-.screenshots/**
-scripts/.screenshots
-scripts/.screenshots/**
 **/.screenshots
-**/.screenshots/**
 **/.psi-*
 **/.p11-*
 **/*.log
 tmp-*
 **/tmp-*
-**/.real-browser-visual-qa-output/**
-**/.p9e-*/**
-**/.phase-b-header-verify/**
-artifacts/souq
 public/p5-previews
 .p7-pr-*
 .p9-*

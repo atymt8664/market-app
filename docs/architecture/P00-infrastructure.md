@@ -92,7 +92,7 @@ Provide reliable **runtime hosting** for the API (Hetzner VPS, Docker, Nginx) an
 | Official path | `git push origin main` — Vercel builds from GitHub at commit SHA |
 | Prohibited (Production) | CLI `vercel deploy --prod --archive=tgz`, prebuilt CLI deploy, local archive upload |
 | Runbook | [P0-production-frontend-deploy.md](../runbooks/P0-production-frontend-deploy.md) |
-| Legacy script | `infra/hetzner/deploy/vercel-prod-deploy.mjs` — deprecated for Production (**P0-DG-2** guard pending) |
+| Legacy script | `infra/hetzner/deploy/vercel-prod-deploy.mjs` — **blocked** (**P0-DG-2**) · emergency: `vercel-prod-emergency.mjs` |
 | Emergency | ADR-006 exception only with Mohamed approval |
 
 Frontend deploy does **not** use developer-local files as the upload source. Secrets stay in Vercel env — never in git.

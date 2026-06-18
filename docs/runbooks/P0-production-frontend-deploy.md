@@ -146,7 +146,7 @@ After env change: push an empty commit or use Vercel **Redeploy** on the latest 
 |--------|--------|
 | `vercel deploy --prod --archive=tgz` | Uploads local disk; caused ~4 GB failure |
 | `vercel deploy --prebuilt --prod` | Builds on developer machine; not SHA SSOT |
-| `node infra/hetzner/deploy/vercel-prod-deploy.mjs` | Legacy CLI archive — **deprecated** (**P0-DG-2**) |
+| `node infra/hetzner/deploy/vercel-prod-deploy.mjs` | **Blocked** by P0-DG-2 — exits 1; use Git push |
 | `vercel deploy --prod` without Git push | No commit identity |
 | Deploy project `classified-marketplace` | Wrong project — alias is `market-app-souq` only |
 
@@ -156,12 +156,34 @@ After env change: push an empty commit or use Vercel **Redeploy** on the latest 
 
 Use **only** when Vercel Git Integration is unavailable and Mohamed has given **explicit written approval**.
 
-1. Document incident + intended commit SHA
-2. Use CLI/prebuilt only as last resort (see ADR-006)
-3. Final Report within 24h
-4. Restore Git-only path and close exception
+Set env (shell session only — **never commit**):
 
-Emergency procedure details: **P0-DG-2** (`vercel-prod-emergency.mjs` — not yet implemented).
+```bash
+export SOUQ_EMERGENCY_FRONTEND_DEPLOY_APPROVED=1
+export SOUQ_EMERGENCY_FRONTEND_DEPLOY_REASON="incident summary + intended commit SHA"
+```
+
+Then run **one** mode from monorepo root:
+
+```bash
+# Last resort — local archive upload (blocked by default path)
+node infra/hetzner/deploy/vercel-prod-emergency.mjs --archive
+
+# Last resort — local prebuilt upload
+node infra/hetzner/deploy/vercel-prod-emergency.mjs --prebuilt
+```
+
+Requirements after emergency deploy:
+
+1. Final Report within 24h
+2. Restore Git-only path
+3. Close exception in PROJECT_STATE notes if needed
+
+**Blocked without env approval:**
+
+```bash
+node infra/hetzner/deploy/vercel-prod-deploy.mjs   # exits 1 — use Git push instead
+```
 
 ---
 

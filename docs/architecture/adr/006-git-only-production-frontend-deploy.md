@@ -176,7 +176,7 @@ Tracked in [PROJECT_STATE.md](../../PROJECT_STATE.md) under **P0 — Deployment 
 |-----------|-------|--------|
 | **P0-DG-0** | ADR-006 draft | ✅ Closed |
 | **P0-DG-1** | Docs / runbooks / PROJECT_STATE / P00 | ✅ Closed — [P0-production-frontend-deploy.md](../../runbooks/P0-production-frontend-deploy.md) |
-| **P0-DG-2** | Deploy guards; deprecate `vercel-prod-deploy.mjs` | ⏳ Not opened |
+| **P0-DG-2** | Deploy guards; deprecate `vercel-prod-deploy.mjs` | ✅ Closed |
 | **P0-DG-3** | QA artifact policy; `.gitignore` | ⏳ Not opened |
 | **P0-DG-4** | Production verification on next Git-only frontend deploy | ⏳ Not opened |
 | **P0-DG-5** | Closure report + PCL | ⏳ Not opened |

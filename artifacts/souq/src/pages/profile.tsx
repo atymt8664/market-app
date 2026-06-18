@@ -41,7 +41,6 @@ import { AvatarCircle } from "@/components/avatar-circle";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
 import { t } from "@/i18n";
-import { ProfileMetricsBand } from "@/components/profile-metrics-band";
 import { ProfileIdentityStrip, type ProfilePlanTier } from "@/components/profile-identity-strip";
 import {
   ProfileContentTabShell,
@@ -52,8 +51,6 @@ import {
   SETTINGS_DIALOG_CONTENT,
   SETTINGS_OUTLINE_BUTTON,
 } from "@/components/settings-shell";
-import { ProfileStatsDetailSheet } from "@/components/profile-stats-detail-sheet";
-import { ProfileStatsListsPanel } from "@/components/profile-stats-lists-panel";
 import { OrdersAccountCardGrid } from "@/features/p17-commerce/orders-account-card-grid";
 import {
   ProfileAvatarPreviewDialog,
@@ -65,7 +62,6 @@ import { buildAdShareText, buildProfileShareText } from "@/lib/share-text";
 import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { cn } from "@/lib/utils";
 import { BOTTOM_NAV_PAGE_SHELL_CLASS, BOTTOM_NAV_SCROLL_END_SPACER_CLASS } from "@/lib/bottom-nav-layout";
-import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
 import { useAppChromeContext } from "@/contexts/app-chrome-context";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 import { stashPromoteAdPreview } from "@/lib/promote-ad-preview";
@@ -119,10 +115,15 @@ const profileAdActionDelete = cn(
   "border-red-500/38 bg-red-950/[0.22] text-red-300 shadow-[0_0_18px_-14px_rgba(239,68,68,0.18)] ring-red-500/18 hover:border-red-500/48 hover:bg-red-950/35",
 );
 
+/** P9-PROFILE-ADS-CARD-COMPACT-POLISH — profile /profile my-ads only */
+const PROFILE_MY_ADS_CARD_SHELL = cn(AD_CARD_SHELL, "p-2.5 md:p-2.5 lg:p-3");
+
+const PROFILE_MY_ADS_EMPTY =
+  "w-full shrink-0 py-3 text-center";
+
 export default function Profile() {
   const { locale } = useLocale();
   const profileDir = locale === "ar" ? "rtl" : "ltr";
-  const numberLocale = locale === "en" ? "en-US" : locale === "de" ? "de-DE" : "ar";
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -145,9 +146,6 @@ export default function Profile() {
   });
   const [activeTab, setActiveTab] = useState<ProfileContentTab>("my-ads");
   const [planTier, setPlanTier] = useState<ProfilePlanTier>("personal");
-  const [statsSheet, setStatsSheet] = useState<
-    null | "followers" | "following" | "views"
-  >(null);
   const { data: favoriteAdsData, isLoading: favoritesLoading } = useListFavoriteAds({
     query: {
       queryKey: favoritesListQueryKey(),
@@ -314,9 +312,7 @@ export default function Profile() {
   };
 
   const adCount = user?.adCount ?? myAds?.length ?? 0;
-  const followerCount = user?.followerCount ?? 0;
-  const followingCount = user?.followingCount ?? 0;
-  const profileViews = user?.profileViews ?? 0;
+  const isMyAdsEmpty = activeTab === "my-ads" && !adsLoading && adCount === 0;
   const memberSince = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString("ar", {
         year: "numeric",
@@ -389,38 +385,34 @@ export default function Profile() {
             </div>
           </div>
 
-          <ProfileMetricsBand
-            className="mt-4 md:mt-5"
+          <OrdersAccountCardGrid
+            className={PROFILE_SECTION_STACK_GAP}
+            onBuyerNavigate={() => navigate("/orders")}
+            onSellerNavigate={() => navigate("/seller-orders")}
+          />
+
+          <ProfileIdentityStrip
+            className={PROFILE_SECTION_STACK_GAP}
             dir={profileDir}
-            adCount={adCount}
-            profileViews={profileViews}
-            followerCount={followerCount}
-            followingCount={followingCount}
-            numberLocale={numberLocale}
-            onFollowersClick={() => setStatsSheet("followers")}
-            onFollowingClick={() => setStatsSheet("following")}
-            onViewsClick={() => setStatsSheet("views")}
+            planTier={planTier}
+            onPlanTierChange={setPlanTier}
           />
         </div>
       </div>
 
-      <AppShellContentScroll>
-      <div className={profilePageColumn}>
-        <OrdersAccountCardGrid
-          className={PROFILE_SECTION_STACK_GAP}
-          onBuyerNavigate={() => navigate("/orders")}
-          onSellerNavigate={() => navigate("/seller-orders")}
-        />
-
-        <ProfileIdentityStrip
-          className={PROFILE_SECTION_STACK_GAP}
-          dir={profileDir}
-          planTier={planTier}
-          onPlanTierChange={setPlanTier}
-        />
-
+      <div
+        className={cn(
+          profilePageColumn,
+          "flex min-h-0 flex-col pb-1",
+          isMyAdsEmpty ? "shrink-0" : "flex-1",
+        )}
+      >
         <ProfileContentTabShell
-          className={PROFILE_SECTION_STACK_GAP}
+          className={cn(
+            PROFILE_SECTION_STACK_GAP,
+            isMyAdsEmpty ? "h-fit shrink-0" : "min-h-0 flex-1",
+          )}
+          panelScrollable={!isMyAdsEmpty}
           dir={profileDir}
           value={activeTab}
           onChange={setActiveTab}
@@ -433,12 +425,12 @@ export default function Profile() {
         >
           {activeTab === "my-ads" ? (
             !adsLoading && adCount === 0 ? (
-              <div className="py-10 text-center">
-                <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-primary/20 text-primary flex items-center justify-center">
-                  <Plus className="w-7 h-7" />
+              <div className={PROFILE_MY_ADS_EMPTY} data-testid="profile-my-ads-empty">
+                <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-primary/20 text-primary">
+                  <Plus className="h-5 w-5" />
                 </div>
-                <h3 className="font-bold text-base mb-1">{t("profile.empty.first_ad_title")}</h3>
-                <p className="text-sm text-muted-foreground mb-4">{t("profile.empty.first_ad_subtitle")}</p>
+                <h3 className="mb-0.5 text-base font-bold">{t("profile.empty.first_ad_title")}</h3>
+                <p className="mb-3 text-sm text-muted-foreground">{t("profile.empty.first_ad_subtitle")}</p>
                 <Link href="/new">
                   <Button className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-primary/50 bg-[#0A0A0A]/92 px-5 py-2.5 text-sm font-semibold text-primary shadow-[0_0_18px_-10px_hsl(var(--primary)/0.32)] ring-1 ring-primary/18 transition-colors hover:border-primary/65 hover:bg-black/95 hover:shadow-[0_0_24px_-10px_hsl(var(--primary)/0.42)] active:scale-[0.98]">
                     <Plus className="w-4 h-4 text-primary" />
@@ -453,7 +445,7 @@ export default function Profile() {
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:gap-3 lg:grid-cols-3">
                 {Array.isArray(myAds) &&
                   myAds.map((ad) => (
                     <div key={ad.id} className="relative w-full">
@@ -523,8 +515,12 @@ export default function Profile() {
           )}
         </ProfileContentTabShell>
       </div>
-      <div aria-hidden className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS} data-testid="profile-scroll-spacer" />
-      </AppShellContentScroll>
+
+      <div
+        aria-hidden
+        className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS}
+        data-testid="profile-scroll-spacer"
+      />
 
       <ProfileAvatarPreviewDialog
         open={avatarPreviewOpen}
@@ -611,29 +607,6 @@ export default function Profile() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ProfileStatsDetailSheet
-        open={statsSheet !== null}
-        onOpenChange={(open) => !open && setStatsSheet(null)}
-        title={
-          statsSheet === "followers"
-            ? t("profile.stats.sheet.followers_title")
-            : statsSheet === "following"
-              ? t("profile.stats.sheet.following_title")
-              : statsSheet === "views"
-                ? t("profile.stats.sheet.views_title")
-                : ""
-        }
-      >
-        {statsSheet !== null ? (
-          <ProfileStatsListsPanel
-            sheet={statsSheet}
-            profileUserId={user.id}
-            isSelf
-            viewerUserId={user.id}
-          />
-        ) : null}
-      </ProfileStatsDetailSheet>
 
       <Drawer open={!!actionAd} onOpenChange={(open) => !open && setActionAd(null)}>
         <DrawerContent className="rounded-t-2xl border-border bg-[#0A0A0A]/95">
@@ -769,8 +742,8 @@ function ProfileDesktopAdCard({
   return (
     <article
       className={cn(
-        AD_CARD_SHELL,
-        "p-3 transition-colors hover:border-primary/45 lg:p-3.5",
+        PROFILE_MY_ADS_CARD_SHELL,
+        "transition-colors hover:border-primary/45",
       )}
       dir="rtl"
     >
@@ -790,12 +763,12 @@ function ProfileDesktopAdCard({
           )}
         </div>
 
-        <h3 className="mt-2.5 text-sm lg:text-[15px] font-semibold leading-5 line-clamp-2 text-foreground min-h-[2.4rem]">
+        <h3 className="mt-2 min-h-[2.25rem] text-sm font-semibold leading-5 text-foreground line-clamp-2 lg:text-[15px]">
           {ad.title}
         </h3>
 
-        <div className="mt-1.5 flex items-center justify-between gap-2">
-          <p className="text-sm lg:text-base font-bold text-primary leading-none">{priceText}</p>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <p className="text-sm font-bold leading-none text-primary lg:text-base">{priceText}</p>
           {priceTypeLabel && (
             <span className="rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
               {priceTypeLabel}
@@ -803,11 +776,11 @@ function ProfileDesktopAdCard({
           )}
         </div>
 
-        <p className="mt-1.5 text-xs text-muted-foreground truncate">
+        <p className="mt-1 truncate text-xs text-muted-foreground">
           {(ad.city || t("ad-card.unknown_city"))} · {formatRelativeTime(ad.createdAt)}
         </p>
 
-        <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+        <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Eye className="w-3.5 h-3.5 text-primary/80" />
             {(ad.views ?? 0).toLocaleString("ar")}
@@ -830,7 +803,7 @@ function ProfileDesktopAdCard({
       {showActions && (
         <div
           className={cn(
-            "mt-3 grid gap-2",
+            "mt-2.5 grid gap-2",
             onPromote ? "grid-cols-3" : "grid-cols-2",
           )}
         >
@@ -918,8 +891,8 @@ function ProfileMobileAdCard({
   return (
     <article
       className={cn(
-        AD_CARD_SHELL,
-        "relative w-full p-3 transition-colors hover:border-primary/45",
+        PROFILE_MY_ADS_CARD_SHELL,
+        "relative w-full transition-colors hover:border-primary/45",
       )}
       onClick={onOpen}
       dir={direction}
@@ -937,10 +910,10 @@ function ProfileMobileAdCard({
         <MoreVertical className="h-3.5 w-3.5" strokeWidth={2.25} />
       </button>
 
-      <div className="flex items-start gap-3 w-full">
+      <div className="flex w-full items-start gap-2.5">
         <div
           className={cn(
-            "relative h-[112px] w-[112px] shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-[#0A0A0A] self-start",
+            "relative h-[100px] w-[100px] shrink-0 self-start overflow-hidden rounded-xl border border-primary/25 bg-[#0A0A0A]",
             isRtl ? "order-1" : "order-2",
           )}
         >
@@ -959,9 +932,9 @@ function ProfileMobileAdCard({
         </div>
 
         <div className={cn("min-w-0 flex-1", isRtl ? "order-2 text-right pl-1" : "order-1 text-left pr-1")} dir={direction}>
-          <h3 className="text-[16px] font-bold leading-5 line-clamp-2 text-foreground">{ad.title}</h3>
-          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-            <p className="text-[18px] font-bold text-primary leading-none">{priceText}</p>
+          <h3 className="line-clamp-2 text-[16px] font-bold leading-5 text-foreground">{ad.title}</h3>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <p className="text-[18px] font-bold leading-none text-primary">{priceText}</p>
             {priceTypeLabel && (
               <span className="inline-flex rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
                 {priceTypeLabel}
@@ -969,11 +942,11 @@ function ProfileMobileAdCard({
             )}
           </div>
 
-          <p className="mt-1.5 text-[11px] text-muted-foreground truncate">
+          <p className="mt-1 truncate text-[11px] text-muted-foreground">
             {(ad.city || t("ad-card.unknown_city"))} · {formatRelativeTime(ad.createdAt)}
           </p>
 
-          <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+          <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Eye className="w-3.5 h-3.5 text-primary/80" />
               {(ad.views ?? 0).toLocaleString("ar")}
@@ -990,7 +963,7 @@ function ProfileMobileAdCard({
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2" dir={direction}>
+      <div className="mt-2.5 grid grid-cols-3 gap-2" dir={direction}>
         <button
           type="button"
           onClick={(e) => {

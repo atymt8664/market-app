@@ -6,8 +6,8 @@ import { HorizontalScrollStrip } from "@/components/horizontal-scroll-strip";
 import { HomeFeaturedDivider } from "@/components/home-featured-divider";
 import { useProgressiveReveal } from "@/lib/use-progressive-reveal";
 import { t } from "@/i18n";
-import { HOME_PAGE_INSET } from "@/lib/home-page-layout";
-import { BOTTOM_NAV_SCROLL_END_SPACER_CLASS } from "@/lib/bottom-nav-layout";
+import { HOME_FEED_ADS_INSET, HOME_PAGE_INSET } from "@/lib/home-page-layout";
+import { BOTTOM_NAV_SCROLL_END_CLEARANCE_CLASS } from "@/lib/bottom-nav-layout";
 import { cn } from "@/lib/utils";
 
 const FEATURED_SKELETON_KEYS = [0, 1, 2, 3] as const;
@@ -76,7 +76,7 @@ export const HomeFeedScrollContent = memo(function HomeFeedScrollContent({
         <div className={cn(HOME_PAGE_INSET, "mb-1.5 md:mb-2")}>
           <h2 className={homeSectionHeading}>{t("home.featured_ads")}</h2>
         </div>
-        <div className={HOME_PAGE_INSET}>
+        <div className={HOME_FEED_ADS_INSET}>
           <HorizontalScrollStrip dir={isRtl ? "rtl" : "ltr"}>
             <div className={featuredStripClassName} dir={isRtl ? "rtl" : "ltr"}>
               {isLoadingFeatured ? (
@@ -106,8 +106,11 @@ export const HomeFeedScrollContent = memo(function HomeFeedScrollContent({
         <HomeFeaturedDivider isRtl={isRtl} placement="featured-bottom" />
       </div>
 
-      <section className={cn(HOME_PAGE_INSET, "pb-3 pt-0.5 max-md:pb-0.5 md:pb-4 md:pt-0")}>
-        <h2 className={cn(homeSectionHeading, "mb-1.5 md:mb-2")}>{t("home.recommended")}</h2>
+      <section className="pb-3 pt-0.5 max-md:pb-0.5 md:pb-4 md:pt-0">
+        <div className={cn(HOME_PAGE_INSET, "mb-1.5 md:mb-2")}>
+          <h2 className={homeSectionHeading}>{t("home.recommended")}</h2>
+        </div>
+        <div className={HOME_FEED_ADS_INSET}>
         <div className={recommendedGridClassName}>
           {isLoadingRecommended ? (
             GRID_SKELETON_KEYS.map((i) => (
@@ -136,8 +139,9 @@ export const HomeFeedScrollContent = memo(function HomeFeedScrollContent({
             </div>
           )}
         </div>
+        </div>
       </section>
-      <div aria-hidden className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS} />
+      <div aria-hidden className={BOTTOM_NAV_SCROLL_END_CLEARANCE_CLASS} data-testid="home-feed-scroll-clearance" />
     </div>
   );
 });

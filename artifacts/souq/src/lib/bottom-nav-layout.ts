@@ -4,8 +4,8 @@ import { APP_SHELL_CONTENT_SLOT_CLASS } from "@/lib/app-shell-layout";
 export const BOTTOM_NAV_HEIGHT_MOBILE_PX = 50;
 export const BOTTOM_NAV_HEIGHT_MD_PX = 56;
 
-/** Base L3 visual drop — Safari · Chrome · Android · desktop (P9-3 §12). */
-export const BOTTOM_NAV_VISUAL_DROP_PX = 8;
+/** Base L3 visual drop — Safari · Chrome · Android · desktop (P9-3 §12). 0 = flush anchor; was 8px down. */
+export const BOTTOM_NAV_VISUAL_DROP_PX = 0;
 
 /** CSS vars consumed by BOTTOM_NAV_FIXED_SHELL_CLASS transform. */
 export const SOUQ_BOTTOM_NAV_DROP_VAR = "--souq-bottom-nav-drop";
@@ -16,7 +16,7 @@ export const SOUQ_BOTTOM_NAV_DROP_VAR = "--souq-bottom-nav-drop";
  * Visual chrome + L4 safe-bottom live on BOTTOM_NAV_CHROME_PANEL_CLASS (§12).
  */
 export const BOTTOM_NAV_FIXED_SHELL_CLASS =
-  "fixed inset-x-0 bottom-0 left-0 right-0 z-40 m-0 block w-full [transform:translate3d(0,calc(var(--souq-bottom-nav-drop,8px)),0)]";
+  "fixed inset-x-0 bottom-0 left-0 right-0 z-40 m-0 block w-full [transform:translate3d(0,calc(var(--souq-bottom-nav-drop,0px)),0)]";
 
 /**
  * Chrome panel — full card unit (border · shadow · glow · L4 safe-bottom); bottom edge = viewport bottom.
@@ -53,6 +53,13 @@ export const BOTTOM_NAV_PAGE_SHELL_CLASS =
 export const BOTTOM_NAV_SCROLL_END_SPACER_CLASS =
   "min-h-[3.125rem] shrink-0 bg-[#0A0A0A] md:min-h-[3.5rem]";
 
+/**
+ * L2 scroll-end clearance — button row + L3 visual drop + breathing room (ad-detail · home feed).
+ * Use when last scrollable cards must clear fixed BottomNav after drop=0 polish.
+ */
+export const BOTTOM_NAV_SCROLL_END_CLEARANCE_CLASS =
+  "min-h-[calc(3.125rem+var(--souq-bottom-nav-drop,0px)+1rem)] shrink-0 bg-[#0A0A0A] md:min-h-[calc(3.5rem+var(--souq-bottom-nav-drop,0px)+1rem)]";
+
 /** Fixed offset for inbox delete-undo snackbar — above BottomNav chrome + L4 safe area. */
 export const INBOX_UNDO_SNACKBAR_BOTTOM_CLASS =
-  "bottom-[calc(3.125rem+var(--souq-safe-bottom,env(safe-area-inset-bottom,0px))+var(--souq-bottom-nav-drop,8px)+0.5rem)] md:bottom-[calc(3.5rem+var(--souq-safe-bottom,env(safe-area-inset-bottom,0px))+var(--souq-bottom-nav-drop,8px)+0.5rem)]";
+  "bottom-[calc(3.125rem+var(--souq-safe-bottom,env(safe-area-inset-bottom,0px))+var(--souq-bottom-nav-drop,0px)+0.5rem)] md:bottom-[calc(3.5rem+var(--souq-safe-bottom,env(safe-area-inset-bottom,0px))+var(--souq-bottom-nav-drop,0px)+0.5rem)]";

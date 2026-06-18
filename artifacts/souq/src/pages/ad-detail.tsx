@@ -65,7 +65,7 @@ import { cn } from "@/lib/utils";
 
 /** Scroll-end clearance — nav button row + L3 visual drop + breathing room for last full card. */
 const adDetailScrollEndSpacer =
-  "min-h-[calc(3.125rem+var(--souq-bottom-nav-drop,8px)+1rem)] shrink-0 bg-[#0A0A0A] md:min-h-[calc(3.5rem+var(--souq-bottom-nav-drop,8px)+1rem)]";
+  "min-h-[calc(3.125rem+var(--souq-bottom-nav-drop,0px)+1rem)] shrink-0 bg-[#0A0A0A] md:min-h-[calc(3.5rem+var(--souq-bottom-nav-drop,0px)+1rem)]";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 import { lookupMarketplaceCountry } from "@/lib/locations/manifest-data";
 import { useQueryClient } from "@tanstack/react-query";

@@ -4,10 +4,28 @@ import { APP_SHELL_CONTENT_SLOT_CLASS } from "@/lib/app-shell-layout";
 export const BOTTOM_NAV_HEIGHT_MOBILE_PX = 50;
 export const BOTTOM_NAV_HEIGHT_MD_PX = 56;
 
-/** Base L3 visual drop — Safari · Chrome · Android · desktop (P9-3 §12). 0 = flush anchor; was 8px down. */
+/** Base L3 visual drop — Safari · Chrome · Android · desktop (P9-3 §12). 0 = flush anchor. */
 export const BOTTOM_NAV_VISUAL_DROP_PX = 0;
 
-/** CSS vars consumed by BOTTOM_NAV_FIXED_SHELL_CLASS transform. */
+/**
+ * iPhone A2HS-only L4 trim — reduces excess padding-bottom on chrome panel (not shell translate).
+ * Gate: isIosWebKit() && navigator.standalone === true via html.ios-a2hs critical CSS.
+ * Applied on [data-bottom-nav-chrome] — the visible panel that owns L4 pb.
+ */
+export const BOTTOM_NAV_IOS_A2HS_L4_TRIM_PX = 14;
+
+/** DOM marker for frame-0 L4 critical CSS + guards (visible chrome panel). */
+export const BOTTOM_NAV_CHROME_MARKER = "data-bottom-nav-chrome";
+export const BOTTOM_NAV_CHROME_MARKER_VALUE = "1";
+
+export function bottomNavChromeDomProps(): Record<string, string> {
+  return { [BOTTOM_NAV_CHROME_MARKER]: BOTTOM_NAV_CHROME_MARKER_VALUE };
+}
+
+/** @deprecated translate drop ineffective on real device — use L4 trim via critical CSS. */
+export const BOTTOM_NAV_IOS_A2HS_VISUAL_DROP_PX = 0;
+
+/** CSS vars consumed by scroll-end clearance (drop retired; defaults 0). */
 export const SOUQ_BOTTOM_NAV_DROP_VAR = "--souq-bottom-nav-drop";
 
 /**
@@ -16,7 +34,7 @@ export const SOUQ_BOTTOM_NAV_DROP_VAR = "--souq-bottom-nav-drop";
  * Visual chrome + L4 safe-bottom live on BOTTOM_NAV_CHROME_PANEL_CLASS (§12).
  */
 export const BOTTOM_NAV_FIXED_SHELL_CLASS =
-  "fixed inset-x-0 bottom-0 left-0 right-0 z-40 m-0 block w-full [transform:translate3d(0,calc(var(--souq-bottom-nav-drop,0px)),0)]";
+  "fixed inset-x-0 bottom-0 left-0 right-0 z-40 m-0 block w-full";
 
 /**
  * Chrome panel — full card unit (border · shadow · glow · L4 safe-bottom); bottom edge = viewport bottom.

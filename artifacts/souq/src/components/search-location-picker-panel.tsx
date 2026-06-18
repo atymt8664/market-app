@@ -4,7 +4,6 @@ import { ArrowLeft, ArrowRight, Loader2, MapPin, Minus, Plus, Search } from "luc
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
@@ -26,6 +25,10 @@ import {
 } from "@/lib/search-location";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import {
+  PLATFORM_HEADER_SAFE_TOP_CLASS,
+  platformHeaderDomProps,
+} from "@/lib/platform-header-safe-area";
 
 const PICKER_HISTORY_MARKER = 2;
 
@@ -383,7 +386,10 @@ export function SearchLocationPickerPanel({
         dir={isRtl ? "rtl" : "ltr"}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <SheetHeader className={cn(headerBar, "space-y-0 text-right")}>
+        <header
+          className={cn(headerBar, PLATFORM_HEADER_SAFE_TOP_CLASS, "space-y-0 text-right")}
+          {...platformHeaderDomProps()}
+        >
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -397,7 +403,7 @@ export function SearchLocationPickerPanel({
               {t("search_location.title")}
             </SheetTitle>
           </div>
-        </SheetHeader>
+        </header>
 
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="shrink-0 px-3 pb-1 pt-2.5 sm:px-4 sm:pt-3">

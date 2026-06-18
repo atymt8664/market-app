@@ -15,6 +15,7 @@ import {
   navigateBackFromLegalPage,
   syncLegalExplicitFromCurrentUrl,
 } from "@/lib/return-navigation";
+import { platformHeaderDomProps } from "@/lib/platform-header-safe-area";
 
 type LegalDocumentHeaderProps = {
   title: string;
@@ -33,7 +34,7 @@ export function LegalDocumentHeader({ title }: LegalDocumentHeaderProps) {
   };
 
   return (
-    <header className={SETTINGS_HEADER_BAR} dir="rtl">
+    <header className={SETTINGS_HEADER_BAR} dir="rtl" {...platformHeaderDomProps()}>
       <div className={SETTINGS_HUB_HEADER_INNER}>
         <h1 className={SETTINGS_PAGE_TITLE}>
           <span className={SETTINGS_PAGE_TITLE_BADGE}>{title}</span>

@@ -2,6 +2,7 @@ import { BellOff, ListX, Pin, Trash2, X } from "lucide-react";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
+import { platformHeaderDomProps } from "@/lib/platform-header-safe-area";
 
 type ChatInboxSelectionHeaderProps = {
   selectedCount: number;
@@ -43,6 +44,7 @@ export function ChatInboxSelectionHeader({
       )}
       dir="rtl"
       role="toolbar"
+      {...platformHeaderDomProps()}
       aria-label={t("p5.chat.inbox.selection_count", { count: selectedCount })}
     >
       <div className="mx-auto flex w-full max-w-[820px] items-center justify-between gap-2 px-3 py-2.5 md:px-6">

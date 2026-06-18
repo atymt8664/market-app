@@ -56,7 +56,12 @@
 @source "./lib/home-page-layout.ts";
 @source "./lib/home-category-display.ts";
 @source "./lib/bottom-nav-layout.ts";
+@source "./lib/platform-header-safe-area.ts";
 @source "./lib/standalone-safe-area.ts";
+@source "./components/app-chrome-header.tsx";
+@source "./lib/tab-page-header-styles.ts";
+@source "./lib/tab-ios-layout.ts";
+@source "./components/ad-detail-hero-section.tsx";
 @source "./lib/marketplace-icon-button-styles.ts";
 
 @import "./theme-shared.css";

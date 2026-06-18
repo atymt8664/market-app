@@ -11,6 +11,7 @@ import {
   CHAT_THREAD_HEADER_BAR,
   CHAT_THREAD_HEADER_INNER,
 } from "@/lib/chat-thread-header-styles";
+import { platformHeaderDomProps } from "@/lib/platform-header-safe-area";
 
 const CHAT_TIP_CARD =
   "rounded-2xl border border-primary/35 bg-[#0A0A0A] text-[12px] leading-relaxed text-zinc-200 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12";
@@ -74,7 +75,12 @@ export function ChatThreadHeader({
   const typingLabel = t("message_thread.typing").replace(/^●\s*/, "");
 
   return (
-    <header className={CHAT_THREAD_HEADER_BAR} dir={dirRtl ? "rtl" : "ltr"}>
+    <header
+      className={CHAT_THREAD_HEADER_BAR}
+      dir={dirRtl ? "rtl" : "ltr"}
+      data-chat-thread-header="1"
+      {...platformHeaderDomProps()}
+    >
       <div className={CHAT_THREAD_HEADER_INNER}>
         <button
           type="button"

@@ -12,6 +12,8 @@ import {
   TAB_PAGE_HEADER_ACTION_ICON,
   TAB_PAGE_HEADER_ACTIONS_GAP,
 } from "@/lib/tab-page-header-styles";
+import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
+import { platformHeaderDomProps, platformTopActionsDomProps } from "@/lib/platform-header-safe-area";
 import { t } from "@/i18n";
 import { adImageListEqual } from "@/lib/ad-image-preload";
 
@@ -36,7 +38,13 @@ function AdDetailHeroSectionInner({
 }: AdDetailHeroSectionProps) {
   return (
     <div className={`${pageMax} pb-1 space-y-1`}>
-      <div className="flex items-center justify-between gap-3 py-1 md:py-1.5">
+      <div
+        {...platformTopActionsDomProps()}
+        className={cn(
+          "flex items-center justify-between gap-3 py-1 md:py-1.5",
+          TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
+        )}
+      >
         <Link href="/" className="shrink-0">
           <button
             type="button"

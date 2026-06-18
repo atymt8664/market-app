@@ -104,6 +104,9 @@
       html.dark{color-scheme:dark}html,body{margin:0;padding:0;background:#0a0a0a;height:100%;min-height:-webkit-fill-available;overflow:hidden}
       [data-bottom-nav-shell]{position:fixed;left:0;right:0;bottom:0;margin:0;display:flex;flex-direction:column;background:#0A0A0A}
       .standalone-pwa [data-p7-header-shell="1"]{padding-top:var(--souq-safe-top,env(safe-area-inset-top,0px));padding-inline:16px;padding-bottom:0;box-sizing:border-box}
+      html.ios-a2hs header,html.ios-a2hs [data-platform-top-actions="1"]{padding-top:var(--souq-safe-top,env(safe-area-inset-top,0px));box-sizing:border-box}
+      html.ios-a2hs [data-bottom-nav-shell]{display:block;bottom:0;box-sizing:border-box}
+      html.ios-a2hs [data-bottom-nav-chrome="1"]{padding-bottom:max(8px,calc(env(safe-area-inset-bottom,0px) - 14px));box-sizing:border-box}
       #p7-header-shell{position:fixed;inset:0 0 auto 0;z-index:35;pointer-events:none;background:#0A0A0A}
       #p7-header-shell *{pointer-events:none}
       #p7-lcp-layer{position:fixed;left:0;right:0;top:var(--p7-home-feed-offset,var(--p7-home-header-offset,148px));bottom:0;z-index:25;pointer-events:none;background:transparent}
@@ -125,6 +128,21 @@
   <body>
     <script>
       (function () {
+        function isIosWebKit() {
+          try {
+            var ua = navigator.userAgent || "";
+            return /iP(hone|ad|od)/.test(ua) && /WebKit/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua);
+          } catch (e) {
+            return false;
+          }
+        }
+        function isIosA2hsStandalone() {
+          try {
+            return isIosWebKit() && window.navigator.standalone === true;
+          } catch (e) {
+            return false;
+          }
+        }
         function isStandalone() {
           try {
             return (
@@ -136,29 +154,68 @@
             return false;
           }
         }
+        function measureIosA2hsSafeTopFallback() {
+          try {
+            if (window.visualViewport && window.visualViewport.offsetTop > 0) {
+              return Math.round(window.visualViewport.offsetTop);
+            }
+          } catch (e) {}
+          try {
+            var smax = Math.max(window.screen.width, window.screen.height);
+            var smin = Math.min(window.screen.width, window.screen.height);
+            if (smax >= 852 && smin >= 393) return 59;
+            if (smax >= 812) return 47;
+            if (smax >= 568) return 20;
+          } catch (e) {}
+          return 47;
+        }
+        function syncIosA2hsClass() {
+          try {
+            document.documentElement.classList.toggle("ios-a2hs", isIosA2hsStandalone());
+          } catch (e) {}
+        }
         function measureStandaloneInsets() {
           if (!isStandalone()) return;
+          syncIosA2hsClass();
           var root = document.documentElement;
           var probe = document.createElement("div");
           probe.style.cssText =
-            "position:fixed;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)";
+            "position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;padding-top:constant(safe-area-inset-top);padding-bottom:constant(safe-area-inset-bottom);padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)";
           root.appendChild(probe);
           var styles = getComputedStyle(probe);
           var top = parseFloat(styles.paddingTop) || 0;
           var bottom = parseFloat(styles.paddingBottom) || 0;
           probe.remove();
+          if (top <= 0 && isIosA2hsStandalone()) top = measureIosA2hsSafeTopFallback();
           if (top > 0) root.style.setProperty("--souq-safe-top", top + "px");
           else root.style.removeProperty("--souq-safe-top");
-          if (bottom > 0) root.style.setProperty("--souq-safe-bottom", bottom + "px");
-          else root.style.removeProperty("--souq-safe-bottom");
+          if (isIosA2hsStandalone()) {
+            root.style.removeProperty("--souq-safe-bottom");
+            root.style.removeProperty("--souq-bottom-nav-drop");
+          } else {
+            root.style.removeProperty("--souq-bottom-nav-drop");
+            if (bottom > 0) root.style.setProperty("--souq-safe-bottom", bottom + "px");
+            else root.style.removeProperty("--souq-safe-bottom");
+          }
         }
         if (isStandalone()) {
           document.documentElement.classList.add("standalone-pwa");
-          measureStandaloneInsets();
+          [0, 50, 150, 350, 750].forEach(function (ms) {
+            if (ms === 0) measureStandaloneInsets();
+            else window.setTimeout(measureStandaloneInsets, ms);
+          });
           window.addEventListener("resize", measureStandaloneInsets);
           window.addEventListener("orientationchange", function () {
-            window.setTimeout(measureStandaloneInsets, 100);
+            [100, 350, 750].forEach(function (ms) {
+              window.setTimeout(measureStandaloneInsets, ms);
+            });
           });
+          if (isIosA2hsStandalone() && window.visualViewport) {
+            window.visualViewport.addEventListener("resize", measureStandaloneInsets);
+            window.visualViewport.addEventListener("scroll", measureStandaloneInsets);
+          }
+        } else if (isIosA2hsStandalone()) {
+          syncIosA2hsClass();
         }
       })();
     </script>

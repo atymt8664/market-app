@@ -10,6 +10,7 @@ import {
   SETTINGS_PAGE_TITLE_BADGE,
 } from "@/components/settings-shell";
 import { navigateBackFromChild } from "@/lib/return-navigation";
+import { platformHeaderDomProps } from "@/lib/platform-header-safe-area";
 
 export function AccountHeader({
   title,
@@ -27,7 +28,7 @@ export function AccountHeader({
   };
 
   return (
-    <header className={SETTINGS_HEADER_BAR} dir="rtl">
+    <header className={SETTINGS_HEADER_BAR} dir="rtl" {...platformHeaderDomProps()}>
       <div className={SETTINGS_HUB_HEADER_INNER}>
         <h1 className={SETTINGS_PAGE_TITLE}>
           <span className={SETTINGS_PAGE_TITLE_BADGE}>{title}</span>

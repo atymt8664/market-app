@@ -23,6 +23,7 @@ import {
   TAB_PAGE_HEADER_COMPACT_PADDING,
   TAB_PAGE_HEADER_INNER_ROW,
 } from "@/lib/tab-page-header-styles";
+import { platformHeaderDomProps } from "@/lib/platform-header-safe-area";
 import {
   SETTINGS_BACK_BUTTON,
   SETTINGS_HEADER_ACTION_ICON,
@@ -85,7 +86,7 @@ export default function Search() {
       className={cn(BOTTOM_NAV_PAGE_SHELL_CLASS, "flex flex-col")}
       dir={isRtl ? "rtl" : "ltr"}
     >
-      <header className={cn(searchStickyHeaderClass, "border-b border-primary/15")}>
+      <header className={cn(searchStickyHeaderClass, "border-b border-primary/15")} {...platformHeaderDomProps()}>
         <div className={cn(TAB_PAGE_HEADER_INNER_ROW, "max-w-[900px] md:max-w-[760px] lg:max-w-[860px]", TAB_PAGE_HEADER_COMPACT_PADDING, "flex-col gap-2 md:flex-row md:items-center")}>
           <div className="flex w-full items-center gap-2">
             <Link href="/">

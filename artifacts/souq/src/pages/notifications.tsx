@@ -27,6 +27,9 @@ import {
 import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { cn } from "@/lib/utils";
+import { TAB_PAGE_HEADER_BAR } from "@/lib/tab-page-header-styles";
+import { platformHeaderDomProps, platformTopActionsDomProps } from "@/lib/platform-header-safe-area";
+import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
 import { appTextAlignClass, getAppTextDir } from "@/lib/app-text-direction";
 
 function notificationErrorMessage(error: unknown): string {
@@ -96,10 +99,7 @@ export default function NotificationsPage() {
   if (!authLoading && !user) {
     return (
       <div className="flex min-h-[100svh] w-full flex-col bg-[#0A0A0A]">
-        <header
-          className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 px-3 py-3 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)] backdrop-blur md:px-4 md:py-3.5"
-          dir={textDir}
-        >
+        <header className={cn(TAB_PAGE_HEADER_BAR, "px-3 md:px-4")} dir={textDir} {...platformHeaderDomProps()}>
           <div className="mx-auto flex max-w-screen-xl items-center gap-3">
             <button
               type="button"
@@ -125,10 +125,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="flex min-h-[100svh] w-full flex-col bg-[#0A0A0A]">
-      <header
-        className="sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 px-3 py-3 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)] backdrop-blur md:px-4 md:py-3.5"
-        dir={textDir}
-      >
+      <header className={cn(TAB_PAGE_HEADER_BAR, "px-3 md:px-4")} dir={textDir} {...platformHeaderDomProps()}>
         <div className="mx-auto flex max-w-screen-xl items-center gap-2 sm:gap-3">
           <button
             type="button"

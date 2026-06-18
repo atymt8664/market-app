@@ -14,9 +14,27 @@ export const TAB_PAGE_TITLE_BADGE_COMPACT = cn(
   "text-base font-semibold md:text-lg",
 );
 
-/** Sticky header bar — L0 safe-top + backdrop (P9-3 §10–§11). */
+/** Shared platform header chrome — SSOT visual identity. */
+const PLATFORM_HEADER_BAR_CHROME =
+  "z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)] backdrop-blur";
+
+/**
+ * L1 App Shell header bar — shrink-0 plane like Home (P9-IOS-A2HS-UNIFIED).
+ * Used by AppChrome L1 slot; must NOT use sticky outside scroll on iOS A2HS.
+ */
+export const PLATFORM_L1_HEADER_BAR = cn(
+  "shrink-0 w-full",
+  PLATFORM_HEADER_BAR_CHROME,
+  TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
+);
+
+/**
+ * L2 scroll-surface header bar — auth, settings, immersive routes.
+ * Sticky within page scroll owner (same safe-top SSOT as Home/Auth).
+ */
 export const TAB_PAGE_HEADER_BAR = cn(
-  "sticky top-0 z-40 border-b border-primary/20 bg-[#0A0A0A]/95 shadow-[0_1px_14px_-6px_rgba(0,0,0,0.4)] backdrop-blur",
+  "sticky top-0",
+  PLATFORM_HEADER_BAR_CHROME,
   TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
 );
 

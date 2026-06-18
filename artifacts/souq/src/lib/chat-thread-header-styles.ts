@@ -1,7 +1,12 @@
+import { cn } from "@/lib/utils";
+import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
+
 /** P5 thread header — compact WhatsApp-like density, Souq Dark Premium + lime accents. */
 
-export const CHAT_THREAD_HEADER_BAR =
-  "sticky top-0 z-30 shrink-0 border-b border-primary/12 bg-[#0A0A0A]/96 backdrop-blur-[2px]";
+export const CHAT_THREAD_HEADER_BAR = cn(
+  "sticky top-0 z-30 shrink-0 border-b border-primary/12 bg-[#0A0A0A]/96 backdrop-blur-[2px]",
+  TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS,
+);
 
 export const CHAT_THREAD_HEADER_INNER =
   "mx-auto flex min-h-[56px] w-full max-w-[820px] items-center gap-2 px-2 py-1 sm:px-3 md:px-4";

@@ -24,6 +24,8 @@ import {
   TAB_PAGE_HEADER_ACTION_BTN,
   TAB_PAGE_HEADER_ACTION_ICON,
 } from "@/lib/tab-page-header-styles";
+import { platformTopActionsDomProps } from "@/lib/platform-header-safe-area";
+import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
 import { STALE_AD_LIST_MS, STALE_PEER_BLOCK_MS } from "@/lib/query-stale-times";
 import {
   useGetUserProfile,
@@ -582,7 +584,10 @@ export default function UserProfile() {
       transition={{ duration: 0.2, ease: "easeOut" }}
       className="flex min-h-[100dvh] w-full min-w-0 flex-col overflow-x-hidden bg-[#0A0A0A] pb-10"
     >
-      <div className={`${PAGE_INSET} pb-2 pt-3 md:pt-4`}>
+      <div
+        {...platformTopActionsDomProps()}
+        className={cn(PAGE_INSET, TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS, "pb-2 pt-3 md:pt-4")}
+      >
         <div className="flex items-center justify-between gap-3 py-1">
           <button
             type="button"

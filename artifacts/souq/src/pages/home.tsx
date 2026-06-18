@@ -62,6 +62,7 @@ import {
   shouldShowCategoryPlaceholders,
 } from "@/lib/home-query-recovery";
 import { HOME_FIXED_HEADER_SAFE_TOP_CLASS } from "@/lib/standalone-safe-area";
+import { platformHeaderDomProps } from "@/lib/platform-header-safe-area";
 
 /** React Query: تقليل إعادة الجلب عند التنقل للرئيسية دون المساس بـ invalidate بعد الطفرات/الأدمن. */
 const HOME_STALE_CATEGORIES_MS = 10 * 60 * 1000;
@@ -355,6 +356,8 @@ const HomeFeedHeader = memo(function HomeFeedHeader({
     <header
       ref={headerRef}
       className={cn("shrink-0 w-full bg-[#0A0A0A]", HOME_FIXED_HEADER_SAFE_TOP_CLASS)}
+      data-p7-home-header="1"
+      {...platformHeaderDomProps()}
       dir={isRtl ? "rtl" : "ltr"}
     >
       <div className={HOME_PAGE_INSET}>

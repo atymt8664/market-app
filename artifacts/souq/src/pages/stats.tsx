@@ -3,6 +3,8 @@ import { Link } from "wouter";
 import { ArrowRight, BarChart3, MapPin, Tag } from "lucide-react";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TAB_PAGE_HEADER_BAR } from "@/lib/tab-page-header-styles";
+import { platformHeaderDomProps } from "@/lib/platform-header-safe-area";
 
 export default function Stats() {
   const { data: stats, isLoading } = useGetAdsStats();
@@ -17,7 +19,7 @@ export default function Stats() {
       exit={{ opacity: 0, x: -20 }}
       className="flex flex-col w-full min-h-[100dvh] bg-[#0A0A0A] pb-20"
     >
-      <header className="sticky top-0 z-40 bg-[#0A0A0A]/95 backdrop-blur border-b border-border">
+      <header className={TAB_PAGE_HEADER_BAR} {...platformHeaderDomProps()}>
         <div className="mx-auto w-full max-w-5xl px-4 md:px-6 py-4 flex items-center gap-4">
           <Link href="/profile">
             <button className="p-2 -mr-2 rounded-full hover:bg-muted active:scale-95 transition-all">

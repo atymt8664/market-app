@@ -27,6 +27,7 @@ import {
   BOTTOM_NAV_CHROME_PANEL_CLASS,
   BOTTOM_NAV_FIXED_SHELL_CLASS,
   BOTTOM_NAV_BUTTONS_ROW_CLASS,
+  bottomNavChromeDomProps,
 } from "@/lib/bottom-nav-layout";
 import { APP_SHELL_LAYER, APP_SHELL_LAYER_MARKER } from "@/lib/app-shell-layout";
 
@@ -250,7 +251,7 @@ const BottomNav = memo(function BottomNav() {
       data-bottom-nav-shell
       {...{ [APP_SHELL_LAYER_MARKER]: APP_SHELL_LAYER.L3_BOTTOM_NAV }}
     >
-      <div className={BOTTOM_NAV_CHROME_PANEL_CLASS}>
+      <div className={BOTTOM_NAV_CHROME_PANEL_CLASS} {...bottomNavChromeDomProps()}>
         <div
           className={BOTTOM_NAV_BUTTONS_ROW_CLASS}
           dir="rtl"

@@ -41,6 +41,19 @@ export const TERMS_SECTIONS: LegalSectionDef[] = [
 ];
 
 export const DELETE_ACCOUNT_SECTIONS: LegalSectionDef[] = [
+  {
+    titleKey: "legal.delete.steps.title",
+    bodyKey: "legal.delete.steps.body",
+    listKeys: [
+      "legal.delete.steps.i1",
+      "legal.delete.steps.i2",
+      "legal.delete.steps.i3",
+      "legal.delete.steps.i4",
+      "legal.delete.steps.i5",
+      "legal.delete.steps.i6",
+    ],
+  },
+  { titleKey: "legal.delete.s00.title", bodyKey: "legal.delete.s00.body" },
   { titleKey: "legal.delete.s01.title", bodyKey: "legal.delete.s01.body" },
   { titleKey: "legal.delete.s02.title", bodyKey: "legal.delete.s02.body", listKeys: ["legal.delete.s02.i1", "legal.delete.s02.i2", "legal.delete.s02.i3", "legal.delete.s02.i4", "legal.delete.s02.i5"] },
   { titleKey: "legal.delete.s03.title", bodyKey: "legal.delete.s03.body" },
@@ -49,7 +62,7 @@ export const DELETE_ACCOUNT_SECTIONS: LegalSectionDef[] = [
   { titleKey: "legal.delete.s06.title", bodyKey: "legal.delete.s06.body" },
   { titleKey: "legal.delete.s07.title", bodyKey: "legal.delete.s07.body", listKeys: ["legal.delete.s07.i1", "legal.delete.s07.i2", "legal.delete.s07.i3", "legal.delete.s07.i4", "legal.delete.s07.i5", "legal.delete.s07.i6", "legal.delete.s07.i7", "legal.delete.s07.i8"] },
   { titleKey: "legal.delete.s08.title", bodyKey: "legal.delete.s08.body", listKeys: ["legal.delete.s08.i1", "legal.delete.s08.i2", "legal.delete.s08.i3", "legal.delete.s08.i4"] },
-  { titleKey: "legal.delete.s09.title", bodyKey: "legal.delete.s09.body", listKeys: ["legal.delete.s09.i1", "legal.delete.s09.i2", "legal.delete.s09.i3", "legal.delete.s09.i4"] },
+  { titleKey: "legal.delete.s09.title", bodyKey: "legal.delete.s09.body", listKeys: ["legal.delete.s09.i1", "legal.delete.s09.i2", "legal.delete.s09.i3", "legal.delete.s09.i4", "legal.delete.s09.i5"] },
   { titleKey: "legal.delete.s10.title", bodyKey: "legal.delete.s10.body" },
   { titleKey: "legal.delete.s11.title", bodyKey: "legal.delete.s11.body" },
 ];

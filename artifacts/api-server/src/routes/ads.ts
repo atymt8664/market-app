@@ -13,6 +13,7 @@ import {
   adReactionCountsTable,
   categoriesTable,
   subcategoriesTable,
+  ordersTable,
 } from "@workspace/db";
 import { and, desc, eq, gte, ilike, lte, sql, or, inArray } from "drizzle-orm";
 import { getAdminActorId } from "../lib/admin-activity-log";
@@ -1053,7 +1054,39 @@ router.delete("/ads/:adId", requireAuth, requireUserCsrf, async (req, res) => {
     res.status(403).json({ error: "غير مصرح" });
     return;
   }
-  await db.delete(adsTable).where(eq(adsTable.id, adId));
+
+  const [linkedRow] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(ordersTable)
+    .where(eq(ordersTable.adId, adId));
+  const linkedOrderCount = Number(linkedRow?.c ?? 0);
+  if (linkedOrderCount > 0) {
+    res.status(409).json({
+      error:
+        "لا يمكن حذف هذا الإعلان لأنه مرتبط بطلبات شراء. يُحتفظ بسجل الطلبات لحماية المشتري والبائع.",
+      code: "AD_DELETE_LINKED_ORDERS",
+      linkedOrders: linkedOrderCount,
+    });
+    return;
+  }
+
+  try {
+    await db.delete(adsTable).where(eq(adsTable.id, adId));
+  } catch (err) {
+    const pgCode =
+      typeof err === "object" && err !== null && "code" in err
+        ? String((err as { code?: unknown }).code)
+        : "";
+    if (pgCode === "23503") {
+      res.status(409).json({
+        error:
+          "لا يمكن حذف هذا الإعلان لأنه مرتبط بطلبات شراء. يُحتفظ بسجل الطلبات لحماية المشتري والبائع.",
+        code: "AD_DELETE_LINKED_ORDERS",
+      });
+      return;
+    }
+    throw err;
+  }
   res.status(204).end();
 });
 

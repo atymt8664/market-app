@@ -15,6 +15,7 @@ import {
   RefreshCw,
   ThumbsUp,
   ArrowUp,
+  Package,
 } from "lucide-react";
 import { useState, useRef, useLayoutEffect, useCallback } from "react";
 import {
@@ -25,6 +26,7 @@ import {
   getAuthMeQueryKey,
   useListFavoriteAds,
   type Ad,
+  ApiError,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
@@ -50,6 +52,7 @@ import { PROFILE_SECTION_STACK_GAP } from "@/components/profile-section-shell";
 import {
   SETTINGS_DIALOG_CONTENT,
   SETTINGS_OUTLINE_BUTTON,
+  SETTINGS_PRIMARY_BUTTON,
 } from "@/components/settings-shell";
 import { OrdersAccountCardGrid } from "@/features/p17-commerce/orders-account-card-grid";
 import {
@@ -121,6 +124,14 @@ const PROFILE_MY_ADS_CARD_SHELL = cn(AD_CARD_SHELL, "p-2.5 md:p-2.5 lg:p-3");
 const PROFILE_MY_ADS_EMPTY =
   "w-full shrink-0 py-3 text-center";
 
+const AD_DELETE_LINKED_ORDERS_CODE = "AD_DELETE_LINKED_ORDERS";
+
+function isAdDeleteLinkedOrdersError(err: unknown): boolean {
+  if (!(err instanceof ApiError) || err.status !== 409) return false;
+  const data = err.data as { code?: string } | null;
+  return data?.code === AD_DELETE_LINKED_ORDERS_CODE;
+}
+
 export default function Profile() {
   const { locale } = useLocale();
   const profileDir = locale === "ar" ? "rtl" : "ltr";
@@ -132,6 +143,7 @@ export default function Profile() {
   const updateProfile = useAuthUpdateProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [adToDelete, setAdToDelete] = useState<number | null>(null);
+  const [adDeleteBlockedOpen, setAdDeleteBlockedOpen] = useState(false);
   const [actionAd, setActionAd] = useState<Ad | null>(null);
   const [avatarRemoveOpen, setAvatarRemoveOpen] = useState(false);
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
@@ -242,9 +254,13 @@ export default function Profile() {
           toast({ title: t("profile.ad_deleted") });
           setAdToDelete(null);
         },
-        onError: () => {
-          toast({ title: t("profile.ad_delete_failed"), variant: "destructive" });
+        onError: (err) => {
           setAdToDelete(null);
+          if (isAdDeleteLinkedOrdersError(err)) {
+            setAdDeleteBlockedOpen(true);
+            return;
+          }
+          toast({ title: t("profile.ad_delete_failed"), variant: "destructive" });
         },
       },
     );
@@ -603,6 +619,40 @@ export default function Profile() {
               )}
             >
               {t("profile.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={adDeleteBlockedOpen} onOpenChange={setAdDeleteBlockedOpen}>
+        <AlertDialogContent
+          dir={profileDir}
+          className={cn(
+            SETTINGS_DIALOG_CONTENT,
+            "!p-0 gap-0 overflow-hidden sm:max-w-md",
+            profileDir === "rtl" ? "text-right" : "text-left",
+          )}
+        >
+          <div className="border-b border-primary/20 px-5 py-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/45 bg-[#0A0A0A]/76 text-primary shadow-[0_0_18px_-12px_hsl(var(--primary)/0.35)]">
+                <Package className="h-5 w-5" aria-hidden />
+              </div>
+              <AlertDialogHeader className={cn("space-y-2", profileDir === "rtl" ? "text-right" : "text-left")}>
+                <AlertDialogTitle className="text-base font-bold text-foreground">
+                  {t("profile.delete_blocked_dialog.title")}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
+                  {t("profile.delete_blocked_dialog.description")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+            </div>
+          </div>
+          <AlertDialogFooter className="border-t border-primary/20 bg-[#0A0A0A]/98 p-4">
+            <AlertDialogAction
+              className={cn(SETTINGS_PRIMARY_BUTTON, "m-0 h-11 w-full rounded-xl")}
+            >
+              {t("profile.delete_blocked_dialog.dismiss")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

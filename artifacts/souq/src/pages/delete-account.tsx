@@ -54,7 +54,7 @@ export default function DeleteAccountPage() {
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-bold text-foreground">{t("legal.delete.intro.title")}</h2>
               <p className="mt-1 text-xs font-medium text-muted-foreground">
-                {t("legal.delete.meta.last_updated")}: 2026-06-13
+                {t("legal.delete.meta.last_updated")}: 2026-06-19
               </p>
             </div>
           </div>

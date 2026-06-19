@@ -3,6 +3,16 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
+      "package_name": "com.souqarab.market",
+      "sha256_cert_fingerprints": [
+        "DC:E4:8A:E3:79:EE:56:FB:13:AA:AF:0E:77:E9:80:92:6C:E3:67:12:89:EA:0A:F9:FE:29:3A:03:ED:3C:8C:52"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
       "package_name": "com.souqarab.eu",
       "sha256_cert_fingerprints": [
         "DC:E4:8A:E3:79:EE:56:FB:13:AA:AF:0E:77:E9:80:92:6C:E3:67:12:89:EA:0A:F9:FE:29:3A:03:ED:3C:8C:52"

@@ -13,7 +13,6 @@ import {
   adReactionCountsTable,
   categoriesTable,
   subcategoriesTable,
-  ordersTable,
 } from "@workspace/db";
 import { and, desc, eq, gte, ilike, lte, sql, or, inArray } from "drizzle-orm";
 import { getAdminActorId } from "../lib/admin-activity-log";
@@ -49,7 +48,14 @@ import {
   requireAdminAccessGrant,
   requireAdminCsrf,
 } from "../middlewares/require-admin";
-import { PUBLIC_AD_STATUSES, isPublicAdStatus } from "../lib/ad-visibility";
+import {
+  PUBLIC_LISTING_STATUSES,
+  SELLER_MY_ADS_VISIBLE_STATUSES,
+  isPublicListingStatus,
+  sellerRemoveListing,
+  shouldExposeAdDetailToViewer,
+  AD_LIFECYCLE_STATUS,
+} from "../lib/ad-lifecycle";
 import { officialNotificationContent } from "../lib/communications";
 import { createNotification } from "../lib/create-notification";
 import { logger } from "../lib/logger";
@@ -182,7 +188,7 @@ router.get("/ads/featured", async (req, res) => {
     currentUserId: req.session.userId ?? null,
     where: and(
       eq(adsTable.featured, true),
-      inArray(adsTable.status, [...PUBLIC_AD_STATUSES]),
+      inArray(adsTable.status, [...PUBLIC_LISTING_STATUSES]),
     ),
     limit: 10,
   });
@@ -217,7 +223,14 @@ router.get("/admin/ads", requireAdminAccessGrant, requireAdmin, requireAdminPerm
   }
 
   /** Treat missing, "all", or unknown as no status filter (never `eq(status, "all")` — no such row). */
-  const adminAdStatuses = ["pending", "approved", "rejected", "hidden"] as const;
+  const adminAdStatuses = [
+    "pending",
+    "approved",
+    "rejected",
+    "hidden",
+    AD_LIFECYCLE_STATUS.ARCHIVED_BY_SELLER,
+    AD_LIFECYCLE_STATUS.RETAINED_FOR_HISTORY,
+  ] as const;
   if (statusRaw && statusRaw !== "all" && (adminAdStatuses as readonly string[]).includes(statusRaw)) {
     clauses.push(eq(adsTable.status, statusRaw));
   }
@@ -357,7 +370,7 @@ router.delete("/admin/ads/:id", requireAdminAccessGrant, requireAdmin, requireAd
 router.get("/ads/recommended", async (req, res) => {
   const rows = await fetchAdsList({
     currentUserId: req.session.userId ?? null,
-    where: inArray(adsTable.status, [...PUBLIC_AD_STATUSES]),
+    where: inArray(adsTable.status, [...PUBLIC_LISTING_STATUSES]),
     limit: 20,
   });
   res.json(rows.map(serializeAd));
@@ -370,7 +383,7 @@ router.get("/ads/stats", async (_req, res) => {
       totalCities: sql<number>`count(distinct ${adsTable.city})::int`,
     })
     .from(adsTable)
-    .where(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]));
+    .where(inArray(adsTable.status, [...PUBLIC_LISTING_STATUSES]));
 
   const totalCategories = await db
     .select({ c: sql<number>`count(*)::int` })
@@ -386,7 +399,7 @@ router.get("/ads/stats", async (_req, res) => {
       adsTable,
       and(
         eq(adsTable.categoryId, categoriesTable.id),
-        inArray(adsTable.status, [...PUBLIC_AD_STATUSES]),
+        inArray(adsTable.status, [...PUBLIC_LISTING_STATUSES]),
       ),
     )
     .groupBy(categoriesTable.id, categoriesTable.name)
@@ -419,7 +432,10 @@ router.get("/ads/mine", requireAuth, async (req, res) => {
       req.query as Record<string, unknown>,
       PAGINATION.ADS_MINE,
     );
-    const conds = [eq(adsTable.userId, req.session.userId!)];
+    const conds = [
+      eq(adsTable.userId, req.session.userId!),
+      inArray(adsTable.status, [...SELLER_MY_ADS_VISIBLE_STATUSES]),
+    ];
     if (pagination.cursor) {
       conds.push(keysetWhereDesc(adsTable.createdAt, adsTable.id, pagination.cursor));
     }
@@ -446,7 +462,7 @@ router.get("/ads/favorites", requireAuth, async (req, res) => {
       req.query as Record<string, unknown>,
       PAGINATION.ADS_MINE,
     );
-    const conds = [inArray(adsTable.status, [...PUBLIC_AD_STATUSES])];
+    const conds = [inArray(adsTable.status, [...PUBLIC_LISTING_STATUSES])];
     if (pagination.cursor) {
       conds.push(keysetWhereDesc(adsTable.createdAt, adsTable.id, pagination.cursor));
     }
@@ -481,8 +497,7 @@ router.get("/ads/:adId", async (req, res) => {
   }
   const st = row.ads.status;
   const uid = req.session.userId ?? null;
-  const isOwner = uid !== null && row.ads.userId === uid;
-  if (!isPublicAdStatus(st) && !isOwner) {
+  if (!shouldExposeAdDetailToViewer(st, uid, row.ads.userId)) {
     res.status(404).json({ error: "Ad not found" });
     return;
   }
@@ -498,7 +513,7 @@ router.get("/ads", async (req, res) => {
     const q = ListAdsQueryParams.parse(query);
     const pagination = parsePaginationQuery(query, PAGINATION.ADS);
     const conds = [] as ReturnType<typeof eq>[];
-    conds.push(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]));
+    conds.push(inArray(adsTable.status, [...PUBLIC_LISTING_STATUSES]));
     if (q.userId !== undefined) conds.push(eq(adsTable.userId, q.userId));
 
     const { textSearch, extraConditions } = buildAdSearchWhereParts({
@@ -627,7 +642,7 @@ router.post("/ads/:adId/like", requireAuth, requireUserCsrf, async (req, res) =>
     res.status(404).json({ error: "Ad not found" });
     return;
   }
-  if (!isPublicAdStatus(exists[0].status)) {
+  if (!isPublicListingStatus(exists[0].status)) {
     res.status(404).json({ error: "Ad not found" });
     return;
   }
@@ -678,7 +693,7 @@ router.post("/ads/:adId/favorite", requireAuth, requireUserCsrf, async (req, res
     res.status(404).json({ error: "Ad not found" });
     return;
   }
-  if (!isPublicAdStatus(adRow.status)) {
+  if (!isPublicListingStatus(adRow.status)) {
     res.status(404).json({ error: "Ad not found" });
     return;
   }
@@ -1009,7 +1024,7 @@ router.post("/ads/:adId/view", async (req, res) => {
     viewerId !== null &&
     adRows[0].userId !== null &&
     viewerId === adRows[0].userId;
-  if (!isPublicAdStatus(adRows[0].status) && !isOwner) {
+  if (!isPublicListingStatus(adRows[0].status) && !isOwner) {
     res.status(404).json({ error: "Ad not found" });
     return;
   }
@@ -1041,53 +1056,30 @@ router.delete("/ads/:adId", requireAuth, requireUserCsrf, async (req, res) => {
     res.status(400).json({ error: "Invalid ad id" });
     return;
   }
-  const existing = await db
-    .select({ userId: adsTable.userId })
-    .from(adsTable)
-    .where(eq(adsTable.id, adId))
-    .limit(1);
-  if (!existing[0]) {
-    res.status(404).json({ error: "Ad not found" });
-    return;
-  }
-  if (existing[0].userId !== req.session.userId) {
-    res.status(403).json({ error: "غير مصرح" });
-    return;
-  }
 
-  const [linkedRow] = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(ordersTable)
-    .where(eq(ordersTable.adId, adId));
-  const linkedOrderCount = Number(linkedRow?.c ?? 0);
-  if (linkedOrderCount > 0) {
-    res.status(409).json({
-      error:
-        "لا يمكن حذف هذا الإعلان لأنه مرتبط بطلبات شراء. يُحتفظ بسجل الطلبات لحماية المشتري والبائع.",
-      code: "AD_DELETE_LINKED_ORDERS",
-      linkedOrders: linkedOrderCount,
-    });
-    return;
-  }
-
-  try {
-    await db.delete(adsTable).where(eq(adsTable.id, adId));
-  } catch (err) {
-    const pgCode =
-      typeof err === "object" && err !== null && "code" in err
-        ? String((err as { code?: unknown }).code)
-        : "";
-    if (pgCode === "23503") {
+  const result = await sellerRemoveListing(adId, req.session.userId!);
+  switch (result.outcome) {
+    case "not_found":
+      res.status(404).json({ error: "Ad not found" });
+      return;
+    case "forbidden":
+      res.status(403).json({ error: "غير مصرح" });
+      return;
+    case "blocked_active_orders":
       res.status(409).json({
         error:
           "لا يمكن حذف هذا الإعلان لأنه مرتبط بطلبات شراء. يُحتفظ بسجل الطلبات لحماية المشتري والبائع.",
         code: "AD_DELETE_LINKED_ORDERS",
+        linkedOrders: result.linkedOrders,
       });
       return;
-    }
-    throw err;
+    case "archived":
+    case "hard_deleted":
+      res.status(204).end();
+      return;
+    default:
+      res.status(500).json({ error: "Unexpected error" });
   }
-  res.status(204).end();
 });
 
 router.patch("/admin/ads/:id/status", requireAdminAccessGrant, requireAdmin, requireAdminPermission("ads"), requireAdminCsrf, async (req, res) => {

@@ -44,6 +44,7 @@ import {
   BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
 } from "@/lib/bottom-nav-layout";
 import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
+import { bustConversationThreadCache } from "@/lib/chat-thread-cache";
 import {
   ChatInboxCollectionsMenu,
   ChatInboxCollectionsMenuButton,
@@ -469,6 +470,9 @@ export default function Messages() {
       removeConversationsFromInboxCache(queryClient, ids);
       try {
         await Promise.all(ids.map((id) => deleteConversationMutation.mutateAsync({ convId: id })));
+        for (const id of ids) {
+          bustConversationThreadCache(queryClient, id);
+        }
         await queryClient.invalidateQueries({ queryKey: listKey });
         await queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
         if (ids.length === 1 && snapshot.length === 1) {

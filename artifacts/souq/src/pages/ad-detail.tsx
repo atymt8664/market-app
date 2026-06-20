@@ -72,6 +72,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { STALE_AD_DETAIL_MS } from "@/lib/query-stale-times";
 import { createFavoriteToggleHandlers } from "@/lib/invalidate-ad-queries";
 import { prefetchConversationThread } from "@/lib/prefetch-conversation-thread";
+import { bustConversationThreadCache } from "@/lib/chat-thread-cache";
 import { AUTH_ACCENT_OUTLINE_BTN } from "@/lib/auth-page-styles";
 import {
   UI_LAYER_ABOVE_LEAFLET,
@@ -509,6 +510,7 @@ export default function AdDetail() {
             title: ad.title,
             url: getPublicAdUrl(ad.id),
           });
+          bustConversationThreadCache(queryClient, data.id);
           await prefetchConversationThread(queryClient, data.id);
           navigate(
             `/messages/${data.id}?draft=${encodeURIComponent(draft)}`,

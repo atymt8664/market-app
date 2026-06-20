@@ -964,7 +964,7 @@ export default function MessageThread() {
       staleTime: STALE_THREAD_MESSAGES_MS,
       gcTime: GC_THREAD_MESSAGES_MS,
       refetchOnWindowFocus: false,
-      refetchOnMount: false,
+      refetchOnMount: true,
     },
   });
 

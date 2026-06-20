@@ -8,7 +8,7 @@ import {
   db,
 } from "@workspace/db";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import { isPublicAdStatus } from "./ad-visibility";
+import { isPublicListingStatus } from "./ad-lifecycle";
 
 export type SerializedConversationAdRef = {
   adId: number;
@@ -120,7 +120,7 @@ export async function loadConversationAdReferences(
       imageUrl: images[0] ?? null,
       price: row.price != null ? Number(row.price) : null,
       priceType: row.priceType ?? null,
-      available: isPublicAdStatus(row.status),
+      available: isPublicListingStatus(row.status),
       status: row.status ?? null,
     };
   });
@@ -227,7 +227,9 @@ export async function filterReferencedAdsForViewer(
   ).rows as Array<{ count: number }>;
 
   if (Number(count ?? 0) === 0) {
-    const primary = refs.filter((r) => r.adId === primaryAdId);
+    const newestRef = refs.length > 0 ? refs[refs.length - 1] : null;
+    const preferredAdId = newestRef?.adId ?? primaryAdId;
+    const primary = refs.filter((r) => r.adId === preferredAdId);
     if (primary.length > 0) return primary;
     return refs.slice(0, 1);
   }

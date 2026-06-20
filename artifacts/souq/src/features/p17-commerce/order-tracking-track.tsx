@@ -21,6 +21,7 @@ import {
   formatTrackingEtaDate,
   hasTrackingDetails,
 } from "./order-tracking-enrichment";
+import { formatOrderUpdatedAt } from "./order-display-labels";
 import { ORDERS_CARD_COMPACT, ORDERS_CARD_TITLE } from "./orders-page-styles";
 import "./order-tracking-track.css";
 
@@ -231,7 +232,7 @@ export function OrderTrackingTrack({
       >
         {t("p17.commerce.tracking.status_relative", {
           status: t(currentStepKey),
-          relative: order.updatedAtRelativeAr,
+          relative: formatOrderUpdatedAt(order),
         })}
       </p>
 

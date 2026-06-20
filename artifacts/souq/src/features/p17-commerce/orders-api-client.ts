@@ -127,6 +127,42 @@ export function markShippedSellerOrder(
   });
 }
 
+export function markInTransitSellerOrder(orderNumber: string): Promise<OrderActionResponse> {
+  const id = encodeURIComponent(orderNumber.trim());
+  return readJson<OrderActionResponse>(`/api/orders/${id}/mark-in-transit`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...csrfHeaders(),
+    },
+    body: JSON.stringify({}),
+  });
+}
+
+export function markDeliveredSellerOrder(orderNumber: string): Promise<OrderActionResponse> {
+  const id = encodeURIComponent(orderNumber.trim());
+  return readJson<OrderActionResponse>(`/api/orders/${id}/mark-delivered`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...csrfHeaders(),
+    },
+    body: JSON.stringify({}),
+  });
+}
+
+export function confirmBuyerReceipt(orderNumber: string): Promise<OrderActionResponse> {
+  const id = encodeURIComponent(orderNumber.trim());
+  return readJson<OrderActionResponse>(`/api/orders/${id}/confirm-receipt`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...csrfHeaders(),
+    },
+    body: JSON.stringify({}),
+  });
+}
+
 /** Resolve active order number for buyer+ad when API returns ORDER_DUPLICATE_ACTIVE. */
 export async function findActiveOrderNumberForAd(adId: number): Promise<string | null> {
   const { items } = await fetchBuyerOrders();

@@ -10,7 +10,7 @@ import { getOrdersListPath } from "./order-detail-paths";
 import { isCanonicalOrderNumber, shouldMaskOrderNumber } from "./order-detail-display";
 import { OrderTrackingTrack } from "./order-tracking-track";
 import { useOrderDetail, useOrderTimeline } from "./use-orders-api";
-import { useCancelBuyerOrder } from "./use-orders-mutations";
+import { useCancelBuyerOrder, useConfirmBuyerReceipt } from "./use-orders-mutations";
 import { useOpenOrderChat } from "./use-order-chat";
 import type { OrderDetail, OrderTimelineEntry } from "./orders-api.types";
 import { P17_BUY_NOW_BTN } from "./ad-detail-commerce-styles";
@@ -20,7 +20,7 @@ import { SellerShippingActions } from "./seller-shipping-actions";
 import { BuyerShippingStatusCard } from "./buyer-shipping-status-card";
 import { BuyerOrderAddressCard } from "./buyer-order-address-card";
 import { SellerDeliveryAddressCard } from "./seller-delivery-address-card";
-import { resolveOrderStatusLabel, formatOrderUpdatedAt, formatOrderPrice } from "./order-display-labels";
+import { formatOrderUpdatedAt, formatOrderPrice, resolveOrderStatusLabel } from "./order-display-labels";
 import { OrderNumberCopy } from "./order-number-copy";
 import { OrderProductThumbnail } from "./order-product-thumbnail";
 import { resolveOrderThumbnailImageUrl } from "./resolve-order-thumbnail-image-url";
@@ -52,6 +52,7 @@ import {
   SETTINGS_HEADER_TRAILING,
   SETTINGS_PAGE_TITLE,
 } from "@/components/settings-shell";
+import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
 
 export type OrderDetailVariant = "buyer" | "seller";
 
@@ -150,6 +151,7 @@ export function OrderDetailPage({ variant, orderId }: OrderDetailPageProps) {
         testId={headerTestId}
       />
 
+      <AppShellContentScroll>
       <main className={cn(CREATE_AD_MAIN_COLUMN, "gap-1.5 md:gap-2")}>
         {showDetailSkeleton ? (
           <OrderDetailSkeleton />
@@ -231,13 +233,14 @@ export function OrderDetailPage({ variant, orderId }: OrderDetailPageProps) {
             </section>
 
             {variant === "buyer" && order && !isMockResponse ? (
-              <OrderDetailBuyerStickyCta order={order} />
+              <OrderDetailBuyerStickyCta order={order} isMock={isMockResponse} />
             ) : null}
 
             <div aria-hidden className={ORDERS_SCROLL_END_SPACER} data-testid="p17-order-detail-scroll-spacer" />
           </>
         )}
       </main>
+      </AppShellContentScroll>
     </div>
   );
 }
@@ -351,20 +354,72 @@ function OrderSummaryCard({
   );
 }
 
-function OrderDetailBuyerStickyCta({ order }: { order: OrderDetail }) {
+function OrderDetailBuyerStickyCta({ order, isMock }: { order: OrderDetail; isMock: boolean }) {
   const orderChat = useOpenOrderChat();
+  const confirmReceipt = useConfirmBuyerReceipt();
+  const { toast } = useToast();
+  const canConfirm = !isMock && order.status === "delivered";
+  const isCompleted = order.status === "completed";
+
+  const handleConfirm = async () => {
+    try {
+      await confirmReceipt.mutateAsync(order.orderNumber);
+      toast({ title: t("p17.commerce.detail.confirm_receipt_success") });
+    } catch (err) {
+      if (err instanceof OrdersApiClientError && err.status === 409) {
+        toast({
+          title: t("p17.commerce.detail.confirm_receipt_not_allowed"),
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: t("p17.commerce.detail.confirm_receipt_failed"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isCompleted) {
+    return (
+      <div className={cn(ORDERS_STICKY_CTA_BAR, "md:hidden")} data-testid="p17-order-detail-buyer-sticky-cta">
+        <p
+          className="flex h-11 w-full items-center justify-center rounded-xl border border-primary/30 bg-primary/5 text-sm font-medium text-primary"
+          data-testid="p17-order-detail-buyer-completed-banner"
+        >
+          {t("p17.commerce.detail.order_completed_banner")}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(ORDERS_STICKY_CTA_BAR, "md:hidden")} data-testid="p17-order-detail-buyer-sticky-cta">
-      <button
-        type="button"
-        className={cn(P17_BUY_NOW_BTN, "h-11 w-full text-sm")}
-        disabled={orderChat.isPending}
-        data-testid="p17-order-detail-chat-seller-sticky"
-        onClick={() => orderChat.open(order.adId, order.orderNumber)}
-      >
-        {t("p17.commerce.detail.buyer_action_contact_seller")}
-      </button>
+      {canConfirm ? (
+        <button
+          type="button"
+          className={cn(P17_BUY_NOW_BTN, "h-11 w-full text-sm")}
+          disabled={confirmReceipt.isPending}
+          data-testid="p17-order-detail-confirm-receipt-sticky"
+          onClick={() => void handleConfirm()}
+        >
+          {confirmReceipt.isPending ? (
+            <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+          ) : (
+            t("p17.commerce.detail.confirm_receipt")
+          )}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className={cn(P17_BUY_NOW_BTN, "h-11 w-full text-sm")}
+          disabled={orderChat.isPending}
+          data-testid="p17-order-detail-chat-seller-sticky"
+          onClick={() => orderChat.open(order.adId, order.orderNumber)}
+        >
+          {t("p17.commerce.detail.buyer_action_contact_seller")}
+        </button>
+      )}
     </div>
   );
 }
@@ -382,7 +437,29 @@ function BuyerActionsCard({
   const { toast } = useToast();
   const orderChat = useOpenOrderChat();
   const cancelOrder = useCancelBuyerOrder();
+  const confirmReceipt = useConfirmBuyerReceipt();
   const canCancel = !isMock && order.status === "pending_confirmation";
+  const canConfirmReceipt = !isMock && order.status === "delivered";
+  const isCompleted = !isMock && order.status === "completed";
+
+  const handleConfirmReceipt = async () => {
+    try {
+      await confirmReceipt.mutateAsync(order.orderNumber);
+      toast({ title: t("p17.commerce.detail.confirm_receipt_success") });
+    } catch (err) {
+      if (err instanceof OrdersApiClientError && err.status === 409) {
+        toast({
+          title: t("p17.commerce.detail.confirm_receipt_not_allowed"),
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: t("p17.commerce.detail.confirm_receipt_failed"),
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleCancel = async () => {
     try {
@@ -410,6 +487,29 @@ function BuyerActionsCard({
       aria-label={t("p17.commerce.detail.buyer_actions_title")}
     >
       <div className="flex flex-col gap-1.5">
+        {isCompleted ? (
+          <p
+            className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-center text-[12px] font-medium text-primary"
+            data-testid="p17-order-detail-buyer-completed"
+          >
+            {t("p17.commerce.detail.order_completed_banner")}
+          </p>
+        ) : null}
+        {canConfirmReceipt ? (
+          <button
+            type="button"
+            className={cn(P17_BUY_NOW_BTN, "h-11 w-full text-sm")}
+            disabled={confirmReceipt.isPending}
+            data-testid="p17-order-detail-confirm-receipt"
+            onClick={() => void handleConfirmReceipt()}
+          >
+            {confirmReceipt.isPending ? (
+              <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+            ) : (
+              t("p17.commerce.detail.confirm_receipt")
+            )}
+          </button>
+        ) : null}
         {!isMock ? (
           <button
             type="button"
@@ -508,9 +608,11 @@ function OrderDetailNotFound({
     >
       <OrderDetailHeader title={t(headerTitleKey)} onBack={onBack} testId={headerTestId} />
 
+      <AppShellContentScroll>
       <main className={CREATE_AD_MAIN_COLUMN}>
         <OrderDetailNotFoundPanel onBack={onBack} />
       </main>
+      </AppShellContentScroll>
     </div>
   );
 }

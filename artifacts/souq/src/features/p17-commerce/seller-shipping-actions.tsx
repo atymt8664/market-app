@@ -7,7 +7,12 @@ import { useToast } from "@/hooks/use-toast";
 import { P17_BUY_NOW_BTN } from "./ad-detail-commerce-styles";
 import { OrdersApiClientError } from "./orders-api-errors";
 import type { OrderDetail } from "./orders-api.types";
-import { useMarkShippedOrder, useStartPreparingOrder } from "./use-orders-mutations";
+import {
+  useMarkDeliveredOrder,
+  useMarkInTransitOrder,
+  useMarkShippedOrder,
+  useStartPreparingOrder,
+} from "./use-orders-mutations";
 import { useOpenOrderChat } from "./use-order-chat";
 import { ORDERS_CARD_COMPACT, ORDERS_CARD_TITLE, ORDERS_GHOST_BTN } from "./orders-page-styles";
 
@@ -21,30 +26,43 @@ export function SellerShippingActions({ order }: SellerShippingActionsProps) {
   const orderChat = useOpenOrderChat();
   const startPreparing = useStartPreparingOrder();
   const markShipped = useMarkShippedOrder();
+  const markInTransit = useMarkInTransitOrder();
+  const markDelivered = useMarkDeliveredOrder();
   const [carrierLabel, setCarrierLabel] = useState(order.shipment?.carrierLabel ?? "");
   const [trackingNumber, setTrackingNumber] = useState(order.shipment?.trackingNumber ?? "");
 
   const isConfirmed = order.status === "confirmed";
   const isPreparing = order.status === "preparing";
   const isShipped = order.status === "shipped";
-  const showChat = isConfirmed || isPreparing || isShipped || order.status === "cancelled";
+  const isInTransit = order.status === "in_transit";
+  const isDelivered = order.status === "delivered";
+  const isCompleted = order.status === "completed" || order.status === "buyer_confirmed";
+  const showChat =
+    isConfirmed ||
+    isPreparing ||
+    isShipped ||
+    isInTransit ||
+    isDelivered ||
+    isCompleted ||
+    order.status === "cancelled";
+
+  const handleActionError = (err: unknown, failKey: string) => {
+    if (err instanceof OrdersApiClientError && err.status === 409) {
+      toast({
+        title: t("p17.commerce.detail.seller_action_not_allowed"),
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({ title: t(failKey), variant: "destructive" });
+  };
 
   const handleStartPreparing = async () => {
     try {
       await startPreparing.mutateAsync(order.orderNumber);
       toast({ title: t("p17.commerce.shipping.start_preparing_success") });
     } catch (err) {
-      if (err instanceof OrdersApiClientError && err.status === 409) {
-        toast({
-          title: t("p17.commerce.detail.seller_action_not_allowed"),
-          variant: "destructive",
-        });
-        return;
-      }
-      toast({
-        title: t("p17.commerce.shipping.start_preparing_failed"),
-        variant: "destructive",
-      });
+      handleActionError(err, "p17.commerce.shipping.start_preparing_failed");
     }
   };
 
@@ -66,17 +84,25 @@ export function SellerShippingActions({ order }: SellerShippingActionsProps) {
       });
       toast({ title: t("p17.commerce.shipping.mark_shipped_success") });
     } catch (err) {
-      if (err instanceof OrdersApiClientError && err.status === 409) {
-        toast({
-          title: t("p17.commerce.detail.seller_action_not_allowed"),
-          variant: "destructive",
-        });
-        return;
-      }
-      toast({
-        title: t("p17.commerce.shipping.mark_shipped_failed"),
-        variant: "destructive",
-      });
+      handleActionError(err, "p17.commerce.shipping.mark_shipped_failed");
+    }
+  };
+
+  const handleMarkInTransit = async () => {
+    try {
+      await markInTransit.mutateAsync(order.orderNumber);
+      toast({ title: t("p17.commerce.shipping.mark_in_transit_success") });
+    } catch (err) {
+      handleActionError(err, "p17.commerce.shipping.mark_in_transit_failed");
+    }
+  };
+
+  const handleMarkDelivered = async () => {
+    try {
+      await markDelivered.mutateAsync(order.orderNumber);
+      toast({ title: t("p17.commerce.shipping.mark_delivered_success") });
+    } catch (err) {
+      handleActionError(err, "p17.commerce.shipping.mark_delivered_failed");
     }
   };
 
@@ -155,7 +181,7 @@ export function SellerShippingActions({ order }: SellerShippingActionsProps) {
           </>
         ) : null}
 
-        {isShipped && order.shipment ? (
+        {(isShipped || isInTransit || isDelivered || isCompleted) && order.shipment ? (
           <div
             className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 text-right"
             data-testid="p17-order-detail-seller-shipment-readonly"
@@ -168,11 +194,61 @@ export function SellerShippingActions({ order }: SellerShippingActionsProps) {
           </div>
         ) : null}
 
+        {isShipped ? (
+          <button
+            type="button"
+            className={cn(P17_BUY_NOW_BTN, "h-11 w-full text-sm")}
+            disabled={markInTransit.isPending}
+            data-testid="p17-order-detail-seller-mark-in-transit"
+            onClick={() => void handleMarkInTransit()}
+          >
+            {markInTransit.isPending ? (
+              <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+            ) : (
+              t("p17.commerce.shipping.action_mark_in_transit")
+            )}
+          </button>
+        ) : null}
+
+        {isInTransit ? (
+          <button
+            type="button"
+            className={cn(P17_BUY_NOW_BTN, "h-11 w-full text-sm")}
+            disabled={markDelivered.isPending}
+            data-testid="p17-order-detail-seller-mark-delivered"
+            onClick={() => void handleMarkDelivered()}
+          >
+            {markDelivered.isPending ? (
+              <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+            ) : (
+              t("p17.commerce.shipping.action_mark_delivered")
+            )}
+          </button>
+        ) : null}
+
+        {isDelivered ? (
+          <p
+            className="rounded-xl border border-primary/20 bg-[#0A0A0A] px-3 py-2 text-center text-[11px] text-zinc-300"
+            data-testid="p17-order-detail-seller-awaiting-buyer"
+          >
+            {t("p17.commerce.shipping.seller_awaiting_buyer_confirm")}
+          </p>
+        ) : null}
+
+        {isCompleted ? (
+          <p
+            className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-center text-[11px] font-medium text-primary"
+            data-testid="p17-order-detail-seller-order-completed"
+          >
+            {t("p17.commerce.shipping.seller_order_completed")}
+          </p>
+        ) : null}
+
         {showChat ? (
           <button
             type="button"
             className={cn(
-              isPreparing || isShipped ? ORDERS_GHOST_BTN : P17_BUY_NOW_BTN,
+              isPreparing || isShipped || isInTransit || isDelivered ? ORDERS_GHOST_BTN : P17_BUY_NOW_BTN,
               "h-11 w-full text-sm",
             )}
             disabled={orderChat.isPending}

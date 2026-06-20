@@ -2,9 +2,12 @@ import {
   adsTable,
   conversationAdReferencesTable,
   conversationsTable,
+  conversationDeletesTable,
+  messageHidesTable,
+  messagesTable,
   db,
 } from "@workspace/db";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { isPublicAdStatus } from "./ad-visibility";
 
 export type SerializedConversationAdRef = {
@@ -152,4 +155,82 @@ export async function loadAdReferencePayload(adId: number) {
     priceType: ad.priceType ?? null,
     imageUrl: images[0] ?? null,
   };
+}
+
+/**
+ * After delete-for-me, reopening from a new ad must not resurrect old messages or ad cards
+ * for the user who deleted. Keeps one conversation row per buyer/seller pair (P5 consolidation).
+ */
+export async function reopenConversationFreshStartForUser(
+  userId: number,
+  buyerId: number,
+  sellerId: number,
+): Promise<boolean> {
+  const pairIds = await listConversationIdsForBuyerSellerPair(buyerId, sellerId);
+  if (!pairIds.length) return false;
+
+  const deleteRows = await db
+    .select({ conversationId: conversationDeletesTable.conversationId })
+    .from(conversationDeletesTable)
+    .where(
+      and(
+        eq(conversationDeletesTable.userId, userId),
+        inArray(conversationDeletesTable.conversationId, pairIds),
+      ),
+    );
+  if (!deleteRows.length) return false;
+
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(conversationDeletesTable)
+      .where(
+        and(
+          eq(conversationDeletesTable.userId, userId),
+          inArray(conversationDeletesTable.conversationId, pairIds),
+        ),
+      );
+
+    for (const convId of pairIds) {
+      const msgRows = await tx
+        .select({ id: messagesTable.id })
+        .from(messagesTable)
+        .where(eq(messagesTable.conversationId, convId));
+      for (const msg of msgRows) {
+        await tx
+          .insert(messageHidesTable)
+          .values({ userId, messageId: msg.id })
+          .onConflictDoNothing();
+      }
+    }
+  });
+
+  return true;
+}
+
+/** When a user has no visible messages, only expose the primary ad in referencedAds (fresh thread). */
+export async function filterReferencedAdsForViewer(
+  userId: number,
+  conversationId: number,
+  primaryAdId: number,
+  refs: SerializedConversationAdRef[],
+): Promise<SerializedConversationAdRef[]> {
+  const [{ count }] = (
+    await db.execute<{ count: number }>(sql`
+      select count(*)::int as count
+      from messages m
+      where m.conversation_id = ${conversationId}
+        and not exists (
+          select 1 from message_hides h
+          where h.user_id = ${userId} and h.message_id = m.id
+        )
+    `)
+  ).rows as Array<{ count: number }>;
+
+  if (Number(count ?? 0) === 0) {
+    const primary = refs.filter((r) => r.adId === primaryAdId);
+    if (primary.length > 0) return primary;
+    return refs.slice(0, 1);
+  }
+
+  return refs;
 }

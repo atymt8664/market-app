@@ -24,4 +24,25 @@ try {
 }
 assert.equal(threw, true);
 
+const inTransit = assertTransitionAllowed("shipped", "mark_in_transit");
+assert.equal(inTransit.to, "in_transit");
+
+const delivered = assertTransitionAllowed("in_transit", "mark_delivered");
+assert.equal(delivered.to, "delivered");
+
+const confirm = assertTransitionAllowed("delivered", "confirm_receipt");
+assert.equal(confirm.to, "buyer_confirmed");
+
+const complete = getTransitionSpec("complete_order");
+assert.equal(complete.from, "buyer_confirmed");
+assert.equal(complete.to, "completed");
+
+let buyerCantShip = false;
+try {
+  assertTransitionAllowed("shipped", "mark_delivered");
+} catch (e) {
+  buyerCantShip = e instanceof OrderTransitionError;
+}
+assert.equal(buyerCantShip, true);
+
 console.log("order-state-machine.test.mjs: PASS");

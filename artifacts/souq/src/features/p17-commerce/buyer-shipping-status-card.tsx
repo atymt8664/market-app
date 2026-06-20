@@ -12,6 +12,9 @@ function statusMessageKey(status: string): string {
   if (status === "confirmed") return "p17.commerce.shipping.buyer_status_confirmed";
   if (status === "preparing") return "p17.commerce.shipping.buyer_status_preparing";
   if (status === "shipped") return "p17.commerce.shipping.buyer_status_shipped";
+  if (status === "in_transit") return "p17.commerce.shipping.buyer_status_in_transit";
+  if (status === "delivered") return "p17.commerce.shipping.buyer_status_delivered";
+  if (status === "completed") return "p17.commerce.shipping.buyer_status_completed";
   return "p17.commerce.shipping.buyer_status_default";
 }
 

@@ -32,6 +32,7 @@ import {
   SETTINGS_HEADER_TRAILING,
   SETTINGS_PAGE_TITLE,
 } from "@/components/settings-shell";
+import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
 
 function HubTabTriggerLabel({ labelKey, count }: { labelKey: string; count: number }) {
   return (
@@ -120,6 +121,7 @@ function BuyerOrdersPage() {
       dir="rtl"
       data-testid="p17-orders-page-buyer"
     >
+      <AppShellContentScroll>
       <CreateAdPatternHeader
         title={t("p17.commerce.page.buyer_title")}
         onBack={() => navigate("/profile")}
@@ -180,6 +182,7 @@ function BuyerOrdersPage() {
           </>
         )}
       </main>
+      </AppShellContentScroll>
     </div>
   );
 }
@@ -235,6 +238,7 @@ function SellerOrdersPage() {
         dir="rtl"
         data-testid="p17-orders-page-seller"
       >
+        <AppShellContentScroll>
         <CreateAdPatternHeader
           title={t("p17.commerce.page.seller_title")}
           onBack={() => navigate("/profile")}
@@ -244,6 +248,7 @@ function SellerOrdersPage() {
           <SellerOrdersPhaseDeferredCard />
           <div aria-hidden className={ORDERS_SCROLL_END_SPACER} data-testid="p17-seller-orders-scroll-spacer" />
         </main>
+        </AppShellContentScroll>
       </div>
     );
   }
@@ -254,6 +259,7 @@ function SellerOrdersPage() {
       dir="rtl"
       data-testid="p17-orders-page-seller"
     >
+      <AppShellContentScroll>
       <CreateAdPatternHeader
         title={t("p17.commerce.page.seller_title")}
         onBack={() => navigate("/profile")}
@@ -313,6 +319,7 @@ function SellerOrdersPage() {
           </>
         )}
       </main>
+      </AppShellContentScroll>
     </div>
   );
 }

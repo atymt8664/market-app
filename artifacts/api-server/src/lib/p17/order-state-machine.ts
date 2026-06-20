@@ -13,7 +13,11 @@ export type OrderTransitionAction =
   | "cancel_buyer"
   | "cancel_seller"
   | "start_preparing"
-  | "mark_shipped";
+  | "mark_shipped"
+  | "mark_in_transit"
+  | "mark_delivered"
+  | "confirm_receipt"
+  | "complete_order";
 
 export type OrderTransitionActor = "buyer" | "seller" | "system" | "admin";
 
@@ -90,9 +94,46 @@ export const P17_7_TRANSITIONS: readonly OrderTransitionSpec[] = [
   },
 ] as const;
 
+/** P17-8 Package 3 — manual post-shipped completion (no carrier APIs). */
+export const P17_8_PKG3_TRANSITIONS: readonly OrderTransitionSpec[] = [
+  {
+    from: "shipped",
+    to: "in_transit",
+    action: "mark_in_transit",
+    actor: "seller",
+    eventCode: "shipment_in_transit",
+    publicMessageAr: "طلبك قيد الشحن",
+  },
+  {
+    from: "in_transit",
+    to: "delivered",
+    action: "mark_delivered",
+    actor: "seller",
+    eventCode: "shipment_delivered",
+    publicMessageAr: "تم تسليم الطلب",
+  },
+  {
+    from: "delivered",
+    to: "buyer_confirmed",
+    action: "confirm_receipt",
+    actor: "buyer",
+    eventCode: "buyer_confirmed_receipt",
+    publicMessageAr: "شكرًا — تم تأكيد الاستلام",
+  },
+  {
+    from: "buyer_confirmed",
+    to: "completed",
+    action: "complete_order",
+    actor: "system",
+    eventCode: "order_completed",
+    publicMessageAr: "اكتمل الطلب",
+  },
+] as const;
+
 const ALL_TRANSITIONS: readonly OrderTransitionSpec[] = [
   ...P17_4_TRANSITIONS,
   ...P17_7_TRANSITIONS,
+  ...P17_8_PKG3_TRANSITIONS,
 ];
 
 const TRANSITION_BY_ACTION = new Map<OrderTransitionAction, OrderTransitionSpec>(

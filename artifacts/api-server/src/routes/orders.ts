@@ -336,6 +336,72 @@ router.post(
 );
 
 router.post(
+  "/orders/:id/mark-in-transit",
+  requireAuth,
+  requireUserCsrf,
+  parseOrderRefParam,
+  async (req, res) => {
+    try {
+      if (!isDbProvider()) {
+        res.status(503).json({ error: "الإجراء غير متاح", code: "ORDER_API_DISABLED" });
+        return;
+      }
+      const userId = req.session.userId!;
+      const orderRef = parseOrderReferenceParam(String(req.params.id));
+      const order = await ordersService.markInTransit(userId, orderRef);
+      const payload = OrderActionResponseSchema.parse({ order, mock: false });
+      res.json(payload);
+    } catch (error) {
+      handleOrdersError(error, res);
+    }
+  },
+);
+
+router.post(
+  "/orders/:id/mark-delivered",
+  requireAuth,
+  requireUserCsrf,
+  parseOrderRefParam,
+  async (req, res) => {
+    try {
+      if (!isDbProvider()) {
+        res.status(503).json({ error: "الإجراء غير متاح", code: "ORDER_API_DISABLED" });
+        return;
+      }
+      const userId = req.session.userId!;
+      const orderRef = parseOrderReferenceParam(String(req.params.id));
+      const order = await ordersService.markDelivered(userId, orderRef);
+      const payload = OrderActionResponseSchema.parse({ order, mock: false });
+      res.json(payload);
+    } catch (error) {
+      handleOrdersError(error, res);
+    }
+  },
+);
+
+router.post(
+  "/orders/:id/confirm-receipt",
+  requireAuth,
+  requireUserCsrf,
+  parseOrderRefParam,
+  async (req, res) => {
+    try {
+      if (!isDbProvider()) {
+        res.status(503).json({ error: "الإجراء غير متاح", code: "ORDER_API_DISABLED" });
+        return;
+      }
+      const userId = req.session.userId!;
+      const orderRef = parseOrderReferenceParam(String(req.params.id));
+      const order = await ordersService.confirmReceipt(userId, orderRef);
+      const payload = OrderActionResponseSchema.parse({ order, mock: false });
+      res.json(payload);
+    } catch (error) {
+      handleOrdersError(error, res);
+    }
+  },
+);
+
+router.post(
   "/orders/:id/cancel",
   requireAuth,
   requireUserCsrf,

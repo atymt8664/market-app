@@ -3,7 +3,10 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   acceptSellerOrder,
   cancelBuyerOrder,
+  confirmBuyerReceipt,
   createBuyerOrder,
+  markDeliveredSellerOrder,
+  markInTransitSellerOrder,
   markShippedSellerOrder,
   rejectSellerOrder,
   startPreparingSellerOrder,
@@ -149,6 +152,49 @@ export function useMarkShippedOrder() {
       if (!userId) return;
       invalidateSellerOrderQueries(queryClient, userId, data.order.orderNumber);
       invalidateBuyerOrderQueries(queryClient, data.order.buyerUserId, data.order.orderNumber);
+    },
+  });
+}
+
+export function useMarkInTransitOrder() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id;
+  return useMutation({
+    mutationFn: (orderNumber: string) => markInTransitSellerOrder(orderNumber),
+    onSuccess: (data) => {
+      if (!userId) return;
+      invalidateSellerOrderQueries(queryClient, userId, data.order.orderNumber);
+      invalidateBuyerOrderQueries(queryClient, data.order.buyerUserId, data.order.orderNumber);
+    },
+  });
+}
+
+export function useMarkDeliveredOrder() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id;
+  return useMutation({
+    mutationFn: (orderNumber: string) => markDeliveredSellerOrder(orderNumber),
+    onSuccess: (data) => {
+      if (!userId) return;
+      invalidateSellerOrderQueries(queryClient, userId, data.order.orderNumber);
+      invalidateBuyerOrderQueries(queryClient, data.order.buyerUserId, data.order.orderNumber);
+    },
+  });
+}
+
+export function useConfirmBuyerReceipt() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id;
+  return useMutation({
+    mutationFn: (orderNumber: string) => confirmBuyerReceipt(orderNumber),
+    onSuccess: (data) => {
+      if (!userId) return;
+      invalidateBuyerOrderQueries(queryClient, userId, data.order.orderNumber);
+      invalidateSellerOrderQueries(queryClient, data.order.sellerUserId, data.order.orderNumber);
+      void queryClient.invalidateQueries({ queryKey: ordersStatsQueryKey(userId) });
     },
   });
 }

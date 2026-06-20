@@ -6,6 +6,7 @@ import {
   orderIssuesTable,
   orderStatusHistoryTable,
   ordersTable,
+  shipmentEventsTable,
   shipmentsTable,
   type OrderRow,
   type OrderStatus,
@@ -349,6 +350,9 @@ export async function applyOrderTransition(input: {
   if (transition.to === "cancelled") {
     milestone.cancelledAt = now;
   }
+  if (transition.to === "completed") {
+    milestone.completedAt = now;
+  }
 
   const [updated] = await db
     .update(ordersTable)
@@ -371,6 +375,144 @@ export async function applyOrderTransition(input: {
   });
 
   return updated;
+}
+
+export type PostShipTransitionEffects = {
+  shipmentEventCode?: "in_transit" | "delivered";
+  setShipmentDeliveredAt?: boolean;
+};
+
+/** P17-8 Package 3 — seller post-ship step with optional shipment event + delivered_at. */
+export async function applyPostShipOrderTransition(input: {
+  order: OrderRow;
+  transition: OrderTransitionSpec;
+  actorUserId: number;
+  expectedVersion: number;
+  effects?: PostShipTransitionEffects;
+}): Promise<OrderRow> {
+  const { order, transition, actorUserId, expectedVersion, effects } = input;
+  const now = new Date();
+
+  return db.transaction(async (tx) => {
+    const milestone: Partial<typeof ordersTable.$inferInsert> = {
+      status: transition.to,
+      version: order.version + 1,
+      updatedAt: now,
+    };
+    if (transition.to === "completed") {
+      milestone.completedAt = now;
+    }
+
+    const [updated] = await tx
+      .update(ordersTable)
+      .set(milestone)
+      .where(and(eq(ordersTable.id, order.id), eq(ordersTable.version, expectedVersion)))
+      .returning();
+
+    if (!updated) {
+      throw new Error("ORDER_VERSION_CONFLICT");
+    }
+
+    await tx.insert(orderStatusHistoryTable).values({
+      orderId: order.id,
+      fromStatus: transition.from,
+      toStatus: transition.to,
+      actorType: transition.actor,
+      actorUserId,
+      eventCode: transition.eventCode,
+      publicMessageAr: transition.publicMessageAr,
+    });
+
+    const [shipment] = await tx
+      .select({ id: shipmentsTable.id })
+      .from(shipmentsTable)
+      .where(eq(shipmentsTable.orderId, order.id))
+      .limit(1);
+
+    if (shipment && effects?.setShipmentDeliveredAt) {
+      await tx
+        .update(shipmentsTable)
+        .set({ deliveredAt: now, updatedAt: now })
+        .where(eq(shipmentsTable.id, shipment.id));
+    }
+
+    if (shipment && effects?.shipmentEventCode) {
+      await tx.insert(shipmentEventsTable).values({
+        shipmentId: shipment.id,
+        eventCode: effects.shipmentEventCode,
+        descriptionAr: transition.publicMessageAr,
+        occurredAt: now,
+        source: "seller_manual",
+      });
+    }
+
+    return updated;
+  });
+}
+
+/** P17-8 Package 3 — buyer confirm receipt then system complete (single transaction). */
+export async function applyBuyerConfirmReceipt(input: {
+  order: OrderRow;
+  buyerUserId: number;
+  expectedVersion: number;
+  confirmTransition: OrderTransitionSpec;
+  completeTransition: OrderTransitionSpec;
+}): Promise<OrderRow> {
+  const { order, buyerUserId, expectedVersion, confirmTransition, completeTransition } = input;
+  const now = new Date();
+
+  return db.transaction(async (tx) => {
+    const [afterConfirm] = await tx
+      .update(ordersTable)
+      .set({
+        status: confirmTransition.to,
+        version: order.version + 1,
+        updatedAt: now,
+      })
+      .where(and(eq(ordersTable.id, order.id), eq(ordersTable.version, expectedVersion)))
+      .returning();
+
+    if (!afterConfirm) {
+      throw new Error("ORDER_VERSION_CONFLICT");
+    }
+
+    await tx.insert(orderStatusHistoryTable).values({
+      orderId: order.id,
+      fromStatus: confirmTransition.from,
+      toStatus: confirmTransition.to,
+      actorType: confirmTransition.actor,
+      actorUserId: buyerUserId,
+      eventCode: confirmTransition.eventCode,
+      publicMessageAr: confirmTransition.publicMessageAr,
+    });
+
+    const [completed] = await tx
+      .update(ordersTable)
+      .set({
+        status: completeTransition.to,
+        version: afterConfirm.version + 1,
+        updatedAt: now,
+        completedAt: now,
+      })
+      .where(eq(ordersTable.id, order.id))
+      .returning();
+
+    if (!completed) {
+      throw new Error("ORDER_VERSION_CONFLICT");
+    }
+
+    await tx.insert(orderStatusHistoryTable).values({
+      orderId: order.id,
+      fromStatus: completeTransition.from,
+      toStatus: completeTransition.to,
+      actorType: completeTransition.actor,
+      actorUserId: buyerUserId,
+      eventCode: completeTransition.eventCode,
+      publicMessageAr: completeTransition.publicMessageAr,
+    });
+
+    return completed;
+  });
 }
 
 export async function findBuyerAddressByOrderId(orderId: number) {

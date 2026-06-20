@@ -37,6 +37,8 @@ import {
 import {
   applyOrderTransition,
   applyOrderTransitionWithShipment,
+  applyBuyerConfirmReceipt,
+  applyPostShipOrderTransition,
   buyerHasAccess,
   findBuyerAddressByOrderId,
   findShipmentByOrderId,
@@ -445,6 +447,103 @@ export class OrdersService {
       });
       const item = await getPrimaryOrderItem(updated.id);
       await this.dispatchTransitionNotifications(updated, "mark_shipped");
+      return enrichOrderDetail(updated, item?.title ?? null, "seller");
+    } catch (e) {
+      if (e instanceof Error && e.message === "ORDER_VERSION_CONFLICT") {
+        throw new OrdersApiError(409, OrdersErrorCodes.CONFLICT, "تم تحديث الطلب — يرجى المحاولة مجددًا");
+      }
+      throw e;
+    }
+  }
+
+  async markInTransit(userId: number, reference: string): Promise<OrderDetail> {
+    const row = await this.requireOrderReference(reference);
+    if (!sellerHasAccess(row, userId)) {
+      throw new OrdersApiError(403, OrdersErrorCodes.FORBIDDEN, "لا يمكنك تنفيذ هذا الإجراء");
+    }
+    if (row.fulfillmentMode !== "shipping") {
+      throw new OrdersApiError(409, OrdersErrorCodes.INVALID_STATE, "هذا الإجراء متاح لطلبات الشحن فقط");
+    }
+    return this.postShipTransition(userId, row, "mark_in_transit", {
+      shipmentEventCode: "in_transit",
+    });
+  }
+
+  async markDelivered(userId: number, reference: string): Promise<OrderDetail> {
+    const row = await this.requireOrderReference(reference);
+    if (!sellerHasAccess(row, userId)) {
+      throw new OrdersApiError(403, OrdersErrorCodes.FORBIDDEN, "لا يمكنك تنفيذ هذا الإجراء");
+    }
+    if (row.fulfillmentMode !== "shipping") {
+      throw new OrdersApiError(409, OrdersErrorCodes.INVALID_STATE, "هذا الإجراء متاح لطلبات الشحن فقط");
+    }
+    return this.postShipTransition(userId, row, "mark_delivered", {
+      shipmentEventCode: "delivered",
+      setShipmentDeliveredAt: true,
+    });
+  }
+
+  async confirmReceipt(userId: number, reference: string): Promise<OrderDetail> {
+    const row = await this.requireOrderReference(reference);
+    if (!buyerHasAccess(row, userId)) {
+      throw new OrdersApiError(403, OrdersErrorCodes.FORBIDDEN, "لا يمكنك تنفيذ هذا الإجراء");
+    }
+
+    let confirmTransition;
+    let completeTransition;
+    try {
+      confirmTransition = assertTransitionAllowed(row.status as OrderDetail["status"], "confirm_receipt");
+      completeTransition = getTransitionSpec("complete_order");
+    } catch (e) {
+      if (e instanceof OrderTransitionError) {
+        throw new OrdersApiError(409, OrdersErrorCodes.INVALID_STATE, e.message);
+      }
+      throw e;
+    }
+
+    try {
+      const updated = await applyBuyerConfirmReceipt({
+        order: row,
+        buyerUserId: userId,
+        expectedVersion: row.version,
+        confirmTransition,
+        completeTransition,
+      });
+      const item = await getPrimaryOrderItem(updated.id);
+      return enrichOrderDetail(updated, item?.title ?? null, "buyer");
+    } catch (e) {
+      if (e instanceof Error && e.message === "ORDER_VERSION_CONFLICT") {
+        throw new OrdersApiError(409, OrdersErrorCodes.CONFLICT, "تم تحديث الطلب — يرجى المحاولة مجددًا");
+      }
+      throw e;
+    }
+  }
+
+  private async postShipTransition(
+    userId: number,
+    row: OrderRow,
+    action: "mark_in_transit" | "mark_delivered",
+    effects: { shipmentEventCode: "in_transit" | "delivered"; setShipmentDeliveredAt?: boolean },
+  ): Promise<OrderDetail> {
+    let transition;
+    try {
+      transition = assertTransitionAllowed(row.status as OrderDetail["status"], action);
+    } catch (e) {
+      if (e instanceof OrderTransitionError) {
+        throw new OrdersApiError(409, OrdersErrorCodes.INVALID_STATE, e.message);
+      }
+      throw e;
+    }
+
+    try {
+      const updated = await applyPostShipOrderTransition({
+        order: row,
+        transition,
+        actorUserId: userId,
+        expectedVersion: row.version,
+        effects,
+      });
+      const item = await getPrimaryOrderItem(updated.id);
       return enrichOrderDetail(updated, item?.title ?? null, "seller");
     } catch (e) {
       if (e instanceof Error && e.message === "ORDER_VERSION_CONFLICT") {

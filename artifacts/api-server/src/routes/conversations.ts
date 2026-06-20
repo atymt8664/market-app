@@ -59,6 +59,8 @@ import {
   listConversationIdsForBuyerSellerPair,
   loadAdReferencePayload,
   loadConversationAdReferences,
+  filterReferencedAdsForViewer,
+  reopenConversationFreshStartForUser,
   touchConversationPrimaryAd,
 } from "../lib/conversation-ad-references";
 import { notifyMessageReceived } from "../lib/message-notifications";
@@ -194,6 +196,7 @@ router.post("/conversations", requireAuth, requireUserCsrf, async (req, res) => 
 
   const existingPair = await findBuyerSellerConversation(userId, sellerId);
   if (existingPair) {
+    await reopenConversationFreshStartForUser(userId, userId, sellerId);
     await ensureConversationAdReference(existingPair.id, adId);
     await touchConversationPrimaryAd(existingPair.id, adId);
     res.json({ id: existingPair.id });
@@ -248,6 +251,7 @@ router.post("/conversations", requireAuth, requireUserCsrf, async (req, res) => 
     if (code === "23505") {
       const pairAgain = await findBuyerSellerConversation(userId, sellerId);
       if (pairAgain) {
+        await reopenConversationFreshStartForUser(userId, userId, sellerId);
         await ensureConversationAdReference(pairAgain.id, adId);
         await touchConversationPrimaryAd(pairAgain.id, adId);
         res.json({ id: pairAgain.id });
@@ -709,7 +713,8 @@ router.get("/conversations/:convId", requireAuth, async (req, res) => {
   const otherId = conv.buyerId === userId ? conv.sellerId : conv.buyerId;
   const otherRows = await db.select().from(usersTable).where(eq(usersTable.id, otherId)).limit(1);
   const otherUser = otherRows[0];
-  const referencedAds = await loadConversationAdReferences(conv.id);
+  const referencedAdsRaw = await loadConversationAdReferences(conv.id);
+  const referencedAds = await filterReferencedAdsForViewer(userId, conv.id, conv.adId, referencedAdsRaw);
   res.json({
     id: conv.id,
     adId: conv.adId,

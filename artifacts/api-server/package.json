@@ -31,6 +31,7 @@
     "p17-4a:staging-smoke": "node --import tsx/esm ./scripts/p17-4-staging-orders-smoke.mjs",
     "p17-7-0:staging-readiness": "node --import tsx/esm ./scripts/p17-7-0-staging-shipping-readiness.mjs",
     "p17-7:staging-flow": "node --import tsx/esm ./scripts/p17-7-staging-shipping-flow-verify.mjs",
+    "p17-8:pkg3:staging-flow": "node --import tsx/esm ./scripts/p17-8-pkg3-staging-flow-verify.mjs",
     "p17-7a:validate": "node --import tsx/esm ./src/lib/p17/shipping-address-validation.test.mjs && node --import tsx/esm ./scripts/validate-p17-7a-local.mjs",
     "p17-7a:pkg3:validate": "node --import tsx/esm ./scripts/validate-p17-7a-pkg3.mjs",
     "p17-7a:pkg4:staging-chat-smoke": "node --import tsx/esm ./scripts/p17-7a-pkg4-staging-chat-smoke.mjs",

@@ -3,6 +3,7 @@ import {
   useStartConversation,
 } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
+import { bustConversationThreadCache } from "@/lib/chat-thread-cache";
 import { prefetchConversationThread } from "@/lib/prefetch-conversation-thread";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -61,6 +62,7 @@ export function useOpenOrderChat() {
             conversationId = data.id;
           }
 
+          bustConversationThreadCache(queryClient, conversationId);
           await prefetchConversationThread(queryClient, conversationId);
           navigate(orderChatHref(conversationId, orderNumber, orderRole, draft));
         } catch (err: unknown) {

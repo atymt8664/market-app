@@ -20,7 +20,6 @@ import {
 import { useState, useRef, useLayoutEffect, useCallback } from "react";
 import {
   useListMyAds,
-  useDeleteAd,
   getListMyAdsQueryKey,
   useAuthUpdateProfile,
   getAuthMeQueryKey,
@@ -28,8 +27,9 @@ import {
   type Ad,
   ApiError,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { favoritesListQueryKey } from "@/lib/invalidate-ad-queries";
+import { removeSellerAd } from "@/lib/seller-ad-remove";
 import { useUpload } from "@workspace/object-storage-web";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -139,7 +139,9 @@ export default function Profile() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const deleteAdMutation = useDeleteAd();
+  const deleteAdMutation = useMutation({
+    mutationFn: (adId: number) => removeSellerAd(adId),
+  });
   const updateProfile = useAuthUpdateProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [adToDelete, setAdToDelete] = useState<number | null>(null);
@@ -244,14 +246,17 @@ export default function Profile() {
 
   const handleDelete = () => {
     if (adToDelete === null) return;
-    deleteAdMutation.mutate(
-      { adId: adToDelete },
-      {
-        onSuccess: async () => {
+    deleteAdMutation.mutate(adToDelete, {
+        onSuccess: async (outcome) => {
           await queryClient.invalidateQueries({
             queryKey: getListMyAdsQueryKey(),
           });
-          toast({ title: t("profile.ad_deleted") });
+          toast({
+            title:
+              outcome === "archived"
+                ? t("profile.ad_archived")
+                : t("profile.ad_deleted"),
+          });
           setAdToDelete(null);
         },
         onError: (err) => {
@@ -262,8 +267,7 @@ export default function Profile() {
           }
           toast({ title: t("profile.ad_delete_failed"), variant: "destructive" });
         },
-      },
-    );
+    });
   };
 
   const openPromoteForAd = (ad: Ad) => {

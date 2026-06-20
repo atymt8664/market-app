@@ -53,6 +53,8 @@ import {
   SELLER_MY_ADS_VISIBLE_STATUSES,
   isPublicListingStatus,
   sellerRemoveListing,
+  adminRemoveListing,
+  AD_LIFECYCLE_OUTCOME_HEADER,
   shouldExposeAdDetailToViewer,
   AD_LIFECYCLE_STATUS,
 } from "../lib/ad-lifecycle";
@@ -325,6 +327,69 @@ router.delete("/admin/ads/:id", requireAdminAccessGrant, requireAdmin, requireAd
     return res.status(404).json({ error: "Ad not found" });
   }
 
+  const result = await adminRemoveListing(id);
+  switch (result.outcome) {
+    case "not_found":
+      return res.status(404).json({ error: "Ad not found" });
+    case "already_removed":
+      return res.json(
+        okAdminActionFeedback({
+          title: "الإعلان غير متاح بالفعل",
+          description: `الإعلان #${id} محذوف أو مخفي مسبقاً (${result.status}).`,
+          nextStep: "لا يلزم إجراء إضافي.",
+        }),
+      );
+    case "blocked_active_orders":
+      return res.status(409).json({
+        error:
+          "لا يمكن حذف هذا الإعلان نهائياً لوجود طلبات نشطة. استخدم «إخفاء» بدلاً من الحذف.",
+        code: "AD_DELETE_LINKED_ORDERS",
+        linkedOrders: result.linkedOrders,
+      });
+    case "hidden_preserved": {
+      if (existing.userId != null) {
+        try {
+          const hiddenCopy = officialNotificationContent({ type: "ad.hidden" });
+          if (hiddenCopy) {
+            await createNotification({
+              userId: existing.userId,
+              type: "ad.hidden",
+              title: hiddenCopy.title,
+              body: hiddenCopy.body,
+              entityType: "ad",
+              entityId: id,
+              metadata: { adId: id, source: "admin.ads.delete" },
+            });
+          }
+        } catch (err) {
+          logger.warn({ err, adId: id }, "createNotification failed (ad.hidden from admin delete)");
+        }
+      }
+      const auditActivityId = await writeAdminAudit({
+        req,
+        actionKey: "ad.hide",
+        targetType: "ad",
+        targetId: id,
+        previousState: existing.status,
+        newState: "hidden",
+        deepLink: adminDeepLink(`/admin/ads?focusId=${id}`),
+        extra: { source: "admin.ads.delete", preservedOrders: true },
+      });
+      return res.json(
+        okAdminActionFeedback({
+          title: "تم إخفاء الإعلان",
+          description: `الإعلان #${id} مرتبط بطلبات مكتملة/ملغاة — تم إخفاؤه مع الاحتفاظ بسجل الطلبات.`,
+          nextStep: "لن يظهر للمستخدمين في السوق.",
+          auditActivityId,
+        }),
+      );
+    }
+    case "hard_deleted":
+      break;
+    default:
+      return res.status(500).json({ error: "Unexpected error" });
+  }
+
   await db.delete(adsTable).where(eq(adsTable.id, id));
 
   if (existing.userId != null) {
@@ -412,7 +477,7 @@ router.get("/ads/stats", async (_req, res) => {
       count: sql<number>`count(*)::int`,
     })
     .from(adsTable)
-    .where(inArray(adsTable.status, [...PUBLIC_AD_STATUSES]))
+    .where(inArray(adsTable.status, [...PUBLIC_LISTING_STATUSES]))
     .groupBy(adsTable.city)
     .orderBy(sql`count(*) desc`)
     .limit(8);
@@ -1074,7 +1139,11 @@ router.delete("/ads/:adId", requireAuth, requireUserCsrf, async (req, res) => {
       });
       return;
     case "archived":
+      res.setHeader(AD_LIFECYCLE_OUTCOME_HEADER, "archived");
+      res.status(204).end();
+      return;
     case "hard_deleted":
+      res.setHeader(AD_LIFECYCLE_OUTCOME_HEADER, "hard_deleted");
       res.status(204).end();
       return;
     default:

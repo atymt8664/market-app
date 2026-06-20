@@ -57,12 +57,21 @@ export function isTerminalOrderStatus(status: string): boolean {
   return (TERMINAL_ORDER_STATUSES as readonly string[]).includes(status);
 }
 
+export const AD_LIFECYCLE_OUTCOME_HEADER = "X-Ad-Lifecycle-Outcome";
+
 export type SellerRemoveAdResult =
   | { outcome: "hard_deleted" }
   | { outcome: "archived"; status: typeof AD_LIFECYCLE_STATUS.ARCHIVED_BY_SELLER }
   | { outcome: "blocked_active_orders"; linkedOrders: number }
   | { outcome: "not_found" }
   | { outcome: "forbidden" };
+
+export type AdminRemoveListingResult =
+  | { outcome: "hard_deleted" }
+  | { outcome: "hidden_preserved" }
+  | { outcome: "blocked_active_orders"; linkedOrders: number }
+  | { outcome: "not_found" }
+  | { outcome: "already_removed"; status: string };
 
 /**
  * Seller «delete» semantics:
@@ -108,6 +117,49 @@ export async function sellerRemoveListing(
   }
 
   await db.delete(adsTable).where(and(eq(adsTable.id, adId), eq(adsTable.userId, sellerUserId)));
+  return { outcome: "hard_deleted" };
+}
+
+/**
+ * Admin delete semantics — preserve commerce rows when orders reference the listing.
+ * - No orders → hard DELETE.
+ * - Active orders → block (use hide moderation instead).
+ * - Terminal orders only → `hidden` (FK-safe, removed from public surfaces).
+ */
+export async function adminRemoveListing(adId: number): Promise<AdminRemoveListingResult> {
+  const existing = await db
+    .select({ id: adsTable.id, status: adsTable.status })
+    .from(adsTable)
+    .where(eq(adsTable.id, adId))
+    .limit(1);
+  const row = existing[0];
+  if (!row) return { outcome: "not_found" };
+  if (row.status === AD_LIFECYCLE_STATUS.HIDDEN || isArchivedListingStatus(row.status)) {
+    return { outcome: "already_removed", status: row.status };
+  }
+
+  const linkedOrders = await db
+    .select({ status: ordersTable.status })
+    .from(ordersTable)
+    .where(eq(ordersTable.adId, adId));
+
+  const hasActiveLinkedOrder = linkedOrders.some((o) => !isTerminalOrderStatus(o.status));
+  if (hasActiveLinkedOrder) {
+    return { outcome: "blocked_active_orders", linkedOrders: linkedOrders.length };
+  }
+
+  if (linkedOrders.length > 0) {
+    await db
+      .update(adsTable)
+      .set({
+        status: AD_LIFECYCLE_STATUS.HIDDEN,
+        updatedAt: new Date(),
+      })
+      .where(eq(adsTable.id, adId));
+    return { outcome: "hidden_preserved" };
+  }
+
+  await db.delete(adsTable).where(eq(adsTable.id, adId));
   return { outcome: "hard_deleted" };
 }
 

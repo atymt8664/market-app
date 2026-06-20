@@ -21,6 +21,7 @@ import { loadAdminStaffContext } from "../lib/admin-rbac";
 import { FounderProtectedError } from "../lib/admin-staff";
 import { officialNotificationContent } from "../lib/communications";
 import { createNotification } from "../lib/create-notification";
+import { adminRemoveListing } from "../lib/ad-lifecycle";
 import { logger } from "../lib/logger";
 import { requireAdminPermission } from "../middlewares/require-admin-permission";
 import { requireAdminFounder } from "../middlewares/require-admin-founder";
@@ -351,36 +352,84 @@ router.post("/admin/reports/:id/ad-action", requireAdminPermission("reports"), r
       extra: { reportId: id },
     });
   } else {
-    await db.delete(adsTable).where(eq(adsTable.id, report.targetAdId));
-    if (targetAd?.userId) {
-      try {
-        const deletedCopy = officialNotificationContent({ type: "ad.deleted" });
-        if (deletedCopy) {
-          await createNotification({
-            userId: targetAd.userId,
-            type: "ad.deleted",
-            title: deletedCopy.title,
-            body: deletedCopy.body,
-            entityType: null,
-            entityId: null,
-            metadata: { adId: targetAd.id, reason: parsed.reason },
-          });
+    const removeResult = await adminRemoveListing(report.targetAdId);
+    switch (removeResult.outcome) {
+      case "not_found":
+        return res.status(404).json({ error: "Ad not found" });
+      case "blocked_active_orders":
+        return res.status(409).json({
+          error:
+            "لا يمكن حذف هذا الإعلان نهائياً لوجود طلبات نشطة. استخدم «إخفاء» بدلاً من الحذف.",
+          code: "AD_DELETE_LINKED_ORDERS",
+          linkedOrders: removeResult.linkedOrders,
+        });
+      case "already_removed":
+        break;
+      case "hidden_preserved":
+        if (targetAd?.userId) {
+          try {
+            const hiddenCopy = officialNotificationContent({ type: "ad.hidden" });
+            if (hiddenCopy) {
+              await createNotification({
+                userId: targetAd.userId,
+                type: "ad.hidden",
+                title: hiddenCopy.title,
+                body: hiddenCopy.body,
+                entityType: "ad",
+                entityId: targetAd.id,
+                metadata: { adId: targetAd.id, reason: parsed.reason },
+              });
+            }
+          } catch (err) {
+            logger.warn({ err, adId: targetAd.id }, "createNotification failed (ad.hidden from report)");
+          }
         }
-      } catch (err) {
-        logger.warn({ err, adId: targetAd.id }, "createNotification failed (ad.deleted from report)");
-      }
+        await writeAdminAudit({
+          req,
+          actionKey: "ad.hide",
+          targetType: "ad",
+          targetId: report.targetAdId,
+          previousState: targetAd?.status ?? null,
+          newState: "hidden",
+          reason: parsed.reason,
+          deepLink: adminDeepLink(`/admin/reports?reportId=${id}`),
+          extra: { reportId: id, preservedOrders: true },
+        });
+        break;
+      case "hard_deleted":
+        if (targetAd?.userId) {
+          try {
+            const deletedCopy = officialNotificationContent({ type: "ad.deleted" });
+            if (deletedCopy) {
+              await createNotification({
+                userId: targetAd.userId,
+                type: "ad.deleted",
+                title: deletedCopy.title,
+                body: deletedCopy.body,
+                entityType: null,
+                entityId: null,
+                metadata: { adId: targetAd.id, reason: parsed.reason },
+              });
+            }
+          } catch (err) {
+            logger.warn({ err, adId: targetAd.id }, "createNotification failed (ad.deleted from report)");
+          }
+        }
+        await writeAdminAudit({
+          req,
+          actionKey: "ad.delete",
+          targetType: "ad",
+          targetId: report.targetAdId,
+          previousState: targetAd?.status ?? null,
+          newState: "deleted",
+          reason: parsed.reason,
+          deepLink: adminDeepLink(`/admin/reports?reportId=${id}`),
+          extra: { reportId: id },
+        });
+        break;
+      default:
+        return res.status(500).json({ error: "Unexpected error" });
     }
-    await writeAdminAudit({
-      req,
-      actionKey: "ad.delete",
-      targetType: "ad",
-      targetId: report.targetAdId,
-      previousState: targetAd?.status ?? null,
-      newState: "deleted",
-      reason: parsed.reason,
-      deepLink: adminDeepLink(`/admin/reports?reportId=${id}`),
-      extra: { reportId: id },
-    });
   }
 
   await db.update(reportsTable).set({ status: "resolved" }).where(eq(reportsTable.id, id));

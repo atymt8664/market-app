@@ -7,7 +7,7 @@ import {
   messagesTable,
   db,
 } from "@workspace/db";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { isPublicListingStatus } from "./ad-lifecycle";
 
 export type SerializedConversationAdRef = {
@@ -79,11 +79,32 @@ function isUniqueViolation(err: unknown): boolean {
   return false;
 }
 
-/** Best-effort primary ad pointer; non-fatal when legacy (ad_id, buyer_id) unique blocks update. */
+/** Best-effort primary ad pointer; skip when legacy (ad_id, buyer_id) unique would reject the update. */
 export async function touchConversationPrimaryAd(
   conversationId: number,
   adId: number,
 ): Promise<void> {
+  const convRows = await db
+    .select({ buyerId: conversationsTable.buyerId, adId: conversationsTable.adId })
+    .from(conversationsTable)
+    .where(eq(conversationsTable.id, conversationId))
+    .limit(1);
+  const conv = convRows[0];
+  if (!conv || conv.adId === adId) return;
+
+  const conflict = await db
+    .select({ id: conversationsTable.id })
+    .from(conversationsTable)
+    .where(
+      and(
+        eq(conversationsTable.adId, adId),
+        eq(conversationsTable.buyerId, conv.buyerId),
+        ne(conversationsTable.id, conversationId),
+      ),
+    )
+    .limit(1);
+  if (conflict[0]) return;
+
   try {
     await db
       .update(conversationsTable)

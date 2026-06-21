@@ -76,9 +76,15 @@ import {
   getAppTextDir,
 } from "@/lib/app-text-direction";
 import { inboxCollectionShellClass } from "@/lib/chat-inbox-collection-styles";
-
-const emptyCardShell =
-  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 p-6 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-8";
+import {
+  TAB_EMPTY_CTA_CLASS,
+  TAB_EMPTY_DESC_CLASS,
+  TAB_EMPTY_ICON_RING_CLASS,
+  TAB_EMPTY_PAGE_TOP_CLASS,
+  TAB_EMPTY_TITLE_CLASS,
+  TAB_EMPTY_WRAPPER_CLASS,
+  tabEmptyCardClass,
+} from "@/lib/tab-empty-state-layout";
 
 const conversationRowBaseClass =
   "flex w-full items-center gap-2.5 rounded-xl border border-primary/30 bg-[#0A0A0A]/75 px-2.5 py-2 shadow-[0_0_12px_-10px_hsl(var(--primary)/0.1)] ring-1 ring-primary/10 transition-colors";
@@ -346,25 +352,6 @@ export default function Messages() {
   const blockedCount = blockedQ.data?.length ?? 0;
   const { setOverride } = useAppChromeContext();
 
-  useLayoutEffect(() => {
-    if (collectionView || selectMode) {
-      setOverride({ hidden: true });
-      return () => setOverride({});
-    }
-    setOverride({
-      trailing: (
-        <ChatInboxCollectionsMenuButton
-          onClick={() => {
-            void queryClient.invalidateQueries({ queryKey: inboxBlockedQueryKey() });
-            void queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
-            setCollectionsMenuOpen(true);
-          }}
-        />
-      ),
-    });
-    return () => setOverride({});
-  }, [collectionView, selectMode, queryClient, setOverride]);
-
   const mutedCount = useMemo(() => {
     const mutedSet = new Set(prefs.mutedIds);
     return (conversations ?? []).filter((c) => mutedSet.has(c.id)).length;
@@ -380,6 +367,29 @@ export default function Messages() {
     authLoading || (!!user && isPending && conversationCount === 0);
   const showInboxList = conversationCount > 0;
   const showInboxEmpty = !!user && !authLoading && !isPending && conversationCount === 0;
+
+  useLayoutEffect(() => {
+    if (collectionView || selectMode) {
+      setOverride({ hidden: true });
+      return () => setOverride({});
+    }
+    if (showInboxEmpty) {
+      setOverride({});
+      return () => setOverride({});
+    }
+    setOverride({
+      trailing: (
+        <ChatInboxCollectionsMenuButton
+          onClick={() => {
+            void queryClient.invalidateQueries({ queryKey: inboxBlockedQueryKey() });
+            void queryClient.invalidateQueries({ queryKey: inboxHiddenQueryKey() });
+            setCollectionsMenuOpen(true);
+          }}
+        />
+      ),
+    });
+    return () => setOverride({});
+  }, [collectionView, selectMode, queryClient, setOverride, showInboxEmpty]);
 
   const exitSelectMode = useCallback(() => {
     setSelectMode(false);
@@ -610,7 +620,12 @@ export default function Messages() {
         />
       ) : null}
 
-      <div className="mx-auto flex w-full max-w-[820px] flex-1 px-4 pt-3 md:px-6">
+      <div
+        className={cn(
+          "mx-auto flex w-full max-w-[820px] flex-1 px-4 md:px-6",
+          showInboxEmpty ? cn(TAB_EMPTY_PAGE_TOP_CLASS, "px-3 md:px-4") : "pt-3",
+        )}
+      >
         {inboxHydrating ? (
           <div className="flex w-full flex-col gap-1.5">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -653,31 +668,22 @@ export default function Messages() {
             </button>
           </div>
         ) : showInboxEmpty ? (
-          <div className="flex justify-center py-6 md:py-8">
-            <div
-              className={cn(
-                emptyCardShell,
-                "flex w-full max-w-sm flex-col items-center text-center sm:max-w-md",
-              )}
-              dir="rtl"
-            >
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-primary/35 bg-[#0A0A0A]/90 shadow-[0_0_18px_-8px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12 md:h-[4.5rem] md:w-[4.5rem]">
+          <div className={TAB_EMPTY_WRAPPER_CLASS}>
+            <div className={tabEmptyCardClass()} dir="rtl" data-testid="tab-empty-state-card">
+              <div className={TAB_EMPTY_ICON_RING_CLASS}>
                 <MessageCircle
                   className="h-8 w-8 text-primary md:h-9 md:w-9"
                   strokeWidth={2}
                   aria-hidden
                 />
               </div>
-              <h3 className="mb-1.5 text-lg font-bold text-foreground md:text-xl">
+              <h3 className={TAB_EMPTY_TITLE_CLASS}>
                 {t("messages.empty_title")}
               </h3>
-              <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
+              <p className={TAB_EMPTY_DESC_CLASS}>
                 {t("messages.empty_desc")}
               </p>
-              <Link
-                href="/"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/40 bg-[#0A0A0A]/90 px-4 py-2.5 text-sm font-semibold text-primary shadow-[0_0_14px_-6px_hsl(var(--primary)/0.22)] ring-1 ring-primary/10 transition-colors hover:border-primary/55 hover:bg-black/95"
-              >
+              <Link href="/" className={TAB_EMPTY_CTA_CLASS}>
                 <Search className="h-4 w-4 shrink-0" strokeWidth={2.25} />
                 {t("messages.browse_ads")}
               </Link>

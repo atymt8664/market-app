@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowRight, Bell } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,9 +28,9 @@ import { t } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { cn } from "@/lib/utils";
 import { TAB_PAGE_HEADER_BAR } from "@/lib/tab-page-header-styles";
-import { platformHeaderDomProps, platformTopActionsDomProps } from "@/lib/platform-header-safe-area";
-import { TAB_IOS_STICKY_HEADER_SAFE_TOP_CLASS } from "@/lib/tab-ios-layout";
+import { platformHeaderDomProps } from "@/lib/platform-header-safe-area";
 import { appTextAlignClass, getAppTextDir } from "@/lib/app-text-direction";
+import { SETTINGS_IMMERSIVE_BOTTOM, SETTINGS_PAGE_BG } from "@/components/settings-shell";
 
 function notificationErrorMessage(error: unknown): string {
   if (error instanceof NotificationsApiError) {
@@ -50,7 +50,13 @@ export default function NotificationsPage() {
   const isRtl = locale === "ar";
   const [activeTab, setActiveTab] = useState<NotificationCenterTabId>("all");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { user, isLoading: authLoading } = useAuth();
+
+  /** Reset list scroll when switching tabs — L2 scroll owner is this page root (P9-3). */
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeTab]);
 
   const listQuery = useNotificationsQuery({
     enabled: !!user,
@@ -98,7 +104,7 @@ export default function NotificationsPage() {
 
   if (!authLoading && !user) {
     return (
-      <div className="flex min-h-[100svh] w-full flex-col bg-[#0A0A0A]">
+      <div ref={scrollRef} className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}>
         <header className={cn(TAB_PAGE_HEADER_BAR, "px-3 md:px-4")} dir={textDir} {...platformHeaderDomProps()}>
           <div className="mx-auto flex max-w-screen-xl items-center gap-3">
             <button
@@ -124,7 +130,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="flex min-h-[100svh] w-full flex-col bg-[#0A0A0A]">
+    <div ref={scrollRef} className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}>
       <header className={cn(TAB_PAGE_HEADER_BAR, "px-3 md:px-4")} dir={textDir} {...platformHeaderDomProps()}>
         <div className="mx-auto flex max-w-screen-xl items-center gap-2 sm:gap-3">
           <button
@@ -171,7 +177,7 @@ export default function NotificationsPage() {
         ) : null}
       </header>
 
-      <div className="flex-1 px-3 pb-10 pt-3 md:px-4 md:pb-12 md:pt-4" dir={textDir}>
+      <div className="px-3 pb-6 pt-3 md:px-4 md:pb-8 md:pt-4" dir={textDir}>
         <div className="mx-auto w-full max-w-lg space-y-3 md:max-w-xl">
           {!authLoading && !(listQuery.isLoading && !listQuery.data) && !listQuery.isError && items.length > 0 ? (
             <NotificationCenterSummaryBar summary={summary} />

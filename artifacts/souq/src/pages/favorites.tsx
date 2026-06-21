@@ -53,7 +53,7 @@ export default function Favorites() {
             ))}
           </ul>
         ) : (
-          <div className="flex justify-center py-6 md:py-8">
+          <div className="flex justify-center pt-0 pb-6 md:pt-1 md:pb-8">
             <div
               className={cn(
                 emptyCardShell,
@@ -63,7 +63,7 @@ export default function Favorites() {
             >
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-primary/35 bg-[#0A0A0A]/90 shadow-[0_0_18px_-8px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12 md:h-[4.5rem] md:w-[4.5rem]">
                 <Heart
-                  className="h-8 w-8 fill-primary/25 text-primary md:h-9 md:w-9"
+                  className="h-8 w-8 text-primary md:h-9 md:w-9"
                   strokeWidth={2}
                   aria-hidden
                 />

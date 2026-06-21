@@ -54,6 +54,8 @@ export function Layout({ children }: LayoutProps) {
   /** محادثة `/messages/:id` — fullscreen مثل واتساب: لا BottomNav ولا padding سفلي للشريط */
   const isMessageThreadRoute = /^\/messages\/\d+/.test(location);
   const isNotificationsRoute = location.startsWith("/notifications");
+  /** `/categories` — standalone hub; no BottomNav (card density + no clip). */
+  const isCategoriesRoute = location === "/categories";
   /** مسارات تسويق غامرة: بدون BottomNav */
   const isImmersiveMarketingRoute =
     location.startsWith("/promote/") ||
@@ -65,7 +67,10 @@ export function Layout({ children }: LayoutProps) {
   const isP17CheckoutFlowRoute =
     location.startsWith("/checkout/") || location === "/orders/created";
   const isImmersiveShell =
-    isMessageThreadRoute || isNotificationsRoute || isImmersiveSettingsLegalAccountRoute(location);
+    isMessageThreadRoute ||
+    isNotificationsRoute ||
+    isCategoriesRoute ||
+    isImmersiveSettingsLegalAccountRoute(location);
   const hideBottomNav =
     location.startsWith("/reset-password") ||
     location.startsWith("/login") ||

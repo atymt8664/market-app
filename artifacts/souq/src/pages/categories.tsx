@@ -29,17 +29,17 @@ function CategoryCardSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-primary/25 bg-[#0A0A0A]/60 p-4 shadow-[0_0_18px_-14px_hsl(var(--primary)/0.14)] ring-1 ring-primary/8",
+        "rounded-xl border border-primary/25 bg-[#0A0A0A]/60 p-2.5 shadow-[0_0_14px_-14px_hsl(var(--primary)/0.12)] ring-1 ring-primary/8 md:rounded-2xl md:p-4",
         className,
       )}
     >
-      <div className="flex items-center gap-3">
-        <div className="h-14 w-14 shrink-0 animate-pulse rounded-2xl bg-[#0A0A0A]/90 ring-1 ring-primary/15" />
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="h-4 w-[72%] max-w-[12rem] animate-pulse rounded-md bg-zinc-800/90" />
-          <div className="h-3 w-[88%] max-w-[14rem] animate-pulse rounded-md bg-zinc-800/70" />
+      <div className="flex items-center gap-2 md:gap-3">
+        <div className="h-10 w-10 shrink-0 animate-pulse rounded-xl bg-[#0A0A0A]/90 ring-1 ring-primary/15 md:h-14 md:w-14 md:rounded-2xl" />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="h-3.5 w-[72%] max-w-[12rem] animate-pulse rounded-md bg-zinc-800/90 md:h-4" />
+          <div className="h-2.5 w-[88%] max-w-[14rem] animate-pulse rounded-md bg-zinc-800/70 md:h-3" />
         </div>
-        <div className="h-5 w-5 shrink-0 animate-pulse rounded bg-zinc-800/80" />
+        <div className="h-4 w-4 shrink-0 animate-pulse rounded bg-zinc-800/80 md:h-5 md:w-5" />
       </div>
     </div>
   );
@@ -103,10 +103,10 @@ export default function Categories() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-[900px] flex-1 flex-col px-4 py-4 md:max-w-[760px] md:px-6 md:py-5 lg:max-w-[860px]">
+      <main className="mx-auto flex w-full max-w-[900px] flex-1 flex-col px-3 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] md:max-w-[760px] md:px-6 md:py-5 lg:max-w-[860px]">
         <p
           className={cn(
-            "mb-4 text-sm leading-relaxed text-zinc-500 md:mb-5",
+            "mb-2 text-xs leading-snug text-zinc-500 md:mb-5 md:text-sm md:leading-relaxed",
             isRtl ? "text-right" : "text-left",
           )}
         >
@@ -114,7 +114,7 @@ export default function Categories() {
         </p>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3.5">
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-3.5">
             {Array.from({ length: 8 }).map((_, i) => (
               <CategoryCardSkeleton key={i} />
             ))}
@@ -166,7 +166,7 @@ export default function Categories() {
           </div>
         ) : (
           <ul
-            className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3.5"
+            className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-3.5"
             role="list"
           >
             {list.map((cat) => (
@@ -175,22 +175,23 @@ export default function Categories() {
                   <div
                     className={cn(
                       SETTINGS_CARD_SHELL,
-                      "group cursor-pointer p-0 transition-[border-color,box-shadow,transform] duration-200",
+                      "group cursor-pointer rounded-xl p-0 transition-[border-color,box-shadow,transform] duration-200 md:rounded-2xl",
                       "hover:border-primary/55 hover:shadow-[0_0_28px_-12px_hsl(var(--primary)/0.28)]",
                       "active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100",
                     )}
                   >
-                    <div className="flex items-center gap-3 p-4 md:gap-4 md:p-4">
+                    <div className="flex items-center gap-2 p-2.5 md:gap-3 md:p-4">
                       <div
                         className={cn(
-                          "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl",
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
                           "border border-primary/35 bg-[#0A0A0A]/75 text-primary",
-                          "shadow-[0_0_14px_-10px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10",
-                          "transition-transform group-hover:shadow-[0_0_18px_-10px_hsl(var(--primary)/0.28)]",
+                          "shadow-[0_0_12px_-10px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10",
+                          "transition-transform group-hover:shadow-[0_0_16px_-10px_hsl(var(--primary)/0.26)]",
                           "group-active:scale-95 motion-reduce:group-active:scale-100",
+                          "md:h-14 md:w-14 md:rounded-2xl",
                         )}
                       >
-                        <CategoryIcon name={cat.icon} className="h-7 w-7" />
+                        <CategoryIcon name={cat.icon} className="h-5 w-5 md:h-7 md:w-7" />
                       </div>
                       <div
                         className={cn(
@@ -198,19 +199,19 @@ export default function Categories() {
                           isRtl ? "text-right" : "text-left",
                         )}
                       >
-                        <h2 className="text-[15px] font-semibold leading-snug text-foreground md:text-base">
+                        <h2 className="text-[13px] font-semibold leading-tight text-foreground md:text-[15px] md:leading-snug lg:text-base">
                           {getCreateAdTaxonomyLabel(locale, cat.name)}
                         </h2>
-                        <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-zinc-500 md:text-[13px]">
+                        <p className="mt-0 line-clamp-1 text-[11px] leading-snug text-zinc-500 md:mt-0.5 md:line-clamp-2 md:text-xs md:leading-relaxed lg:text-[13px]">
                           {subtitleFor(cat)}
                         </p>
-                        <p className="mt-1.5 text-[11px] font-medium tabular-nums text-primary/85">
+                        <p className="mt-0.5 text-[10px] font-medium tabular-nums text-primary/85 md:mt-1.5 md:text-[11px]">
                           {t("categories.listings_count", { count: cat.adCount ?? 0 })}
                         </p>
                       </div>
                       <ChevronLeft
                         className={cn(
-                          "h-5 w-5 shrink-0 text-primary/70 transition-transform group-hover:text-primary",
+                          "h-4 w-4 shrink-0 text-primary/70 transition-transform group-hover:text-primary md:h-5 md:w-5",
                           isRtl
                             ? "rotate-180 group-hover:-translate-x-0.5"
                             : "group-hover:translate-x-0.5",

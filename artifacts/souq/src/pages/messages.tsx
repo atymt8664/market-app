@@ -1,4 +1,4 @@
-﻿import { Redirect, useLocation } from "wouter";
+﻿import { Redirect, Link, useLocation } from "wouter";
 import {
   memo,
   useCallback,
@@ -32,7 +32,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useInboxClientPrefs } from "@/hooks/use-inbox-client-prefs";
 import { useInboxLongPress } from "@/hooks/use-inbox-long-press";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BellOff, Check, MessageCircle, Pin } from "lucide-react";
+import { BellOff, Check, MessageCircle, Pin, Search } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
 import { useChatSocket, type ChatSocketEvent } from "@/hooks/use-chat-socket";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
@@ -78,7 +78,7 @@ import {
 import { inboxCollectionShellClass } from "@/lib/chat-inbox-collection-styles";
 
 const emptyCardShell =
-  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/80 p-8 shadow-[0_0_28px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/15 bg-[#0A0A0A]/70 md:p-10";
+  "rounded-2xl border border-primary/40 bg-[#0A0A0A]/75 p-6 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 md:p-8";
 
 const conversationRowBaseClass =
   "flex w-full items-center gap-2.5 rounded-xl border border-primary/30 bg-[#0A0A0A]/75 px-2.5 py-2 shadow-[0_0_12px_-10px_hsl(var(--primary)/0.1)] ring-1 ring-primary/10 transition-colors";
@@ -653,26 +653,34 @@ export default function Messages() {
             </button>
           </div>
         ) : showInboxEmpty ? (
-          <div className="flex w-full justify-center pt-2">
+          <div className="flex justify-center py-6 md:py-8">
             <div
               className={cn(
                 emptyCardShell,
-                "flex w-full max-w-md flex-col items-center text-center",
+                "flex w-full max-w-sm flex-col items-center text-center sm:max-w-md",
               )}
+              dir="rtl"
             >
-              <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-primary/35 bg-[#0A0A0A]/90 shadow-[0_0_18px_-8px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-primary/35 bg-[#0A0A0A]/90 shadow-[0_0_18px_-8px_hsl(var(--primary)/0.22)] ring-1 ring-primary/12 md:h-[4.5rem] md:w-[4.5rem]">
                 <MessageCircle
-                  className="h-8 w-8 text-primary"
-                  strokeWidth={2.25}
+                  className="h-8 w-8 text-primary md:h-9 md:w-9"
+                  strokeWidth={2}
                   aria-hidden
                 />
               </div>
-              <h2 className="mb-1 text-base font-bold text-foreground">
+              <h3 className="mb-1.5 text-lg font-bold text-foreground md:text-xl">
                 {t("messages.empty_title")}
-              </h2>
-              <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
+              </h3>
+              <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
                 {t("messages.empty_desc")}
               </p>
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/40 bg-[#0A0A0A]/90 px-4 py-2.5 text-sm font-semibold text-primary shadow-[0_0_14px_-6px_hsl(var(--primary)/0.22)] ring-1 ring-primary/10 transition-colors hover:border-primary/55 hover:bg-black/95"
+              >
+                <Search className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                {t("messages.browse_ads")}
+              </Link>
             </div>
           </div>
         ) : isFetching ? (

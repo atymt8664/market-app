@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowRight, Bell } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -53,10 +53,10 @@ export default function NotificationsPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user, isLoading: authLoading } = useAuth();
 
-  /** Reset list scroll when switching tabs — L2 scroll owner is this page root (P9-3). */
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
-  }, [activeTab]);
+  const handleTabChange = (tab: NotificationCenterTabId) => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    setActiveTab(tab);
+  };
 
   const listQuery = useNotificationsQuery({
     enabled: !!user,
@@ -104,7 +104,7 @@ export default function NotificationsPage() {
 
   if (!authLoading && !user) {
     return (
-      <div ref={scrollRef} className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}>
+      <div ref={scrollRef} data-notification-center-scroll="" className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}>
         <header className={cn(TAB_PAGE_HEADER_BAR, "px-3 md:px-4")} dir={textDir} {...platformHeaderDomProps()}>
           <div className="mx-auto flex max-w-screen-xl items-center gap-3">
             <button
@@ -130,7 +130,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div ref={scrollRef} className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}>
+    <div ref={scrollRef} data-notification-center-scroll="" className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}>
       <header className={cn(TAB_PAGE_HEADER_BAR, "px-3 md:px-4")} dir={textDir} {...platformHeaderDomProps()}>
         <div className="mx-auto flex max-w-screen-xl items-center gap-2 sm:gap-3">
           <button
@@ -171,7 +171,7 @@ export default function NotificationsPage() {
               tabs={tabs}
               active={activeTab}
               items={items}
-              onChange={setActiveTab}
+              onChange={handleTabChange}
             />
           </div>
         ) : null}

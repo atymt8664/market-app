@@ -96,7 +96,7 @@
       "destination": "/api/og?route=profile&id=:id"
     },
     {
-      "source": "/((?!assets/|fonts/|icons/|brand/|sw.js|manifest.webmanifest|favicon.svg|robots.txt|sitemap.xml|llms.txt).*)",
+      "source": "/((?!assets/|fonts/|icons/|brand/|sw.js|manifest.webmanifest|favicon.ico|favicon.svg|robots.txt|sitemap.xml|llms.txt).*)",
       "destination": "/index.html"
     }
   ]

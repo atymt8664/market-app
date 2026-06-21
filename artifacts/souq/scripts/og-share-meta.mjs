@@ -11,6 +11,7 @@ import {
   buildHomeStructuredDataJsonLd,
   P3_STRUCTURED_DATA_SCRIPT_ID,
 } from "./home-structured-data.mjs";
+import { renderP11FaviconHeadLinks } from "./p11-favicon-head-links.mjs";
 
 export { P3_STRUCTURED_DATA_SCRIPT_ID, buildHomeStructuredDataJsonLd };
 
@@ -201,6 +202,7 @@ export function renderOgHtml(meta, jsonLd, scriptId = P4_AD_STRUCTURED_DATA_SCRI
 <meta name="twitter:description" content="${description}" />
 <meta name="twitter:image" content="${image}" />
 <meta name="twitter:image:alt" content="${imageAlt}" />
+${renderP11FaviconHeadLinks()}
 ${ldBlock}
 </head>
 <body><p>${title}</p></body>

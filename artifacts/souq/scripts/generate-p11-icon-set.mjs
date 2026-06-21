@@ -9,6 +9,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { pngBufferToIco } from "./p11-favicon-head-links.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.resolve(__dirname, "../public");
@@ -104,6 +105,12 @@ function generateFavicons() {
   runSharp(masterPath, path.join(iconsDir, "favicon-48.png"), "resize", "48", "48");
 }
 
+/** Google + legacy browsers: /favicon.ico must be a real ICO (not SPA HTML). */
+function generateFaviconIco() {
+  const png48 = fs.readFileSync(path.join(iconsDir, "favicon-48.png"));
+  fs.writeFileSync(path.join(publicDir, "favicon.ico"), pngBufferToIco(png48, 48));
+}
+
 function generateAndroidLauncher() {
   for (const { folder, size } of ANDROID_LAUNCHER) {
     const out = path.join(
@@ -129,10 +136,13 @@ function generatePromoVideoLogo() {
   runSharp(masterPath, out, "resize", "512", "512");
 }
 
+/** Legacy direct URL; tab icons use favicon.ico + PNG (no external-ref SVG in index). */
 function writeFaviconSvg() {
+  const png32 = fs.readFileSync(path.join(iconsDir, "favicon-32.png"));
+  const b64 = png32.toString("base64");
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="Souq Arab EU">
-  <image href="/icons/favicon-32.png" width="32" height="32"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="Souq Arab EU">
+  <image href="data:image/png;base64,${b64}" width="32" height="32"/>
 </svg>
 `;
   fs.writeFileSync(path.join(publicDir, "favicon.svg"), svg, "utf8");
@@ -149,6 +159,7 @@ function main() {
   generatePwaIcons();
   generateMaskable512();
   generateFavicons();
+  generateFaviconIco();
   generateAndroidLauncher();
   generatePlayStore();
   generatePromoVideoLogo();

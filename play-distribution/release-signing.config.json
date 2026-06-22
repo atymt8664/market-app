@@ -1,0 +1,26 @@
+{
+  "packageName": "com.souqarab.market",
+  "versionCode": 13,
+  "versionName": "13",
+  "keystore": {
+    "path": "play-distribution/twa/souq-twa-android/android.keystore",
+    "alias": "souqarab-upload"
+  },
+  "certificates": {
+    "uploadKeySha256": "DC:E4:8A:E3:79:EE:56:FB:13:AA:AF:0E:77:E9:80:92:6C:E3:67:12:89:EA:0A:F9:FE:29:3A:03:ED:3C:8C:52",
+    "appSigningKeySha256": "99:AB:18:CA:C8:C2:F9:93:87:B4:C4:A3:8B:46:D7:A4:E0:F0:4E:73:7C:E3:08:5D:B8:1E:0F:87:C1:B3:DC:07"
+  },
+  "assetlinks": {
+    "path": "artifacts/souq/public/.well-known/assetlinks.json"
+  },
+  "verificationRules": {
+    "closedTestingLocalSignMustMatch": "uploadKeySha256",
+    "twaProductionAssetlinksMustInclude": "appSigningKeySha256",
+    "assetlinksMayAlsoInclude": ["uploadKeySha256"]
+  },
+  "notes": {
+    "uploadKey": "Sign local APK/AAB before Play upload (Closed/Internal testing).",
+    "appSigningKey": "Google Play re-signs store-delivered APKs; TWA assetlinks must include this fingerprint.",
+    "playConsoleSource": "Play Console > App integrity > App signing + Upload key certificates (audit 2026-06-21)."
+  }
+}

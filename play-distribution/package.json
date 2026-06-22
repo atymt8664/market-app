@@ -13,6 +13,11 @@
     "feature": "node scripts/render-feature-graphic.mjs",
     "splash": "node scripts/render-splash-png.mjs",
     "pwa-webapk-splash-icon": "node scripts/render-pwa-webapk-splash-icon.mjs",
+    "sync-twa-embedded-manifest": "node scripts/sync-twa-embedded-manifest.mjs",
+    "twa-native-splash": "node scripts/render-twa-native-splash-drawables.mjs",
+    "sa-circle-icons": "node scripts/render-sa-circle-icon-unified.mjs",
+    "verify-twa-native-splash": "node scripts/verify-twa-native-splash-in-artifacts.mjs",
+    "validate-p11-release": "node scripts/validate-p11-release-artifacts.mjs",
     "brand-rasters": "node scripts/export-brand-rasters.mjs",
     "all-graphics": "pnpm run icons && pnpm run capture && pnpm run compose && pnpm run feature && pnpm run splash && pnpm run brand-rasters",
     "final-store": "pnpm run provision && pnpm run capture && pnpm run compose && pnpm run feature"

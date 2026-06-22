@@ -1,5 +1,6 @@
 import { getLocale } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { isWebSplashOverlayActive } from "@/lib/web-splash-overlay";
 
 /**
  * Minimal full-viewport placeholder while lazy route chunks load.
@@ -8,6 +9,18 @@ import { cn } from "@/lib/utils";
 export function RouteLoadingFallback() {
   const locale = typeof window !== "undefined" ? getLocale() : "ar";
   const dir = locale === "ar" ? "rtl" : "ltr";
+  const splashActive = isWebSplashOverlayActive();
+
+  if (splashActive) {
+    return (
+      <div
+        className="min-h-[100svh] w-full bg-transparent"
+        dir={dir}
+        aria-busy="true"
+        aria-hidden
+      />
+    );
+  }
 
   return (
     <div

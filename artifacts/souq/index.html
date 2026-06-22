@@ -97,10 +97,14 @@
     <link rel="preconnect" href="https://www.souq-arab.com" crossorigin />
     <link rel="preload" href="/fonts/cairo/cairo-400.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/cairo/cairo-600.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/brand/SA-splash-screen-v1.jpg" as="image" type="image/jpeg" fetchpriority="high" />
     <!-- P7-PR-12:HOME_LCP_HEAD -->
     <!-- P9-3C:SHELL_FEED_OFFSET -->
     <style>
-      html.dark{color-scheme:dark}html,body{margin:0;padding:0;background:#0a0a0a;height:100%;min-height:-webkit-fill-available;overflow:hidden}
+      html.dark{color-scheme:dark}html,body{margin:0;padding:0;background:#020202;height:100%;min-height:-webkit-fill-available;overflow:hidden}
+      #p11-web-splash-overlay{position:fixed;inset:0;z-index:99;width:100%;height:100%;height:100dvh;min-height:-webkit-fill-available;background:#020202;pointer-events:none;opacity:1;transition:opacity .22s ease-out,visibility .22s ease-out}
+      #p11-web-splash-overlay.p11-splash-dismiss{opacity:0;visibility:hidden}
+      #p11-web-splash-overlay img{display:block;width:100%;height:100%;min-height:100dvh;object-fit:cover;object-position:center center}
       [data-bottom-nav-shell]{position:fixed;left:0;right:0;bottom:0;margin:0;display:flex;flex-direction:column;background:#0A0A0A}
       .standalone-pwa [data-p7-header-shell="1"]{padding-top:var(--souq-safe-top,env(safe-area-inset-top,0px));padding-inline:16px;padding-bottom:0;box-sizing:border-box}
       html.ios-a2hs header,html.ios-a2hs [data-platform-top-actions="1"]{padding-top:var(--souq-safe-top,env(safe-area-inset-top,0px));box-sizing:border-box}
@@ -110,8 +114,8 @@
       #p7-header-shell *{pointer-events:none}
       #p7-lcp-layer{position:fixed;left:0;right:0;top:var(--p7-home-feed-offset,var(--p7-home-header-offset,148px));bottom:0;z-index:25;pointer-events:none;background:transparent}
       #p7-lcp-layer.p7-dismissed{opacity:0;visibility:hidden}
-      #root{position:relative;z-index:1;display:flex;flex-direction:column;flex:1;min-height:0;height:100%;overflow:hidden;background:#0A0A0A;padding-bottom:0}
-      #p7-language-gate-shell{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:40px 16px;box-sizing:border-box;background:#0a0a0a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+      #root{position:relative;z-index:1;display:flex;flex-direction:column;flex:1;min-height:0;height:100%;overflow:hidden;background:#020202;padding-bottom:0}
+      #p7-language-gate-shell{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:40px 16px;box-sizing:border-box;background:transparent;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
       #p7-language-gate-shell.p7-lang-gate-visible{display:flex}
       #p7-language-gate-shell .p7-lang-gate-card{width:100%;max-width:28rem;border-radius:1rem;border:1px solid rgba(194,235,108,.4);background:rgba(10,10,10,.75);padding:1.25rem 1.5rem;box-shadow:0 0 22px -12px rgba(194,235,108,.18);box-sizing:border-box}
       #p7-language-gate-shell .p7-lang-gate-title{margin:0;font-size:1.125rem;font-weight:600;line-height:1.35;color:#fafafa;text-align:right}
@@ -125,6 +129,23 @@
     </style>
   </head>
   <body>
+    <div id="p11-web-splash-overlay" aria-hidden="true" data-p11-web-splash="1">
+      <img src="/brand/SA-splash-screen-v1.jpg" alt="" decoding="sync" fetchpriority="high" width="853" height="1844" />
+    </div>
+    <script>
+      (function () {
+        var maxMs = 12000;
+        var fadeMs = 220;
+        window.setTimeout(function () {
+          var el = document.getElementById("p11-web-splash-overlay");
+          if (!el || el.classList.contains("p11-splash-dismiss")) return;
+          el.classList.add("p11-splash-dismiss");
+          window.setTimeout(function () {
+            el.remove();
+          }, fadeMs + 40);
+        }, maxMs);
+      })();
+    </script>
     <script>
       (function () {
         function isIosWebKit() {

@@ -30,6 +30,7 @@ import {
 } from "@/pages/home-feed-sections";
 import { useAppChromeContext } from "@/contexts/app-chrome-context";
 import { dismissHomeLcpLayer, dismissHomeHeaderShell, getHomeInitialHeaderOffsetPx, isHomeLcpFeedShellActive, syncHomeFeedShellOffset } from "@/lib/home-lcp-handoff";
+import { dismissWebSplashOverlay } from "@/lib/web-splash-overlay";
 import {
   markHomeColdStartReady,
   scheduleHomeShellStuckWatchdog,
@@ -548,6 +549,7 @@ export default function Home() {
   useEffect(() => {
     return scheduleHomeShellStuckWatchdog(() => {
       dismissHomeLcpLayer();
+      dismissWebSplashOverlay();
       setSkipReactFeedSkeleton(false);
     });
   }, []);
@@ -569,6 +571,7 @@ export default function Home() {
   useLayoutEffect(() => {
     if (!homeFeedReady) return;
     dismissHomeLcpLayer();
+    dismissWebSplashOverlay();
     markHomeColdStartReady();
     const raw = featuredAdsForHome?.[0]?.images?.[0];
     if (raw) void preloadAdImage(getAdImageFeaturedLeadUrl(raw));

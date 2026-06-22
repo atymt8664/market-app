@@ -14,6 +14,8 @@ import { RouteScrollRestoration } from "@/components/route-scroll-restoration";
 import { ensureFullLocaleForInteraction, hasSavedLocale, t, type Locale } from "@/i18n";
 import { stripHomeLcpShell } from "@/lib/home-lcp-handoff";
 import { dismissStaticLanguageGate } from "@/lib/language-gate-shell";
+import { dismissWebSplashOverlay } from "@/lib/web-splash-overlay";
+import { isHomePathname } from "@/lib/p7-home-path";
 import { useLocale } from "@/hooks/use-locale";
 import {
   AUTH_ACCENT_OUTLINE_BTN,
@@ -229,7 +231,7 @@ function FirstLaunchLanguageGate({ onDone }: { onDone: () => void }) {
   ];
 
   return (
-    <div className={cn(AUTH_PAGE_BG, "fixed inset-0 z-[100] items-center justify-center px-4 py-10")}>
+    <div className={cn("fixed inset-0 z-[100] items-center justify-center bg-transparent px-4 py-10 flex")}>
       <div className={cn(AUTH_CARD, "w-full max-w-md")} data-nosnippet>
         <h1 className="text-lg font-semibold text-foreground">{t("first_launch.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("first_launch.subtitle")}</p>
@@ -293,6 +295,7 @@ function App() {
   useEffect(() => {
     if (typeof window !== "undefined" && isPublicDataSafetyPath(window.location.pathname)) {
       setShowFirstLaunchSelector(false);
+      dismissWebSplashOverlay();
       return;
     }
     const firstLaunch = !hasSavedLocale();
@@ -305,6 +308,15 @@ function App() {
   useLayoutEffect(() => {
     if (showFirstLaunchSelector) {
       dismissStaticLanguageGate();
+    }
+  }, [showFirstLaunchSelector]);
+
+  /** P11: non-Home routes dismiss web splash once App shell mounts (Home waits for feed ready). */
+  useLayoutEffect(() => {
+    if (showFirstLaunchSelector) return;
+    if (typeof window === "undefined") return;
+    if (!isHomePathname()) {
+      dismissWebSplashOverlay();
     }
   }, [showFirstLaunchSelector]);
 

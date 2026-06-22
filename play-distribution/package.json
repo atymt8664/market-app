@@ -12,6 +12,7 @@
     "compose": "node scripts/render-store-slides.mjs",
     "feature": "node scripts/render-feature-graphic.mjs",
     "splash": "node scripts/render-splash-png.mjs",
+    "pwa-webapk-splash-icon": "node scripts/render-pwa-webapk-splash-icon.mjs",
     "brand-rasters": "node scripts/export-brand-rasters.mjs",
     "all-graphics": "pnpm run icons && pnpm run capture && pnpm run compose && pnpm run feature && pnpm run splash && pnpm run brand-rasters",
     "final-store": "pnpm run provision && pnpm run capture && pnpm run compose && pnpm run feature"

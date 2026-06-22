@@ -10,7 +10,7 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui", "browser"],
   "orientation": "portrait-primary",
-  "background_color": "#0A0A0A",
+  "background_color": "#020202",
   "theme_color": "#0A0A0A",
   "categories": ["shopping", "social"],
   "icons": [
@@ -57,7 +57,7 @@
       "purpose": "any"
     },
     {
-      "src": "/icons/pwa-icon-512.png",
+      "src": "/icons/pwa-splash-launch-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

@@ -28,6 +28,7 @@ import NotFound from "@/pages/not-found";
 import { SeoRouteSync } from "@/components/seo-route-sync";
 import { resolveSeoForPath } from "@/lib/seo-foundation";
 import { applyPublicPageMeta } from "@/lib/public-page-meta";
+import { LocalDevApiGuardBanner } from "@/components/local-dev-api-guard";
 
 /** P7-PR-2: defer ad-detail chunk until /ad/:id navigation — keeps Home cold path lean. */
 const AdDetail = lazyWithRetry(() => import("@/pages/ad-detail"));
@@ -336,6 +337,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <LocalDevApiGuardBanner />
       <main id="main-content" className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {wrapChrome ? (
           <Suspense fallback={main}>

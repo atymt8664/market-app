@@ -353,6 +353,46 @@ paths:
                 items:
                   $ref: "#/components/schemas/Ad"
 
+  /ads/feed-meta:
+    get:
+      operationId: getHomeFeedMeta
+      tags: [ads]
+      summary: Lightweight count of new public listings since a feed snapshot (home banner)
+      parameters:
+        - name: since
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Feed snapshot timestamp (ISO 8601)
+        - name: afterId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: Tie-breaker ad id at `since` (exclusive)
+        - name: city
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional city filter when home feed is city-scoped
+      responses:
+        "200":
+          description: New ads meta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeFeedMeta"
+        "400":
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /ads/stats:
     get:
       operationId: getAdsStats
@@ -1810,6 +1850,24 @@ components:
         order:
           $ref: "#/components/schemas/OrderDetail"
         mock: { type: boolean }
+
+    HomeFeedMeta:
+      type: object
+      required: [count, newestAdId, newestCreatedAt]
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          description: Number of new public listings since the snapshot
+        newestAdId:
+          type: integer
+          minimum: 0
+          description: Highest ad id among new listings (0 when count is 0)
+        newestCreatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Latest createdAt among new listings (null when count is 0)
 
     AdsStats:
       type: object

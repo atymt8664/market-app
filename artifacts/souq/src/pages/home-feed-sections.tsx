@@ -9,6 +9,7 @@ import { t } from "@/i18n";
 import { HOME_FEED_ADS_INSET, HOME_PAGE_INSET } from "@/lib/home-page-layout";
 import { BOTTOM_NAV_SCROLL_END_CLEARANCE_CLASS } from "@/lib/bottom-nav-layout";
 import { cn } from "@/lib/utils";
+import { HomeNewAdsBanner } from "@/components/home-new-ads-banner";
 
 const FEATURED_SKELETON_KEYS = [0, 1, 2, 3] as const;
 const GRID_SKELETON_KEYS = [0, 1, 2, 3] as const;
@@ -47,6 +48,9 @@ export type HomeFeedSectionsProps = {
   featuredAds: Ad[] | undefined;
   isLoadingRecommended: boolean;
   recommendedAds: Ad[] | undefined;
+  newAdsCount?: number;
+  newAdsRefreshing?: boolean;
+  onNewAdsRefresh?: () => void;
 };
 
 /** Recommended grid only — featured strip renders all items immediately (L2 scroll content). */
@@ -56,6 +60,9 @@ export const HomeFeedScrollContent = memo(function HomeFeedScrollContent({
   featuredAds,
   isLoadingRecommended,
   recommendedAds,
+  newAdsCount = 0,
+  newAdsRefreshing = false,
+  onNewAdsRefresh,
 }: HomeFeedSectionsProps) {
   const featuredList = Array.isArray(featuredAds) ? featuredAds : [];
   const recommendedReady = Array.isArray(recommendedAds) && recommendedAds.length > 0;
@@ -72,6 +79,11 @@ export const HomeFeedScrollContent = memo(function HomeFeedScrollContent({
 
   return (
     <div className="animate-in fade-in duration-300">
+      <HomeNewAdsBanner
+        count={newAdsCount}
+        busy={newAdsRefreshing}
+        onRefresh={() => onNewAdsRefresh?.()}
+      />
       <section className="min-w-0 pb-1 pt-0.5 max-md:pb-0.5 md:py-4">
         <div className={cn(HOME_PAGE_INSET, "mb-1.5 md:mb-2")}>
           <h2 className={homeSectionHeading}>{t("home.featured_ads")}</h2>

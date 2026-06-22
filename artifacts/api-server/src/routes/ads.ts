@@ -14,7 +14,7 @@ import {
   categoriesTable,
   subcategoriesTable,
 } from "@workspace/db";
-import { and, desc, eq, gte, ilike, lte, sql, or, inArray } from "drizzle-orm";
+import { and, desc, eq, gt, gte, ilike, lte, sql, or, inArray } from "drizzle-orm";
 import { getAdminActorId } from "../lib/admin-activity-log";
 import { okAdminActionFeedback } from "../lib/admin-action-feedback";
 import { adminDeepLink, writeAdminAudit } from "../lib/admin-audit";
@@ -439,6 +439,64 @@ router.get("/ads/recommended", async (req, res) => {
     limit: 20,
   });
   res.json(rows.map(serializeAd));
+});
+
+/** Lightweight home feed freshness probe — count only, no ad payloads (P9 home banner). */
+router.get("/ads/feed-meta", async (req, res) => {
+  const sinceRaw = typeof req.query.since === "string" ? req.query.since.trim() : "";
+  if (!sinceRaw) {
+    return res.status(400).json({ error: "since query param is required (ISO 8601)" });
+  }
+  const sinceDate = new Date(sinceRaw);
+  if (Number.isNaN(sinceDate.getTime())) {
+    return res.status(400).json({ error: "since must be a valid ISO 8601 timestamp" });
+  }
+
+  const afterIdRaw = typeof req.query.afterId === "string" ? req.query.afterId.trim() : "0";
+  const afterId = Number.parseInt(afterIdRaw, 10);
+  if (!Number.isFinite(afterId) || afterId < 0) {
+    return res.status(400).json({ error: "afterId must be a non-negative integer" });
+  }
+
+  const cityRaw = typeof req.query.city === "string" ? req.query.city.trim() : "";
+  const city = cityRaw.length > 0 ? cityRaw.slice(0, 120) : null;
+
+  const newerThanSnapshot = or(
+    gt(adsTable.createdAt, sinceDate),
+    and(eq(adsTable.createdAt, sinceDate), gt(adsTable.id, afterId)),
+  );
+
+  const whereParts = [
+    inArray(adsTable.status, [...PUBLIC_LISTING_STATUSES]),
+    newerThanSnapshot,
+  ];
+  if (city) {
+    whereParts.push(eq(adsTable.city, city));
+  }
+
+  const [row] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+      newestAdId: sql<number>`coalesce(max(${adsTable.id}), 0)::int`,
+      newestCreatedAt: sql<Date | null>`max(${adsTable.createdAt})`,
+    })
+    .from(adsTable)
+    .where(and(...whereParts));
+
+  const count = row?.count ?? 0;
+  const rawNewest = row?.newestCreatedAt;
+  const newestCreatedAt =
+    rawNewest == null
+      ? null
+      : rawNewest instanceof Date
+        ? rawNewest.toISOString()
+        : String(rawNewest);
+
+  res.json({
+    count,
+    newestAdId: row?.newestAdId ?? 0,
+    newestCreatedAt,
+  });
 });
 
 router.get("/ads/stats", async (_req, res) => {

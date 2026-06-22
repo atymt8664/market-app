@@ -765,6 +765,8 @@
   "home.location_hint_suffix": "button above filters listings (not the search field).",
   "home.location_picker": "Location picker",
   "home.no_ads": "No ads available right now",
+  "home.new_ads_banner_many": "{count} new ads available",
+  "home.new_ads_banner_one": "1 new ad available",
   "home.no_featured_ads": "No featured ads right now",
   "home.recommended": "Recommended for you",
   "home.search_label": "Search ads",

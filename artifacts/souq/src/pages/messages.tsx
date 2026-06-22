@@ -373,10 +373,6 @@ export default function Messages() {
       setOverride({ hidden: true });
       return () => setOverride({});
     }
-    if (showInboxEmpty) {
-      setOverride({});
-      return () => setOverride({});
-    }
     setOverride({
       trailing: (
         <ChatInboxCollectionsMenuButton
@@ -389,7 +385,7 @@ export default function Messages() {
       ),
     });
     return () => setOverride({});
-  }, [collectionView, selectMode, queryClient, setOverride, showInboxEmpty]);
+  }, [collectionView, selectMode, queryClient, setOverride]);
 
   const exitSelectMode = useCallback(() => {
     setSelectMode(false);

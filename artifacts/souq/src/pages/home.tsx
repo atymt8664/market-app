@@ -52,6 +52,8 @@ import {
 } from "@/lib/home-page-layout";
 import { cn } from "@/lib/utils";
 import { syncHomeBellSlotHint } from "@/lib/home-bell-slot-hint";
+import { computeHomeFeedSnapshot } from "@/lib/home-feed-snapshot";
+import { useHomeNewAdsPoll } from "@/hooks/use-home-new-ads-poll";
 import {
   HOME_FEED_REVEAL_TIMEOUT_MS,
   HOME_PUBLIC_QUERY_RETRY,
@@ -521,6 +523,14 @@ export default function Home() {
     if (feedCity) void refetchCityAds();
   }, [refetchFeatured, refetchDefaultRecommended, refetchCityAds, feedCity]);
 
+  const refreshHomeAdsQueries = useCallback(async () => {
+    await Promise.all([
+      refetchFeatured(),
+      refetchDefaultRecommended(),
+      feedCity ? refetchCityAds() : Promise.resolve(),
+    ]);
+  }, [refetchFeatured, refetchDefaultRecommended, refetchCityAds, feedCity]);
+
   const handleCategoriesRetry = useCallback(() => {
     void refetchCategories();
   }, [refetchCategories]);
@@ -568,6 +578,39 @@ export default function Home() {
     () => buildHomeRecommendedFeed(recommendedAdsRaw, featuredAdsForHome),
     [recommendedAdsRaw, featuredAdsForHome],
   );
+
+  const [feedEmptyBaselineIso, setFeedEmptyBaselineIso] = useState<string | null>(null);
+  useEffect(() => {
+    if (homeFeedReady && feedEmptyBaselineIso === null) {
+      setFeedEmptyBaselineIso(new Date().toISOString());
+    }
+  }, [homeFeedReady, feedEmptyBaselineIso]);
+
+  const homeFeedSnapshot = useMemo(() => {
+    if (!homeFeedReady || feedLoadFailed) return null;
+    return computeHomeFeedSnapshot(
+      featuredAdsForHome ?? [],
+      recommendedAds ?? [],
+      feedEmptyBaselineIso,
+    );
+  }, [
+    homeFeedReady,
+    feedLoadFailed,
+    featuredAdsForHome,
+    recommendedAds,
+    feedEmptyBaselineIso,
+  ]);
+
+  const {
+    newCount: homeNewAdsCount,
+    applyRefresh: applyHomeNewAdsRefresh,
+    refreshing: homeNewAdsRefreshing,
+  } = useHomeNewAdsPoll({
+    enabled: homeFeedReady && !feedLoadFailed,
+    snapshot: homeFeedSnapshot,
+    city: feedCity ?? null,
+    onRefresh: refreshHomeAdsQueries,
+  });
 
   const onSearchQueryChange = useCallback((value: string) => {
     setSearchQuery(value);
@@ -678,6 +721,9 @@ export default function Home() {
                 featuredAds={featuredAdsForHome}
                 isLoadingRecommended={feedTimeoutReached && !recommendedSettled}
                 recommendedAds={recommendedAds}
+                newAdsCount={homeNewAdsCount}
+                newAdsRefreshing={homeNewAdsRefreshing}
+                onNewAdsRefresh={() => void applyHomeNewAdsRefresh()}
               />
             )}
           </>

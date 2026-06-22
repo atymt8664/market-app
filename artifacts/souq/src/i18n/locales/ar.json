@@ -765,6 +765,8 @@
   "home.location_hint_suffix": "أعلاه يصفّي الإعلانات (ليس حقل البحث).",
   "home.location_picker": "اختيار الموقع",
   "home.no_ads": "لا توجد إعلانات حالياً",
+  "home.new_ads_banner_many": "يوجد {count} إعلانات جديدة",
+  "home.new_ads_banner_one": "يوجد إعلان جديد",
   "home.no_featured_ads": "لا توجد إعلانات مميزة حالياً",
   "home.recommended": "موصى لك",
   "home.search_label": "بحث في الإعلانات",

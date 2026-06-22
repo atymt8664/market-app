@@ -765,6 +765,8 @@
   "home.location_hint_suffix": "Schaltfläche oben filtert Anzeigen (nicht das Suchfeld).",
   "home.location_picker": "Standort wählen",
   "home.no_ads": "Aktuell keine Anzeigen",
+  "home.new_ads_banner_many": "{count} neue Anzeigen verfügbar",
+  "home.new_ads_banner_one": "1 neue Anzeige verfügbar",
   "home.no_featured_ads": "Aktuell keine hervorgehobenen Anzeigen",
   "home.recommended": "Empfohlen für dich",
   "home.search_label": "Anzeigen suchen",

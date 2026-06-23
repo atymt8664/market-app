@@ -13,6 +13,11 @@ export function isFeaturedQuerySettled(isFetched: boolean, isError: boolean): bo
   return isFetched || isError;
 }
 
+/** Home infinite feed — first page settled (success or terminal error). */
+export function isHomeFeedInfiniteSettled(isFetched: boolean, isError: boolean): boolean {
+  return isFetched || isError;
+}
+
 export function isRecommendedQuerySettled(
   feedCity: string | undefined,
   cityAdsFetched: boolean,

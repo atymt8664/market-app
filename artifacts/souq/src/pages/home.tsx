@@ -1,15 +1,11 @@
 import {
   useListCategories,
   useListFeaturedAds,
-  useListRecommendedAds,
-  useListAds,
   getListCategoriesQueryKey,
   getListFeaturedAdsQueryKey,
-  getListAdsQueryKey,
-  getListRecommendedAdsQueryKey,
-  type Ad,
   type Category,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { ChevronDown } from "lucide-react";
 import {
@@ -47,21 +43,24 @@ import type { Locale } from "@/i18n";
 import { useLocale } from "@/hooks/use-locale";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
 import { splitHomeCategoryLabel, filterHomeCategories } from "@/lib/home-category-display";
+import { HomePullToRefresh } from "@/components/home-pull-to-refresh";
 import {
   HOME_PAGE_INSET,
   HOME_HEADER_SEARCH_ROW_CLASS,
 } from "@/lib/home-page-layout";
 import { cn } from "@/lib/utils";
 import { syncHomeBellSlotHint } from "@/lib/home-bell-slot-hint";
-import { computeHomeFeedSnapshot } from "@/lib/home-feed-snapshot";
-import { useHomeNewAdsPoll } from "@/hooks/use-home-new-ads-poll";
+import {
+  getHomeFeedInfiniteQueryKey,
+  useHomeFeedInfiniteAds,
+} from "@/hooks/use-home-feed-infinite-ads";
 import {
   HOME_FEED_REVEAL_TIMEOUT_MS,
   HOME_PUBLIC_QUERY_RETRY,
   categoriesQueryFailed,
   computeHomeFeedReady,
   isFeaturedQuerySettled,
-  isRecommendedQuerySettled,
+  isHomeFeedInfiniteSettled,
   shouldShowCategoryPlaceholders,
 } from "@/lib/home-query-recovery";
 import { HOME_FIXED_HEADER_SAFE_TOP_CLASS } from "@/lib/standalone-safe-area";
@@ -70,7 +69,6 @@ import { platformHeaderDomProps } from "@/lib/platform-header-safe-area";
 /** React Query: تقليل إعادة الجلب عند التنقل للرئيسية دون المساس بـ invalidate بعد الطفرات/الأدمن. */
 const HOME_STALE_CATEGORIES_MS = 10 * 60 * 1000;
 const HOME_STALE_FEATURED_MS = 2 * 60 * 1000;
-const HOME_STALE_FEED_MS = 90 * 1000;
 
 const CATEGORY_SKELETON_KEYS = [0, 1, 2, 3, 4] as const;
 
@@ -449,52 +447,27 @@ export default function Home() {
     },
   });
 
-  /** P9-E-4b: fetch recommended in parallel with featured — no post-featured waterfall. */
+  const queryClient = useQueryClient();
+
+  /** Home recommended grid — GET /api/ads cursor pagination (real network pages). */
   const {
-    data: defaultRecommended,
-    isFetched: defaultRecFetched,
-    isError: defaultRecError,
-    refetch: refetchDefaultRecommended,
-    isFetching: isFetchingDefaultRec,
-  } = useListRecommendedAds({
-    query: {
-      queryKey: getListRecommendedAdsQueryKey(),
-      staleTime: HOME_STALE_FEED_MS,
-      retry: HOME_PUBLIC_QUERY_RETRY,
-    },
-  });
-  const {
-    data: cityAds,
-    isFetched: cityAdsFetched,
-    isError: cityAdsError,
-    refetch: refetchCityAds,
-    isFetching: isFetchingCityAds,
-  } = useListAds(
-    { city: feedCity, limit: 20 },
-    {
-      query: {
-        queryKey: getListAdsQueryKey({ city: feedCity, limit: 20 }),
-        enabled: !!feedCity,
-        staleTime: HOME_STALE_FEED_MS,
-        retry: HOME_PUBLIC_QUERY_RETRY,
-      },
-    },
-  );
+    data: feedInfiniteData,
+    isFetched: feedInfiniteFetched,
+    isError: feedInfiniteError,
+    isFetching: isFetchingFeedInfinite,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch: refetchFeedInfinite,
+  } = useHomeFeedInfiniteAds(feedCity);
 
   const featuredSettled = isFeaturedQuerySettled(featuredQueryFetched, featuredError);
 
-  const recommendedSettled = isRecommendedQuerySettled(
-    feedCity,
-    cityAdsFetched,
-    cityAds,
-    cityAdsError,
-    defaultRecFetched,
-    defaultRecError,
-  );
+  const feedInfiniteSettled = isHomeFeedInfiniteSettled(feedInfiniteFetched, feedInfiniteError);
 
   const [feedTimeoutReached, setFeedTimeoutReached] = useState(false);
   useEffect(() => {
-    if (featuredSettled && recommendedSettled) {
+    if (featuredSettled && feedInfiniteSettled) {
       setFeedTimeoutReached(false);
       return;
     }
@@ -503,41 +476,38 @@ export default function Home() {
       HOME_FEED_REVEAL_TIMEOUT_MS,
     );
     return () => window.clearTimeout(id);
-  }, [featuredSettled, recommendedSettled]);
+  }, [featuredSettled, feedInfiniteSettled]);
 
   /** P9-E-INCIDENT-1: unified reveal + timeout partial reveal — never infinite skeleton. */
   const homeFeedReady = computeHomeFeedReady(
     featuredSettled,
-    recommendedSettled,
+    feedInfiniteSettled,
     feedTimeoutReached,
   );
 
   const feedLoadFailed =
     featuredError ||
-    defaultRecError ||
-    (feedCity ? cityAdsError : false) ||
-    (feedTimeoutReached && !recommendedSettled);
+    feedInfiniteError ||
+    (feedTimeoutReached && !feedInfiniteSettled);
 
   const refetchHomeFeed = useCallback(() => {
     void refetchFeatured();
-    void refetchDefaultRecommended();
-    if (feedCity) void refetchCityAds();
-  }, [refetchFeatured, refetchDefaultRecommended, refetchCityAds, feedCity]);
+    void refetchFeedInfinite();
+  }, [refetchFeatured, refetchFeedInfinite]);
 
   const refreshHomeAdsQueries = useCallback(async () => {
     await Promise.all([
       refetchFeatured(),
-      refetchDefaultRecommended(),
-      feedCity ? refetchCityAds() : Promise.resolve(),
+      queryClient.resetQueries({ queryKey: getHomeFeedInfiniteQueryKey(feedCity) }),
     ]);
-  }, [refetchFeatured, refetchDefaultRecommended, refetchCityAds, feedCity]);
+  }, [refetchFeatured, queryClient, feedCity]);
 
   const handleCategoriesRetry = useCallback(() => {
     void refetchCategories();
   }, [refetchCategories]);
 
   const feedRetryBusy =
-    isFetchingFeatured || isFetchingDefaultRec || (feedCity && isFetchingCityAds);
+    isFetchingFeatured || (isFetchingFeedInfinite && !isFetchingNextPage);
   const categoriesRetryBusy = isFetchingCategories;
 
   /** P9-E-PROD-SHELL: skip React skeleton while build/Edge feed shell is visible (dev has no feed shell). */
@@ -555,12 +525,9 @@ export default function Home() {
   }, []);
 
   const recommendedAdsRaw = useMemo(() => {
-    if (feedCity) {
-      if (Array.isArray(cityAds) && cityAds.length > 0) return cityAds;
-      if (cityAdsFetched) return defaultRecommended ?? [];
-    }
-    return defaultRecommended;
-  }, [feedCity, cityAds, cityAdsFetched, defaultRecommended]);
+    const pages = feedInfiniteData?.pages ?? [];
+    return pages.flatMap((page) => page.items);
+  }, [feedInfiniteData]);
 
   const featuredAdsForHome = useMemo(
     () => filterHomeFeedAds(featuredAds),
@@ -582,39 +549,6 @@ export default function Home() {
     [recommendedAdsRaw, featuredAdsForHome],
   );
 
-  const [feedEmptyBaselineIso, setFeedEmptyBaselineIso] = useState<string | null>(null);
-  useEffect(() => {
-    if (homeFeedReady && feedEmptyBaselineIso === null) {
-      setFeedEmptyBaselineIso(new Date().toISOString());
-    }
-  }, [homeFeedReady, feedEmptyBaselineIso]);
-
-  const homeFeedSnapshot = useMemo(() => {
-    if (!homeFeedReady || feedLoadFailed) return null;
-    return computeHomeFeedSnapshot(
-      featuredAdsForHome ?? [],
-      recommendedAds ?? [],
-      feedEmptyBaselineIso,
-    );
-  }, [
-    homeFeedReady,
-    feedLoadFailed,
-    featuredAdsForHome,
-    recommendedAds,
-    feedEmptyBaselineIso,
-  ]);
-
-  const {
-    newCount: homeNewAdsCount,
-    applyRefresh: applyHomeNewAdsRefresh,
-    refreshing: homeNewAdsRefreshing,
-  } = useHomeNewAdsPoll({
-    enabled: homeFeedReady && !feedLoadFailed,
-    snapshot: homeFeedSnapshot,
-    city: feedCity ?? null,
-    onRefresh: refreshHomeAdsQueries,
-  });
-
   const onSearchQueryChange = useCallback((value: string) => {
     setSearchQuery(value);
   }, []);
@@ -631,6 +565,7 @@ export default function Home() {
   );
 
   const headerRef = useRef<HTMLElement>(null);
+  const homeScrollRef = useRef<HTMLDivElement>(null);
   const [headerOffsetPx, setHeaderOffsetPx] = useState(() => getHomeInitialHeaderOffsetPx());
 
   useLayoutEffect(() => {
@@ -693,44 +628,57 @@ export default function Home() {
 
   return (
     <main className="flex min-h-0 flex-1 w-full flex-col bg-[#0A0A0A]">
-      <AppShellContentScroll>
-        {!homeFeedReady ? (
-          <>
-            {!skipReactFeedSkeleton ? <HomeFeedSkeleton /> : null}
-            {feedTimeoutReached && feedLoadFailed ? (
-              <div className={cn(HOME_PAGE_INSET, "pb-3 pt-1")}>
-                <HomeSectionRetry
-                  testId="home-feed-retry"
-                  onRetry={refetchHomeFeed}
-                  busy={feedRetryBusy}
+      <AppShellContentScroll
+        ref={homeScrollRef}
+        className="relative"
+        data-home-scroll="1"
+      >
+        <HomePullToRefresh
+          scrollRef={homeScrollRef}
+          enabled={homeFeedReady && !feedLoadFailed}
+          onRefresh={refreshHomeAdsQueries}
+        >
+          {!homeFeedReady ? (
+            <>
+              {!skipReactFeedSkeleton ? <HomeFeedSkeleton /> : null}
+              {feedTimeoutReached && feedLoadFailed ? (
+                <div className={cn(HOME_PAGE_INSET, "pb-3 pt-1")}>
+                  <HomeSectionRetry
+                    testId="home-feed-retry"
+                    onRetry={refetchHomeFeed}
+                    busy={feedRetryBusy}
+                  />
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <>
+              {feedLoadFailed ? (
+                <div className={cn(HOME_PAGE_INSET, "pb-2 pt-1")}>
+                  <HomeSectionRetry
+                    testId="home-feed-retry"
+                    onRetry={refetchHomeFeed}
+                    busy={feedRetryBusy}
+                  />
+                </div>
+              ) : (
+                <HomeFeedScrollContent
+                  isRtl={isRtl}
+                  isLoadingFeatured={false}
+                  featuredAds={featuredAdsForHome}
+                  isLoadingRecommended={feedTimeoutReached && !feedInfiniteSettled}
+                  recommendedAds={recommendedAds}
+                  hasNextPage={hasNextPage ?? false}
+                  isFetchingNextPage={isFetchingNextPage}
+                  fetchNextPage={() => {
+                    void fetchNextPage();
+                  }}
+                  scrollRootRef={homeScrollRef}
                 />
-              </div>
-            ) : null}
-          </>
-        ) : (
-          <>
-            {feedLoadFailed ? (
-              <div className={cn(HOME_PAGE_INSET, "pb-2 pt-1")}>
-                <HomeSectionRetry
-                  testId="home-feed-retry"
-                  onRetry={refetchHomeFeed}
-                  busy={feedRetryBusy}
-                />
-              </div>
-            ) : (
-              <HomeFeedScrollContent
-                isRtl={isRtl}
-                isLoadingFeatured={false}
-                featuredAds={featuredAdsForHome}
-                isLoadingRecommended={feedTimeoutReached && !recommendedSettled}
-                recommendedAds={recommendedAds}
-                newAdsCount={homeNewAdsCount}
-                newAdsRefreshing={homeNewAdsRefreshing}
-                onNewAdsRefresh={() => void applyHomeNewAdsRefresh()}
-              />
-            )}
-          </>
-        )}
+              )}
+            </>
+          )}
+        </HomePullToRefresh>
       </AppShellContentScroll>
     </main>
   );

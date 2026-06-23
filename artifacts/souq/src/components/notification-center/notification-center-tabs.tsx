@@ -24,7 +24,7 @@ export function NotificationCenterTabs({
 }: NotificationCenterTabsProps) {
   return (
     <div
-      className="scrollbar-none -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 md:-mx-4 md:px-4"
+      className="souq-scrollbar-hidden -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 md:-mx-4 md:px-4"
       role="tablist"
       aria-label={t("notifications.tabs_aria")}
     >

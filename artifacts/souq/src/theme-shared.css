@@ -330,13 +330,21 @@ html.dark #root {
   }
 }
 
-/* Home L1 scroll — hide scrollbar visually; touch/wheel scroll unchanged. */
-[data-home-scroll] {
+/* App scroll surfaces — hide scrollbar visually; touch/wheel/keyboard scroll unchanged. */
+.souq-scrollbar-hidden,
+[data-app-shell-scroll="1"],
+[data-notification-center-scroll],
+[data-home-scroll],
+[data-profile-page-scroll] {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
-[data-home-scroll]::-webkit-scrollbar {
+.souq-scrollbar-hidden::-webkit-scrollbar,
+[data-app-shell-scroll="1"]::-webkit-scrollbar,
+[data-notification-center-scroll]::-webkit-scrollbar,
+[data-home-scroll]::-webkit-scrollbar,
+[data-profile-page-scroll]::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;

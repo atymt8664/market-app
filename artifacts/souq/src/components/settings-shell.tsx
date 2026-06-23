@@ -36,7 +36,11 @@ export const SETTINGS_CARD_COMPACT =
  * Replaces min-h-[100svh] which clipped inside overflow-hidden L2 Content Slot.
  */
 export const SETTINGS_PAGE_BG =
-  "flex min-h-0 flex-1 w-full flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain bg-[#0A0A0A] [-webkit-overflow-scrolling:touch]";
+  "flex min-h-0 flex-1 w-full flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain bg-[#0A0A0A] [-webkit-overflow-scrolling:touch] souq-scrollbar-hidden";
+
+/** Inner scroll slot below a fixed page header (notifications hub, etc.). */
+export const SETTINGS_INNER_SCROLL_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain bg-[#0A0A0A] [-webkit-overflow-scrolling:touch] souq-scrollbar-hidden";
 
 /**
  * Bottom padding for settings / legal / account subtrees when the main BottomNav is hidden.

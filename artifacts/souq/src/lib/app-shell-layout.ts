@@ -49,12 +49,15 @@ export const APP_SHELL_CONTENT_SLOT_CLASS =
 export const APP_SHELL_CONTENT_SCROLL_MARKER = "data-app-shell-scroll";
 export const APP_SHELL_CONTENT_SCROLL_VALUE = "1";
 
+/** Hide scrollbar chrome — scroll/touch/wheel unchanged (P9 tab pages). */
+export const SOUQ_SCROLLBAR_HIDDEN_CLASS = "souq-scrollbar-hidden";
+
 /**
  * L2 scroll surface — sole progressive-load scroll owner (P9-3 §5.1 · §7).
  * overscroll-y-contain keeps rubber-band inside L2; chrome (L1/L3) stays fixed.
  */
 export const APP_SHELL_CONTENT_SCROLL_CLASS =
-  "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain bg-[#0A0A0A] [-webkit-overflow-scrolling:touch]";
+  "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain bg-[#0A0A0A] [-webkit-overflow-scrolling:touch] souq-scrollbar-hidden";
 
 /**
  * L1 Header Slot plane — sticky/fixed headers mount with safe-top from tab-ios / home layouts.

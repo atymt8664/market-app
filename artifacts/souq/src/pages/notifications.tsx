@@ -1,11 +1,13 @@
-﻿import { useMemo, useRef, useState } from "react";
+﻿import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowRight, Bell } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useMarkAllNotificationsReadMutation,
   useMarkNotificationReadMutation,
   useNotificationsQuery,
+  unreadCountQueryKey,
 } from "@/hooks/use-notifications";
 import { NotificationsApiError, type AppNotification } from "@/lib/notifications-api";
 import {
@@ -30,7 +32,9 @@ import { cn } from "@/lib/utils";
 import { TAB_PAGE_HEADER_BAR } from "@/lib/tab-page-header-styles";
 import { platformHeaderDomProps } from "@/lib/platform-header-safe-area";
 import { appTextAlignClass, getAppTextDir } from "@/lib/app-text-direction";
-import { SETTINGS_IMMERSIVE_BOTTOM, SETTINGS_PAGE_BG } from "@/components/settings-shell";
+import { SETTINGS_IMMERSIVE_BOTTOM, SETTINGS_INNER_SCROLL_CLASS } from "@/components/settings-shell";
+import { OverlayPullToRefresh } from "@/components/overlay-pull-to-refresh";
+import { invalidateUnreadCounters } from "@/lib/unread-counters-cache";
 
 function notificationErrorMessage(error: unknown): string {
   if (error instanceof NotificationsApiError) {
@@ -52,6 +56,7 @@ export default function NotificationsPage() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user, isLoading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
 
   const handleTabChange = (tab: NotificationCenterTabId) => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
@@ -62,6 +67,12 @@ export default function NotificationsPage() {
     enabled: !!user,
     retry: false,
   });
+
+  const refreshNotifications = useCallback(async () => {
+    await listQuery.refetch();
+    await queryClient.refetchQueries({ queryKey: unreadCountQueryKey });
+    invalidateUnreadCounters(queryClient);
+  }, [listQuery, queryClient]);
   const markOne = useMarkNotificationReadMutation();
   const markAll = useMarkAllNotificationsReadMutation();
 
@@ -102,10 +113,15 @@ export default function NotificationsPage() {
     }
   };
 
+  const pageShellClass = cn(
+    "flex min-h-0 flex-1 flex-col bg-[#0A0A0A]",
+    SETTINGS_IMMERSIVE_BOTTOM,
+  );
+
   if (!authLoading && !user) {
     return (
-      <div ref={scrollRef} data-notification-center-scroll="" className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}>
-        <header className={cn(TAB_PAGE_HEADER_BAR, "px-3 md:px-4")} dir={textDir} {...platformHeaderDomProps()}>
+      <div className={pageShellClass}>
+        <header className={cn(TAB_PAGE_HEADER_BAR, "shrink-0 px-3 md:px-4")} dir={textDir} {...platformHeaderDomProps()}>
           <div className="mx-auto flex max-w-screen-xl items-center gap-3">
             <button
               type="button"
@@ -130,8 +146,8 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div ref={scrollRef} data-notification-center-scroll="" className={cn(SETTINGS_PAGE_BG, SETTINGS_IMMERSIVE_BOTTOM)}>
-      <header className={cn(TAB_PAGE_HEADER_BAR, "px-3 md:px-4")} dir={textDir} {...platformHeaderDomProps()}>
+    <div className={pageShellClass}>
+      <header className={cn(TAB_PAGE_HEADER_BAR, "shrink-0 px-3 md:px-4")} dir={textDir} {...platformHeaderDomProps()}>
         <div className="mx-auto flex max-w-screen-xl items-center gap-2 sm:gap-3">
           <button
             type="button"
@@ -177,31 +193,47 @@ export default function NotificationsPage() {
         ) : null}
       </header>
 
-      <div className="px-3 pb-6 pt-3 md:px-4 md:pb-8 md:pt-4" dir={textDir}>
-        <div className="mx-auto w-full max-w-lg space-y-3 md:max-w-xl">
-          {!authLoading && !(listQuery.isLoading && !listQuery.data) && !listQuery.isError && items.length > 0 ? (
-            <NotificationCenterSummaryBar summary={summary} />
-          ) : null}
-          {authLoading || (listQuery.isLoading && !listQuery.data) ? (
-            <NotificationsListSkeleton />
-          ) : listQuery.isError ? (
-            <NotificationCenterErrorState
-              message={notificationErrorMessage(listQuery.error)}
-              onRetry={() => void listQuery.refetch()}
-            />
-          ) : filtered.length === 0 ? (
-            <NotificationCenterEmptyState filtered={activeTab !== "all"} />
-          ) : (
-            filtered.map((n) => (
-              <NotificationCenterItem
-                key={n.id}
-                notification={n}
-                busy={busyId === n.id}
-                onOpen={handleOpen}
-              />
-            ))
-          )}
-        </div>
+      <div
+        ref={scrollRef}
+        data-notification-center-scroll=""
+        className={SETTINGS_INNER_SCROLL_CLASS}
+      >
+        <OverlayPullToRefresh
+          scrollRef={scrollRef}
+          enabled={!!user && !authLoading}
+          onRefresh={refreshNotifications}
+          indicatorTestId="notifications-pull-to-refresh-indicator"
+          dataPrefix="notifications-ptr"
+          contentMarker="notifications"
+          tuckUnderHeaderPx={0}
+        >
+          <div className="px-3 pb-6 pt-3 md:px-4 md:pb-8 md:pt-4" dir={textDir}>
+            <div className="mx-auto w-full max-w-lg space-y-3 md:max-w-xl">
+              {!authLoading && !(listQuery.isLoading && !listQuery.data) && !listQuery.isError && items.length > 0 ? (
+                <NotificationCenterSummaryBar summary={summary} />
+              ) : null}
+              {authLoading || (listQuery.isLoading && !listQuery.data) ? (
+                <NotificationsListSkeleton />
+              ) : listQuery.isError ? (
+                <NotificationCenterErrorState
+                  message={notificationErrorMessage(listQuery.error)}
+                  onRetry={() => void listQuery.refetch()}
+                />
+              ) : filtered.length === 0 ? (
+                <NotificationCenterEmptyState filtered={activeTab !== "all"} />
+              ) : (
+                filtered.map((n) => (
+                  <NotificationCenterItem
+                    key={n.id}
+                    notification={n}
+                    busy={busyId === n.id}
+                    onOpen={handleOpen}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        </OverlayPullToRefresh>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import type { QueryClient } from "@tanstack/react-query";
+import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import type { Ad } from "@workspace/api-client-react";
 import {
   getGetAdQueryKey,
@@ -6,23 +6,52 @@ import {
   getListFeaturedAdsQueryKey,
   getListRecommendedAdsQueryKey,
 } from "@workspace/api-client-react";
+import { HOME_FEED_INFINITE_QUERY_ROOT } from "@/hooks/use-home-feed-infinite-ads";
+import type { HomeFeedPage } from "@/lib/home-feed-infinite-api";
 
 /** Query key roots whose data is `Ad[]` and should be patched in-place. */
 const AD_LIST_ROOTS = [
   ["/api/ads"],
-  ["/api/ads/featured"],
-  ["/api/ads/recommended"],
+  getListFeaturedAdsQueryKey(),
+  getListRecommendedAdsQueryKey(),
   ["/api/ads/mine"],
-  ["/api/ads/favorites"],
+  getListFavoriteAdsQueryKey(),
 ] as const;
+
+type EngagementPatch = Partial<
+  Pick<Ad, "favoriteCount" | "isFavorited" | "likeCount" | "isLiked">
+>;
 
 function mapAdList(
   old: Ad[] | undefined,
   adId: number,
-  patch: Partial<Ad>,
+  patch: EngagementPatch,
 ): Ad[] | undefined {
   if (!Array.isArray(old)) return old;
   return old.map((a) => (a.id === adId ? { ...a, ...patch } : a));
+}
+
+function mapAdInHomeFeedPage(
+  page: HomeFeedPage,
+  adId: number,
+  patch: EngagementPatch,
+): HomeFeedPage {
+  return {
+    ...page,
+    items: page.items.map((a) => (a.id === adId ? { ...a, ...patch } : a)),
+  };
+}
+
+function patchHomeFeedInfiniteData(
+  old: InfiniteData<HomeFeedPage> | undefined,
+  adId: number,
+  patch: EngagementPatch,
+): InfiniteData<HomeFeedPage> | undefined {
+  if (!old?.pages?.length) return old;
+  return {
+    ...old,
+    pages: old.pages.map((page) => mapAdInHomeFeedPage(page, adId, patch)),
+  };
 }
 
 /**
@@ -32,9 +61,7 @@ function mapAdList(
 export function patchAdEngagementInCaches(
   queryClient: QueryClient,
   adId: number,
-  patch: Partial<
-    Pick<Ad, "favoriteCount" | "isFavorited" | "likeCount" | "isLiked">
-  >,
+  patch: EngagementPatch,
 ) {
   queryClient.setQueryData<Ad>(getGetAdQueryKey(adId), (old) =>
     old?.id === adId ? { ...old, ...patch } : old,
@@ -44,6 +71,10 @@ export function patchAdEngagementInCaches(
       mapAdList(old, adId, patch),
     );
   }
+  queryClient.setQueriesData<InfiniteData<HomeFeedPage>>(
+    { queryKey: [HOME_FEED_INFINITE_QUERY_ROOT], exact: false },
+    (old) => patchHomeFeedInfiniteData(old, adId, patch),
+  );
 }
 
 /** Merges server ad into detail cache and every list row with the same id. */

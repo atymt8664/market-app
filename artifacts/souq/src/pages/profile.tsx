@@ -65,6 +65,8 @@ import { buildAdShareText, buildProfileShareText } from "@/lib/share-text";
 import { shareOrCopyLink, tryAdImageAsShareFile } from "@/lib/native-share";
 import { cn } from "@/lib/utils";
 import { BOTTOM_NAV_PAGE_SHELL_CLASS, BOTTOM_NAV_SCROLL_END_SPACER_CLASS } from "@/lib/bottom-nav-layout";
+import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
+import { OverlayPullToRefresh } from "@/components/overlay-pull-to-refresh";
 import { useAppChromeContext } from "@/contexts/app-chrome-context";
 import { STALE_USER_ADS_MS } from "@/lib/query-stale-times";
 import { stashPromoteAdPreview } from "@/lib/promote-ad-preview";
@@ -144,6 +146,7 @@ export default function Profile() {
   });
   const updateProfile = useAuthUpdateProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const profileScrollRef = useRef<HTMLDivElement>(null);
   const [adToDelete, setAdToDelete] = useState<number | null>(null);
   const [adDeleteBlockedOpen, setAdDeleteBlockedOpen] = useState(false);
   const [actionAd, setActionAd] = useState<Ad | null>(null);
@@ -182,6 +185,14 @@ export default function Profile() {
   });
 
   const { setOverride } = useAppChromeContext();
+
+  const refreshProfile = useCallback(async () => {
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: getListMyAdsQueryKey() }),
+      queryClient.refetchQueries({ queryKey: getAuthMeQueryKey() }),
+      queryClient.refetchQueries({ queryKey: favoritesListQueryKey() }),
+    ]);
+  }, [queryClient]);
 
   const handleShare = useCallback(async () => {
     if (!user) return;
@@ -332,7 +343,6 @@ export default function Profile() {
   };
 
   const adCount = user?.adCount ?? myAds?.length ?? 0;
-  const isMyAdsEmpty = activeTab === "my-ads" && !adsLoading && adCount === 0;
   const memberSince = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString("ar", {
         year: "numeric",
@@ -343,106 +353,110 @@ export default function Profile() {
 
   return (
     <div className={cn(BOTTOM_NAV_PAGE_SHELL_CLASS)}>
-      <div className="shrink-0 bg-[#0A0A0A]" data-testid="profile-pinned-header">
-        <div className={cn(profilePageColumn, "pt-2 md:pt-3")}>
-          <div dir="rtl">
-            <div className="flex min-w-0 flex-col items-start gap-2.5 text-right">
-              <div className="relative shrink-0">
-                <button
-                  type="button"
-                  disabled={avatarBusy}
-                  onClick={() =>
-                    user.avatarUrl ? setAvatarPreviewOpen(true) : handleAvatarPick()
-                  }
-                  aria-label={
-                    user.avatarUrl
-                      ? t("profile.avatar_preview.open")
-                      : t("profile.change_avatar")
-                  }
-                  className="rounded-full p-[3px] shadow-[0_0_16px_-4px_rgba(182,227,86,0.28)] transition-[opacity,transform] hover:opacity-95 active:scale-[0.99] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
-                  style={{
-                    background:
-                      "linear-gradient(145deg, rgba(182,227,86,0.5), rgba(182,227,86,0.08))",
-                  }}
-                >
-                  <div className="rounded-full bg-black p-[2px]">
-                    <AvatarCircle name={user.name} src={user.avatarUrl} size={80} />
+      <AppShellContentScroll
+        ref={profileScrollRef}
+        className="flex-1"
+        data-profile-page-scroll=""
+      >
+        <OverlayPullToRefresh
+          scrollRef={profileScrollRef}
+          enabled={!!user}
+          onRefresh={refreshProfile}
+          indicatorTestId="profile-pull-to-refresh-indicator"
+          dataPrefix="profile-ptr"
+          contentMarker="profile"
+        >
+          <div className="shrink-0 bg-[#0A0A0A]" data-testid="profile-pinned-header">
+            <div className={cn(profilePageColumn, "pt-2 md:pt-3")}>
+              <div dir="rtl">
+                <div className="flex min-w-0 flex-col items-start gap-2.5 text-right">
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      disabled={avatarBusy}
+                      onClick={() =>
+                        user.avatarUrl ? setAvatarPreviewOpen(true) : handleAvatarPick()
+                      }
+                      aria-label={
+                        user.avatarUrl
+                          ? t("profile.avatar_preview.open")
+                          : t("profile.change_avatar")
+                      }
+                      className="rounded-full p-[3px] shadow-[0_0_16px_-4px_rgba(182,227,86,0.28)] transition-[opacity,transform] hover:opacity-95 active:scale-[0.99] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
+                      style={{
+                        background:
+                          "linear-gradient(145deg, rgba(182,227,86,0.5), rgba(182,227,86,0.08))",
+                      }}
+                    >
+                      <div className="rounded-full bg-black p-[2px]">
+                        <AvatarCircle name={user.name} src={user.avatarUrl} size={80} />
+                      </div>
+                    </button>
+                    {!user.avatarUrl ? (
+                      <ProfileAvatarCameraBadge
+                        onClick={handleAvatarPick}
+                        disabled={avatarBusy}
+                        busy={avatarBusy}
+                      />
+                    ) : null}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={onFileChange}
+                    />
                   </div>
-                </button>
-                {!user.avatarUrl ? (
-                  <ProfileAvatarCameraBadge
-                    onClick={handleAvatarPick}
-                    disabled={avatarBusy}
-                    busy={avatarBusy}
-                  />
-                ) : null}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={onFileChange}
-                />
+
+                  <h2 className="max-w-full truncate text-right text-xl font-bold leading-tight text-foreground md:text-2xl">
+                    {user.name}
+                  </h2>
+                  <p className="text-right text-[0.82rem] leading-tight text-muted-foreground md:text-sm">
+                    <span className="inline-flex items-center gap-1.5">
+                      <UserIcon className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
+                      {t("profile.seller_type")}
+                    </span>
+                  </p>
+                  {memberSince ? (
+                    <p className="text-right text-[0.8rem] leading-tight text-muted-foreground/85 md:text-sm">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
+                        {t("profile.member_since", { date: memberSince })}
+                      </span>
+                    </p>
+                  ) : null}
+                </div>
               </div>
 
-              <h2 className="max-w-full truncate text-right text-xl font-bold leading-tight text-foreground md:text-2xl">
-                {user.name}
-              </h2>
-              <p className="text-right text-[0.82rem] leading-tight text-muted-foreground md:text-sm">
-                <span className="inline-flex items-center gap-1.5">
-                  <UserIcon className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
-                  {t("profile.seller_type")}
-                </span>
-              </p>
-              {memberSince ? (
-                <p className="text-right text-[0.8rem] leading-tight text-muted-foreground/85 md:text-sm">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.25} />
-                    {t("profile.member_since", { date: memberSince })}
-                  </span>
-                </p>
-              ) : null}
+              <OrdersAccountCardGrid
+                className={PROFILE_SECTION_STACK_GAP}
+                onBuyerNavigate={() => navigate("/orders")}
+                onSellerNavigate={() => navigate("/seller-orders")}
+              />
+
+              <ProfileIdentityStrip
+                className={PROFILE_SECTION_STACK_GAP}
+                dir={profileDir}
+                planTier={planTier}
+                onPlanTierChange={setPlanTier}
+              />
             </div>
           </div>
 
-          <OrdersAccountCardGrid
-            className={PROFILE_SECTION_STACK_GAP}
-            onBuyerNavigate={() => navigate("/orders")}
-            onSellerNavigate={() => navigate("/seller-orders")}
-          />
-
-          <ProfileIdentityStrip
-            className={PROFILE_SECTION_STACK_GAP}
-            dir={profileDir}
-            planTier={planTier}
-            onPlanTierChange={setPlanTier}
-          />
-        </div>
-      </div>
-
-      <div
-        className={cn(
-          profilePageColumn,
-          "flex min-h-0 flex-col pb-1",
-          isMyAdsEmpty ? "shrink-0" : "flex-1",
-        )}
-      >
-        <ProfileContentTabShell
-          className={cn(
-            PROFILE_SECTION_STACK_GAP,
-            isMyAdsEmpty ? "h-fit shrink-0" : "min-h-0 flex-1",
-          )}
-          panelScrollable={!isMyAdsEmpty}
-          dir={profileDir}
-          value={activeTab}
-          onChange={setActiveTab}
-          ariaLabel={t("profile.tabs.nav_aria")}
-          tabs={[
-            { value: "my-ads", label: t("profile.tabs.my_ads") },
-            { value: "favorites", label: t("profile.tabs.favorites") },
-            { value: "public", label: t("profile.tabs.public") },
-          ]}
-        >
+          <div className={cn(profilePageColumn, "flex flex-col pb-1")}>
+            <ProfileContentTabShell
+              className={PROFILE_SECTION_STACK_GAP}
+              panelScrollable={false}
+              dir={profileDir}
+              value={activeTab}
+              onChange={setActiveTab}
+              ariaLabel={t("profile.tabs.nav_aria")}
+              tabs={[
+                { value: "my-ads", label: t("profile.tabs.my_ads") },
+                { value: "favorites", label: t("profile.tabs.favorites") },
+                { value: "public", label: t("profile.tabs.public") },
+              ]}
+            >
           {activeTab === "my-ads" ? (
             !adsLoading && adCount === 0 ? (
               <div className={PROFILE_MY_ADS_EMPTY} data-testid="profile-my-ads-empty">
@@ -533,14 +547,15 @@ export default function Profile() {
               </Link>
             </div>
           )}
-        </ProfileContentTabShell>
-      </div>
-
-      <div
-        aria-hidden
-        className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS}
-        data-testid="profile-scroll-spacer"
-      />
+            </ProfileContentTabShell>
+          </div>
+          <div
+            aria-hidden
+            className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS}
+            data-testid="profile-scroll-spacer"
+          />
+        </OverlayPullToRefresh>
+      </AppShellContentScroll>
 
       <ProfileAvatarPreviewDialog
         open={avatarPreviewOpen}

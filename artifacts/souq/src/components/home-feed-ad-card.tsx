@@ -20,12 +20,15 @@ import {
   HOME_FEED_IMG_H,
   HOME_FEED_IMG_W,
 } from "@/components/ad-card-shells";
+import { HomeFeedAdCardFavoriteButton } from "@/components/home-feed-ad-card-favorite-button";
 
 export type HomeFeedAdCardProps = {
   ad: Ad;
   featured?: boolean;
   /** First featured tile — hero-sized image URL only (no DOM handoff). */
   featuredLead?: boolean;
+  /** Home page only — interactive favorite heart overlay on image. */
+  showFavoriteHeart?: boolean;
 };
 
 function priceTypeBadgeText(type: Ad["priceType"]) {
@@ -46,11 +49,42 @@ function adCardDisplayImageSrc(
   return getAdImageFeedUrl(rawUrl);
 }
 
-/** P7-PR-8: Home feed tile — no auth/favorite mutations on cold path (detail page handles favorites). */
-export const HomeFeedAdCard = memo(function HomeFeedAdCard({
+function areHomeFeedAdCardPropsEqual(
+  prev: HomeFeedAdCardProps,
+  next: HomeFeedAdCardProps,
+): boolean {
+  if (prev.featured !== next.featured) return false;
+  if (prev.featuredLead !== next.featuredLead) return false;
+  if (prev.showFavoriteHeart !== next.showFavoriteHeart) return false;
+  const a = prev.ad;
+  const b = next.ad;
+  if (a === b) return true;
+  const curA =
+    (a.details as { selectedCurrency?: string } | undefined)?.selectedCurrency ?? "";
+  const curB =
+    (b.details as { selectedCurrency?: string } | undefined)?.selectedCurrency ?? "";
+  return (
+    a.id === b.id &&
+    a.title === b.title &&
+    a.price === b.price &&
+    a.priceType === b.priceType &&
+    a.city === b.city &&
+    (a.images?.[0] ?? "") === (b.images?.[0] ?? "") &&
+    a.views === b.views &&
+    a.favoriteCount === b.favoriteCount &&
+    a.likeCount === b.likeCount &&
+    a.isFavorited === b.isFavorited &&
+    a.createdAt === b.createdAt &&
+    curA === curB
+  );
+}
+
+/** P7-PR-8: Home feed tile — favorite heart gated via showFavoriteHeart (Home page only). */
+function HomeFeedAdCardInner({
   ad,
   featured,
   featuredLead,
+  showFavoriteHeart = false,
 }: HomeFeedAdCardProps) {
   const { locale } = useLocale();
   const numberLocale = locale === "de" ? "de-DE" : locale === "en" ? "en-US" : "ar";
@@ -124,6 +158,7 @@ export const HomeFeedAdCard = memo(function HomeFeedAdCard({
             ) : (
               <AdCardNoImagePlaceholder plainBackdrop subtleIcon />
             )}
+            {showFavoriteHeart ? <HomeFeedAdCardFavoriteButton ad={ad} /> : null}
           </div>
 
           <div className="flex shrink-0 flex-col gap-0.5 px-1.5 pb-1.5 pt-1">
@@ -173,4 +208,6 @@ export const HomeFeedAdCard = memo(function HomeFeedAdCard({
       </Link>
     </div>
   );
-});
+}
+
+export const HomeFeedAdCard = memo(HomeFeedAdCardInner, areHomeFeedAdCardPropsEqual);

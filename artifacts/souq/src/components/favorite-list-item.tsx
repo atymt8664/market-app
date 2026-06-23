@@ -81,7 +81,10 @@ function FavoriteListImage({ ad }: { ad: Ad }) {
   );
 }
 
-type FavoriteListItemProps = { ad: Ad; viewerAuthKey: string };
+type FavoriteListItemProps = {
+  ad: Ad;
+  viewerAuthKey: string;
+};
 
 function areFavoriteListItemEqual(
   prev: FavoriteListItemProps,
@@ -111,7 +114,10 @@ function areFavoriteListItemEqual(
   );
 }
 
-function FavoriteListItemInner({ ad, viewerAuthKey: _viewerAuthKey }: FavoriteListItemProps) {
+function FavoriteListItemInner({
+  ad,
+  viewerAuthKey: _viewerAuthKey,
+}: FavoriteListItemProps) {
   const { locale } = useLocale();
   const numberLocale = locale === "de" ? "de-DE" : locale === "en" ? "en-US" : "ar";
   const queryClient = useQueryClient();
@@ -179,6 +185,23 @@ function FavoriteListItemInner({ ad, viewerAuthKey: _viewerAuthKey }: FavoriteLi
 
   const pending = unfavMut.isPending;
 
+  const heartButton = (
+    <button
+      type="button"
+      onClick={removeFavorite}
+      onPointerDown={(e) => e.stopPropagation()}
+      disabled={pending}
+      aria-label={t("ad-card.remove_favorite")}
+      className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-black/45 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.2)] ring-1 ring-primary/15 transition-colors hover:border-primary/50 hover:bg-black/60 active:scale-95 disabled:pointer-events-none disabled:opacity-60"
+    >
+      <Heart
+        className="h-3.5 w-3.5 fill-primary stroke-primary text-primary"
+        strokeWidth={2.25}
+        aria-hidden
+      />
+    </button>
+  );
+
   return (
     <li>
       <article
@@ -186,7 +209,7 @@ function FavoriteListItemInner({ ad, viewerAuthKey: _viewerAuthKey }: FavoriteLi
         dir="rtl"
       >
         <div className="flex min-h-[5.75rem] items-stretch gap-2.5 p-2.5 sm:min-h-[6rem] sm:gap-3 sm:p-3">
-          <div className="h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-[#0A0A0A] sm:h-24 sm:w-24">
+          <div className="relative h-[5.25rem] w-[5.25rem] shrink-0 overflow-hidden rounded-xl border border-primary/25 bg-[#0A0A0A] sm:h-24 sm:w-24">
             <FavoriteListImage ad={ad} />
           </div>
 
@@ -215,19 +238,7 @@ function FavoriteListItemInner({ ad, viewerAuthKey: _viewerAuthKey }: FavoriteLi
           </Link>
 
           <div className="flex shrink-0 flex-col items-center justify-between gap-1 py-0.5">
-            <button
-              type="button"
-              onClick={removeFavorite}
-              disabled={pending}
-              aria-label={t("ad-card.remove_favorite")}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-black/45 text-primary shadow-[0_0_10px_-4px_hsl(var(--primary)/0.15)] transition-colors hover:bg-black/60 disabled:pointer-events-none disabled:opacity-60"
-            >
-              <Heart
-                className="h-3.5 w-3.5 fill-primary stroke-primary text-primary"
-                strokeWidth={2.25}
-                aria-hidden
-              />
-            </button>
+            {heartButton}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button

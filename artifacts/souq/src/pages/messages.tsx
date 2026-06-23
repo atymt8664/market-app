@@ -5,6 +5,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type KeyboardEvent,
   type MouseEvent,
@@ -44,6 +45,7 @@ import {
   BOTTOM_NAV_SCROLL_END_SPACER_CLASS,
 } from "@/lib/bottom-nav-layout";
 import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
+import { MessagesPullToRefresh } from "@/components/messages-pull-to-refresh";
 import { bustConversationThreadCache } from "@/lib/chat-thread-cache";
 import {
   ChatInboxCollectionsMenu,
@@ -70,6 +72,11 @@ import {
 } from "@/lib/inbox-conversation-cache";
 import { STALE_CONVERSATIONS_MS } from "@/lib/query-stale-times";
 import { prefetchConversationThread } from "@/lib/prefetch-conversation-thread";
+import {
+  registerInboxLongPressCancel,
+  shouldSuppressInboxTap,
+  unregisterInboxLongPressCancel,
+} from "@/lib/messages-inbox-ptr-gesture";
 import {
   appInlineStartJustifyClass,
   appTextAlignClass,
@@ -196,7 +203,8 @@ type MessagesInboxRowProps = {
   isPinned: boolean;
   isMuted: boolean;
   onPrefetchThread: (convId: number) => void;
-  onRowPointerDown: (convId: number) => void;
+  onRowPointerDown: (convId: number, clientX: number, clientY: number) => void;
+  onRowPointerMove: (clientX: number, clientY: number) => void;
   onRowPointerEnd: () => void;
   onToggleSelect: (convId: number) => void;
   onConsumeLongPress: () => boolean;
@@ -214,6 +222,7 @@ const MessagesInboxRow = memo(
     isMuted,
     onPrefetchThread,
     onRowPointerDown,
+    onRowPointerMove,
     onRowPointerEnd,
     onToggleSelect,
     onConsumeLongPress,
@@ -238,6 +247,10 @@ const MessagesInboxRow = memo(
     };
 
     const onRowClick = (e: MouseEvent) => {
+      if (shouldSuppressInboxTap()) {
+        e.preventDefault();
+        return;
+      }
       if (onConsumeLongPress()) {
         e.preventDefault();
         return;
@@ -272,9 +285,13 @@ const MessagesInboxRow = memo(
           aria-pressed={selectMode ? isSelected : undefined}
           aria-label={c.otherName || t("messages.user")}
           onContextMenu={blockNativeRowContextMenu}
-          onPointerDown={() => {
-            onRowPointerDown(c.id);
+          onPointerDown={(e) => {
+            onRowPointerDown(c.id, e.clientX, e.clientY);
             if (!selectMode) onPrefetchThread(c.id);
+          }}
+          onPointerMove={(e) => {
+            if (e.pointerType === "mouse" && e.buttons === 0) return;
+            onRowPointerMove(e.clientX, e.clientY);
           }}
           onPointerUp={onRowPointerEnd}
           onPointerCancel={onRowPointerEnd}
@@ -304,6 +321,7 @@ const MessagesInboxRow = memo(
     prev.isMuted === next.isMuted &&
     prev.onPrefetchThread === next.onPrefetchThread &&
     prev.onRowPointerDown === next.onRowPointerDown &&
+    prev.onRowPointerMove === next.onRowPointerMove &&
     prev.onRowPointerEnd === next.onRowPointerEnd &&
     prev.onToggleSelect === next.onToggleSelect &&
     prev.onConsumeLongPress === next.onConsumeLongPress &&
@@ -314,8 +332,9 @@ export default function Messages() {
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
+  const inboxScrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { data: conversations, isPending, isFetching, isError } = useListConversations({
+  const { data: conversations, isPending, isFetching, isError, refetch: refetchConversations } = useListConversations({
     query: {
       queryKey: getListConversationsQueryKey(),
       enabled: !!user,
@@ -415,10 +434,16 @@ export default function Messages() {
     setActionSheetConvId(convId);
   }, []);
 
-  const { onRowPointerDown, onRowPointerEnd, consumeLongPress } = useInboxLongPress({
+  const { onRowPointerDown, onRowPointerMove, onRowPointerEnd, consumeLongPress, clearTimer } =
+    useInboxLongPress({
     selectMode,
     onLongPress: openActionSheet,
   });
+
+  useEffect(() => {
+    registerInboxLongPressCancel(clearTimer);
+    return () => unregisterInboxLongPressCancel();
+  }, [clearTimer]);
 
   const actionSheetConversation = useMemo(
     () => visibleRows.find((c) => c.id === actionSheetConvId) ?? null,
@@ -577,6 +602,10 @@ export default function Messages() {
 
   useChatSocket(onInboxChatSocketEvent);
 
+  const refreshInboxConversations = useCallback(async () => {
+    await refetchConversations();
+  }, [refetchConversations]);
+
   if (!authLoading && !user) return <Redirect to="/guest-welcome?redirect=/messages" />;
 
   if (collectionView === "hidden") {
@@ -601,7 +630,13 @@ export default function Messages() {
 
   return (
     <div className={BOTTOM_NAV_PAGE_SHELL_CLASS}>
-      <AppShellContentScroll>
+      <AppShellContentScroll ref={inboxScrollRef}>
+      <MessagesPullToRefresh
+        scrollRef={inboxScrollRef}
+        enabled={!!user && !authLoading && !selectMode}
+        onRefresh={refreshInboxConversations}
+        onPullGestureStart={clearTimer}
+      >
       {selectMode ? (
         <ChatInboxSelectionHeader
           selectedCount={selectedIds.size}
@@ -645,6 +680,7 @@ export default function Messages() {
                 isMuted={mutedSet.has(c.id)}
                 onPrefetchThread={prefetchThread}
                 onRowPointerDown={onRowPointerDown}
+                onRowPointerMove={onRowPointerMove}
                 onRowPointerEnd={onRowPointerEnd}
                 onToggleSelect={toggleSelected}
                 onConsumeLongPress={consumeLongPress}
@@ -702,6 +738,7 @@ export default function Messages() {
         className={BOTTOM_NAV_SCROLL_END_SPACER_CLASS}
         data-testid="messages-scroll-spacer"
       />
+      </MessagesPullToRefresh>
       </AppShellContentScroll>
 
       <ChatInboxActionSheet

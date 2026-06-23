@@ -12,6 +12,8 @@ type UseHomePullToRefreshOptions = {
   scrollRef: React.RefObject<HTMLElement | null>;
   enabled: boolean;
   onRefresh: () => Promise<unknown>;
+  /** Fires once per pull when finger moves down from the top — cancel competing row gestures. */
+  onPullGestureStart?: () => void;
 };
 
 /** Desktop mouse-only — skip PTR; touch laptops still allowed. */
@@ -39,6 +41,7 @@ export function useHomePullToRefresh({
   scrollRef,
   enabled,
   onRefresh,
+  onPullGestureStart,
 }: UseHomePullToRefreshOptions) {
   const [pullPx, setPullPx] = useState(0);
   const [phase, setPhase] = useState<HomePullToRefreshPhase>("idle");
@@ -51,7 +54,11 @@ export function useHomePullToRefresh({
 
   const touchStartYRef = useRef(0);
   const pullingRef = useRef(false);
+  const pullGestureStartedRef = useRef(false);
   const scrollElRef = useRef<HTMLElement | null>(null);
+
+  const onPullGestureStartRef = useRef(onPullGestureStart);
+  onPullGestureStartRef.current = onPullGestureStart;
 
   const resetPull = useCallback(() => {
     pullingRef.current = false;
@@ -110,6 +117,7 @@ export function useHomePullToRefresh({
 
       touchStartYRef.current = touch.clientY;
       pullingRef.current = true;
+      pullGestureStartedRef.current = false;
     };
 
     const onTouchMove = (event: TouchEvent) => {
@@ -135,6 +143,11 @@ export function useHomePullToRefresh({
         return;
       }
 
+      if (!pullGestureStartedRef.current && delta > 4) {
+        pullGestureStartedRef.current = true;
+        onPullGestureStartRef.current?.();
+      }
+
       event.preventDefault();
       const damped = Math.min(delta * 0.55, HOME_PTR_MAX_PULL_PX);
       setPullPx(damped);
@@ -144,6 +157,7 @@ export function useHomePullToRefresh({
     const onTouchEnd = () => {
       if (!pullingRef.current) return;
       pullingRef.current = false;
+      pullGestureStartedRef.current = false;
 
       if (phaseRef.current === "refreshing") return;
 

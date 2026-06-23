@@ -143,7 +143,10 @@ export function useHomePullToRefresh({
         return;
       }
 
-      if (!pullGestureStartedRef.current && delta > 4) {
+      // Below pull-commit threshold — allow synthetic click on inbox rows / cards.
+      if (delta <= 4) return;
+
+      if (!pullGestureStartedRef.current) {
         pullGestureStartedRef.current = true;
         onPullGestureStartRef.current?.();
       }
@@ -163,6 +166,11 @@ export function useHomePullToRefresh({
 
       if (pullPxRef.current >= HOME_PTR_THRESHOLD_PX) {
         void triggerRefresh();
+        return;
+      }
+
+      if (pullPxRef.current <= 0 && phaseRef.current === "idle") {
+        resetPull();
         return;
       }
 

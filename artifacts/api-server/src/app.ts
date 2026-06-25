@@ -14,6 +14,7 @@ import {
   sendClientError,
 } from "./lib/observability/client-error";
 import { createCorsOriginHandler } from "./lib/cors-allowlist";
+import { PAGINATION_CORS_EXPOSE_HEADERS } from "./lib/pagination";
 import { getSessionCookieSecure, getSessionSameSite, SESSION_COOKIE_NAME } from "./lib/session-cookie";
 import { getSessionSecret } from "./lib/session-secret";
 import { apiSecurityHeadersMiddleware } from "./lib/security-headers";
@@ -112,7 +113,7 @@ app.use(
       "X-Requested-With",
       "X-Request-Id",
     ],
-    exposedHeaders: ["X-CSRF-Token", "X-Request-Id"],
+    exposedHeaders: ["X-CSRF-Token", "X-Request-Id", ...PAGINATION_CORS_EXPOSE_HEADERS],
     maxAge: 86_400,
   }),
 );

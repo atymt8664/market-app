@@ -49,15 +49,21 @@ export type AdminPageMeta = PageMeta & {
   hasPrevious: boolean;
 };
 
-const CURSOR_HEADER = "x-pagination-next-cursor";
-const HAS_MORE_HEADER = "x-pagination-has-more";
-const LIMIT_HEADER = "x-pagination-limit";
-const PAGE_HEADER = "x-pagination-page";
-const PAGE_SIZE_HEADER = "x-pagination-page-size";
-const TOTAL_PAGES_HEADER = "x-pagination-total-pages";
-const TOTAL_ITEMS_HEADER = "x-pagination-total-items";
-const HAS_NEXT_HEADER = "x-pagination-has-next";
-const HAS_PREVIOUS_HEADER = "x-pagination-has-previous";
+/** SSOT — all `x-pagination-*` response header names (set + CORS expose derive from here). */
+export const PAGINATION_HEADERS = {
+  nextCursor: "x-pagination-next-cursor",
+  hasMore: "x-pagination-has-more",
+  limit: "x-pagination-limit",
+  page: "x-pagination-page",
+  pageSize: "x-pagination-page-size",
+  totalPages: "x-pagination-total-pages",
+  totalItems: "x-pagination-total-items",
+  hasNext: "x-pagination-has-next",
+  hasPrevious: "x-pagination-has-previous",
+} as const;
+
+/** CORS Access-Control-Expose-Headers — auto-synced when PAGINATION_HEADERS grows. */
+export const PAGINATION_CORS_EXPOSE_HEADERS = Object.values(PAGINATION_HEADERS);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -247,19 +253,19 @@ export function buildAdminPageMeta(
 }
 
 export function setPaginationHeaders(res: Response, meta: PageMeta): void {
-  res.setHeader(LIMIT_HEADER, String(meta.limit));
-  res.setHeader(HAS_MORE_HEADER, meta.hasMore ? "true" : "false");
+  res.setHeader(PAGINATION_HEADERS.limit, String(meta.limit));
+  res.setHeader(PAGINATION_HEADERS.hasMore, meta.hasMore ? "true" : "false");
   if (meta.nextCursor) {
-    res.setHeader(CURSOR_HEADER, meta.nextCursor);
+    res.setHeader(PAGINATION_HEADERS.nextCursor, meta.nextCursor);
   }
   if ("page" in meta && typeof (meta as AdminPageMeta).page === "number") {
     const adminMeta = meta as AdminPageMeta;
-    res.setHeader(PAGE_HEADER, String(adminMeta.page));
-    res.setHeader(PAGE_SIZE_HEADER, String(adminMeta.pageSize));
-    res.setHeader(TOTAL_PAGES_HEADER, String(adminMeta.totalPages));
-    res.setHeader(TOTAL_ITEMS_HEADER, String(adminMeta.totalItems));
-    res.setHeader(HAS_NEXT_HEADER, adminMeta.hasNext ? "true" : "false");
-    res.setHeader(HAS_PREVIOUS_HEADER, adminMeta.hasPrevious ? "true" : "false");
+    res.setHeader(PAGINATION_HEADERS.page, String(adminMeta.page));
+    res.setHeader(PAGINATION_HEADERS.pageSize, String(adminMeta.pageSize));
+    res.setHeader(PAGINATION_HEADERS.totalPages, String(adminMeta.totalPages));
+    res.setHeader(PAGINATION_HEADERS.totalItems, String(adminMeta.totalItems));
+    res.setHeader(PAGINATION_HEADERS.hasNext, adminMeta.hasNext ? "true" : "false");
+    res.setHeader(PAGINATION_HEADERS.hasPrevious, adminMeta.hasPrevious ? "true" : "false");
   }
 }
 

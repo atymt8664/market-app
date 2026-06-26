@@ -25,6 +25,7 @@ import {
   updateAdminStaffMember,
 } from "@/features/admin/api";
 import {
+  ADMIN_SCROLL_Y,
   BTN_MODAL_GHOST,
   BTN_MODAL_PRIMARY,
   BTN_TOOLBAR_OUTLINE,
@@ -771,7 +772,7 @@ export default function AdminStaffPage() {
                 {detailQuery.data.activity.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t("p8.admin.staff.activity_empty")}</p>
                 ) : (
-                  <ul className="max-h-52 space-y-2 overflow-y-auto pe-1 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35">
+                  <ul className={cn(ADMIN_SCROLL_Y, "max-h-52 space-y-2 pe-1")}>
                     {detailQuery.data.activity.map((entry) => (
                       <li
                         key={entry.id}

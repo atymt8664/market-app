@@ -30,6 +30,13 @@ import type { AdminNavKey } from "@/features/admin/rbac";
 import { canAccessNav } from "@/features/admin/rbac";
 import { useAdminLocale } from "@/features/admin/hooks/use-admin-locale";
 import { t } from "@/i18n";
+import {
+  APP_SHELL_CONTENT_SCROLL_CLASS,
+  APP_SHELL_CONTENT_SCROLL_MARKER,
+  APP_SHELL_CONTENT_SCROLL_VALUE,
+  APP_SHELL_L0_APP_FRAME_CLASS,
+  SOUQ_SCROLLBAR_HIDDEN_CLASS,
+} from "@/lib/app-shell-layout";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS: Array<{
@@ -95,15 +102,15 @@ export function AdminShell({ activeKey, onLogout, children }: AdminShellProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-foreground" dir={dir}>
-      <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col lg:flex-row">
+    <div className={cn(APP_SHELL_L0_APP_FRAME_CLASS, "text-foreground")} dir={dir}>
+      <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col overflow-hidden lg:flex-row">
         <aside
           className={cn(
             "shrink-0 border-b border-primary/30 bg-zinc-950/95 shadow-[0_0_28px_-14px_hsl(var(--primary)/0.22)] backdrop-blur-sm",
-            "lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-72 lg:flex-col lg:border-b-0 lg:border-r lg:border-primary/35",
+            "lg:flex lg:min-h-0 lg:w-72 lg:flex-col lg:overflow-hidden lg:border-b-0 lg:border-r lg:border-primary/35",
           )}
         >
-          <div className="flex flex-col gap-4 p-4 lg:flex-1 lg:gap-5 lg:p-5">
+          <div className="flex min-h-0 flex-col gap-4 p-4 lg:flex-1 lg:gap-5 lg:p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/45 bg-primary/12 text-primary shadow-[0_0_20px_-8px_hsl(var(--primary)/0.45)] ring-1 ring-primary/15">
                 {access.isFounder ? (
@@ -122,7 +129,13 @@ export function AdminShell({ activeKey, onLogout, children }: AdminShellProps) {
               </div>
             </div>
 
-            <nav className="-mx-1 flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] lg:mx-0 lg:flex-1 lg:flex-col lg:gap-2 lg:overflow-visible lg:pb-0 [&::-webkit-scrollbar]:hidden">
+            <nav
+              className={cn(
+                "-mx-1 flex min-h-0 gap-1.5 pb-1 lg:mx-0 lg:flex-1 lg:flex-col lg:gap-2 lg:pb-0",
+                SOUQ_SCROLLBAR_HIDDEN_CLASS,
+                "overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto lg:overscroll-y-contain [-webkit-overflow-scrolling:touch]",
+              )}
+            >
               {visibleNav.map(({ key, href, labelKey, icon: Icon }) => (
                 <Link
                   key={key}
@@ -158,7 +171,10 @@ export function AdminShell({ activeKey, onLogout, children }: AdminShellProps) {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
+        <main
+          className={cn(APP_SHELL_CONTENT_SCROLL_CLASS, "min-w-0 p-4 sm:p-6 lg:p-8")}
+          {...{ [APP_SHELL_CONTENT_SCROLL_MARKER]: APP_SHELL_CONTENT_SCROLL_VALUE }}
+        >
           {children}
         </main>
       </div>

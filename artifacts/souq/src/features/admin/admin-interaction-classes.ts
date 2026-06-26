@@ -2,7 +2,20 @@
  * نفس نظام التفاعل البصري المستخدم في /admin/categories:
  * BTN_FIX يمنع طبقة hover-elevate الافتراضية من اعتراض النقرات؛ باقي الثوابت توفر hover/active واضحين.
  */
+import { SOUQ_SCROLLBAR_HIDDEN_CLASS } from "@/lib/app-shell-layout";
 import { cn } from "@/lib/utils";
+
+/** Admin nested vertical scroll — scrollbar hidden visually; wheel/touch/keyboard unchanged. */
+export const ADMIN_SCROLL_Y = cn(
+  SOUQ_SCROLLBAR_HIDDEN_CLASS,
+  "overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]",
+);
+
+/** Admin nested horizontal scroll (tables) — scrollbar hidden visually. */
+export const ADMIN_SCROLL_X = cn(
+  SOUQ_SCROLLBAR_HIDDEN_CLASS,
+  "overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]",
+);
 
 export const BTN_FIX = "no-default-hover-elevate";
 
@@ -15,8 +28,10 @@ export const CARD_SHELL =
 export const DIALOG_SURFACE =
   "border border-primary/35 bg-zinc-950 text-foreground shadow-[0_0_28px_-12px_hsl(var(--primary)/0.22)] ring-1 ring-primary/15 sm:rounded-2xl";
 
-export const SURFACE_TABLE_WRAP =
-  "relative isolate z-0 overflow-x-auto rounded-2xl border border-primary/35 bg-zinc-950/70 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10";
+export const SURFACE_TABLE_WRAP = cn(
+  "relative isolate z-0 rounded-2xl border border-primary/35 bg-zinc-950/70 shadow-[0_0_22px_-12px_hsl(var(--primary)/0.14)] ring-1 ring-primary/10",
+  ADMIN_SCROLL_X,
+);
 
 export const STAT_TILE =
   "rounded-2xl border border-primary/30 bg-zinc-950/70 px-4 py-3 shadow-[0_0_18px_-14px_hsl(var(--primary)/0.12)] ring-1 ring-primary/10 transition-colors duration-200 hover:border-primary/45 hover:bg-zinc-900/75 hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.18)]";
@@ -37,8 +52,10 @@ export const ADMIN_SELECT_TRIGGER = cn(
 );
 
 /** Radix Select — dropdown panel */
-export const ADMIN_SELECT_CONTENT =
-  "z-[200] max-h-72 overflow-y-auto rounded-2xl border border-primary/40 bg-zinc-950 p-1.5 text-foreground shadow-[0_0_32px_-10px_hsl(var(--primary)/0.38)] ring-1 ring-primary/15 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95";
+export const ADMIN_SELECT_CONTENT = cn(
+  "z-[200] max-h-72 rounded-2xl border border-primary/40 bg-zinc-950 p-1.5 text-foreground shadow-[0_0_32px_-10px_hsl(var(--primary)/0.38)] ring-1 ring-primary/15 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+  ADMIN_SCROLL_Y,
+);
 
 /** Radix Select — option row (RTL) */
 export const ADMIN_SELECT_ITEM =
@@ -52,8 +69,10 @@ export const MODAL_FIELD_GROUP = "space-y-2";
 
 export const MODAL_BODY = "space-y-4";
 
-export const MODAL_SCROLL =
-  "max-h-[min(70vh,32rem)] space-y-4 overflow-y-auto pe-1 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:bg-transparent";
+export const MODAL_SCROLL = cn(
+  "max-h-[min(70vh,32rem)] space-y-4 pe-1",
+  ADMIN_SCROLL_Y,
+);
 
 export const MODAL_SECTION_CARD = cn(
   SUB_CARD,

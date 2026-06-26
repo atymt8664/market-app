@@ -50,9 +50,11 @@ else
 fi
 
 # Nginx upstream (public traffic path)
-if grep -q '127.0.0.1:3002' /etc/nginx/sites-enabled/souq-api-ready.conf 2>/dev/null; then
+NGINX_USES_SHADOW=0
+if grep -rq '127.0.0.1:3002' /etc/nginx/sites-enabled/ 2>/dev/null; then
+  NGINX_USES_SHADOW=1
   ok "nginx upstream -> :3002 (prod-shadow)"
-elif grep -q '127.0.0.1:3001' /etc/nginx/sites-enabled/souq-api-ready.conf 2>/dev/null; then
+elif grep -rq '127.0.0.1:3001' /etc/nginx/sites-enabled/ 2>/dev/null; then
   note "nginx upstream -> :3001 (staging primary — verify intentional)"
 else
   bad "nginx upstream target unclear"
@@ -69,7 +71,30 @@ main_img="$(docker inspect souq-arab-api-api-1 --format '{{.Config.Image}}' 2>/d
 shadow_img="$(docker inspect souq-arab-api-prod-shadow-api-prod-shadow-1 --format '{{.Config.Image}}' 2>/dev/null || true)"
 note "main api image: ${main_img:-unknown}"
 note "prod-shadow image: ${shadow_img:-unknown}"
-[[ "$main_img" == "$shadow_img" ]] && ok "main + prod-shadow image parity" || note "image mismatch — public traffic uses prod-shadow only"
+if [[ "$main_img" == "$shadow_img" ]]; then
+  ok "main + prod-shadow image parity"
+elif [[ "$NGINX_USES_SHADOW" -eq 1 ]]; then
+  bad "image mismatch with nginx on :3002 — public traffic may not match CURRENT_TAG (use deploy-production-public-api.sh)"
+else
+  note "image mismatch — nginx not on :3002"
+fi
+
+if [[ "$NGINX_USES_SHADOW" -eq 1 ]]; then
+  CURRENT_TAG=""
+  CURRENT_SHADOW=""
+  [[ -f "${BASE}/releases/CURRENT_TAG" ]] && CURRENT_TAG="$(cat "${BASE}/releases/CURRENT_TAG")"
+  [[ -f "${BASE}/releases/CURRENT_PROD_SHADOW_IMAGE" ]] && CURRENT_SHADOW="$(cat "${BASE}/releases/CURRENT_PROD_SHADOW_IMAGE")"
+  if [[ -n "$CURRENT_TAG" && -n "$CURRENT_SHADOW" && "$CURRENT_TAG" != "$CURRENT_SHADOW" ]]; then
+    bad "CURRENT_TAG (${CURRENT_TAG}) != CURRENT_PROD_SHADOW_IMAGE (${CURRENT_SHADOW})"
+  elif [[ -n "$CURRENT_TAG" && -n "$CURRENT_SHADOW" ]]; then
+    ok "release files: CURRENT_TAG matches CURRENT_PROD_SHADOW_IMAGE"
+  fi
+  if [[ -n "$shadow_img" && -n "$CURRENT_SHADOW" && "$shadow_img" != "$CURRENT_SHADOW" ]]; then
+    bad "prod-shadow container image != CURRENT_PROD_SHADOW_IMAGE"
+  elif [[ -n "$shadow_img" && -n "$CURRENT_SHADOW" ]]; then
+    ok "prod-shadow container matches CURRENT_PROD_SHADOW_IMAGE"
+  fi
+fi
 
 if docker exec souq-arab-api-prod-shadow-api-prod-shadow-1 grep -q buildNocCpuFromServerMetrics /app/artifacts/api-server/dist/index.mjs 2>/dev/null; then
   ok "prod-shadow dist has P8-1H NOC CPU hook"

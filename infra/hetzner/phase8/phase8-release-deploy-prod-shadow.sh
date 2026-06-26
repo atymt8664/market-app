@@ -80,4 +80,27 @@ until curl -fsS http://127.0.0.1:3002/api/healthz >/dev/null 2>&1; do
 done
 
 log "prod shadow healthy on :3002"
+
+VERIFY_PUBLIC=""
+if [[ -f "${BASE}/scripts/verify-production-public-api.sh" ]]; then
+  VERIFY_PUBLIC="${BASE}/scripts/verify-production-public-api.sh"
+elif [[ -f "${BASE}/infra/hetzner/deploy/verify-production-public-api.sh" ]]; then
+  VERIFY_PUBLIC="${BASE}/infra/hetzner/deploy/verify-production-public-api.sh"
+fi
+
+if [[ -n "$VERIFY_PUBLIC" ]]; then
+  log "public verify gate"
+  if ! SOUQ_EXPECT_IMAGE="$NEW_IMAGE" bash "$VERIFY_PUBLIC" "$NEW_IMAGE"; then
+    log "public verify failed — rolling back prod shadow"
+    if [[ -n "$PREV" ]]; then
+      rollback_shadow "$PREV" || true
+      echo "$PREV" >"${RELEASES}/CURRENT_PROD_SHADOW_IMAGE"
+    fi
+    echo "FAIL phase8 public verify"
+    exit 1
+  fi
+else
+  log "WARN verify-production-public-api.sh not found — skipping public gate"
+fi
+
 echo "OK phase8 deploy ${NEW_IMAGE}"

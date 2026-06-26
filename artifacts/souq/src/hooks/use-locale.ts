@@ -1,12 +1,18 @@
 import { useSyncExternalStore } from "react";
-import { getLocale, setLocale, subscribeToLocale, type Locale } from "@/i18n";
+import { getLocaleSnapshot, setLocale, subscribeToLocale, type Locale } from "@/i18n";
+
+function parseLocaleSnapshot(snapshot: string): Locale {
+  const code = snapshot.split(":")[0];
+  return code === "en" || code === "de" ? code : "ar";
+}
 
 export function useLocale() {
-  const locale = useSyncExternalStore<Locale>(
+  const snapshot = useSyncExternalStore(
     subscribeToLocale,
-    getLocale,
-    () => "ar",
+    getLocaleSnapshot,
+    () => "ar:0",
   );
+  const locale = parseLocaleSnapshot(snapshot);
   return {
     locale,
     setLocale: (next: Locale) => setLocale(next),

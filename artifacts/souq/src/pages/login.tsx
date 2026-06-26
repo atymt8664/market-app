@@ -327,7 +327,7 @@ export default function Login() {
             </form>
           ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
               <FormField
                 control={form.control}
                 name="email"

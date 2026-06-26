@@ -204,6 +204,7 @@ export default function ResetPassword() {
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="flex flex-col gap-5"
+                noValidate
               >
                 <FormField
                   control={form.control}

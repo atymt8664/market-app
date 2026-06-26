@@ -154,6 +154,7 @@ export default function ForgotPassword() {
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="flex flex-col gap-4"
                 dir={dir}
+                noValidate
               >
                 <FormField
                   control={form.control}

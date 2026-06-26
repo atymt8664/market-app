@@ -12,6 +12,13 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
+import { t } from "@/i18n"
+
+function formatFormErrorMessage(message: unknown): string {
+  const raw = String(message ?? "")
+  if (!raw) return ""
+  return raw.startsWith("auth.") ? t(raw) : raw
+}
 
 const Form = FormProvider
 
@@ -145,7 +152,12 @@ const FormMessage = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField()
-  const body = error ? String(error?.message ?? "") : children
+  const body =
+    children != null && children !== false && children !== ""
+      ? children
+      : error?.message
+        ? formatFormErrorMessage(error.message)
+        : null
 
   if (!body) {
     return null

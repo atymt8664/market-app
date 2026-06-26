@@ -11,6 +11,13 @@ const FULL_LOCALE_IDLE_MS = 12_000;
 
 const STORAGE_KEY = "app_locale";
 const listeners = new Set<() => void>();
+/** Bumped when full locale dictionaries load (gate → full) so t() consumers re-render. */
+let dictionaryRevision = 0;
+
+function bumpDictionaryRevision(): void {
+  dictionaryRevision += 1;
+  listeners.forEach((listener) => listener());
+}
 
 /** Inlined gate copy — no async chunk on first-launch critical path (7A.6). */
 const GATE_LOCALES: Record<Locale, Dictionary> = {
@@ -87,8 +94,12 @@ async function loadLocale(locale: Locale): Promise<Dictionary> {
   if (pending) return pending;
 
   const promise = localeLoaders[locale]().then((mod) => {
+    const wasGateOnly = gateOnlyLocales.has(locale);
     dictionaries[locale] = mod.default;
     gateOnlyLocales.delete(locale);
+    if (wasGateOnly) {
+      bumpDictionaryRevision();
+    }
     return mod.default;
   });
 
@@ -128,13 +139,11 @@ async function prefetchFullLocales(options: PrefetchFullLocalesOptions = {}): Pr
 
   if (fullLocaleLoadStarted) {
     await Promise.all(tasks);
-    listeners.forEach((listener) => listener());
     return;
   }
   fullLocaleLoadStarted = true;
 
   await Promise.all(tasks);
-  listeners.forEach((listener) => listener());
 }
 
 function scheduleFullLocaleOnLongIdle(): void {
@@ -205,6 +214,11 @@ export function getLocale(): Locale {
   return activeLocale;
 }
 
+/** useSyncExternalStore snapshot — locale code + dict revision (gate → full). */
+export function getLocaleSnapshot(): string {
+  return `${activeLocale}:${dictionaryRevision}`;
+}
+
 export async function setLocale(locale: Locale): Promise<void> {
   const changed = activeLocale !== locale;
   activeLocale = locale;
@@ -216,7 +230,7 @@ export async function setLocale(locale: Locale): Promise<void> {
   if (locale !== "ar") {
     await loadLocale("ar");
   }
-  if (changed) listeners.forEach((listener) => listener());
+  if (changed) bumpDictionaryRevision();
 }
 
 export function hasSavedLocale(): boolean {

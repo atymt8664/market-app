@@ -95,7 +95,7 @@ const homeCategoryIconGlyphClassName = cn(
 
 function HomeCategoryIconBox({ iconName }: { iconName?: string }) {
   return (
-    <div className={homeCategoryIconShell}>
+    <div className={homeCategoryIconShell} data-home-category-icon="1">
       {iconName ? (
         <CategoryIcon name={iconName} className={homeCategoryIconGlyphClassName} />
       ) : (

@@ -43,6 +43,8 @@ export interface AdCardProps {
   variant?: "default" | "grid";
   /** Show explicit remove control below the card (favorites page). */
   favoritesList?: boolean;
+  /** Category listing grid — coarse-pointer compositor hooks only. */
+  categoryListing?: boolean;
 }
 
 /** Title: exactly two line-heights — no vertical shift between cards */
@@ -196,6 +198,7 @@ function areAdCardPropsEqual(prev: AdCardMemoProps, next: AdCardMemoProps): bool
     prev.featuredLead !== next.featuredLead ||
     prev.homeFeed !== next.homeFeed ||
     prev.favoritesList !== next.favoritesList ||
+    prev.categoryListing !== next.categoryListing ||
     prev.variant !== next.variant
   ) {
     return false;
@@ -230,6 +233,7 @@ function AdCardInner({
   homeFeed,
   variant: _variant,
   favoritesList,
+  categoryListing,
   viewerAuthKey: _viewerAuthKey,
 }: AdCardMemoProps) {
   const { locale } = useLocale();
@@ -317,9 +321,11 @@ function AdCardInner({
       className={cn("block h-full min-h-0 w-full outline-none")}
     >
       <article
+        data-category-listing-card={categoryListing ? "1" : undefined}
         className={cn(
-          "group flex h-full w-full flex-col overflow-hidden text-start [contain:layout]",
-          !feedCompact && "active:scale-[0.98]",
+          "group flex h-full w-full flex-col overflow-hidden text-start",
+          !categoryListing && "[contain:layout]",
+          !feedCompact && !categoryListing && "active:scale-[0.98]",
           favCompact
             ? FAVORITES_CARD_SHELL
             : feedCompact

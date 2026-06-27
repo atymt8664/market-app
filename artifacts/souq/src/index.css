@@ -9,6 +9,7 @@
 @import "./theme-shared.css";
 @import "./home-feed-compositor.css";
 @import "./ad-detail-compositor.css";
+@import "./category-compositor.css";
 
 /* Promo video recording page — fullscreen 9:16, no app chrome */
 html.promo-video-root,

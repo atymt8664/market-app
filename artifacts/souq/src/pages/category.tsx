@@ -1,4 +1,4 @@
-﻿import { useMemo } from "react";
+﻿import { useCallback, useMemo } from "react";
 import {
   useListAds,
   useListSubcategories,
@@ -7,7 +7,7 @@ import {
   getListCategoriesQueryKey,
   getListSubcategoriesQueryKey,
 } from "@workspace/api-client-react";
-import { Link, useParams } from "wouter";
+import { Link, useLocation, useParams, useSearch } from "wouter";
 import { ArrowRight, LayoutGrid } from "lucide-react";
 import { AdCard, AdCardSkeleton } from "@/components/ad-card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -40,6 +40,9 @@ import {
 const listingGridCardTone =
   "[&_article]:rounded-2xl [&_article]:border-primary/35 [&_article]:bg-[#0A0A0A]/80 [&_article]:shadow-[0_0_20px_-12px_hsl(var(--primary)/0.16)] [&_article]:ring-1 [&_article]:ring-primary/10 [&_article]:bg-[#0A0A0A]/70 [&_article]:hover:border-primary/40 [&_article>div:first-child]:rounded-t-2xl [&_article_button]:rounded-full [&_article_button]:border [&_article_button]:border-primary/45 [&_article_button]:bg-black/55";
 
+const categoryListingGridClassName =
+  "grid grid-cols-2 items-start gap-x-2 gap-y-2 min-[520px]:grid-cols-3 min-[520px]:gap-x-2.5 min-[520px]:gap-y-2.5 md:grid-cols-3 md:gap-x-2.5 md:gap-y-2.5 xl:grid-cols-4 xl:gap-x-3 xl:gap-y-2.5";
+
 const subChipClass =
   "inline-flex shrink-0 items-center rounded-full border border-primary/40 bg-[#0A0A0A]/75 px-4 py-2 text-[13px] font-medium text-foreground shadow-[0_0_14px_-12px_hsl(var(--primary)/0.18)] ring-1 ring-primary/10 transition-[border-color,box-shadow,transform] duration-200 hover:border-primary/55 hover:shadow-[0_0_22px_-12px_hsl(var(--primary)/0.24)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100";
 
@@ -49,11 +52,34 @@ function SubChipSkeleton() {
   );
 }
 
+function parseSubcategoryId(raw: string | null): number | undefined {
+  if (!raw) return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
 export default function Category() {
   const { locale } = useLocale();
   const isRtl = locale === "ar";
   const params = useParams();
   const categoryId = Number(params.id);
+  const searchString = useSearch();
+  const [, navigate] = useLocation();
+  const activeSubcategoryId = useMemo(
+    () => parseSubcategoryId(new URLSearchParams(searchString).get("subcategoryId")),
+    [searchString],
+  );
+
+  const selectSubcategory = useCallback(
+    (subcategoryId: number | undefined) => {
+      const base = `/category/${categoryId}`;
+      navigate(
+        subcategoryId ? `${base}?subcategoryId=${subcategoryId}` : base,
+        { replace: true },
+      );
+    },
+    [categoryId, navigate],
+  );
 
   const { data: categories } = useListCategories({
     query: {
@@ -70,16 +96,20 @@ export default function Category() {
       },
     },
   );
-  const { data: ads, isLoading: isLoadingAds } = useListAds(
-    { categoryId },
-    {
-      query: {
-        enabled: !!categoryId,
-        queryKey: getListAdsQueryKey({ categoryId }),
-        staleTime: STALE_AD_LIST_MS,
-      },
-    },
+  const adsQueryParams = useMemo(
+    () =>
+      activeSubcategoryId
+        ? { categoryId, subcategoryId: activeSubcategoryId }
+        : { categoryId },
+    [categoryId, activeSubcategoryId],
   );
+  const { data: ads, isLoading: isLoadingAds } = useListAds(adsQueryParams, {
+    query: {
+      enabled: !!categoryId,
+      queryKey: getListAdsQueryKey(adsQueryParams),
+      staleTime: STALE_AD_LIST_MS,
+    },
+  });
   const selectedCategory = categories?.find((cat) => cat.id === categoryId);
   const title = selectedCategory
     ? getCreateAdTaxonomyLabel(locale, selectedCategory.name)
@@ -93,9 +123,11 @@ export default function Category() {
     return {
       title: seoTitle,
       description: getDefaultSiteDescription(locale),
-      canonicalPath: `/category/${categoryId}`,
+      canonicalPath: activeSubcategoryId
+        ? `/category/${categoryId}?subcategoryId=${activeSubcategoryId}`
+        : `/category/${categoryId}`,
     };
-  }, [categoryId, selectedCategory, locale]);
+  }, [categoryId, selectedCategory, locale, activeSubcategoryId]);
   usePageSeo(pageSeo);
 
   const hasArabicText = (value?: string | null) =>
@@ -107,6 +139,10 @@ export default function Category() {
         if (locale !== "ar" && hasArabicText(mapped)) return t("category.subtitle");
         return mapped;
       })()
+    : null;
+
+  const activeSubLabel = activeSubcategoryId
+    ? subcategories?.find((sub) => sub.id === activeSubcategoryId)?.name
     : null;
 
   return (
@@ -167,6 +203,7 @@ export default function Category() {
             </p>
           ) : null}
           <div
+            data-category-panel-shell="1"
             className={cn(
               SETTINGS_CARD_SHELL,
               "p-2.5 shadow-[0_0_20px_-14px_hsl(var(--primary)/0.15)] md:p-3",
@@ -181,16 +218,31 @@ export default function Category() {
                     ))}
                   </>
                 ) : subcategories?.length ? (
-                  subcategories.map((sub) => (
-                    <Link
-                      key={sub.id}
-                      href={`/search?categoryId=${categoryId}&subcategoryId=${sub.id}`}
+                  <>
+                    <button
+                      type="button"
+                      data-category-sub-chip="1"
+                      data-selected={activeSubcategoryId ? undefined : "true"}
+                      className={cn(subChipClass, "cursor-pointer")}
+                      onClick={() => selectSubcategory(undefined)}
                     >
-                      <span className={cn(subChipClass, "cursor-pointer")}>
+                      {t("notifications.tabs.all")}
+                    </button>
+                    {subcategories.map((sub) => (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        data-category-sub-chip="1"
+                        data-selected={
+                          activeSubcategoryId === sub.id ? "true" : undefined
+                        }
+                        className={cn(subChipClass, "cursor-pointer")}
+                        onClick={() => selectSubcategory(sub.id)}
+                      >
                         {getCreateAdTaxonomyLabel(locale, sub.name)}
-                      </span>
-                    </Link>
-                  ))
+                      </button>
+                    ))}
+                  </>
                 ) : (
                   <span className="px-2 py-1.5 text-sm text-zinc-500">
                     {t("category.no_subcategories")}
@@ -210,21 +262,22 @@ export default function Category() {
             isRtl ? "text-right" : "text-left",
           )}
         >
-          {t("home.recommended")}
+          {activeSubLabel
+            ? getCreateAdTaxonomyLabel(locale, activeSubLabel)
+            : t("home.recommended")}
         </h2>
 
         <div
-          className={cn(
-            "grid grid-cols-2 items-start gap-2.5 md:grid-cols-3 md:gap-3 xl:grid-cols-4 xl:gap-3.5",
-            listingGridCardTone,
-          )}
+          className={cn(categoryListingGridClassName, listingGridCardTone)}
         >
           {isLoadingAds ? (
             Array.from({ length: 8 }).map((_, i) => (
               <AdCardSkeleton key={i} />
             ))
           ) : ads?.length ? (
-            ads.map((ad) => <AdCard key={ad.id} ad={ad} />)
+            ads.map((ad) => (
+              <AdCard key={ad.id} ad={ad} categoryListing />
+            ))
           ) : (
             <div
               className={cn(

@@ -27,7 +27,7 @@ export function HomeFeedSkeleton() {
       <section className="pb-2 pt-0">
         <div className={cn(HOME_PAGE_INSET, "mb-1.5 md:mb-2 h-7 w-32 rounded-2xl border border-primary/20 bg-white/[0.04] animate-pulse")} />
         <div className={HOME_FEED_ADS_INSET}>
-        <div className="grid grid-cols-2 gap-x-2 gap-y-2 md:grid-cols-3 md:gap-x-2.5 md:gap-y-2.5 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-2 gap-y-2 min-[520px]:grid-cols-3 min-[520px]:gap-x-2.5 min-[520px]:gap-y-2.5 md:grid-cols-3 md:gap-x-2.5 md:gap-y-2.5 xl:grid-cols-4">
           {GRID_KEYS.map((k) => (
             <AdCardSkeleton key={k} />
           ))}

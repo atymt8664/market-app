@@ -134,8 +134,9 @@ function HomeFeedAdCardInner({
     >
       <Link href={`/ad/${ad.id}`} className="block h-full min-h-0 w-full outline-none">
         <article
+          data-home-feed-card="1"
           className={cn(
-            "group flex h-full w-full flex-col overflow-hidden text-start [contain:layout]",
+            "group flex h-full w-full flex-col overflow-hidden text-start",
             HOME_FEED_CARD_SHELL,
             "h-full min-h-0",
           )}
@@ -147,7 +148,7 @@ function HomeFeedAdCardInner({
                 alt={ad.title}
                 width={imgWidth}
                 height={imgHeight}
-                className="absolute inset-0 h-full w-full object-cover"
+                className="absolute inset-0 h-full w-full object-cover [transform:translateZ(0)] [backface-visibility:hidden]"
                 loading={featured && featuredLead ? "eager" : "lazy"}
                 decoding="async"
                 fetchPriority={featured && featuredLead ? "high" : featured ? "low" : undefined}

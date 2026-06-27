@@ -157,6 +157,7 @@ function AdImagesPublicInner({ images, title }: AdImagesPublicProps) {
         <button
           type="button"
           onClick={() => openViewer(heroIndex)}
+          data-ad-detail-shell="gallery"
           className={cn(
             "relative w-full overflow-hidden rounded-2xl border border-border/80 bg-muted/30",
             count <= 1
@@ -164,7 +165,7 @@ function AdImagesPublicInner({ images, title }: AdImagesPublicProps) {
               : "aspect-[4/3] sm:aspect-[16/10] max-h-[min(320px,58vh)] sm:max-h-[340px]",
             "shadow-sm transition-[box-shadow,transform] duration-200",
             "hover:shadow-md active:scale-[0.998] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
-            "touch-manipulation [contain:layout_paint]",
+            "touch-manipulation",
           )}
           aria-label={t("ad_images_public.open_gallery")}
         >

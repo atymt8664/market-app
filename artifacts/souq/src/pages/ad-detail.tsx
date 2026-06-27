@@ -733,7 +733,7 @@ export default function AdDetail() {
       <div className={`${pageMax} py-1.5 md:py-3`}>
         <div className="flex flex-col gap-3 min-w-0">
           {/* كرت العنوان والسعر والموقع */}
-          <div className={heroTitlePriceSurface}>
+          <div className={heroTitlePriceSurface} data-ad-detail-shell="hero">
             <div className="flex flex-col gap-1 text-right">
               <h1 className="text-xl md:text-2xl font-bold leading-snug text-foreground">
                 {ad.title}
@@ -766,6 +766,7 @@ export default function AdDetail() {
 
           {/* الإحصائيات — شريط أفقي بحدود lime وثلاثة أعمدة */}
           <div
+            data-ad-detail-shell="stats"
             className={cn(
               statsStripSurface,
               "flex min-h-[4rem] items-stretch py-2",
@@ -841,15 +842,16 @@ export default function AdDetail() {
           {/* 1 — معلومات الجهاز: من ad.details (specs + عند الحاجة categoryPath.leaf للشركة المصنعة) */}
           {deviceInfoRows.length > 0 ? (
             <div
+              data-ad-detail-shell="section"
               data-testid="ad-device-info-section"
               className={cn(deviceInfoShell, "space-y-1.5 text-sm")}
             >
-              <span className={cn(adDetailSectionHeading, "mb-0")}>
+              <span className={cn(adDetailSectionHeading, "mb-0")} data-ad-detail-shell="heading">
                 {t("ad_detail.device_info")}
               </span>
               <ul className="grid grid-cols-2 gap-2">
                 {deviceInfoRows.map((row) => (
-                  <li key={row.id} className={deviceSpecTile}>
+                  <li key={row.id} className={deviceSpecTile} data-ad-detail-shell="tile">
                     <p className="text-[10px] font-medium leading-tight text-muted-foreground">
                       {row.label}
                     </p>
@@ -863,8 +865,8 @@ export default function AdDetail() {
           ) : null}
 
           {/* 2 — الوصف */}
-          <div className={cn(deviceInfoShell, "space-y-1.5 text-sm")}>
-            <span className={cn(adDetailSectionHeading, "mb-0")}>
+          <div className={cn(deviceInfoShell, "space-y-1.5 text-sm")} data-ad-detail-shell="section">
+            <span className={cn(adDetailSectionHeading, "mb-0")} data-ad-detail-shell="heading">
               {t("ad_detail.description")}
             </span>
             {descRaw ? (
@@ -897,8 +899,8 @@ export default function AdDetail() {
           </div>
 
           {/* 3 — الشحن والتسليم */}
-          <div className={cn(deviceInfoShell, "space-y-1.5 text-sm")}>
-            <span className={cn(adDetailSectionHeading, "mb-0")}>
+          <div className={cn(deviceInfoShell, "space-y-1.5 text-sm")} data-ad-detail-shell="section">
+            <span className={cn(adDetailSectionHeading, "mb-0")} data-ad-detail-shell="heading">
               {t("ad_detail.shipping_delivery")}
             </span>
             {shippingPickupOnly ? (
@@ -919,13 +921,13 @@ export default function AdDetail() {
           </div>
 
           {/* 4 — كرت البائع */}
-          <section className={cn(deviceInfoShell, "space-y-2.5 text-sm")}>
-            <span className={cn(adDetailSectionHeading, "mb-0")}>
+          <section className={cn(deviceInfoShell, "space-y-2.5 text-sm")} data-ad-detail-shell="section">
+            <span className={cn(adDetailSectionHeading, "mb-0")} data-ad-detail-shell="heading">
               {t("ad_detail.seller_info")}
             </span>
 
             <div className="space-y-3.5">
-              <div className={cn(sellerInnerShell, "space-y-3")}>
+              <div className={cn(sellerInnerShell, "space-y-3")} data-ad-detail-shell="inner">
                 <div className="flex items-center gap-3 text-right">
                   <div className="shrink-0" aria-hidden>
                     <ProfileAvatarRing
@@ -955,13 +957,14 @@ export default function AdDetail() {
                   <Link
                     href={`/users/${ad.userId}`}
                     className={sellerProfileLinkBtn}
+                    data-ad-detail-shell="btn"
                   >
                     {t("ad_detail.view_profile")}
                   </Link>
                 ) : null}
               </div>
 
-              <div className={cn(sellerInnerShell, "flex flex-col gap-2.5")}>
+              <div className={cn(sellerInnerShell, "flex flex-col gap-2.5")} data-ad-detail-shell="inner">
                 <AdDetailCommerceActions
                   adId={ad.id}
                   secondaryButtonClassName={sellerActionH}
@@ -990,6 +993,7 @@ export default function AdDetail() {
                 <button
                   type="button"
                   onClick={handleCopyPhone}
+                  data-ad-detail-shell="row"
                   className={cn(
                     sellerPhoneRow,
                     "justify-between font-medium",
@@ -1013,8 +1017,8 @@ export default function AdDetail() {
 
               </div>
 
-              <div className={cn(sellerInnerShell, "space-y-2.5")}>
-                <div className="rounded-xl border border-primary/30 bg-[#0A0A0A]/90 p-3 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10">
+              <div className={cn(sellerInnerShell, "space-y-2.5")} data-ad-detail-shell="inner">
+                <div className="rounded-xl border border-primary/30 bg-[#0A0A0A]/90 p-3 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10" data-ad-detail-shell="nested">
                   <p className="mb-1.5 block text-xs font-medium text-muted-foreground">
                     {t("ad_detail.report.choose_reason")}
                   </p>
@@ -1030,7 +1034,7 @@ export default function AdDetail() {
                   </button>
                 </div>
 
-                <div className="rounded-xl border border-primary/30 bg-[#0A0A0A]/90 p-2.5 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10">
+                <div className="rounded-xl border border-primary/30 bg-[#0A0A0A]/90 p-2.5 shadow-[0_0_16px_-12px_hsl(var(--primary)/0.2)] ring-1 ring-primary/10" data-ad-detail-shell="nested">
                   <Button
                     type="button"
                     variant="ghost"
@@ -1067,7 +1071,7 @@ export default function AdDetail() {
               </div>
 
               {reason === otherReason && (
-                <div className={sellerInnerShell}>
+                <div className={sellerInnerShell} data-ad-detail-shell="inner">
                   <textarea
                     placeholder={t("ad_detail.report.details_placeholder")}
                     className="min-h-[88px] w-full rounded-xl border border-primary/28 bg-[#0A0A0A]/90 p-3 text-right text-sm text-foreground shadow-inner ring-1 ring-primary/10 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"

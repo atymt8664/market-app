@@ -103,12 +103,14 @@ function AdDetailLocationCardInner({
   return (
     <section
       className={cn(sectionShellClassName, "space-y-2.5 text-sm", className)}
+      data-ad-detail-shell="section"
       dir={isRtl ? "rtl" : "ltr"}
       aria-label={t("ad_detail.location.section_title")}
     >
-      <span className={sectionHeading}>{t("ad_detail.location.section_title")}</span>
+      <span className={sectionHeading} data-ad-detail-shell="heading">{t("ad_detail.location.section_title")}</span>
 
       <div
+        data-ad-detail-shell="map"
         className={cn(
           locationCardShell,
           "transition-[border-color,box-shadow] hover:border-primary/55 hover:shadow-[0_0_26px_-10px_hsl(var(--primary)/0.28)]",

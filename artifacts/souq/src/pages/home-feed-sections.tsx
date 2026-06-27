@@ -34,7 +34,7 @@ const featuredStripClassName = cn(
 );
 
 const recommendedGridClassName = cn(
-  "grid grid-cols-2 items-stretch gap-x-2 gap-y-2 md:grid-cols-3 md:gap-x-2.5 md:gap-y-2.5 xl:grid-cols-4 xl:gap-x-3 xl:gap-y-2.5 2xl:grid-cols-5 2xl:gap-x-3.5 2xl:gap-y-3",
+  "grid grid-cols-2 items-stretch gap-x-2 gap-y-2 min-[520px]:grid-cols-3 min-[520px]:gap-x-2.5 min-[520px]:gap-y-2.5 md:grid-cols-3 md:gap-x-2.5 md:gap-y-2.5 xl:grid-cols-4 xl:gap-x-3 xl:gap-y-2.5 2xl:grid-cols-5 2xl:gap-x-3.5 2xl:gap-y-3",
   homeAdCardTone,
 );
 

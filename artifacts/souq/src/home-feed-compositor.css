@@ -1,0 +1,42 @@
+/**
+ * PLS-2H-R — Home feed compositor stability on coarse-pointer devices (EZpad / Android Chrome).
+ * Visual tokens unchanged: border/ring redrawn on ::after layer; content paint isolated via mask.
+ * Desktop / fine-pointer: rules inactive — HOME_FEED_CARD_SHELL renders as authored.
+ */
+@media (pointer: coarse) {
+  [data-home-feed-card="1"] {
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+    contain: none;
+    border-color: transparent;
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-ring-offset-shadow: 0 0 #0000;
+    box-shadow: none;
+    transform: translateZ(0);
+    -webkit-mask-image: linear-gradient(#fff, #fff);
+    mask-image: linear-gradient(#fff, #fff);
+  }
+
+  [data-home-feed-card="1"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+    border-radius: 0.75rem;
+    border: 1px solid hsl(var(--primary) / 0.3);
+    box-shadow:
+      var(--tw-ring-offset-shadow, 0 0 #0000),
+      0 0 0 1px hsl(var(--primary) / 0.08),
+      var(--tw-shadow, 0 0 #0000);
+  }
+
+  [data-home-feed-card="1"] [class*="border-t"] {
+    border-color: transparent;
+    background-image: linear-gradient(hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.15));
+    background-size: 100% 1px;
+    background-repeat: no-repeat;
+    background-position: top;
+  }
+}

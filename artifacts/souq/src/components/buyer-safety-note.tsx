@@ -20,6 +20,7 @@ export function BuyerSafetyNote({
 
   return (
     <div
+      data-ad-detail-shell="safety"
       className={cn(
         "rounded-2xl border border-border/70 bg-[#0A0A0A]/40 px-3.5 py-3.5",
         "shadow-[0_0_28px_-12px_rgba(245,158,11,0.2)] ring-1 ring-inset ring-amber-500/20",

@@ -7,6 +7,8 @@
     "hello": "tsx ./src/hello.ts",
     "seed": "tsx ./src/seed.ts",
     "seed:staging": "tsx ./src/seed-staging.ts",
+    "taxonomy:sync": "tsx ./src/taxonomy-sync.ts",
+    "taxonomy:audit": "tsx ./src/taxonomy-audit.ts",
     "db:export": "tsx ./src/db-export.ts",
     "db:import": "tsx ./src/db-import.ts",
     "db:schema:snapshot": "tsx ./src/db-schema-snapshot.ts",

@@ -10,6 +10,8 @@
   getAuthProfileCsrfTokenForRequest,
   useUserPresenceBatch,
   useGetUserProfile,
+  useListCategories,
+  getListCategoriesQueryKey,
 } from "@workspace/api-client-react";
 import {
   parseUserApiErrorResponse,
@@ -62,14 +64,16 @@ import {
 } from "@/lib/bottom-nav-layout";
 import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
 import { cn } from "@/lib/utils";
+import { PLATFORM_CARD_INSET } from "@/lib/home-page-layout";
 
 /** Scroll-end clearance — nav button row + L3 visual drop + breathing room for last full card. */
 const adDetailScrollEndSpacer =
   "min-h-[calc(3.125rem+var(--souq-bottom-nav-drop,0px)+1rem)] shrink-0 bg-[#0A0A0A] md:min-h-[calc(3.5rem+var(--souq-bottom-nav-drop,0px)+1rem)]";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
+import { buildAdDetailSpecRows } from "@/lib/create-ad-dynamic-fields";
 import { lookupMarketplaceCountry } from "@/lib/locations/manifest-data";
 import { useQueryClient } from "@tanstack/react-query";
-import { STALE_AD_DETAIL_MS } from "@/lib/query-stale-times";
+import { STALE_AD_DETAIL_MS, STALE_CATEGORIES_MS } from "@/lib/query-stale-times";
 import { createFavoriteToggleHandlers } from "@/lib/invalidate-ad-queries";
 import { prefetchConversationThread } from "@/lib/prefetch-conversation-thread";
 import { bustConversationThreadCache } from "@/lib/chat-thread-cache";
@@ -103,49 +107,22 @@ function normalizeAdDetailsRaw(raw: unknown): unknown {
 }
 
 /**
- * الحقول من create-ad: `details.specs` (color, condition, storage, …).
- * الشركة المصنعة: أولاً `specs.manufacturer` إن وُجدت؛ وإلا آخر مستوى من `details.categoryPath.leaf`
- * (مسار الناشر المحفوظ في نفس JSON — مثل إلكترونيات → هواتف → آبل) ولا يُستخدم إلا إذا وُجدت `leaf`.
+ * الحقول من create-ad: `details.specs` عبر نفس تعريفات Create Ad (slug + subcategoryName).
+ * legacy manufacturer: specs.manufacturer أو categoryPath.leaf للهواتف القديمة فقط.
  */
-const DEVICE_SPEC_KEYS_REST = ["color", "condition", "storage", "accessories"] as const;
-
-type DeviceSpecKeyRest = (typeof DEVICE_SPEC_KEYS_REST)[number];
-
-/** بدائل المفاتيح كما في create-ad أو بيانات قديمة (نفس الفتحة المعروضة) */
-const DEVICE_SPEC_ALIASES: Record<DeviceSpecKeyRest, readonly string[]> = {
-  color: ["color"],
-  condition: ["condition"],
-  storage: ["storage", "capacity"],
-  accessories: [
-    "accessories",
-    "deviceAccessories",
-    "device_accessories",
-    "includedItems",
-    "included_items",
-  ],
-};
-
-function coerceDeviceSpecString(value: unknown): string | null {
-  if (value === undefined || value === null) return null;
-  if (typeof value === "string") {
-    const t = value.trim();
-    return t.length > 0 ? t : null;
-  }
-  if (typeof value === "number" && Number.isFinite(value)) return String(value);
-  if (typeof value === "boolean") return value ? "نعم" : "لا";
-  return null;
-}
-
-/** `specs[key]` ثم جذر details — بدون categoryPath */
 function getDeviceSpecValueFromDetails(
   detailsRoot: Record<string, unknown> | null,
   parsedSpecs: Record<string, string>,
   key: string,
 ): string | null {
-  const fromSpecs = coerceDeviceSpecString(parsedSpecs[key]);
+  const fromSpecs = parsedSpecs[key]?.trim();
   if (fromSpecs) return fromSpecs;
   if (!detailsRoot) return null;
-  return coerceDeviceSpecString(detailsRoot[key]);
+  const raw = detailsRoot[key];
+  if (typeof raw === "string" && raw.trim()) return raw.trim();
+  if (typeof raw === "number" && Number.isFinite(raw)) return String(raw);
+  if (typeof raw === "boolean") return raw ? "نعم" : "لا";
+  return null;
 }
 
 type ParsedAdDetails = ReturnType<typeof parseStoredAdDetails>;
@@ -185,11 +162,10 @@ function getStoredCategoryPath(
 }
 
 /**
- * الشركة المصنعة: من details فقط.
- * 1) specs.manufacturer أو manufacturer على جذر details
- * 2) إن غابت: ورقة المسار `categoryPath.leaf` فقط (اختيار الناشر المخزّن)، مع وجود main+sub+leaf — بدون leaf لا نستنتج شركة من المسار.
+ * Legacy phone brand: specs.manufacturer, or categoryPath.leaf when present.
+ * Not used for category/subcategory display — API categoryName/subcategoryName only.
  */
-function getManufacturerFromDetails(
+function getLegacyManufacturerFromDetails(
   detailsRoot: Record<string, unknown> | null,
   parsed: ParsedAdDetails,
 ): string | null {
@@ -199,30 +175,16 @@ function getManufacturerFromDetails(
     "manufacturer",
   );
   if (explicit) return explicit;
-  /** سيارات وغيرها: create-ad يستخدم `car_brand` لا `manufacturer` */
-  const carBrand = getDeviceSpecValueFromDetails(
-    detailsRoot,
-    parsed.specs,
-    "car_brand",
-  );
-  if (carBrand) return carBrand;
-  const brand = getDeviceSpecValueFromDetails(
-    detailsRoot,
-    parsed.specs,
-    "brand",
-  );
-  if (brand) return brand;
   const path = getStoredCategoryPath(detailsRoot, parsed);
   const leaf = path?.leaf?.trim();
-  if (!leaf) return null;
-  return leaf;
+  return leaf || null;
 }
 
-function buildDeviceInfoRowsFromDetailsOnly(detailsUnknown: unknown): {
-  id: string;
-  label: string;
-  value: string;
-}[] {
+function buildAdDetailSpecRowsFromAd(
+  detailsUnknown: unknown,
+  categorySlug: string | undefined,
+  subcategoryName: string | null | undefined,
+): { id: string; label: string; value: string }[] {
   const root =
     detailsUnknown &&
     typeof detailsUnknown === "object" &&
@@ -230,32 +192,24 @@ function buildDeviceInfoRowsFromDetailsOnly(detailsUnknown: unknown): {
       ? (detailsUnknown as Record<string, unknown>)
       : null;
   const parsed = parseStoredAdDetails(detailsUnknown ?? {});
-  const rows: { id: string; label: string; value: string }[] = [];
-
-  const manufacturer = getManufacturerFromDetails(root, parsed);
-  if (manufacturer) {
-    rows.push({
-      id: "device-spec:manufacturer",
-      label: "",
-      value: manufacturer,
-    });
-  }
-
-  for (const key of DEVICE_SPEC_KEYS_REST) {
-    let value: string | null = null;
-    for (const alias of DEVICE_SPEC_ALIASES[key]) {
-      value = getDeviceSpecValueFromDetails(root, parsed.specs, alias);
-      if (value) break;
-    }
-    if (!value) continue;
-    rows.push({
-      id: `device-spec:${key}`,
-      label: "",
-      value,
-    });
-  }
-  return rows;
+  const legacyManufacturer = getLegacyManufacturerFromDetails(root, parsed);
+  return buildAdDetailSpecRows(
+    parsed.specs,
+    categorySlug,
+    subcategoryName ?? undefined,
+    legacyManufacturer,
+  );
 }
+
+const AD_DETAIL_SPEC_LABEL_KEYS: Record<string, string> = {
+  manufacturer: "ad_detail.device.manufacturer",
+  car_brand: "ad_detail.spec.car_brand",
+  color: "ad_detail.device.color",
+  condition: "ad_detail.device.condition",
+  storage: "ad_detail.device.storage",
+  accessories: "ad_detail.device.accessories",
+  equipment_brand: "ad_detail.spec.equipment_brand",
+};
 
 export default function AdDetail() {
   const params = useParams();
@@ -272,6 +226,12 @@ export default function AdDetail() {
       enabled: !!id,
       queryKey: adKey,
       staleTime: STALE_AD_DETAIL_MS,
+    },
+  });
+  const { data: categories } = useListCategories({
+    query: {
+      queryKey: getListCategoriesQueryKey(),
+      staleTime: STALE_CATEGORIES_MS,
     },
   });
 
@@ -613,16 +573,26 @@ export default function AdDetail() {
     (ad as unknown as Record<string, unknown>).details,
   );
   const parsed = parseStoredAdDetails(detailsRaw ?? {});
-  const deviceLabelById: Record<string, string> = {
-    "device-spec:manufacturer": t("ad_detail.device.manufacturer"),
-    "device-spec:color": t("ad_detail.device.color"),
-    "device-spec:condition": t("ad_detail.device.condition"),
-    "device-spec:storage": t("ad_detail.device.storage"),
-    "device-spec:accessories": t("ad_detail.device.accessories"),
-  };
-  const deviceInfoRows = buildDeviceInfoRowsFromDetailsOnly(detailsRaw ?? {}).map((row) => ({
+  const categorySlug = categories?.find((c) => c.id === ad.categoryId)?.slug;
+  const taxonomyCategoryLabel = ad.categoryName
+    ? getCreateAdTaxonomyLabel(locale as Locale, ad.categoryName)
+    : "";
+  const taxonomySubcategoryLabel = ad.subcategoryName
+    ? getCreateAdTaxonomyLabel(locale as Locale, ad.subcategoryName)
+    : "";
+  const taxonomyLine = [taxonomyCategoryLabel, taxonomySubcategoryLabel]
+    .filter(Boolean)
+    .join(" · ");
+  const specRows = buildAdDetailSpecRowsFromAd(
+    detailsRaw ?? {},
+    categorySlug,
+    ad.subcategoryName,
+  ).map((row) => ({
     ...row,
-    label: deviceLabelById[row.id] ?? row.label,
+    label:
+      (AD_DETAIL_SPEC_LABEL_KEYS[row.id]
+        ? t(AD_DETAIL_SPEC_LABEL_KEYS[row.id]!)
+        : row.label) || row.label,
     value:
       row.value === "نعم"
         ? t("common.yes")
@@ -639,8 +609,7 @@ export default function AdDetail() {
       ? []
       : shippingIdList.map((sid) => AD_SHIPPING_LABELS[sid] ?? sid);
 
-  const pageMax =
-    "mx-auto w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6";
+  const pageInset = PLATFORM_CARD_INSET;
   /** عناوين أقسام — mini-card مثل Create Ad */
   const adDetailSectionHeading = cn(
     "inline-flex max-w-full w-fit items-center rounded-2xl border border-primary/35 bg-[#0A0A0A]/80 px-2 py-px",
@@ -721,7 +690,7 @@ export default function AdDetail() {
         className="flex w-full flex-col bg-[#0A0A0A]"
       >
       <AdDetailHeroSection
-        pageMax={pageMax}
+        pageInset={pageInset}
         images={adImages}
         title={ad.title}
         isFavorited={ad.isFavorited ?? false}
@@ -730,7 +699,7 @@ export default function AdDetail() {
         onToggleFavorite={handleToggleFavorite}
       />
 
-      <div className={`${pageMax} py-1.5 md:py-3`}>
+      <div className={cn(pageInset, "py-1.5 md:py-3")}>
         <div className="flex flex-col gap-3 min-w-0">
           {/* كرت العنوان والسعر والموقع */}
           <div className={heroTitlePriceSurface} data-ad-detail-shell="hero">
@@ -754,8 +723,19 @@ export default function AdDetail() {
                   </span>
                 )}
               </div>
-              {(locationLine || ad.createdAt) && (
+              {(taxonomyLine || locationLine || ad.createdAt) && (
                 <p className="text-[11px] leading-snug text-muted-foreground/75">
+                  {taxonomyLine ? (
+                    <>
+                      <Link
+                        href={`/category/${ad.categoryId}${ad.subcategoryId ? `?subcategoryId=${ad.subcategoryId}` : ""}`}
+                        className="font-medium text-primary/90 hover:underline"
+                      >
+                        {taxonomyLine}
+                      </Link>
+                      {locationLine || ad.createdAt ? " · " : ""}
+                    </>
+                  ) : null}
                   {locationLine}
                   {locationLine && ad.createdAt ? " · " : ""}
                   <span className="tabular-nums">{formatRelativeTime(ad.createdAt)}</span>
@@ -839,18 +819,18 @@ export default function AdDetail() {
             </button>
           </div>
 
-          {/* 1 — معلومات الجهاز: من ad.details (specs + عند الحاجة categoryPath.leaf للشركة المصنعة) */}
-          {deviceInfoRows.length > 0 ? (
+          {/* 1 — المواصفات: من ad.details.specs + تعريفات Create Ad (slug + subcategoryName من API) */}
+          {specRows.length > 0 ? (
             <div
               data-ad-detail-shell="section"
               data-testid="ad-device-info-section"
               className={cn(deviceInfoShell, "space-y-1.5 text-sm")}
             >
               <span className={cn(adDetailSectionHeading, "mb-0")} data-ad-detail-shell="heading">
-                {t("ad_detail.device_info")}
+                {t("ad_detail.specifications")}
               </span>
               <ul className="grid grid-cols-2 gap-2">
-                {deviceInfoRows.map((row) => (
+                {specRows.map((row) => (
                   <li key={row.id} className={deviceSpecTile} data-ad-detail-shell="tile">
                     <p className="text-[10px] font-medium leading-tight text-muted-foreground">
                       {row.label}

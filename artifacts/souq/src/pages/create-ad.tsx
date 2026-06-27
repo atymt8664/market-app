@@ -65,6 +65,7 @@ import {
   parseStoredAdDetails,
 } from "@/lib/ad-stored-details";
 import { cn } from "@/lib/utils";
+import { PLATFORM_CARD_INSET } from "@/lib/home-page-layout";
 import { AppShellContentScroll } from "@/components/app-shell-content-scroll";
 import { BOTTOM_NAV_PAGE_SHELL_CLASS } from "@/lib/bottom-nav-layout";
 import { SETTINGS_PRIMARY_BUTTON } from "@/components/settings-shell";
@@ -72,6 +73,12 @@ import { t } from "@/i18n";
 import { useAppChromePage } from "@/contexts/app-chrome-context";
 import { useSelectedCity } from "@/hooks/use-selected-city";
 import { getCreateAdTaxonomyLabel } from "@/lib/create-ad-taxonomy-labels";
+import {
+  getCreateAdDynamicFields,
+  getFieldsToClearOnChange,
+  validateProductMetadata,
+  type ResolvedDynamicFieldDef,
+} from "@/lib/create-ad-dynamic-fields";
 import { GERMAN_CITIES } from "@/lib/german-cities";
 
 /** هوية dark/lime — نفس روح ad-detail / profile */
@@ -139,7 +146,9 @@ const createAdSchema = z.object({
   priceType: z.enum(["fixed", "negotiable", "free", "swap"]),
   type: z.enum(["offer", "request"]),
   categoryId: z.number().min(1, "create_ad.validation.category_required"),
-  subcategoryId: z.number().optional().nullable(),
+  subcategoryId: z
+    .number({ invalid_type_error: "create_ad.validation.subcategory_required" })
+    .min(1, "create_ad.validation.subcategory_required"),
   city: z.string().min(2, "create_ad.validation.city_required"),
   sellerName: z.string().min(2, "create_ad.validation.name_required"),
   sellerPhone: z.string().min(5, "create_ad.validation.phone_required"),
@@ -165,35 +174,10 @@ const ALLOWED_IMAGE_EXTENSIONS = [
   "bmp",
 ];
 
-type DynamicFieldType = "select";
-interface DynamicFieldDef {
-  id: string;
-  label: string;
-  type: DynamicFieldType;
-  options?: string[];
-}
-
-interface CategoryLeaf {
-  name: string;
-  dynamicFields?: DynamicFieldDef[];
-}
-
-interface CategorySubcategory {
-  name: string;
-  options?: CategoryLeaf[];
-  dynamicFields?: DynamicFieldDef[];
-}
-
-interface CategoryMain {
-  name: string;
-  subcategories: CategorySubcategory[];
-  dynamicFields?: DynamicFieldDef[];
-}
 
 interface SelectedCategoryPath {
   main: string;
   sub: string;
-  leaf?: string;
 }
 
 interface ShippingMethod {
@@ -223,319 +207,6 @@ interface CurrencyOption {
   label: string;
 }
 
-const ELECTRONICS_PHONE_FIELDS: DynamicFieldDef[] = [
-  {
-    id: "color",
-    label: "اللون",
-    type: "select",
-    options: [
-      "أسود",
-      "أبيض",
-      "فضي",
-      "ذهبي",
-      "أزرق",
-      "أحمر",
-      "أخضر",
-      "بنفسجي",
-      "وردي",
-      "رمادي",
-      "أخرى",
-    ],
-  },
-  {
-    id: "condition",
-    label: "الحالة",
-    type: "select",
-    options: [
-      "جديد",
-      "مثل الجديد",
-      "جيد جداً",
-      "جيد",
-      "مقبول",
-      "يحتاج صيانة",
-    ],
-  },
-  {
-    id: "storage",
-    label: "السعة التخزينية",
-    type: "select",
-    options: ["16GB", "32GB", "64GB", "128GB", "256GB", "512GB", "1TB", "أخرى"],
-  },
-  {
-    id: "accessories",
-    label: "الجهاز والملحقات",
-    type: "select",
-    options: [
-      "الجهاز فقط",
-      "مع الشاحن",
-      "مع العلبة",
-      "مع الشاحن والعلبة",
-      "مع سماعات",
-      "كامل الملحقات",
-    ],
-  },
-];
-
-const CATEGORY_TREE: CategoryMain[] = [
-  {
-    name: "السيارات والدراجات والقوارب",
-    subcategories: [
-      {
-        name: "سيارات",
-        dynamicFields: [
-          {
-            id: "car_brand",
-            label: "الشركة",
-            type: "select",
-            options: [
-              "BMW",
-              "Mercedes",
-              "Audi",
-              "Volkswagen",
-              "Toyota",
-              "Hyundai",
-              "Kia",
-              "Opel",
-              "Ford",
-              "Renault",
-              "أخرى",
-            ],
-          },
-          {
-            id: "car_model",
-            label: "الموديل",
-            type: "select",
-            options: ["صغير", "سيدان", "SUV", "كوبيه", "هاتشباك", "فان", "أخرى"],
-          },
-          {
-            id: "year",
-            label: "سنة الصنع",
-            type: "select",
-            options: [
-              "2025+",
-              "2020-2024",
-              "2015-2019",
-              "2010-2014",
-              "2005-2009",
-              "2000-2004",
-              "أقدم",
-            ],
-          },
-          {
-            id: "mileage",
-            label: "الكيلومترات",
-            type: "select",
-            options: [
-              "أقل من 50,000",
-              "50,000 - 100,000",
-              "100,000 - 150,000",
-              "150,000 - 200,000",
-              "200,000+",
-            ],
-          },
-          {
-            id: "fuel",
-            label: "نوع الوقود",
-            type: "select",
-            options: ["بنزين", "ديزل", "كهرباء", "هايبرد", "غاز", "أخرى"],
-          },
-          {
-            id: "transmission",
-            label: "ناقل الحركة",
-            type: "select",
-            options: ["أوتوماتيك", "يدوي", "نصف أوتوماتيك"],
-          },
-        ],
-      },
-      { name: "دراجات نارية", options: [{ name: "رياضية" }, { name: "سكوتر" }, { name: "كلاسيكية" }] },
-      { name: "دراجات هوائية", options: [{ name: "جبلية" }, { name: "مدينة" }, { name: "طريق" }] },
-      { name: "قوارب", options: [{ name: "قوارب صيد" }, { name: "قوارب نزهة" }, { name: "أخرى" }] },
-      { name: "قطع غيار وإكسسوارات", options: [{ name: "إطارات" }, { name: "بطاريات" }, { name: "زيوت" }] },
-    ],
-  },
-  {
-    name: "العقارات",
-    subcategories: [
-      {
-        name: "شقق",
-        dynamicFields: [
-          {
-            id: "estate_type",
-            label: "نوع العقار",
-            type: "select",
-            options: ["شقة", "استوديو", "دوبلكس", "بنتهاوس"],
-          },
-          {
-            id: "area",
-            label: "المساحة",
-            type: "select",
-            options: [
-              "أقل من 50 م²",
-              "50-80 م²",
-              "80-120 م²",
-              "120-180 م²",
-              "أكثر من 180 م²",
-            ],
-          },
-          {
-            id: "rooms",
-            label: "عدد الغرف",
-            type: "select",
-            options: ["1", "2", "3", "4", "5+", "استوديو"],
-          },
-          {
-            id: "rent_sale",
-            label: "الإيجار/البيع",
-            type: "select",
-            options: ["إيجار", "بيع"],
-          },
-        ],
-      },
-      { name: "منازل", options: [{ name: "منزل مستقل" }, { name: "تاون هاوس" }, { name: "فيلا" }] },
-      { name: "غرف وسكن مشترك", options: [{ name: "غرفة مفردة" }, { name: "غرفة مزدوجة" }] },
-      { name: "مكاتب ومحلات", options: [{ name: "مكتب" }, { name: "محل تجاري" }, { name: "مخزن" }] },
-      { name: "أراضٍ", options: [{ name: "سكنية" }, { name: "زراعية" }, { name: "استثمارية" }] },
-    ],
-  },
-  {
-    name: "المنزل والحديقة",
-    subcategories: [
-      { name: "أثاث", options: [{ name: "غرفة نوم" }, { name: "صالة" }, { name: "مكتب" }, { name: "أخرى" }] },
-      { name: "أجهزة منزلية", options: [{ name: "مطبخ" }, { name: "تنظيف" }, { name: "تدفئة وتبريد" }] },
-      { name: "مستلزمات الحديقة", options: [{ name: "نباتات" }, { name: "أدوات حدائق" }, { name: "جلسات خارجية" }] },
-      { name: "ديكور", options: [{ name: "لوحات" }, { name: "سجاد" }, { name: "إضاءة" }] },
-    ],
-  },
-  {
-    name: "الموضة والجمال",
-    subcategories: [
-      { name: "ملابس نسائية", options: [{ name: "فساتين" }, { name: "جاكيتات" }, { name: "عبايات" }] },
-      { name: "ملابس رجالية", options: [{ name: "قمصان" }, { name: "بدلات" }, { name: "أحذية" }] },
-      { name: "أحذية وحقائب", options: [{ name: "أحذية" }, { name: "حقائب" }, { name: "إكسسوارات" }] },
-      { name: "مستحضرات تجميل", options: [{ name: "عناية بالبشرة" }, { name: "مكياج" }, { name: "عطور" }] },
-    ],
-  },
-  {
-    name: "الإلكترونيات",
-    subcategories: [
-      {
-        name: "الهواتف المحمولة",
-        options: [
-          { name: "آبل", dynamicFields: ELECTRONICS_PHONE_FIELDS },
-          { name: "سامسونج", dynamicFields: ELECTRONICS_PHONE_FIELDS },
-          { name: "شاومي", dynamicFields: ELECTRONICS_PHONE_FIELDS },
-          { name: "هواوي", dynamicFields: ELECTRONICS_PHONE_FIELDS },
-          { name: "نوكيا", dynamicFields: ELECTRONICS_PHONE_FIELDS },
-          { name: "سوني", dynamicFields: ELECTRONICS_PHONE_FIELDS },
-          { name: "جوجل", dynamicFields: ELECTRONICS_PHONE_FIELDS },
-          { name: "أخرى", dynamicFields: ELECTRONICS_PHONE_FIELDS },
-        ],
-      },
-      { name: "أجهزة كمبيوتر", options: [{ name: "لابتوب" }, { name: "كمبيوتر مكتبي" }, { name: "شاشات" }] },
-      { name: "أجهزة لوحية", options: [{ name: "آيباد" }, { name: "سامسونج تاب" }, { name: "أخرى" }] },
-      { name: "ألعاب فيديو", options: [{ name: "PlayStation" }, { name: "Xbox" }, { name: "Nintendo" }] },
-      { name: "إكسسوارات إلكترونية", options: [{ name: "سماعات" }, { name: "شواحن" }, { name: "ساعات ذكية" }] },
-    ],
-  },
-  {
-    name: "الحيوانات الأليفة",
-    subcategories: [
-      { name: "كلاب", options: [{ name: "تبنّي" }, { name: "مستلزمات" }, { name: "تدريب" }] },
-      { name: "قطط", options: [{ name: "تبنّي" }, { name: "مستلزمات" }, { name: "عناية" }] },
-      { name: "طيور", options: [{ name: "ببغاوات" }, { name: "كناري" }, { name: "أقفاص" }] },
-      { name: "أسماك", options: [{ name: "أحواض" }, { name: "أسماك زينة" }, { name: "إكسسوارات" }] },
-    ],
-  },
-  {
-    name: "الأسرة والطفل والرضّع",
-    subcategories: [
-      { name: "عربات أطفال", options: [{ name: "عربة مفردة" }, { name: "عربة مزدوجة" }] },
-      { name: "ملابس أطفال", options: [{ name: "حديثو الولادة" }, { name: "أطفال" }, { name: "مراهقون" }] },
-      { name: "ألعاب", options: [{ name: "تعليمية" }, { name: "إلكترونية" }, { name: "خارجية" }] },
-      { name: "أثاث أطفال", options: [{ name: "أسرة" }, { name: "خزائن" }, { name: "مكاتب دراسة" }] },
-    ],
-  },
-  {
-    name: "الوظائف",
-    subcategories: [
-      { name: "دوام كامل", options: [{ name: "تقني" }, { name: "مبيعات" }, { name: "إدارة" }] },
-      { name: "دوام جزئي", options: [{ name: "مطاعم" }, { name: "توصيل" }, { name: "خدمات" }] },
-      { name: "تدريب عملي", options: [{ name: "طلاب" }, { name: "خريجون" }] },
-      { name: "عمل حر", options: [{ name: "تصميم" }, { name: "برمجة" }, { name: "كتابة" }] },
-    ],
-  },
-  {
-    name: "أوقات الفراغ والهوايات والجوار",
-    subcategories: [
-      { name: "رياضة ولياقة", options: [{ name: "معدات رياضية" }, { name: "دراجات" }, { name: "ملابس رياضية" }] },
-      { name: "هوايات يدوية", options: [{ name: "رسم" }, { name: "خياطة" }, { name: "أعمال خشبية" }] },
-      { name: "فعاليات الجوار", options: [{ name: "لقاءات" }, { name: "أنشطة عائلية" }] },
-      { name: "رحلات وتخييم", options: [{ name: "خيام" }, { name: "معدات طبخ" }, { name: "إضاءة" }] },
-    ],
-  },
-  {
-    name: "الموسيقى والأفلام والكتب",
-    subcategories: [
-      { name: "آلات موسيقية", options: [{ name: "غيتار" }, { name: "بيانو" }, { name: "آلات إيقاعية" }] },
-      { name: "أفلام", options: [{ name: "DVD/Blu-ray" }, { name: "ملصقات" }, { name: "مقتنيات" }] },
-      { name: "كتب", options: [{ name: "روايات" }, { name: "تعليمية" }, { name: "أطفال" }] },
-      { name: "موسيقى", options: [{ name: "أسطوانات" }, { name: "معدات صوت" }, { name: "إكسسوارات" }] },
-    ],
-  },
-  {
-    name: "تذاكر الدخول والتذاكر",
-    subcategories: [
-      { name: "حفلات", options: [{ name: "موسيقية" }, { name: "كوميدية" }, { name: "مهرجانات" }] },
-      { name: "رياضة", options: [{ name: "كرة قدم" }, { name: "كرة سلة" }, { name: "أخرى" }] },
-      { name: "مسرح وسينما", options: [{ name: "مسرح" }, { name: "سينما" }] },
-      { name: "مواصلات وسفر", options: [{ name: "قطارات" }, { name: "طيران" }, { name: "حافلات" }] },
-    ],
-  },
-  {
-    name: "الخدمات",
-    subcategories: [
-      { name: "صيانة وإصلاح", options: [{ name: "كهرباء" }, { name: "سباكة" }, { name: "هواتف" }] },
-      { name: "تنظيف", options: [{ name: "منازل" }, { name: "مكاتب" }, { name: "سيارات" }] },
-      { name: "نقل وتوصيل", options: [{ name: "نقل أثاث" }, { name: "توصيل محلي" }] },
-      { name: "تصميم وتسويق", options: [{ name: "تصميم جرافيك" }, { name: "تسويق رقمي" }] },
-    ],
-  },
-  {
-    name: "الهدايا والتبادل",
-    subcategories: [
-      { name: "هدايا مجانية", options: [{ name: "منزلية" }, { name: "ملابس" }, { name: "أطفال" }] },
-      { name: "تبادل إلكترونيات", options: [{ name: "هواتف" }, { name: "ألعاب" }, { name: "إكسسوارات" }] },
-      { name: "تبادل أثاث", options: [{ name: "غرف نوم" }, { name: "صالونات" }] },
-      { name: "تبادل خدمات", options: [{ name: "تعليم مقابل تعليم" }, { name: "نقل مقابل صيانة" }] },
-    ],
-  },
-  {
-    name: "الدروس والكورسات",
-    subcategories: [
-      { name: "لغات", options: [{ name: "ألمانية" }, { name: "إنجليزية" }, { name: "عربية" }] },
-      { name: "تقنية", options: [{ name: "برمجة" }, { name: "تصميم" }, { name: "تحليل بيانات" }] },
-      { name: "دروس مدرسية", options: [{ name: "رياضيات" }, { name: "علوم" }, { name: "لغات" }] },
-      { name: "دروس موسيقى", options: [{ name: "غيتار" }, { name: "بيانو" }, { name: "غناء" }] },
-    ],
-  },
-  {
-    name: "مساعدة الجيران",
-    subcategories: [
-      { name: "مساعدة منزلية", options: [{ name: "تسوق" }, { name: "تنظيف خفيف" }, { name: "أعمال بسيطة" }] },
-      { name: "رعاية كبار السن", options: [{ name: "مرافقة" }, { name: "تسوق أدوية" }] },
-      { name: "رعاية أطفال", options: [{ name: "ساعات مسائية" }, { name: "عطلات نهاية الأسبوع" }] },
-      { name: "مساعدة تقنية", options: [{ name: "إعداد هواتف" }, { name: "حل مشاكل الكمبيوتر" }] },
-    ],
-  },
-];
-
-const normalizeLabel = (value?: string | null) =>
-  (value ?? "")
-    .toString()
-    .normalize("NFKD")
-    .replace(/[\u064B-\u065F]/g, "")
-    .replace(/[^\p{L}\p{N}]+/gu, "")
-    .toLowerCase();
 
 const isSupportedImageFile = (file: File) => {
   if (file.type && file.type.startsWith("image/")) return true;
@@ -667,8 +338,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   const [dynamicFieldValues, setDynamicFieldValues] = useState<
     Record<string, string>
   >({});
-  const [pickerMain, setPickerMain] = useState<CategoryMain | null>(null);
-  const [pickerSub, setPickerSub] = useState<CategorySubcategory | null>(null);
+  const [pickerCategoryId, setPickerCategoryId] = useState<number | null>(null);
   const [shippingSheetOpen, setShippingSheetOpen] = useState(false);
   const [photoTipsOpen, setPhotoTipsOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
@@ -701,6 +371,14 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     },
   });
 
+  const { data: pickerSubcategories, isLoading: isLoadingPickerSubs } =
+    useListSubcategories(pickerCategoryId || 0, {
+      query: {
+        enabled: !!pickerCategoryId && categorySheetOpen,
+        queryKey: getListSubcategoriesQueryKey(pickerCategoryId || 0),
+      },
+    });
+
   const form = useForm<CreateAdFormValues>({
     resolver: zodResolver(createAdSchema),
     defaultValues: {
@@ -710,7 +388,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       priceType: "fixed",
       type: "offer",
       categoryId: 0,
-      subcategoryId: null,
+      subcategoryId: 0,
       city:
         user?.city && isGermanMarketplaceCity(user.city) ? user.city.trim() : "",
       sellerName: user?.name || "",
@@ -732,7 +410,7 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
           | "swap",
         type: existingAd.type as "offer" | "request",
         categoryId: existingAd.categoryId,
-        subcategoryId: existingAd.subcategoryId ?? null,
+        subcategoryId: existingAd.subcategoryId ?? 0,
         city: existingAd.city,
         sellerName: existingAd.sellerName,
         sellerPhone: existingAd.sellerPhone,
@@ -831,39 +509,28 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     (s) => s.id === watchSubcategoryId,
   );
 
-  const getMatchingMainApi = (mainName: string) =>
-    categories?.find(
-      (cat) => normalizeLabel(cat.name) === normalizeLabel(mainName),
-    );
-
-  const getMatchingSubApi = (subName: string) =>
-    subcategories?.find(
-      (sub) => normalizeLabel(sub.name) === normalizeLabel(subName),
-    );
-
-  const getDynamicFieldsForPath = (
-    path: SelectedCategoryPath | null,
-  ): DynamicFieldDef[] => {
-    if (!path) return [];
-    const main = CATEGORY_TREE.find(
-      (item) => normalizeLabel(item.name) === normalizeLabel(path.main),
-    );
-    if (!main) return [];
-    const sub = main.subcategories.find(
-      (item) => normalizeLabel(item.name) === normalizeLabel(path.sub),
-    );
-    if (!sub) return main.dynamicFields ?? [];
-    if (!path.leaf) return sub.dynamicFields ?? main.dynamicFields ?? [];
-    const leaf = sub.options?.find(
-      (item) => normalizeLabel(item.name) === normalizeLabel(path.leaf),
-    );
-    return leaf?.dynamicFields ?? sub.dynamicFields ?? main.dynamicFields ?? [];
-  };
-
-  const activeDynamicFields = getDynamicFieldsForPath(selectedCategoryPath);
+  const activeDynamicFields = useMemo(
+    () =>
+      getCreateAdDynamicFields(
+        selectedCategory?.slug,
+        selectedSubcategory?.name,
+        dynamicFieldValues,
+      ),
+    [
+      selectedCategory?.slug,
+      selectedSubcategory?.name,
+      dynamicFieldValues,
+    ],
+  );
 
   const handleDynamicFieldChange = (fieldId: string, value: string) => {
-    setDynamicFieldValues((prev) => ({ ...prev, [fieldId]: value }));
+    setDynamicFieldValues((prev) => {
+      const next = { ...prev, [fieldId]: value };
+      for (const depId of getFieldsToClearOnChange(fieldId)) {
+        delete next[depId];
+      }
+      return next;
+    });
   };
 
   const toggleShippingTemp = (id: string) => {
@@ -923,34 +590,29 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   };
 
   const applyCategorySelection = (
-    mainName: string,
-    subName: string,
-    leafName?: string,
+    categoryId: number,
+    subcategoryId: number,
   ) => {
-    const mainApi = getMatchingMainApi(mainName);
-    if (mainApi) {
-      form.setValue("categoryId", mainApi.id, { shouldValidate: true });
-      setSelectedCatId(mainApi.id);
-    } else if (!watchCategoryId && categories?.[0]) {
-      form.setValue("categoryId", categories[0].id, { shouldValidate: true });
-      setSelectedCatId(categories[0].id);
+    const cat = categories?.find((c) => c.id === categoryId);
+    const sub =
+      pickerSubcategories?.find((s) => s.id === subcategoryId) ??
+      subcategories?.find((s) => s.id === subcategoryId);
+
+    if (!cat || !sub || sub.categoryId !== categoryId) {
+      toast({
+        title: t("create_ad.validation.category_required"),
+        description: t("create_ad.validation.subcategory_required"),
+        variant: "destructive",
+      });
+      return;
     }
 
-    const subApi = getMatchingSubApi(subName);
-    if (subApi) {
-      form.setValue("subcategoryId", subApi.id, { shouldValidate: true });
-    } else {
-      form.setValue("subcategoryId", null, { shouldValidate: true });
-    }
-
-    setSelectedCategoryPath({
-      main: mainName,
-      sub: subName,
-      ...(leafName ? { leaf: leafName } : {}),
-    });
+    form.setValue("categoryId", categoryId, { shouldValidate: true });
+    form.setValue("subcategoryId", subcategoryId, { shouldValidate: true });
+    setSelectedCatId(categoryId);
+    setSelectedCategoryPath({ main: cat.name, sub: sub.name });
     setDynamicFieldValues({});
-    setPickerMain(null);
-    setPickerSub(null);
+    setPickerCategoryId(null);
     setCategorySheetOpen(false);
   };
 
@@ -1026,6 +688,30 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
   };
 
   const onSubmit = async (data: CreateAdFormValues) => {
+    if (!data.categoryId || data.categoryId < 1) {
+      toast({
+        title: t("create_ad.validation.category_required"),
+        variant: "destructive",
+      });
+      form.setError("categoryId", {
+        type: "manual",
+        message: "create_ad.validation.category_required",
+      });
+      return;
+    }
+
+    if (!data.subcategoryId || data.subcategoryId < 1) {
+      toast({
+        title: t("create_ad.validation.subcategory_required"),
+        variant: "destructive",
+      });
+      form.setError("subcategoryId", {
+        type: "manual",
+        message: "create_ad.validation.subcategory_required",
+      });
+      return;
+    }
+
     if (!validateCityBeforePublish()) {
       return;
     }
@@ -1033,6 +719,23 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     if (!sellerSafetyAccepted) {
       toast({
         title: t("create_ad.safety.accept_required_before_publish"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const metadataCheck = validateProductMetadata(
+      selectedCategory?.slug,
+      selectedSubcategory?.name,
+      dynamicFieldValues,
+    );
+    if (!metadataCheck.ok) {
+      const first = metadataCheck.missing[0];
+      toast({
+        title: t("create_ad.validation.complete_required"),
+        description: first
+          ? `${first.label}: ${t("create_ad.validation.metadata_field_required")}`
+          : t("create_ad.validation.review_required"),
         variant: "destructive",
       });
       return;
@@ -1417,24 +1120,18 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
     isUploading;
   const pathSep = isRtl ? " ← " : " → ";
   const listSep = isRtl ? "، " : ", ";
-  const resolvedCategoryPathLabel = selectedCategoryPath
-    ? [
-        getCreateAdTaxonomyLabel(locale, selectedCategoryPath.main),
-        getCreateAdTaxonomyLabel(locale, selectedCategoryPath.sub),
-        ...(selectedCategoryPath.leaf
-          ? [getCreateAdTaxonomyLabel(locale, selectedCategoryPath.leaf)]
-          : []),
-      ].join(pathSep)
-    : watchCategoryId
+  const resolvedCategoryPathLabel =
+    selectedCategory && selectedSubcategory
       ? [
-          getCreateAdTaxonomyLabel(locale, selectedCategory?.name ?? ""),
-          ...(selectedSubcategory
-            ? [getCreateAdTaxonomyLabel(locale, selectedSubcategory.name)]
-            : []),
-        ]
-          .filter((s) => s.length > 0)
-          .join(pathSep)
-      : "";
+          getCreateAdTaxonomyLabel(locale, selectedCategory.name),
+          getCreateAdTaxonomyLabel(locale, selectedSubcategory.name),
+        ].join(pathSep)
+      : selectedCategoryPath
+        ? [
+            getCreateAdTaxonomyLabel(locale, selectedCategoryPath.main),
+            getCreateAdTaxonomyLabel(locale, selectedCategoryPath.sub),
+          ].join(pathSep)
+        : "";
   const selectedShippingLabels = pickupOnly
     ? [t("create_ad.shipping.pickup_only")]
     : shippingMethods.filter((item) => shippingIds.includes(item.id)).map(
@@ -1476,23 +1173,6 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
         .filter((method): method is ShippingMethod => Boolean(method));
 
   useEffect(() => {
-    if (!selectedCategoryPath || !selectedCatId || !subcategories?.length) return;
-    if (form.getValues("subcategoryId")) return;
-    const subApi = getMatchingSubApi(selectedCategoryPath.sub);
-    if (subApi) form.setValue("subcategoryId", subApi.id, { shouldValidate: true });
-  }, [selectedCategoryPath, selectedCatId, subcategories, form]);
-
-  useEffect(() => {
-    if (selectedCategoryPath) return;
-    if (!selectedCategory) return;
-    const nextPath: SelectedCategoryPath = {
-      main: selectedCategory.name,
-      sub: selectedSubcategory?.name || "عام",
-    };
-    setSelectedCategoryPath(nextPath);
-  }, [selectedCategoryPath, selectedCategory, selectedSubcategory]);
-
-  useEffect(() => {
     if (!shippingSheetOpen) return;
     setTempShippingIds(shippingIds);
     setTempPickupOnly(pickupOnly);
@@ -1525,7 +1205,10 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="mx-auto flex w-full max-w-[900px] md:max-w-[760px] lg:max-w-[860px] px-4 md:px-6 pt-2 pb-2.5 flex flex-col gap-2.5 md:gap-3 md:pt-3 md:pb-3"
+          className={cn(
+            PLATFORM_CARD_INSET,
+            "flex flex-col gap-2.5 pt-2 pb-2.5 md:gap-3 md:pt-3 md:pb-3",
+          )}
         >
           <section className="space-y-2" dir={isRtl ? "rtl" : "ltr"}>
             <input
@@ -1673,7 +1356,13 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 <p className="min-h-0 text-start text-xs text-primary/90 empty:hidden">
                   {resolvedCategoryPathLabel}
                 </p>
-                <Sheet open={categorySheetOpen} onOpenChange={setCategorySheetOpen}>
+                <Sheet
+                  open={categorySheetOpen}
+                  onOpenChange={(open) => {
+                    setCategorySheetOpen(open);
+                    if (!open) setPickerCategoryId(null);
+                  }}
+                >
                   <SheetTrigger asChild>
                     <Button
                       variant="outline"
@@ -1701,91 +1390,62 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   >
                     <CreateAdSheetHeader title={t("create_ad.category.sheet_title")} />
                     <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-2.5">
-                      {!pickerMain ? (
-                        CATEGORY_TREE.map((main) => (
+                      {!pickerCategoryId ? (
+                        (categories ?? []).map((cat) => (
                           <button
-                            key={main.name}
+                            key={cat.id}
                             type="button"
                             className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-[#0A0A0A]/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-black/85"
-                            onClick={() => {
-                              setPickerMain(main);
-                              setPickerSub(null);
-                              const mainApi = getMatchingMainApi(main.name);
-                              if (mainApi) setSelectedCatId(mainApi.id);
-                            }}
+                            onClick={() => setPickerCategoryId(cat.id)}
                           >
                             <span className="font-medium">
-                              {getCreateAdTaxonomyLabel(locale, main.name)}
+                              {getCreateAdTaxonomyLabel(locale, cat.name)}
                             </span>
                             <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
                           </button>
                         ))
-                      ) : !pickerSub ? (
-                        <>
-                          <button
-                            type="button"
-                            className="mb-1 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-[#0A0A0A]/85 px-3 py-3 text-start text-sm font-medium text-primary transition-colors hover:border-primary/45 hover:bg-black/90"
-                            onClick={() => {
-                              setPickerMain(null);
-                              setPickerSub(null);
-                            }}
-                          >
-                            <ArrowRight className="h-4 w-4 shrink-0" />
-                            {t("create_ad.category.back_to_main")}
-                          </button>
-                          <p className="px-1 pb-1 text-xs text-zinc-500">
-                            {getCreateAdTaxonomyLabel(locale, pickerMain.name)}
-                          </p>
-                          {pickerMain.subcategories.map((sub) => (
-                            <button
-                              key={sub.name}
-                              type="button"
-                              className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-[#0A0A0A]/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-black/85"
-                              onClick={() => {
-                                if (!sub.options?.length) {
-                                  applyCategorySelection(pickerMain.name, sub.name);
-                                  return;
-                                }
-                                setPickerSub(sub);
-                              }}
-                            >
-                              <span>{getCreateAdTaxonomyLabel(locale, sub.name)}</span>
-                              <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
-                            </button>
-                          ))}
-                        </>
                       ) : (
                         <>
                           <button
                             type="button"
                             className="mb-1 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-[#0A0A0A]/85 px-3 py-3 text-start text-sm font-medium text-primary transition-colors hover:border-primary/45 hover:bg-black/90"
-                            onClick={() => setPickerSub(null)}
+                            onClick={() => setPickerCategoryId(null)}
                           >
                             <ArrowRight className="h-4 w-4 shrink-0" />
-                            {t("create_ad.category.back_to_main_name", {
-                              name: getCreateAdTaxonomyLabel(locale, pickerMain.name),
-                            })}
+                            {t("create_ad.category.back_to_main")}
                           </button>
                           <p className="px-1 pb-1 text-xs text-zinc-500">
-                            {getCreateAdTaxonomyLabel(locale, pickerMain.name)} →{" "}
-                            {getCreateAdTaxonomyLabel(locale, pickerSub.name)}
+                            {getCreateAdTaxonomyLabel(
+                              locale,
+                              categories?.find((c) => c.id === pickerCategoryId)
+                                ?.name ?? "",
+                            )}
                           </p>
-                          {pickerSub.options?.map((leaf) => (
-                            <button
-                              key={leaf.name}
-                              type="button"
-                              className="w-full rounded-xl border border-primary/25 bg-[#0A0A0A]/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-black/85"
-                              onClick={() => {
-                                applyCategorySelection(
-                                  pickerMain.name,
-                                  pickerSub.name,
-                                  leaf.name,
-                                );
-                              }}
-                            >
-                              {getCreateAdTaxonomyLabel(locale, leaf.name)}
-                            </button>
-                          ))}
+                          {isLoadingPickerSubs ? (
+                            <div className="flex justify-center py-8">
+                              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            </div>
+                          ) : (pickerSubcategories ?? []).length === 0 ? (
+                            <p className="px-1 py-4 text-center text-sm text-zinc-500">
+                              {t("category.no_subcategories")}
+                            </p>
+                          ) : (
+                            (pickerSubcategories ?? []).map((sub) => (
+                              <button
+                                key={sub.id}
+                                type="button"
+                                className="flex w-full items-center justify-between rounded-xl border border-primary/25 bg-[#0A0A0A]/75 px-3 py-3.5 text-start text-white transition-colors hover:border-primary/45 hover:bg-black/85"
+                                onClick={() =>
+                                  applyCategorySelection(pickerCategoryId, sub.id)
+                                }
+                              >
+                                <span>
+                                  {getCreateAdTaxonomyLabel(locale, sub.name)}
+                                </span>
+                                <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
+                              </button>
+                            ))
+                          )}
                         </>
                       )}
                     </div>
@@ -1795,6 +1455,15 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                   <span className="text-xs text-destructive block text-start">
                     {fieldErrorMsg(
                       form.formState.errors.categoryId.message as string | undefined,
+                    )}
+                  </span>
+                )}
+                {form.formState.errors.subcategoryId && (
+                  <span className="text-xs text-destructive block text-start">
+                    {fieldErrorMsg(
+                      form.formState.errors.subcategoryId.message as
+                        | string
+                        | undefined,
                     )}
                   </span>
                 )}
@@ -1838,19 +1507,32 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                 {t("create_ad.dynamic.title")}
               </p>
               <div className="grid grid-cols-1 gap-2">
-                {activeDynamicFields.map((field) => {
+                {activeDynamicFields.map((field: ResolvedDynamicFieldDef) => {
                   const current = dynamicFieldValues[field.id] ?? "";
                   const fieldLabel = getCreateAdTaxonomyLabel(locale, field.label);
+                  const optionsDisabled =
+                    field.dependsOn &&
+                    !dynamicFieldValues[field.dependsOn]?.trim();
                   return (
                     <div key={field.id} className={cn(adCardShellCompact, "px-3 py-2")}>
                       <label className="mb-1 block text-xs text-zinc-400">
                         {fieldLabel}
+                        {field.required ? (
+                          <span className="text-destructive" aria-hidden>
+                            {" "}
+                            *
+                          </span>
+                        ) : null}
                       </label>
                       <Sheet>
                         <SheetTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-11 w-full items-center justify-between rounded-lg border border-primary/30 bg-[#0A0A0A]/90 px-3 text-sm transition-colors hover:border-primary/45 hover:bg-black/90"
+                            disabled={Boolean(optionsDisabled)}
+                            className={cn(
+                              "flex h-11 w-full items-center justify-between rounded-lg border border-primary/30 bg-[#0A0A0A]/90 px-3 text-sm transition-colors hover:border-primary/45 hover:bg-black/90",
+                              optionsDisabled && "cursor-not-allowed opacity-50",
+                            )}
                             dir={isRtl ? "rtl" : "ltr"}
                           >
                             <span
@@ -1858,11 +1540,20 @@ export default function CreateAd({ editId }: CreateAdProps = {}) {
                                 current ? "text-start text-white" : "text-start text-zinc-500"
                               }
                             >
-                              {current
-                                ? getCreateAdTaxonomyLabel(locale, current)
-                                : t("create_ad.dynamic.choose_field", {
-                                    field: fieldLabel,
-                                  })}
+                              {optionsDisabled
+                                ? t("create_ad.dynamic.select_parent_first", {
+                                    field: getCreateAdTaxonomyLabel(
+                                      locale,
+                                      activeDynamicFields.find(
+                                        (f) => f.id === field.dependsOn,
+                                      )?.label ?? "",
+                                    ),
+                                  })
+                                : current
+                                  ? getCreateAdTaxonomyLabel(locale, current)
+                                  : t("create_ad.dynamic.choose_field", {
+                                      field: fieldLabel,
+                                    })}
                             </span>
                             <ArrowRight className="h-4 w-4 shrink-0 rotate-180 text-primary/70" />
                           </button>

@@ -1,0 +1,333 @@
+import type { FieldGroupId, FieldGroupSlot } from "./types";
+
+/** Field groups — each slot references catalog key; required overrides catalog */
+export const FIELD_GROUPS: Record<FieldGroupId, FieldGroupSlot[]> = {
+  phone: [
+    { fieldId: "manufacturer", required: true },
+    { fieldId: "model", required: true },
+    { fieldId: "condition", required: true },
+    { fieldId: "storage" },
+    { fieldId: "color" },
+    { fieldId: "accessories" },
+  ],
+  tablet: [
+    { fieldId: "manufacturer", required: true },
+    { fieldId: "model", required: true },
+    { fieldId: "condition", required: true },
+    { fieldId: "storage" },
+    { fieldId: "connectivity" },
+  ],
+  laptop: [
+    { fieldId: "manufacturer_laptop", required: true },
+    { fieldId: "model_laptop", required: true },
+    { fieldId: "condition", required: true },
+    { fieldId: "ram", required: true },
+    { fieldId: "storage" },
+  ],
+  desktop: [
+    { fieldId: "manufacturer_laptop" },
+    { fieldId: "cpu" },
+    { fieldId: "ram" },
+    { fieldId: "storage" },
+    { fieldId: "gpu" },
+    { fieldId: "condition", required: true },
+  ],
+  tv: [
+    { fieldId: "manufacturer", required: true },
+    { fieldId: "screen_size", required: true },
+    { fieldId: "resolution" },
+    { fieldId: "smart_tv" },
+    { fieldId: "condition", required: true },
+  ],
+  monitor: [
+    { fieldId: "manufacturer", required: true },
+    { fieldId: "screen_size", required: true },
+    { fieldId: "resolution" },
+    { fieldId: "refresh_rate" },
+    { fieldId: "condition", required: true },
+  ],
+  gaming: [
+    { fieldId: "platform", required: true },
+    { fieldId: "generic_model" },
+    { fieldId: "storage" },
+    { fieldId: "condition", required: true },
+  ],
+  camera: [
+    { fieldId: "manufacturer", required: true },
+    { fieldId: "model" },
+    { fieldId: "sensor_type" },
+    { fieldId: "condition", required: true },
+  ],
+  headphones: [
+    { fieldId: "manufacturer" },
+    { fieldId: "headphone_type" },
+    { fieldId: "connectivity" },
+    { fieldId: "condition", required: true },
+  ],
+  smartwatch: [
+    { fieldId: "manufacturer", required: true },
+    { fieldId: "model" },
+    { fieldId: "condition", required: true },
+  ],
+  cables: [
+    { fieldId: "accessory_type" },
+    { fieldId: "compatibility" },
+    { fieldId: "condition", required: true },
+  ],
+  router: [
+    { fieldId: "manufacturer", required: true },
+    { fieldId: "generic_model" },
+    { fieldId: "wifi_standard" },
+    { fieldId: "condition", required: true },
+  ],
+  printer: [
+    { fieldId: "manufacturer", required: true },
+    { fieldId: "printer_type", required: true },
+    { fieldId: "printer_color" },
+    { fieldId: "condition", required: true },
+  ],
+  elec_accessory: [
+    { fieldId: "accessory_type", required: true },
+    { fieldId: "compatibility" },
+    { fieldId: "condition", required: true },
+  ],
+  home_appliance: [
+    { fieldId: "appliance_type", required: true },
+    { fieldId: "manufacturer" },
+    { fieldId: "condition", required: true },
+  ],
+  car: [
+    { fieldId: "car_brand", required: true },
+    { fieldId: "car_model", required: true },
+    { fieldId: "year", required: true },
+    { fieldId: "mileage", required: true },
+    { fieldId: "fuel", required: true },
+    { fieldId: "transmission", required: true },
+    { fieldId: "condition", required: true },
+    { fieldId: "color" },
+  ],
+  motorcycle: [
+    { fieldId: "car_brand", required: true },
+    { fieldId: "year", required: true },
+    { fieldId: "engine_cc" },
+    { fieldId: "mileage" },
+    { fieldId: "condition", required: true },
+  ],
+  bicycle: [
+    { fieldId: "bike_type" },
+    { fieldId: "brand" },
+    { fieldId: "frame_size" },
+    { fieldId: "condition", required: true },
+  ],
+  scooter: [
+    { fieldId: "manufacturer", required: true },
+    { fieldId: "scooter_type", required: true },
+    { fieldId: "range_km" },
+    { fieldId: "condition", required: true },
+  ],
+  auto_parts: [
+    { fieldId: "part_type", required: true },
+    { fieldId: "compatible_brand" },
+    { fieldId: "condition", required: true },
+  ],
+  tires: [
+    { fieldId: "tire_size", required: true },
+    { fieldId: "season", required: true },
+    { fieldId: "quantity" },
+    { fieldId: "condition", required: true },
+  ],
+  estate_apartment: [
+    { fieldId: "area", required: true },
+    { fieldId: "rooms", required: true },
+    { fieldId: "bathrooms" },
+    { fieldId: "floor" },
+    { fieldId: "furnished" },
+    { fieldId: "heating" },
+  ],
+  estate_house: [
+    { fieldId: "area", required: true },
+    { fieldId: "rooms", required: true },
+    { fieldId: "plot_area" },
+    { fieldId: "floors_count" },
+    { fieldId: "garden" },
+    { fieldId: "furnished" },
+  ],
+  estate_room: [
+    { fieldId: "furnished", required: true },
+    { fieldId: "available_from", required: true },
+  ],
+  estate_commercial: [
+    { fieldId: "area", required: true },
+    { fieldId: "commercial_type", required: true },
+    { fieldId: "floor" },
+  ],
+  estate_land: [
+    { fieldId: "area", required: true },
+    { fieldId: "zoning", required: true },
+  ],
+  furniture: [
+    { fieldId: "furniture_type", required: true },
+    { fieldId: "material" },
+    { fieldId: "condition", required: true },
+  ],
+  kitchen: [
+    { fieldId: "kitchen_item_type" },
+    { fieldId: "material" },
+    { fieldId: "condition", required: true },
+  ],
+  restaurant: [
+    { fieldId: "equipment_type", required: true },
+    { fieldId: "equipment_brand" },
+    { fieldId: "power" },
+    { fieldId: "condition", required: true },
+  ],
+  decor: [
+    { fieldId: "decor_type" },
+    { fieldId: "condition", required: true },
+  ],
+  home_tools: [
+    { fieldId: "tool_type" },
+    { fieldId: "condition", required: true },
+  ],
+  workshop: [
+    { fieldId: "equipment_type", required: true },
+    { fieldId: "equipment_brand" },
+    { fieldId: "power" },
+    { fieldId: "condition", required: true },
+  ],
+  health: [
+    { fieldId: "health_item_type", required: true },
+    { fieldId: "condition", required: true },
+  ],
+  garden: [
+    { fieldId: "garden_item_type" },
+    { fieldId: "condition", required: true },
+  ],
+  fashion_clothing: [
+    { fieldId: "clothing_size", required: true },
+    { fieldId: "gender" },
+    { fieldId: "brand" },
+    { fieldId: "condition", required: true },
+  ],
+  fashion_shoes: [
+    { fieldId: "shoe_size", required: true },
+    { fieldId: "brand" },
+    { fieldId: "condition", required: true },
+  ],
+  fashion_bags: [
+    { fieldId: "brand" },
+    { fieldId: "material" },
+    { fieldId: "condition", required: true },
+  ],
+  fashion_jewelry: [
+    { fieldId: "jewelry_material", required: true },
+    { fieldId: "brand" },
+    { fieldId: "condition", required: true },
+  ],
+  fashion_beauty: [
+    { fieldId: "beauty_type" },
+    { fieldId: "volume" },
+    { fieldId: "sealed" },
+    { fieldId: "condition", required: true },
+  ],
+  baby_stroller: [
+    { fieldId: "brand" },
+    { fieldId: "age_range" },
+    { fieldId: "condition", required: true },
+  ],
+  baby_clothes: [
+    { fieldId: "clothing_size", required: true },
+    { fieldId: "gender" },
+    { fieldId: "condition", required: true },
+  ],
+  baby_toys: [
+    { fieldId: "age_range" },
+    { fieldId: "condition", required: true },
+  ],
+  baby_furniture: [
+    { fieldId: "baby_item_type" },
+    { fieldId: "age_range" },
+    { fieldId: "condition", required: true },
+  ],
+  baby_infant: [
+    { fieldId: "baby_item_type", required: true },
+    { fieldId: "condition", required: true },
+  ],
+  pet_live: [
+    { fieldId: "animal_type", required: true },
+    { fieldId: "pet_breed" },
+    { fieldId: "pet_age" },
+    { fieldId: "pet_gender" },
+    { fieldId: "vaccinated" },
+  ],
+  pet_supplies: [
+    { fieldId: "animal_type" },
+    { fieldId: "accessory_type" },
+    { fieldId: "condition", required: true },
+  ],
+  sports: [
+    { fieldId: "sport_type", required: true },
+    { fieldId: "brand" },
+    { fieldId: "condition", required: true },
+  ],
+  photo_gear: [
+    { fieldId: "photo_accessory_type", required: true },
+    { fieldId: "compatibility" },
+    { fieldId: "condition", required: true },
+  ],
+  board_game: [
+    { fieldId: "players" },
+    { fieldId: "age_range" },
+    { fieldId: "condition", required: true },
+  ],
+  camping: [
+    { fieldId: "gear_type", required: true },
+    { fieldId: "capacity" },
+    { fieldId: "condition", required: true },
+  ],
+  hobby: [
+    { fieldId: "hobby_type" },
+    { fieldId: "condition", required: true },
+  ],
+  shisha: [
+    { fieldId: "shisha_item_type", required: true },
+    { fieldId: "condition", required: true },
+  ],
+  book: [
+    { fieldId: "language" },
+    { fieldId: "format" },
+    { fieldId: "condition", required: true },
+  ],
+  instrument: [
+    { fieldId: "instrument_type", required: true },
+    { fieldId: "brand" },
+    { fieldId: "condition", required: true },
+  ],
+  media: [
+    { fieldId: "format", required: true },
+    { fieldId: "language" },
+    { fieldId: "condition", required: true },
+  ],
+  ticket: [
+    { fieldId: "event_date", required: true },
+    { fieldId: "venue" },
+    { fieldId: "quantity", required: true },
+  ],
+  service: [
+    { fieldId: "service_area", required: true },
+    { fieldId: "availability" },
+  ],
+  job: [
+    { fieldId: "industry", required: true },
+    { fieldId: "experience", required: true },
+  ],
+  exchange: [{ fieldId: "condition", required: true }],
+  lesson: [
+    { fieldId: "lesson_level" },
+    { fieldId: "lesson_format", required: true },
+  ],
+  neighborhood: [
+    { fieldId: "availability", required: true },
+    { fieldId: "radius_km" },
+  ],
+};

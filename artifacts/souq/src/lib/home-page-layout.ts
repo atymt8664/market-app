@@ -7,6 +7,14 @@ export const HOME_PAGE_GUTTER = "px-4 md:px-6 lg:px-8";
 
 export const HOME_PAGE_INSET = cn(HOME_PAGE_SHELL, HOME_PAGE_GUTTER);
 
+/** Platform-wide page content inset — same horizontal rhythm as Home (SSOT). */
+export const PLATFORM_PAGE_INSET = HOME_PAGE_INSET;
+
+/** Card-column inset — Ad Detail / Create Ad (closer to screen edges than section titles). */
+export const PLATFORM_CARD_GUTTER = "px-1 md:px-2 lg:px-3";
+
+export const PLATFORM_CARD_INSET = cn(HOME_PAGE_SHELL, PLATFORM_CARD_GUTTER);
+
 /** Tighter horizontal inset for Home ad grids only — section titles keep HOME_PAGE_INSET. */
 export const HOME_FEED_ADS_GUTTER = "px-2 md:px-4 lg:px-6";
 
